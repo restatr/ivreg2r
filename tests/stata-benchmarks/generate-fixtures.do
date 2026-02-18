@@ -4,7 +4,7 @@
   Generates CSV benchmark fixtures for ivreg2r R package testing.
   Run in Stata with ivreg2 installed (ssc install ivreg2).
 
-  Output directory: tests/stata-benchmarks/fixtures/
+  Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
   Each fixture produces:
     - *_data.csv          (dataset, for simulated data only)
     - *_coef_*.csv        (coefficients and SEs per VCE x small combo)
@@ -12,8 +12,8 @@
     - *_diagnostics_*.csv (test statistics per combo)
     - *_firststage_*.csv  (first-stage diagnostics per combo)
 
-  Usage:
-    cd /path/to/ivreg2r
+  Usage (CWD must be the package root, i.e. pkg/):
+    cd /path/to/ivreg2r/pkg
     do tests/stata-benchmarks/generate-fixtures.do
 ===========================================================================*/
 

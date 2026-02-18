@@ -8,6 +8,8 @@
 # Data originally from the NLS Young Men Cohort (1966-1981). This extract
 # matches the version distributed with Stata's bcuse package ("card").
 
+# Path is relative to the package root (pkg/). Run with setwd("pkg/") or
+# from an RStudio project rooted at pkg/.
 card <- read.csv("tests/stata-benchmarks/fixtures/card_data.csv")
 
 # Drop the row identifier used by Stata
