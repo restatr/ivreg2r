@@ -211,7 +211,7 @@ endogenous variable:
 ### Heteroskedasticity-robust standard errors
 
 Use `vcov = "HC1"` for White (1980) heteroskedasticity-robust standard errors
-with a finite-sample correction (equivalent to Stata's `robust`):
+with a finite-sample correction (equivalent to Stata's `robust small`):
 
 ```{r robust}
 fit_robust <- ivreg2(
