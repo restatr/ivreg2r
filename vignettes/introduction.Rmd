@@ -1,0 +1,360 @@
+---
+title: "Instrumental Variables Estimation with ivreg2r"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Instrumental Variables Estimation with ivreg2r}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+`ivreg2r` provides two-stage least squares (2SLS) estimation with automatic
+diagnostic tests for weak identification, underidentification, and
+overidentification. It is an R implementation inspired by Stata's `ivreg2`
+(Baum, Schaffer & Stillman), designed for applied researchers --- especially
+those migrating from Stata who expect rich diagnostics reported alongside
+their IV estimates.
+
+We'll use the Card (1995) dataset throughout this vignette. Card uses
+geographic proximity to a four-year college as an instrument for years of
+education in a log-wage equation, exploiting the idea that growing up near
+a college reduces the cost of attending and therefore shifts educational
+attainment without directly affecting wages.
+
+```{r setup}
+library(ivreg2r)
+data(card)
+```
+
+## OLS baseline
+
+With a one-part formula, `ivreg2()` estimates by OLS:
+
+```{r ols}
+fit_ols <- ivreg2(lwage ~ educ + exper + expersq + black + south + smsa + married,
+                  data = card)
+summary(fit_ols)
+```
+
+This is equivalent to `lm()` but uses the same estimation infrastructure as
+the IV models below, so switching between OLS and 2SLS requires only a formula
+change.
+
+## Two-stage least squares
+
+`ivreg2r` uses a three-part formula: `y ~ exogenous | endogenous | excluded_instruments`. Each variable appears exactly once, and exogenous
+regressors are automatically included as instruments.
+
+Here we instrument `educ` (endogenous) with `nearc4` (grew up near a 4-year
+college):
+
+```{r tsls}
+fit_iv <- ivreg2(
+  lwage ~ exper + expersq + black + south + smsa + married | educ | nearc4,
+  data = card
+)
+summary(fit_iv)
+```
+
+The three parts of the formula are:
+
+| Part | Contents | Example |
+|------|----------|---------|
+| LHS | Dependent variable | `lwage` |
+| 1st RHS | Exogenous regressors | `exper + expersq + black + south + smsa + married` |
+| 2nd RHS | Endogenous regressors | `educ` |
+| 3rd RHS | Excluded instruments | `nearc4` |
+
+The full instrument set is the union of the exogenous regressors and the
+excluded instruments. You never list the exogenous regressors twice.
+
+## Understanding the diagnostics
+
+The `summary()` output reports several diagnostic tests automatically. This
+section walks through each one.
+
+### Weak identification
+
+```
+Weak identification test:
+  Cragg-Donald Wald F:           35.20
+```
+
+The Cragg-Donald Wald F statistic tests whether the excluded instruments are
+*weak* --- that is, only weakly correlated with the endogenous regressors.
+Weak instruments lead to biased 2SLS estimates and unreliable standard errors.
+
+**Stock-Yogo critical values** provide formal thresholds for the F statistic.
+Two types are available:
+
+- **IV size**: the critical value such that the true rejection rate of a
+  nominal 5% Wald test is no more than 10%, 15%, 20%, or 25%. For one
+  endogenous variable and one instrument, the 10% maximal size critical value
+  is 16.38.
+- **IV relative bias**: the critical value such that the relative bias of 2SLS
+  (compared to OLS) is no more than 5%, 10%, 20%, or 30%.
+
+A common rule of thumb is "F > 10 means instruments are strong enough," but the
+Stock-Yogo tables give more precise guidance that accounts for the number of
+endogenous regressors and instruments (Stock & Yogo, 2005).
+
+The Cragg-Donald F assumes iid errors. Under heteroskedasticity or clustering,
+the Kleibergen-Paap rk Wald F is the appropriate analog (see the robust
+inference section below).
+
+### Underidentification
+
+```
+Underidentification test (Anderson canon. corr. LM statistic):
+  Chi-sq(1) = 34.86 (p = 0.0000)
+```
+
+The underidentification test asks whether the excluded instruments have *any*
+correlation with the endogenous regressors. The null hypothesis is that the
+equation is underidentified --- i.e., the instruments are irrelevant. Rejection
+is good news: it means the instruments have predictive power.
+
+Under iid errors, this is the Anderson (1951) canonical correlations LM test.
+Under heteroskedasticity or clustering, the Kleibergen-Paap (2006) rk LM
+statistic is used instead.
+
+Underidentification is distinct from weak identification. The underidentification
+test asks "is there *any* correlation at all?" while the weak identification
+test asks "is there *enough* correlation for reliable inference?"
+
+### Overidentification
+
+When there are more excluded instruments than endogenous regressors, the model
+is overidentified and we can test whether the instruments are valid (i.e.,
+uncorrelated with the structural error). Let's add a second instrument:
+
+```{r overid}
+fit_overid <- ivreg2(
+  lwage ~ exper + expersq + black + south + smsa + married | educ | nearc2 + nearc4,
+  data = card
+)
+summary(fit_overid)
+```
+
+The Sargan (1958) test (for iid models) or Hansen (1982) J test (for
+robust/cluster models) tests the null hypothesis that all instruments are
+valid. Rejection suggests that at least one instrument may be correlated with
+the error term.
+
+Important caveats:
+
+- The test is only available when the model is overidentified (more excluded
+  instruments than endogenous regressors). With exact identification, there are
+  no testable restrictions.
+- The test has low power when instruments are weak --- failure to reject does
+  not guarantee that the instruments are valid.
+
+### Endogeneity test (C-statistic)
+
+```
+Endogeneity test:
+  Chi-sq(1) = ...
+  Tested: educ
+```
+
+The endogeneity test (also called the C-statistic or difference-in-Sargan test)
+asks whether the regressors treated as endogenous are actually endogenous. The
+null hypothesis is that they are exogenous. If you cannot reject, OLS may be
+preferred because it is more efficient.
+
+The test is implemented as a difference in Sargan statistics (under iid) or a
+difference in Hansen J statistics (under robust/cluster VCE). See Hayashi
+(2000, pp. 218--221) for the underlying theory.
+
+### Anderson-Rubin test
+
+The Anderson-Rubin (1949) test provides inference on the endogenous regressors
+that remains valid even when instruments are weak. Unlike the standard Wald or
+t-test on 2SLS coefficients --- which can be severely distorted by weak
+instruments --- the AR test has correct size regardless of instrument strength.
+
+The null hypothesis is that the coefficients on the endogenous regressors are
+jointly zero *and* the overidentifying restrictions hold.
+
+This serves as a useful cross-check: if the standard t-test says an endogenous
+regressor is significant but the AR test does not reject, weak instruments may
+be distorting inference.
+
+## First-stage diagnostics
+
+The summary output also reports a table of first-stage diagnostics for each
+endogenous variable:
+
+- **F-stat**: the partial F-test of the excluded instruments in the first-stage
+  regression. This is the standard measure of instrument relevance.
+- **Partial R-sq**: the partial R-squared from the first-stage regression,
+  measuring the fraction of variation in the endogenous variable explained by
+  the excluded instruments after partialling out the exogenous regressors.
+- **Shea partial R-sq**: Shea's (1997) partial R-squared, which accounts for
+  intercorrelations among instruments. With a single endogenous variable, this
+  equals the standard partial R-squared.
+- **SW F** and **AP F**: Sanderson-Windmeijer (2016) and Angrist-Pischke
+  (2009) conditional F statistics. With a single endogenous variable, SW F =
+  AP F = the standard first-stage F. These become informative when there are
+  multiple endogenous regressors, providing variable-by-variable diagnostics.
+
+## Robust and clustered inference
+
+### Heteroskedasticity-robust standard errors
+
+Use `vcov = "HC1"` for White (1980) heteroskedasticity-robust standard errors
+with a finite-sample correction (equivalent to Stata's `robust`):
+
+```{r robust}
+fit_robust <- ivreg2(
+  lwage ~ exper + expersq + black + south + smsa + married | educ | nearc4,
+  data = card, vcov = "HC1", small = TRUE
+)
+summary(fit_robust)
+```
+
+Notice that the diagnostics automatically adapt: the Kleibergen-Paap rk
+statistics replace the Anderson and Cragg-Donald iid versions, and the Hansen J
+replaces the Sargan statistic.
+
+The `small = TRUE` option applies finite-sample corrections throughout:
+t-statistics and F-tests replace z-statistics and chi-squared tests.
+
+### Cluster-robust standard errors
+
+When observations are correlated within groups (e.g., individuals in the same
+metropolitan area), use the `clusters` argument:
+
+```{r cluster}
+fit_cluster <- ivreg2(
+  lwage ~ exper + expersq + black + south + smsa + married | educ | nearc4,
+  data = card, clusters = ~ smsa66, small = TRUE
+)
+summary(fit_cluster)
+```
+
+Cluster-robust VCE is automatically used when `clusters` is supplied. The
+`small = TRUE` option adds the standard cluster finite-sample correction
+factor, `(N-1)/(N-K) * M/(M-1)`, where M is the number of clusters.
+
+### VCE option summary
+
+| `vcov` | `clusters` | `small` | Equivalent Stata command |
+|--------|-----------|---------|------------------------|
+| `"iid"` | — | — | `ivreg2 ... ` |
+| `"HC0"` | — | `FALSE` | `ivreg2 ..., robust` |
+| `"HC1"` | — | `TRUE` | `ivreg2 ..., robust small` |
+| `"iid"` | `~ var` | `TRUE` | `ivreg2 ..., cluster(var) small` |
+
+## Weighted estimation
+
+Analytic weights (equivalent to Stata's `[aw=varname]`) are specified with the
+`weights` argument:
+
+```{r weights}
+fit_wt <- ivreg2(
+  lwage ~ exper + expersq + black + south + smsa + married | educ | nearc4,
+  data = card, weights = weight
+)
+summary(fit_wt)
+```
+
+Weights are internally normalized to sum to N, following Stata's convention.
+Coefficients, standard errors, and all test statistics are unaffected by weight
+scale.
+
+## Tidyverse workflows
+
+`ivreg2` objects integrate with the tidyverse through `tidy()`, `glance()`,
+and `augment()`.
+
+### Coefficient table
+
+`tidy()` returns a tibble of coefficient estimates with standard errors,
+test statistics, p-values, and confidence intervals:
+
+```{r tidy}
+tidy(fit_iv)
+```
+
+### Model summary
+
+`glance()` returns a single-row tibble with fit statistics and all diagnostic
+test results --- useful for building model comparison tables:
+
+```{r glance}
+glance(fit_iv)
+```
+
+### Augmented data
+
+`augment()` returns the original data with fitted values and residuals appended:
+
+```{r augment}
+augment(fit_iv) |> head()
+```
+
+## Stata migration quick reference
+
+| Task | Stata | R (`ivreg2r`) |
+|------|-------|---------------|
+| Basic IV | `ivreg2 y x (endo = z)` | `ivreg2(y ~ x \| endo \| z, data = d)` |
+| Robust SEs | `ivreg2 ..., robust` | `ivreg2(..., vcov = "HC0")` |
+| Robust + small | `ivreg2 ..., robust small` | `ivreg2(..., vcov = "HC1", small = TRUE)` |
+| Cluster SEs | `ivreg2 ..., cluster(g)` | `ivreg2(..., clusters = ~ g)` |
+| Cluster + small | `ivreg2 ..., cluster(g) small` | `ivreg2(..., clusters = ~ g, small = TRUE)` |
+| Analytic weights | `ivreg2 ... [aw=w]` | `ivreg2(..., weights = w)` |
+| Coefficients | `e(b)` | `coef(fit)` |
+| VCV matrix | `e(V)` | `vcov(fit)` |
+| Residuals | `predict resid, resid` | `residuals(fit)` |
+| Fitted values | `predict yhat` | `fitted(fit)` |
+| Confidence intervals | — | `confint(fit)` |
+| Tidy coef table | — | `tidy(fit)` |
+| Summary statistics | `ereturn list` | `glance(fit)` |
+| Diagnostics | Displayed after estimation | Displayed by `summary(fit)` |
+
+## References
+
+- Anderson, T.W. (1951). "Estimating Linear Restrictions on Regression
+  Coefficients for Multivariate Normal Distributions." *Annals of Mathematical
+  Statistics*, 22(3), 327--351.
+- Anderson, T.W. and Rubin, H. (1949). "Estimation of the Parameters of a
+  Single Equation in a Complete System of Stochastic Equations." *Annals of
+  Mathematical Statistics*, 20(1), 46--63.
+- Angrist, J.D. and Pischke, J.-S. (2009). *Mostly Harmless Econometrics*.
+  Princeton University Press.
+- Baum, C.F., Schaffer, M.E., and Stillman, S. (2007). "Enhanced Routines for
+  Instrumental Variables/Generalized Method of Moments Estimation and Testing."
+  *Stata Journal*, 7(4), 465--506.
+- Card, D. (1995). "Using Geographic Variation in College Proximity to Estimate
+  the Return to Schooling." In L.N. Christofides, E.K. Grant, and R. Swidinsky
+  (Eds.), *Aspects of Labour Market Behaviour: Essays in Honour of John
+  Vanderkamp*. University of Toronto Press.
+- Hansen, L.P. (1982). "Large Sample Properties of Generalized Method of
+  Moments Estimators." *Econometrica*, 50(4), 1029--1054.
+- Hayashi, F. (2000). *Econometrics*. Princeton University Press.
+- Kleibergen, F. and Paap, R. (2006). "Generalized Reduced Rank Tests Using
+  the Singular Value Decomposition." *Journal of Econometrics*, 133(1),
+  97--126.
+- Sanderson, E. and Windmeijer, F. (2016). "A Weak Instrument F-Test in Linear
+  IV Models with Multiple Endogenous Variables." *Journal of Econometrics*,
+  190(2), 212--221.
+- Sargan, J.D. (1958). "The Estimation of Economic Relationships Using
+  Instrumental Variables." *Econometrica*, 26(3), 393--415.
+- Shea, J. (1997). "Instrument Relevance in Multivariate Linear Models: A
+  Simple Measure." *Review of Economics and Statistics*, 79(2), 348--352.
+- Stock, J.H. and Yogo, M. (2005). "Testing for Weak Instruments in Linear IV
+  Regression." In D.W.K. Andrews and J.H. Stock (Eds.), *Identification and
+  Inference for Econometric Models: Essays in Honor of Thomas Rothenberg*.
+  Cambridge University Press.
+- White, H. (1980). "A Heteroskedasticity-Consistent Covariance Matrix
+  Estimator and a Direct Test for Heteroskedasticity." *Econometrica*, 48(4),
+  817--838.

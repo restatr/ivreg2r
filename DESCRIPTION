@@ -21,7 +21,10 @@ Imports:
     tibble
 Suggests:
     ivreg,
+    knitr,
+    rmarkdown,
     sandwich,
     testthat (>= 3.0.0)
+VignetteBuilder: knitr
 Config/testthat/edition: 3
 LazyData: true
