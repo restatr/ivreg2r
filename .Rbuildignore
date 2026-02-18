@@ -1,0 +1,3 @@
+^data-raw$
+^tests/stata-benchmarks$
+^LICENSE\.md$

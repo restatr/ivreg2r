@@ -1,0 +1,27 @@
+Package: ivreg2r
+Title: Extended Instrumental Variables Estimation with Diagnostics
+Version: 0.0.0.9000
+Authors@R:
+    person("Francis", "DiTraglia", , email = "francis.ditraglia@economics.ox.ac.uk", role = c("aut", "cre"))
+Description: Implements two-stage least squares (2SLS) and related instrumental
+    variables estimators with automatic reporting of diagnostic tests for weak
+    identification, underidentification, and overidentification. Inspired by
+    Stata's ivreg2 (Baum, Schaffer & Stillman). Supports robust and
+    cluster-robust standard errors.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.4.0)
+Imports:
+    Formula,
+    generics,
+    stats,
+    tibble
+Suggests:
+    ivreg,
+    sandwich,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+LazyData: true
