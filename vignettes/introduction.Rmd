@@ -271,6 +271,17 @@ Weights are internally normalized to sum to N, following Stata's convention.
 Coefficients, standard errors, and all test statistics are unaffected by weight
 scale.
 
+## Confidence intervals
+
+`confint()` returns confidence intervals for all coefficients:
+
+```{r confint}
+confint(fit_iv)
+```
+
+When `small = TRUE` was used at estimation time, intervals are based on the
+t-distribution; otherwise, the standard normal.
+
 ## Tidyverse workflows
 
 `ivreg2` objects integrate with the tidyverse through `tidy()`, `glance()`,
@@ -306,7 +317,7 @@ augment(fit_iv) |> head()
 
 | Task | Stata | R (`ivreg2r`) |
 |------|-------|---------------|
-| Basic IV | `ivreg2 y x (endo = z)` | `ivreg2(y ~ x \| endo \| z, data = d)` |
+| Basic IV | `ivreg2 y x (endo = z)` | `ivreg2(y ~ x | endo | z, data = d)` |
 | Robust SEs | `ivreg2 ..., robust` | `ivreg2(..., vcov = "HC0")` |
 | Robust + small | `ivreg2 ..., robust small` | `ivreg2(..., vcov = "HC1", small = TRUE)` |
 | Cluster SEs | `ivreg2 ..., cluster(g)` | `ivreg2(..., clusters = ~ g)` |
