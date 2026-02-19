@@ -526,6 +526,13 @@ test_that("dofminus rejects invalid inputs", {
   # Non-numeric
   expect_error(ivreg2(lwage ~ exper, data = card, dofminus = "1"),
                "non-negative integer")
+  # Inf and overflow doubles
+  expect_error(ivreg2(lwage ~ exper, data = card, dofminus = Inf),
+               "non-negative integer")
+  expect_error(ivreg2(lwage ~ exper, data = card, sdofminus = Inf),
+               "non-negative integer")
+  expect_error(ivreg2(lwage ~ exper, data = card, dofminus = 1e20),
+               "non-negative integer")
 })
 
 test_that("dofminus rejects values too large for model dimensions", {

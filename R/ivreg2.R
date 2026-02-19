@@ -95,11 +95,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
             call. = FALSE)
   }
   if (!is.numeric(dofminus) || length(dofminus) != 1L || is.na(dofminus) ||
-      dofminus < 0 || dofminus != trunc(dofminus)) {
+      !is.finite(dofminus) || dofminus < 0 || dofminus != trunc(dofminus) ||
+      dofminus > .Machine$integer.max) {
     stop("`dofminus` must be a non-negative integer.", call. = FALSE)
   }
   if (!is.numeric(sdofminus) || length(sdofminus) != 1L || is.na(sdofminus) ||
-      sdofminus < 0 || sdofminus != trunc(sdofminus)) {
+      !is.finite(sdofminus) || sdofminus < 0 || sdofminus != trunc(sdofminus) ||
+      sdofminus > .Machine$integer.max) {
     stop("`sdofminus` must be a non-negative integer.", call. = FALSE)
   }
   dofminus <- as.integer(dofminus)
