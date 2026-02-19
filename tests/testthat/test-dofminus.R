@@ -510,10 +510,37 @@ test_that("default dofminus/sdofminus are 0L", {
 test_that("dofminus rejects invalid inputs", {
   skip_if(!file.exists(card_path), "card data not found")
 
+  # Negative values
   expect_error(ivreg2(lwage ~ exper, data = card, dofminus = -1L),
                "non-negative")
   expect_error(ivreg2(lwage ~ exper, data = card, sdofminus = -1L),
                "non-negative")
+  # NA
   expect_error(ivreg2(lwage ~ exper, data = card, dofminus = NA_integer_),
                "non-negative")
+  # Fractional values (should be rejected, not silently truncated)
+  expect_error(ivreg2(lwage ~ exper, data = card, dofminus = 1.5),
+               "non-negative integer")
+  expect_error(ivreg2(lwage ~ exper, data = card, sdofminus = 2.9),
+               "non-negative integer")
+  # Non-numeric
+  expect_error(ivreg2(lwage ~ exper, data = card, dofminus = "1"),
+               "non-negative integer")
+})
+
+test_that("dofminus rejects values too large for model dimensions", {
+  skip_if(!file.exists(card_path), "card data not found")
+
+  # dofminus >= N
+  expect_error(ivreg2(lwage ~ exper, data = card, dofminus = 5000L),
+               "must be less than N")
+  # N - K - dofminus - sdofminus <= 0
+  expect_error(ivreg2(lwage ~ exper, data = card, dofminus = 3000L, sdofminus = 10L),
+               "too large")
+  # IV model: N - L - dofminus - sdofminus <= 0
+  expect_error(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, dofminus = 3000L, sdofminus = 5L),
+    "too large"
+  )
 })

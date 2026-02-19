@@ -94,14 +94,16 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     warning("`endog` contained duplicate entries; duplicates removed.",
             call. = FALSE)
   }
-  dofminus <- as.integer(dofminus)
-  sdofminus <- as.integer(sdofminus)
-  if (length(dofminus) != 1L || is.na(dofminus) || dofminus < 0L) {
+  if (!is.numeric(dofminus) || length(dofminus) != 1L || is.na(dofminus) ||
+      dofminus < 0 || dofminus != trunc(dofminus)) {
     stop("`dofminus` must be a non-negative integer.", call. = FALSE)
   }
-  if (length(sdofminus) != 1L || is.na(sdofminus) || sdofminus < 0L) {
+  if (!is.numeric(sdofminus) || length(sdofminus) != 1L || is.na(sdofminus) ||
+      sdofminus < 0 || sdofminus != trunc(sdofminus)) {
     stop("`sdofminus` must be a non-negative integer.", call. = FALSE)
   }
+  dofminus <- as.integer(dofminus)
+  sdofminus <- as.integer(sdofminus)
 
   # --- 3. Forward to parser ---
   # Build a call to .parse_formula() using the NSE arguments from ivreg2().
@@ -114,7 +116,23 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                      parent = parent.frame())
   parsed <- eval(pf_call, pf_env)
 
-  # --- 3a. Validate and normalize weights ---
+  # --- 3a. Validate dofminus/sdofminus against model dimensions ---
+  if (dofminus >= parsed$N) {
+    stop("`dofminus` (", dofminus, ") must be less than N (", parsed$N, ").",
+         call. = FALSE)
+  }
+  if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
+    stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
+         parsed$N - parsed$K - dofminus - sdofminus,
+         " (must be > 0).", call. = FALSE)
+  }
+  if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
+    stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
+         parsed$N - parsed$L - dofminus - sdofminus,
+         " (must be > 0).", call. = FALSE)
+  }
+
+  # --- 3b. Validate and normalize weights ---
   w_raw <- parsed$weights
   if (!is.null(w_raw) && any(!is.finite(w_raw)))
     stop("Weights must be finite and non-missing.", call. = FALSE)
