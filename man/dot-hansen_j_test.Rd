@@ -4,7 +4,19 @@
 \alias{.hansen_j_test}
 \title{Hansen J overidentification test (robust/cluster path)}
 \usage{
-.hansen_j_test(Z, X, y, residuals, weights, cluster_vec, N, K, L, overid_df)
+.hansen_j_test(
+  Z,
+  X,
+  y,
+  residuals,
+  weights,
+  cluster_vec,
+  N,
+  K,
+  L,
+  overid_df,
+  dofminus = 0L
+)
 }
 \arguments{
 \item{Z}{N x L instrument matrix.}
@@ -26,6 +38,8 @@
 \item{L}{Number of instruments.}
 
 \item{overid_df}{Degrees of freedom (L - K).}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
 }
 \value{
 Named list with \code{stat}, \code{p}, \code{df}, \code{test_name}.

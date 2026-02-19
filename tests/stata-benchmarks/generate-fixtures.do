@@ -181,6 +181,14 @@ program define save_ivreg2_results
         capture replace estatp = e(estatp)
         capture replace estatdf = e(estatdf)
 
+        // Stock-Wright S statistic
+        gen double sstat = .
+        gen double sstatp = .
+        gen double sstatdf = .
+        capture replace sstat = e(sstat)
+        capture replace sstatp = e(sstatp)
+        capture replace sstatdf = e(sstatdf)
+
         // Cluster info (only when clustered)
         capture replace N_clust = e(N_clust)
 
@@ -493,6 +501,77 @@ save_ivreg2_results, prefix(card_just_id_weighted) suffix(cl) outdir(`outdir')
 // --- Cluster on smsa66, small=TRUE ---
 ivreg2 lwage exper expersq black south (educ = nearc4) [aw=weight], first cluster(smsa66) small endog(educ)
 save_ivreg2_results, prefix(card_just_id_weighted) suffix(cl_small) outdir(`outdir')
+
+
+/*===========================================================================
+  FIXTURE 7: card_just_id_dofminus
+  Dataset: Card (1995) — returns to education
+  Model: lwage ~ exper expersq black south | educ | nearc4
+  Purpose: dofminus(1) sdofminus(1) adjustments (just-identified)
+===========================================================================*/
+display _newline(2) "=== FIXTURE 7: card_just_id_dofminus ==="
+
+// Reload Card data
+use "`outdir'/_card_temp.dta", clear
+
+global ivreg2_depvar "lwage"
+global ivreg2_exog "exper expersq black south"
+global ivreg2_endo "educ"
+global ivreg2_iv "nearc4"
+
+run_all_vce_combos, ///
+    prefix(card_just_id_dofminus) ///
+    outdir(`outdir') ///
+    clustervar(smsa66) ///
+    endogopt(educ) ///
+    modelopts(dofminus(1) sdofminus(1))
+
+
+/*===========================================================================
+  FIXTURE 8: card_overid_dofminus
+  Dataset: Card (1995)
+  Model: lwage ~ exper expersq black south | educ | nearc2 nearc4
+  Purpose: dofminus(1) sdofminus(1) adjustments (overidentified)
+===========================================================================*/
+display _newline(2) "=== FIXTURE 8: card_overid_dofminus ==="
+
+// Reload Card data
+use "`outdir'/_card_temp.dta", clear
+global ivreg2_depvar "lwage"
+global ivreg2_exog "exper expersq black south"
+global ivreg2_endo "educ"
+global ivreg2_iv "nearc2 nearc4"
+
+run_all_vce_combos, ///
+    prefix(card_overid_dofminus) ///
+    outdir(`outdir') ///
+    clustervar(smsa66) ///
+    endogopt(educ) ///
+    modelopts(dofminus(1) sdofminus(1))
+
+
+/*===========================================================================
+  FIXTURE 9: sim_cluster_dofminus
+  Simulated data with group structure (50 clusters)
+  Purpose: dofminus(1) sdofminus(1) with cluster-robust
+===========================================================================*/
+display _newline(2) "=== FIXTURE 9: sim_cluster_dofminus ==="
+
+// Reload simulated cluster data
+import delimited using "`outdir'/sim_cluster_data.csv", clear
+
+global ivreg2_depvar "y"
+global ivreg2_exog "x1"
+global ivreg2_endo "endo1"
+global ivreg2_iv "z1 z2"
+
+// Run all combos including cluster
+run_all_vce_combos, ///
+    prefix(sim_cluster_dofminus) ///
+    outdir(`outdir') ///
+    clustervar(cluster_id) ///
+    endogopt(endo1) ///
+    modelopts(dofminus(1) sdofminus(1))
 
 
 /*===========================================================================

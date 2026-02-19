@@ -4,7 +4,7 @@
 \alias{.anderson_lm_test}
 \title{Anderson canonical correlation LM test (IID underidentification)}
 \usage{
-.anderson_lm_test(cc_result, N, L1, K1)
+.anderson_lm_test(cc_result, N, L1, K1, dofminus = 0L)
 }
 \arguments{
 \item{cc_result}{Output from \code{.canonical_correlations()}.}
@@ -14,6 +14,8 @@
 \item{L1}{Number of excluded instruments.}
 
 \item{K1}{Number of endogenous regressors.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
 }
 \value{
 Named list with stat, p, df, test_name.

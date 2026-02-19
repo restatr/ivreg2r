@@ -30,6 +30,8 @@
   nobs,
   vcov_type,
   small,
+  dofminus = 0L,
+  sdofminus = 0L,
   cluster_var = NULL,
   n_clusters = NULL,
   na.action = NULL,
@@ -96,6 +98,10 @@
 \item{vcov_type}{Character: \code{"iid"}, \code{"HC0"}, \code{"HC1"}, or \code{"CL"}.}
 
 \item{small}{Logical: whether small-sample corrections were applied.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 
 \item{cluster_var}{Name of cluster variable (or NULL).}
 

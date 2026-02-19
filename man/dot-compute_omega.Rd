@@ -4,7 +4,7 @@
 \alias{.compute_omega}
 \title{Compute L x L moment covariance matrix Omega}
 \usage{
-.compute_omega(Z, residuals, weights, cluster_vec, N)
+.compute_omega(Z, residuals, weights, cluster_vec, N, dofminus = 0L)
 }
 \arguments{
 \item{Z}{N x L instrument matrix.}
@@ -16,6 +16,10 @@
 \item{cluster_vec}{Cluster membership vector, or NULL.}
 
 \item{N}{Number of observations.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).
+HC path divides by \code{N - dofminus} (Stata livreg2.do line 326);
+cluster path divides by \code{N} (line 545, no dofminus adjustment).}
 }
 \value{
 L x L symmetric matrix Omega.

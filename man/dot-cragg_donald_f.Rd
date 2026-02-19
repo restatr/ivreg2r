@@ -4,7 +4,7 @@
 \alias{.cragg_donald_f}
 \title{Cragg-Donald Wald F statistic (weak identification)}
 \usage{
-.cragg_donald_f(cc_result, N, L, L1)
+.cragg_donald_f(cc_result, N, L, L1, dofminus = 0L, sdofminus = 0L)
 }
 \arguments{
 \item{cc_result}{Output from \code{.canonical_correlations()}.}
@@ -14,6 +14,10 @@
 \item{L}{Total number of instruments (including exogenous + intercept).}
 
 \item{L1}{Number of excluded instruments.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 }
 \value{
 Named list with stat, test_name.

@@ -23,6 +23,8 @@
 #' @param vcov_type Character: `"iid"`, `"HC0"`, `"HC1"`, or `"CL"`.
 #' @param small Logical: whether small-sample corrections were applied.
 #' @param M Integer or NULL: number of clusters (only for `vcov_type = "CL"`).
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return Named list with `model_f`, `model_f_p`, `model_f_df1`,
 #'   `model_f_df2` (all `NA` when df1 = 0 or VCV is not positive definite).
 #' @note The model F-statistic is always reported as an F-distributed
@@ -32,7 +34,7 @@
 #' @keywords internal
 .compute_model_f <- function(coefficients, vcov, N, K,
                               has_intercept, vcov_type, small,
-                              M = NULL) {
+                              M = NULL, dofminus = 0L, sdofminus = 0L) {
 
   # --- Identify slope coefficients (exclude intercept) ---
   coef_names <- names(coefficients)
@@ -69,7 +71,11 @@
   })
 
   if (is.na(chi2) || !is.finite(chi2) || chi2 < 0) {
-    df2 <- if (!is.null(M)) as.integer(M - 1L) else as.integer(N - K)
+    df2 <- if (!is.null(M)) {
+      as.integer(M - 1L)
+    } else {
+      as.integer(N - K - dofminus - sdofminus)
+    }
     return(list(model_f = NA_real_, model_f_p = NA_real_,
                 model_f_df1 = as.integer(df1), model_f_df2 = df2))
   }
@@ -81,8 +87,10 @@
   #
   # Three branches:
   #   1. Corrected VCV (iid+small, HC1, CL+small): F = chi2 / df1
-  #   2. Uncorrected, no cluster (iid+!small, HC0): F = chi2/df1 * (N-K)/N
-  #   3. Uncorrected, cluster (CL+!small): F = chi2/df1 * (M-1)/M * (N-K)/(N-1)
+  #   2. Uncorrected, no cluster (iid+!small, HC0):
+  #      F = chi2/df1 * (N-K-dofminus-sdofminus)/(N-dofminus)
+  #   3. Uncorrected, cluster (CL+!small):
+  #      F = chi2/df1 * (M-1)/M * (N-K-sdofminus)/(N-1)
 
   is_corrected <- (vcov_type == "iid" && small) ||
                   (vcov_type == "HC1") ||
@@ -92,14 +100,20 @@
     f_stat <- chi2 / df1
   } else if (is.null(M)) {
     # Uncorrected, no cluster
-    f_stat <- chi2 / df1 * (N - K) / N
+    f_stat <- chi2 / df1 *
+      (N - K - dofminus - sdofminus) / (N - dofminus)
   } else {
     # Uncorrected, cluster
-    f_stat <- chi2 / df1 * (M - 1) / M * (N - K) / (N - 1)
+    f_stat <- chi2 / df1 * (M - 1) / M *
+      (N - K - sdofminus) / (N - 1)
   }
 
   # --- Degrees of freedom ---
-  df2 <- if (!is.null(M)) as.integer(M - 1L) else as.integer(N - K)
+  df2 <- if (!is.null(M)) {
+    as.integer(M - 1L)
+  } else {
+    as.integer(N - K - dofminus - sdofminus)
+  }
 
   # --- p-value ---
   f_p <- stats::pf(f_stat, df1 = df1, df2 = df2, lower.tail = FALSE)

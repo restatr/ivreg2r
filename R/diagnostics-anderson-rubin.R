@@ -28,12 +28,15 @@
 #' @param M Number of clusters (or NULL).
 #' @param endo_names Character vector of endogenous variable names.
 #' @param excluded_names Character vector of excluded instrument names.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return Named list: `f_stat`, `f_p`, `f_df1`, `f_df2`, `chi2_stat`,
 #'   `chi2_p`, `chi2_df`.
 #' @keywords internal
 .compute_anderson_rubin <- function(Z, X, y, weights, cluster_vec,
                                      vcov_type, N, K, L, K1, L1, M,
-                                     endo_names, excluded_names) {
+                                     endo_names, excluded_names,
+                                     dofminus = 0L, sdofminus = 0L) {
 
   # --- A. Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -67,7 +70,7 @@
     } else {
       sum(weights * rf_resid^2)
     }
-    sigma2_y <- rss_y / N
+    sigma2_y <- rss_y / (N - dofminus)
     RVR <- sigma2_y * ZtWZ_inv[excl_idx, excl_idx, drop = FALSE]
   } else {
     # Robust sandwich (HC0/HC1/CL): Z * e_y scores, clustered if CL
@@ -100,20 +103,37 @@
     NA_real_
   })
 
+  # --- E2. Omega normalization adjustment ---
+  # Stata's HC omega divides by (N-dofminus) while our raw sandwich is unscaled.
+  # For IID, sigma2_y already absorbs the dofminus factor.
+  # For cluster, Stata's omega divides by N (no dofminus), so no adjustment.
+  # For HC (non-cluster): scale Wald by (N-dofminus)/N to match Stata.
+  if (!is.na(wald) && vcov_type != "iid" && is.null(cluster_vec)) {
+    wald <- wald * (N - dofminus) / N
+  }
+
   # --- F. F conversion ---
+  # Non-cluster: F = Wald / (N-dofminus) * (N-L-dofminus-sdofminus) / L1
+  # Cluster: F = Wald / (N-1) * (N-L-sdofminus) * (M-1)/M / L1
   if (is.na(wald)) {
     f_stat <- NA_real_
     f_p    <- NA_real_
   } else if (!is.null(cluster_vec)) {
-    f_stat <- wald / (N - 1) * (N - L) * (M - 1) / M / L1
+    f_stat <- wald / (N - 1) * (N - L - sdofminus) * (M - 1) / M / L1
     f_p    <- stats::pf(f_stat, df1 = L1, df2 = M - 1L, lower.tail = FALSE)
   } else {
-    f_stat <- wald / N * (N - L) / L1
-    f_p    <- stats::pf(f_stat, df1 = L1, df2 = N - L, lower.tail = FALSE)
+    f_stat <- wald / (N - dofminus) * (N - L - dofminus - sdofminus) / L1
+    f_p    <- stats::pf(f_stat, df1 = L1,
+                         df2 = N - L - dofminus - sdofminus,
+                         lower.tail = FALSE)
   }
 
   f_df1 <- as.integer(L1)
-  f_df2 <- if (!is.null(cluster_vec)) as.integer(M - 1L) else as.integer(N - L)
+  f_df2 <- if (!is.null(cluster_vec)) {
+    as.integer(M - 1L)
+  } else {
+    as.integer(N - L - dofminus - sdofminus)
+  }
 
   # --- G. Chi-sq ---
   chi2_stat <- if (is.na(wald)) NA_real_ else wald

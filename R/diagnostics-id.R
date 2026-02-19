@@ -145,11 +145,12 @@
 #' @param N Number of observations.
 #' @param L1 Number of excluded instruments.
 #' @param K1 Number of endogenous regressors.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with stat, p, df, test_name.
 #' @keywords internal
-.anderson_lm_test <- function(cc_result, N, L1, K1) {
+.anderson_lm_test <- function(cc_result, N, L1, K1, dofminus = 0L) {
   df <- as.integer(L1 - K1 + 1L)
-  stat <- N * min(cc_result$eval)
+  stat <- (N - dofminus) * min(cc_result$eval)
   p <- stats::pchisq(stat, df = df, lower.tail = FALSE)
   list(stat = stat, p = p, df = df, test_name = "Anderson canon. corr. LM statistic")
 }
@@ -169,12 +170,15 @@
 #' @param N Number of observations.
 #' @param L Total number of instruments (including exogenous + intercept).
 #' @param L1 Number of excluded instruments.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return Named list with stat, test_name.
 #' @keywords internal
-.cragg_donald_f <- function(cc_result, N, L, L1) {
+.cragg_donald_f <- function(cc_result, N, L, L1, dofminus = 0L,
+                             sdofminus = 0L) {
   min_eval <- min(cc_result$eval)
   cd <- min_eval / (1 - min_eval)
-  stat <- cd * (N - L) / L1
+  stat <- cd * (N - L - dofminus - sdofminus) / L1
   list(stat = stat, test_name = "Cragg-Donald Wald F statistic")
 }
 
@@ -335,11 +339,14 @@
 #' @param endo_names Character vector of endogenous variable names.
 #' @param excluded_names Character vector of excluded instrument names.
 #' @param has_intercept Logical.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return List with underid, weak_id, weak_id_robust (or NULL).
 #' @keywords internal
 .compute_id_tests <- function(X, Z, y, residuals, weights, cluster_vec,
                               vcov_type, N, K, L, K1, L1,
-                              endo_names, excluded_names, has_intercept) {
+                              endo_names, excluded_names, has_intercept,
+                              dofminus = 0L, sdofminus = 0L) {
 
   # Top-level guard: catch unexpected errors
   result <- tryCatch({
@@ -383,11 +390,13 @@
     }
 
     # --- Always compute Cragg-Donald F ---
-    weak_id <- .cragg_donald_f(cc_result, N, L, L1)
+    weak_id <- .cragg_donald_f(cc_result, N, L, L1,
+                                dofminus = dofminus, sdofminus = sdofminus)
 
     # --- IID path ---
     if (vcov_type == "iid") {
-      underid <- .anderson_lm_test(cc_result, N, L1, K1)
+      underid <- .anderson_lm_test(cc_result, N, L1, K1,
+                                    dofminus = dofminus)
       return(list(
         underid        = underid,
         weak_id        = weak_id,
@@ -406,10 +415,13 @@
     kp_lm <- .kp_rk_stat(cc_result, shat0_lm, N, K1, L1)
 
     # Underid: KP rk LM chi-squared
-    # Non-cluster: stat = chi2/N * (N - dofminus) — with dofminus=0: stat = chi2
-    # Cluster: stat = chi2 (no adjustment)
-    # In both cases for our scope (dofminus=0): stat = chi2
-    underid_stat <- kp_lm$chi2
+    # Non-cluster: stat = chi2/N * (N - dofminus) (Stata line 1671)
+    # Cluster: stat = chi2 (no adjustment, Stata line 1675)
+    if (is.null(cluster_vec)) {
+      underid_stat <- kp_lm$chi2 / N * (N - dofminus)
+    } else {
+      underid_stat <- kp_lm$chi2
+    }
     underid_df <- kp_lm$df
     underid_p <- stats::pchisq(underid_stat, df = underid_df, lower.tail = FALSE)
     underid <- list(stat = underid_stat, p = underid_p, df = underid_df,
@@ -420,13 +432,14 @@
     kp_wald <- .kp_rk_stat(cc_result, shat0_wald, N, K1, L1)
 
     # Convert KP Wald chi-sq to F:
-    # Non-cluster: F = chi2/N * (N - L) / L1
-    # Cluster:     F = chi2/(N-1) * (N - L) * (M-1)/M / L1
+    # Non-cluster: F = chi2/N * (N - L - dofminus - sdofminus) / L1
+    # Cluster:     F = chi2/(N-1) * (N - L - sdofminus) * (M-1)/M / L1
     if (is.null(cluster_vec)) {
-      wald_f <- kp_wald$chi2 / N * (N - L) / L1
+      wald_f <- kp_wald$chi2 / N * (N - L - dofminus - sdofminus) / L1
     } else {
       M <- length(unique(cluster_vec))
-      wald_f <- kp_wald$chi2 / (N - 1) * (N - L) * (M - 1) / M / L1
+      wald_f <- kp_wald$chi2 / (N - 1) * (N - L - sdofminus) *
+        (M - 1) / M / L1
     }
     weak_id_robust <- list(stat = wald_f,
                            test_name = "Kleibergen-Paap rk Wald F statistic")

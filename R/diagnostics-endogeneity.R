@@ -30,14 +30,16 @@
 #'   `endo_names`), or NULL to test all.
 #' @return Named list with `stat`, `p`, `df`, `test_name`, `tested_vars`,
 #'   or NULL if this is not an IV model.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @note The C-statistic for IID models is computed using large-sample
-#'   sigma-squared (e'e/N) for both the unrestricted and restricted models. No
-#'   small-sample correction is applied even when \code{small = TRUE}. This
-#'   matches Stata's \code{ivreg2}.
+#'   sigma-squared `e'e/(N-dofminus)` for both models. No small-sample
+#'   correction is applied even when \code{small = TRUE}. This matches
+#'   Stata's \code{ivreg2}.
 #' @keywords internal
 .compute_endogeneity_test <- function(Z, X, y, residuals, rss, weights,
                                       cluster_vec, vcov_type, N, K, L,
-                                      K1, endo_names, endog_vars) {
+                                      K1, endo_names, endog_vars,
+                                      dofminus = 0L) {
   # Default: test all endogenous regressors
   if (is.null(endog_vars)) endog_vars <- endo_names
   q <- length(endog_vars)
@@ -79,7 +81,7 @@
 
   # --- Compute Omega_r (from restricted model) ---
   if (vcov_type == "iid") {
-    sigma_r_sq <- rss_r / N
+    sigma_r_sq <- rss_r / (N - dofminus)
     if (is.null(weights)) {
       ZwZ_r <- crossprod(Z_r)
     } else {
@@ -87,7 +89,8 @@
     }
     Omega_r <- sigma_r_sq * ZwZ_r / N
   } else {
-    Omega_r <- .compute_omega(Z_r, e_r, weights, cluster_vec, N)
+    Omega_r <- .compute_omega(Z_r, e_r, weights, cluster_vec, N,
+                               dofminus = dofminus)
   }
 
   # --- J_r: J statistic of restricted model ---

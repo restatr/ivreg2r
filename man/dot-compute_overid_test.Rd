@@ -17,7 +17,8 @@
   N,
   K,
   L,
-  overid_df
+  overid_df,
+  dofminus = 0L
 )
 }
 \arguments{
@@ -46,6 +47,8 @@
 \item{L}{Number of instruments.}
 
 \item{overid_df}{Degrees of freedom (L - K).}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
 }
 \value{
 Named list with \code{stat}, \code{p}, \code{df}, \code{test_name}, or NULL.
@@ -56,7 +59,7 @@ placeholder for exactly identified models. Returns NULL for OLS.
 }
 \note{
 The Sargan statistic is normalized by the large-sample sigma-squared
-(e'e/N). No small-sample correction is applied even when
+\verb{e'e/(N-dofminus)}. No small-sample correction is applied even when
 \code{small = TRUE}. This matches Stata's \code{ivreg2}.
 }
 \keyword{internal}

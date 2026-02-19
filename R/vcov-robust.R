@@ -13,17 +13,25 @@
 #' @param resid Length-N residual vector.
 #' @param N Integer: number of observations.
 #' @param K Integer: number of regressors.
-#' @param vcov_type Character: `"HC0"` or `"HC1"`. HC1 always applies N/(N-K).
+#' @param vcov_type Character: `"HC0"` or `"HC1"`. HC1 applies
+#'   `N/(N-K-dofminus-sdofminus)`. HC0 applies `N/(N-dofminus)`.
+#' @param small Logical: whether small-sample corrections are applied.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return K x K variance-covariance matrix.
 #' @keywords internal
-.compute_hc_vcov <- function(bread, X_hat, resid, N, K, vcov_type) {
+.compute_hc_vcov <- function(bread, X_hat, resid, N, K, vcov_type,
+                              small = FALSE, dofminus = 0L, sdofminus = 0L) {
   scores <- X_hat * resid              # N x K
   omega <- crossprod(scores)           # K x K meat
   V <- bread %*% omega %*% bread      # K x K sandwich
   V <- (V + t(V)) / 2                 # enforce symmetry
 
   if (vcov_type == "HC1") {
-    V <- V * (N / (N - K))
+    V <- V * (N / (N - K - dofminus - sdofminus))
+  } else {
+    # HC0: omega normalization adjustment (Stata divides meat by N-dofminus)
+    V <- V * (N / (N - dofminus))
   }
 
   colnames(V) <- rownames(V) <- colnames(bread)
@@ -50,10 +58,14 @@
 #' @param K Integer: number of regressors.
 #' @param M Integer: number of clusters.
 #' @param small Logical: if `TRUE`, apply the finite-sample correction
-#'   `(N-1)/(N-K) * M/(M-1)`.
+#'   `(N-1)/(N-K-sdofminus) * M/(M-1)`.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#'   Note: dofminus does NOT appear in cluster VCV scaling (Stata convention).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return K x K variance-covariance matrix.
 #' @keywords internal
-.compute_cl_vcov <- function(bread, X_hat, resid, cluster_vec, N, K, M, small) {
+.compute_cl_vcov <- function(bread, X_hat, resid, cluster_vec, N, K, M, small,
+                              dofminus = 0L, sdofminus = 0L) {
   scores <- X_hat * resid                       # N x K
   cluster_scores <- rowsum(scores, cluster_vec)  # M x K
   omega <- crossprod(cluster_scores)             # K x K (unscaled)
@@ -61,7 +73,7 @@
   V <- (V + t(V)) / 2                           # enforce symmetry
 
   if (small) {
-    V <- V * ((N - 1) / (N - K)) * (M / (M - 1))
+    V <- V * ((N - 1) / (N - K - sdofminus)) * (M / (M - 1))
   }
 
   colnames(V) <- rownames(V) <- colnames(bread)

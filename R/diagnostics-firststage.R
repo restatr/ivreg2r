@@ -31,6 +31,8 @@
 #' (F(L1, N-L) or F(L1, M-1) for clustered models), regardless of the main
 #' model's \code{small} option. This matches Stata's \code{ivreg2} behavior.
 #'
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return Named list keyed by endogenous variable names, each element
 #'   containing: `f_stat`, `f_p`, `f_df1`, `f_df2`, `partial_r2`,
 #'   `shea_partial_r2`, `rmse`, `coefficients`, `residuals`, `fitted.values`,
@@ -41,7 +43,8 @@
 .compute_first_stage <- function(X, Z, weights, cluster_vec,
                                   vcov_type, endo_names, excluded_names,
                                   N, K, L, K1, L1, M,
-                                  bread_2sls) {
+                                  bread_2sls,
+                                  dofminus = 0L, sdofminus = 0L) {
 
   # --- A4: Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -96,10 +99,10 @@
     }
 
     # B2: RMSE (always small-sample denominator)
-    rmse_j <- sqrt(rss_j / (N - L))
+    rmse_j <- sqrt(rss_j / (N - L - dofminus - sdofminus))
 
     # B3: Classical Wald (for partial R²; VCE-independent)
-    sigma2_j <- rss_j / N
+    sigma2_j <- rss_j / (N - dofminus)
     Rb_j <- coef_j[excl_idx]
     RVR_classical <- sigma2_j * ZtWZ_inv[excl_idx, excl_idx, drop = FALSE]
 
@@ -110,10 +113,12 @@
     }, error = function(e) NA_real_)
 
     # B4: Partial R² (always from classical Wald)
+    # Stata: pr2 = (Wald/(N-dofminus)) / (1 + (Wald/(N-dofminus)))
     partial_r2_j <- if (is.na(wald_classical_j)) {
       NA_real_
     } else {
-      (wald_classical_j / N) / (1 + wald_classical_j / N)
+      wald_scaled <- wald_classical_j / (N - dofminus)
+      wald_scaled / (1 + wald_scaled)
     }
 
     # B5: Robust Wald (only when VCE is not IID)
@@ -140,19 +145,30 @@
         z <- forwardsolve(t(R_chol), Rb_j)
         drop(crossprod(z))
       }, error = function(e) NA_real_)
+
+      # Omega normalization: HC omega divides by (N-dofminus) in Stata,
+      # our raw sandwich is unscaled. Cluster omega uses N (no adjustment).
+      if (!is.na(wald_j) && is.null(cluster_vec)) {
+        wald_j <- wald_j * (N - dofminus) / N
+      }
     }
 
     # B6: F conversion
+    # Non-cluster: F = Wald / (N-dofminus) * (N-L-dofminus-sdofminus) / L1
+    # Cluster: F = Wald / (N-1) * (N-L-sdofminus) * (M-1)/M / L1
     if (is.na(wald_j)) {
       f_stat_j <- NA_real_
       f_p_j <- NA_real_
     } else if (!is.null(cluster_vec)) {
-      f_stat_j <- wald_j / (N - 1) * (N - L) * (M - 1) / M / L1
+      f_stat_j <- wald_j / (N - 1) * (N - L - sdofminus) *
+        (M - 1) / M / L1
       f_p_j <- stats::pf(f_stat_j, df1 = L1, df2 = M - 1L,
                           lower.tail = FALSE)
     } else {
-      f_stat_j <- wald_j / N * (N - L) / L1
-      f_p_j <- stats::pf(f_stat_j, df1 = L1, df2 = N - L,
+      f_stat_j <- wald_j / (N - dofminus) *
+        (N - L - dofminus - sdofminus) / L1
+      f_p_j <- stats::pf(f_stat_j, df1 = L1,
+                          df2 = N - L - dofminus - sdofminus,
                           lower.tail = FALSE)
     }
 
@@ -160,7 +176,7 @@
     f_df2_j <- if (!is.null(cluster_vec)) {
       as.integer(M - 1L)
     } else {
-      as.integer(N - L)
+      as.integer(N - L - dofminus - sdofminus)
     }
 
     wald_classical_vec[j] <- wald_classical_j
@@ -195,7 +211,11 @@
 
   # --- D: Sanderson-Windmeijer / Angrist-Pischke diagnostics ---
   Fdf1_sw <- as.integer(L1 - K1 + 1L)
-  df2_sw <- if (!is.null(cluster_vec)) as.integer(M - 1L) else as.integer(N - L)
+  df2_sw <- if (!is.null(cluster_vec)) {
+    as.integer(M - 1L)
+  } else {
+    as.integer(N - L - dofminus - sdofminus)
+  }
 
   if (K1 == 1L) {
     # K1=1 shortcut: SW/AP collapse to standard first-stage values
@@ -279,7 +299,7 @@
         } else {
           sum(weights * resid_aux^2)
         }
-        sigma2_aux <- rss_aux / N
+        sigma2_aux <- rss_aux / (N - dofminus)
         Rb <- b2[excl_idx]
         RVR_cl <- sigma2_aux * ZtWZ_inv[excl_idx, excl_idx, drop = FALSE]
 
@@ -290,10 +310,12 @@
         }, error = function(e) NA_real_)
 
         # Partial R² (always classical)
+        # Stata: pr2 = (Wald/(N-dofminus)) / (1 + (Wald/(N-dofminus)))
         pr2 <- if (is.na(wald_cl)) {
           NA_real_
         } else {
-          (wald_cl / N) / (1 + wald_cl / N)
+          wald_cl_scaled <- wald_cl / (N - dofminus)
+          wald_cl_scaled / (1 + wald_cl_scaled)
         }
 
         # Robust Wald (if VCE is not IID)
@@ -318,6 +340,11 @@
             z <- forwardsolve(t(R_chol), Rb)
             drop(crossprod(z))
           }, error = function(e) NA_real_)
+
+          # Omega normalization (HC: Stata divides by N-dofminus, not N)
+          if (!is.na(wald_sw) && is.null(cluster_vec)) {
+            wald_sw <- wald_sw * (N - dofminus) / N
+          }
         }
 
         # F conversion
@@ -325,12 +352,14 @@
           f_val <- NA_real_
           f_p <- NA_real_
         } else if (!is.null(cluster_vec)) {
-          f_val <- wald_sw / (N - 1) * (N - L) * (M - 1) / M / Fdf1_sw
+          f_val <- wald_sw / (N - 1) * (N - L - sdofminus) *
+            (M - 1) / M / Fdf1_sw
           f_p <- stats::pf(f_val, df1 = Fdf1_sw, df2 = M - 1L,
                            lower.tail = FALSE)
         } else {
-          f_val <- wald_sw / N * (N - L) / Fdf1_sw
-          f_p <- stats::pf(f_val, df1 = Fdf1_sw, df2 = N - L,
+          f_val <- wald_sw / (N - dofminus) *
+            (N - L - dofminus - sdofminus) / Fdf1_sw
+          f_p <- stats::pf(f_val, df1 = Fdf1_sw, df2 = df2_sw,
                            lower.tail = FALSE)
         }
 

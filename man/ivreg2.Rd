@@ -14,6 +14,8 @@ ivreg2(
   clusters = NULL,
   endog = NULL,
   small = FALSE,
+  dofminus = 0L,
+  sdofminus = 0L,
   model = TRUE,
   x = FALSE,
   y = TRUE
@@ -59,6 +61,16 @@ part of the formula. Ignored for OLS models.}
 
 \item{small}{Logical: if \code{TRUE}, use small-sample corrections
 (t/F instead of z/chi-squared, \code{N-K} denominator for sigma).}
+
+\item{dofminus}{Non-negative integer: large-sample degrees-of-freedom
+adjustment. Subtracted from N in large-sample variance formulas
+(e.g., sigma = rss/(N-dofminus)). Useful when fixed effects have been
+partialled out. Equivalent to Stata's \code{dofminus()} option.}
+
+\item{sdofminus}{Non-negative integer: small-sample degrees-of-freedom
+adjustment. Subtracted from the residual degrees of freedom alongside K
+(e.g., df.residual = N - K - dofminus - sdofminus). Useful when
+partialling out regressors. Equivalent to Stata's \code{sdofminus()} option.}
 
 \item{model}{Logical: if \code{TRUE} (default), store the model frame in the
 return object.}

@@ -33,11 +33,15 @@
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param cluster_vec Cluster membership vector, or NULL.
 #' @param N Number of observations.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#'   HC path divides by `N - dofminus` (Stata livreg2.do line 326);
+#'   cluster path divides by `N` (line 545, no dofminus adjustment).
 #' @return L x L symmetric matrix Omega.
 #' @keywords internal
-.compute_omega <- function(Z, residuals, weights, cluster_vec, N) {
+.compute_omega <- function(Z, residuals, weights, cluster_vec, N,
+                            dofminus = 0L) {
   if (!is.null(cluster_vec)) {
-    # Cluster path
+    # Cluster path — divisor is N (no dofminus)
     if (!is.null(weights)) {
       sqrt_w <- sqrt(weights)
       scores <- (sqrt_w * Z) * (sqrt_w * residuals)
@@ -47,15 +51,13 @@
     cluster_scores <- rowsum(scores, cluster_vec, reorder = FALSE)
     Omega <- crossprod(cluster_scores) / N
   } else {
-    # HC path (no clusters)
-    # Scores are s_i = w_i * z_i * e_i, so the outer product has w_i^2.
-    # Stata (livreg2.do line 248): wv = (e .* wvar * wf):^2
+    # HC path — divisor is N - dofminus (Stata livreg2.do line 326)
     if (!is.null(weights)) {
       wv <- weights^2 * residuals^2
     } else {
       wv <- residuals^2
     }
-    Omega <- crossprod(Z, wv * Z) / N
+    Omega <- crossprod(Z, wv * Z) / (N - dofminus)
   }
   # Force symmetry
   (Omega + t(Omega)) / 2
@@ -76,10 +78,12 @@
 #' @param N Number of observations.
 #' @param overid_df Degrees of freedom (L - K).
 #' @param weights Normalized weights or NULL.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with `stat`, `p`, `df`, `test_name`.
 #' @keywords internal
-.sargan_test <- function(Z, residuals, rss, N, overid_df, weights) {
-  sigma_sq <- rss / N  # always large-sample, regardless of small
+.sargan_test <- function(Z, residuals, rss, N, overid_df, weights,
+                          dofminus = 0L) {
+  sigma_sq <- rss / (N - dofminus)  # large-sample with dofminus adjustment
 
   if (!is.null(weights)) {
     Ze <- crossprod(Z, weights * residuals)
@@ -184,11 +188,13 @@
 #' @param K Number of regressors.
 #' @param L Number of instruments.
 #' @param overid_df Degrees of freedom (L - K).
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with `stat`, `p`, `df`, `test_name`.
 #' @keywords internal
 .hansen_j_test <- function(Z, X, y, residuals, weights, cluster_vec,
-                           N, K, L, overid_df) {
-  Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N)
+                           N, K, L, overid_df, dofminus = 0L) {
+  Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N,
+                           dofminus = dofminus)
   J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
 
   if (is.na(J)) {
@@ -224,14 +230,15 @@
 #' @param K Number of regressors.
 #' @param L Number of instruments.
 #' @param overid_df Degrees of freedom (L - K).
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with `stat`, `p`, `df`, `test_name`, or NULL.
 #' @note The Sargan statistic is normalized by the large-sample sigma-squared
-#'   (e'e/N). No small-sample correction is applied even when
+#'   `e'e/(N-dofminus)`. No small-sample correction is applied even when
 #'   \code{small = TRUE}. This matches Stata's \code{ivreg2}.
 #' @keywords internal
 .compute_overid_test <- function(Z, X, y, residuals, rss, weights,
                                  cluster_vec, vcov_type, is_iv,
-                                 N, K, L, overid_df) {
+                                 N, K, L, overid_df, dofminus = 0L) {
   if (!is_iv) return(NULL)
 
   if (overid_df == 0L) {
@@ -240,9 +247,10 @@
   }
 
   if (vcov_type == "iid") {
-    .sargan_test(Z, residuals, rss, N, overid_df, weights)
+    .sargan_test(Z, residuals, rss, N, overid_df, weights,
+                  dofminus = dofminus)
   } else {
     .hansen_j_test(Z, X, y, residuals, weights, cluster_vec,
-                   N, K, L, overid_df)
+                   N, K, L, overid_df, dofminus = dofminus)
   }
 }

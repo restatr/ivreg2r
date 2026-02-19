@@ -12,7 +12,9 @@
   has_intercept,
   vcov_type,
   small,
-  M = NULL
+  M = NULL,
+  dofminus = 0L,
+  sdofminus = 0L
 )
 }
 \arguments{
@@ -31,6 +33,10 @@
 \item{small}{Logical: whether small-sample corrections were applied.}
 
 \item{M}{Integer or NULL: number of clusters (only for \code{vcov_type = "CL"}).}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 }
 \value{
 Named list with \code{model_f}, \code{model_f_p}, \code{model_f_df1},

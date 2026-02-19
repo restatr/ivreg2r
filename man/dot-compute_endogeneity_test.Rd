@@ -18,7 +18,8 @@
   L,
   K1,
   endo_names,
-  endog_vars
+  endog_vars,
+  dofminus = 0L
 )
 }
 \arguments{
@@ -51,6 +52,8 @@ but included for API consistency).}
 
 \item{endog_vars}{Character vector of variables to test (subset of
 \code{endo_names}), or NULL to test all.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
 }
 \value{
 Named list with \code{stat}, \code{p}, \code{df}, \code{test_name}, \code{tested_vars},
@@ -69,8 +72,8 @@ is re-estimated using the appropriate submatrix of that S.
 }
 \note{
 The C-statistic for IID models is computed using large-sample
-sigma-squared (e'e/N) for both the unrestricted and restricted models. No
-small-sample correction is applied even when \code{small = TRUE}. This
-matches Stata's \code{ivreg2}.
+sigma-squared \verb{e'e/(N-dofminus)} for both models. No small-sample
+correction is applied even when \code{small = TRUE}. This matches
+Stata's \code{ivreg2}.
 }
 \keyword{internal}

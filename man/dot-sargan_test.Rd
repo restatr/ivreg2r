@@ -4,7 +4,7 @@
 \alias{.sargan_test}
 \title{Sargan overidentification test (IID path)}
 \usage{
-.sargan_test(Z, residuals, rss, N, overid_df, weights)
+.sargan_test(Z, residuals, rss, N, overid_df, weights, dofminus = 0L)
 }
 \arguments{
 \item{Z}{N x L instrument matrix.}
@@ -18,6 +18,8 @@
 \item{overid_df}{Degrees of freedom (L - K).}
 
 \item{weights}{Normalized weights or NULL.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
 }
 \value{
 Named list with \code{stat}, \code{p}, \code{df}, \code{test_name}.

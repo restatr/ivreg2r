@@ -4,7 +4,18 @@
 \alias{.compute_cl_vcov}
 \title{Compute one-way cluster-robust VCV}
 \usage{
-.compute_cl_vcov(bread, X_hat, resid, cluster_vec, N, K, M, small)
+.compute_cl_vcov(
+  bread,
+  X_hat,
+  resid,
+  cluster_vec,
+  N,
+  K,
+  M,
+  small,
+  dofminus = 0L,
+  sdofminus = 0L
+)
 }
 \arguments{
 \item{bread}{K x K bread matrix: \eqn{(X'P_Z X)^{-1}} for IV,
@@ -24,7 +35,12 @@ sequential integers).}
 \item{M}{Integer: number of clusters.}
 
 \item{small}{Logical: if \code{TRUE}, apply the finite-sample correction
-\code{(N-1)/(N-K) * M/(M-1)}.}
+\code{(N-1)/(N-K-sdofminus) * M/(M-1)}.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).
+Note: dofminus does NOT appear in cluster VCV scaling (Stata convention).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 }
 \value{
 K x K variance-covariance matrix.

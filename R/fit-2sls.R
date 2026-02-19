@@ -15,11 +15,13 @@
 #' @param parsed A `parsed_formula` object from `.parse_formula()`.
 #' @param small Logical: if `TRUE`, use `N-K` denominator for sigma;
 #'   if `FALSE`, use `N`.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return A named list with: `coefficients`, `residuals`, `fitted.values`,
 #'   `vcov`, `sigma`, `df.residual`, `rank`, `r.squared`, `adj.r.squared`,
 #'   `rss`, `bread`, `X_hat`.
 #' @keywords internal
-.fit_2sls <- function(parsed, small = FALSE) {
+.fit_2sls <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L) {
   y <- parsed$y
   X <- parsed$X
   Z <- parsed$Z
@@ -71,7 +73,7 @@
   colnames(XtPX_inv) <- rownames(XtPX_inv) <- colnames(X)[sort(piv[seq_len(p)])]
 
   # --- Sigma ---
-  denom <- if (small) N - K else N
+  denom <- if (small) N - K - dofminus - sdofminus else N - dofminus
   sigma <- sqrt(rss / denom)
 
   # --- VCV ---
@@ -95,9 +97,9 @@
 
   # --- Adjusted R-squared ---
   adj_r2 <- if (has_intercept) {
-    1 - (1 - r2) * (N - 1) / (N - K)
+    1 - (1 - r2) * (N - 1) / (N - K - dofminus - sdofminus)
   } else {
-    1 - (1 - r2) * N / (N - K)
+    1 - (1 - r2) * N / (N - K - dofminus - sdofminus)
   }
 
   list(
@@ -106,7 +108,7 @@
     fitted.values = fitted,
     vcov          = V,
     sigma         = sigma,
-    df.residual   = as.integer(N - K),
+    df.residual   = as.integer(N - K - dofminus - sdofminus),
     rank          = as.integer(lm_XZ$rank),
     r.squared     = r2,
     adj.r.squared = adj_r2,

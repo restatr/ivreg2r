@@ -44,6 +44,8 @@ NULL
 #'   to collinearity.
 #' @param reclassified_endogenous Character vector of endogenous variable names
 #'   reclassified as exogenous because they were collinear with the instruments.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @param contrasts List of contrasts used for factor variables (or NULL).
 #' @param xlevels List of factor levels (or NULL).
 #' @param model Model frame (or NULL if `model = FALSE`).
@@ -58,6 +60,7 @@ NULL
                          model_f_df1 = NULL, model_f_df2 = NULL,
                          diagnostics = NULL, first_stage = NULL,
                          call, formula, terms, nobs, vcov_type, small,
+                         dofminus = 0L, sdofminus = 0L,
                          cluster_var = NULL, n_clusters = NULL,
                          na.action = NULL, weights = NULL,
                          endogenous = character(0),
@@ -94,6 +97,8 @@ NULL
       nobs           = nobs,
       vcov_type      = vcov_type,
       small          = small,
+      dofminus       = dofminus,
+      sdofminus      = sdofminus,
       cluster_var    = cluster_var,
       n_clusters     = n_clusters,
       na.action      = na.action,
@@ -357,6 +362,12 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   if (!is.null(x$n_clusters)) {
     cat("Clusters:    ", format(x$n_clusters, big.mark = ","),
         " (", x$cluster_var, ")\n", sep = "")
+  }
+  if (!is.null(x$dofminus) && x$dofminus > 0L) {
+    cat("dofminus:    ", x$dofminus, "\n")
+  }
+  if (!is.null(x$sdofminus) && x$sdofminus > 0L) {
+    cat("sdofminus:   ", x$sdofminus, "\n")
   }
 
   # --- Coefficient table ---

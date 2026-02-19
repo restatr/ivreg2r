@@ -38,6 +38,14 @@
 #'   part of the formula. Ignored for OLS models.
 #' @param small Logical: if `TRUE`, use small-sample corrections
 #'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
+#' @param dofminus Non-negative integer: large-sample degrees-of-freedom
+#'   adjustment. Subtracted from N in large-sample variance formulas
+#'   (e.g., sigma = rss/(N-dofminus)). Useful when fixed effects have been
+#'   partialled out. Equivalent to Stata's `dofminus()` option.
+#' @param sdofminus Non-negative integer: small-sample degrees-of-freedom
+#'   adjustment. Subtracted from the residual degrees of freedom alongside K
+#'   (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
+#'   partialling out regressors. Equivalent to Stata's `sdofminus()` option.
 #' @param model Logical: if `TRUE` (default), store the model frame in the
 #'   return object.
 #' @param x Logical: if `TRUE`, store model matrices (`X`, `Z`) in the
@@ -56,6 +64,7 @@
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
                    small = FALSE,
+                   dofminus = 0L, sdofminus = 0L,
                    model = TRUE, x = FALSE, y = TRUE) {
 
   # --- 1. Capture call ---
@@ -84,6 +93,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     endog <- unique(endog)
     warning("`endog` contained duplicate entries; duplicates removed.",
             call. = FALSE)
+  }
+  dofminus <- as.integer(dofminus)
+  sdofminus <- as.integer(sdofminus)
+  if (length(dofminus) != 1L || is.na(dofminus) || dofminus < 0L) {
+    stop("`dofminus` must be a non-negative integer.", call. = FALSE)
+  }
+  if (length(sdofminus) != 1L || is.na(sdofminus) || sdofminus < 0L) {
+    stop("`sdofminus` must be a non-negative integer.", call. = FALSE)
   }
 
   # --- 3. Forward to parser ---
@@ -136,9 +153,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   # --- 4. Dispatch ---
   fit <- if (parsed$is_iv) {
-    .fit_2sls(parsed, small = small)
+    .fit_2sls(parsed, small = small, dofminus = dofminus,
+              sdofminus = sdofminus)
   } else {
-    .fit_ols(parsed, small = small)
+    .fit_ols(parsed, small = small, dofminus = dofminus,
+             sdofminus = sdofminus)
   }
 
   # --- 5. VCV ---
@@ -157,11 +176,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   if (!is.null(cluster_vec)) {
     fit$vcov <- .compute_cl_vcov(fit$bread, X_hat_vcov, resid_vcov,
-                                  cluster_vec, parsed$N, parsed$K, M, small)
+                                  cluster_vec, parsed$N, parsed$K, M, small,
+                                  dofminus = dofminus, sdofminus = sdofminus)
     fit$df.residual <- as.integer(M - 1L)
   } else if (vcov %in% c("HC0", "HC1")) {
     fit$vcov <- .compute_hc_vcov(fit$bread, X_hat_vcov, resid_vcov,
-                                  parsed$N, parsed$K, vcov)
+                                  parsed$N, parsed$K, vcov,
+                                  small = small, dofminus = dofminus,
+                                  sdofminus = sdofminus)
   }
 
   # --- 5b. Diagnostics ---
@@ -178,7 +200,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       weights = parsed$weights, cluster_vec = cluster_vec,
       vcov_type = effective_vcov_type, is_iv = parsed$is_iv,
       N = parsed$N, K = parsed$K, L = parsed$L,
-      overid_df = parsed$overid_df
+      overid_df = parsed$overid_df, dofminus = dofminus
     )
 
     # Identification tests (D2)
@@ -190,7 +212,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       K1 = parsed$K1, L1 = parsed$L1,
       endo_names = parsed$endo_names,
       excluded_names = parsed$excluded_names,
-      has_intercept = parsed$has_intercept
+      has_intercept = parsed$has_intercept,
+      dofminus = dofminus, sdofminus = sdofminus
     )
     diagnostics$underid        <- id_tests$underid
     diagnostics$weak_id        <- id_tests$weak_id
@@ -208,7 +231,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       excluded_names = parsed$excluded_names,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
-      bread_2sls = fit$bread
+      bread_2sls = fit$bread,
+      dofminus = dofminus, sdofminus = sdofminus
     )
 
     # Anderson-Rubin test (E3)
@@ -219,7 +243,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
       endo_names = parsed$endo_names,
-      excluded_names = parsed$excluded_names
+      excluded_names = parsed$excluded_names,
+      dofminus = dofminus, sdofminus = sdofminus
     )
 
     # Endogeneity test / C-statistic (E4)
@@ -237,7 +262,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       vcov_type = effective_vcov_type,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, endo_names = parsed$endo_names,
-      endog_vars = endog
+      endog_vars = endog, dofminus = dofminus
     )
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
@@ -251,7 +276,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     has_intercept = parsed$has_intercept,
     vcov_type     = effective_vcov_type,
     small         = small,
-    M             = M
+    M             = M,
+    dofminus      = dofminus,
+    sdofminus     = sdofminus
   )
 
   # --- 6. Assemble return object ---
@@ -281,6 +308,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     nobs          = parsed$N,
     vcov_type     = if (!is.null(cluster_vec)) "CL" else vcov,
     small         = small,
+    dofminus      = dofminus,
+    sdofminus     = sdofminus,
     cluster_var   = cluster_var_name,
     n_clusters    = M,
     na.action     = parsed$na.action,

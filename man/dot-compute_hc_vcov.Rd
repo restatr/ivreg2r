@@ -4,7 +4,17 @@
 \alias{.compute_hc_vcov}
 \title{Compute HC0 or HC1 heteroskedasticity-consistent VCV}
 \usage{
-.compute_hc_vcov(bread, X_hat, resid, N, K, vcov_type)
+.compute_hc_vcov(
+  bread,
+  X_hat,
+  resid,
+  N,
+  K,
+  vcov_type,
+  small = FALSE,
+  dofminus = 0L,
+  sdofminus = 0L
+)
 }
 \arguments{
 \item{bread}{K x K bread matrix: \eqn{(X'P_Z X)^{-1}} for IV,
@@ -18,7 +28,14 @@
 
 \item{K}{Integer: number of regressors.}
 
-\item{vcov_type}{Character: \code{"HC0"} or \code{"HC1"}. HC1 always applies N/(N-K).}
+\item{vcov_type}{Character: \code{"HC0"} or \code{"HC1"}. HC1 applies
+\code{N/(N-K-dofminus-sdofminus)}. HC0 applies \code{N/(N-dofminus)}.}
+
+\item{small}{Logical: whether small-sample corrections are applied.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 }
 \value{
 K x K variance-covariance matrix.

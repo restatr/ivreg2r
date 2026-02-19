@@ -18,7 +18,9 @@
   K1,
   L1,
   M,
-  bread_2sls
+  bread_2sls,
+  dofminus = 0L,
+  sdofminus = 0L
 )
 }
 \arguments{
@@ -41,6 +43,10 @@
 \item{M}{Number of clusters (or NULL).}
 
 \item{bread_2sls}{K x K bread from 2SLS: \eqn{(X_{hat}'WX_{hat})^{-1}}.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 }
 \value{
 Named list keyed by endogenous variable names, each element

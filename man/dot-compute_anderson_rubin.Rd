@@ -18,7 +18,9 @@
   L1,
   M,
   endo_names,
-  excluded_names
+  excluded_names,
+  dofminus = 0L,
+  sdofminus = 0L
 )
 }
 \arguments{
@@ -41,6 +43,10 @@
 \item{endo_names}{Character vector of endogenous variable names.}
 
 \item{excluded_names}{Character vector of excluded instrument names.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 }
 \value{
 Named list: \code{f_stat}, \code{f_p}, \code{f_df1}, \code{f_df2}, \code{chi2_stat},

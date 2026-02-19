@@ -19,7 +19,9 @@
   L1,
   endo_names,
   excluded_names,
-  has_intercept
+  has_intercept,
+  dofminus = 0L,
+  sdofminus = 0L
 )
 }
 \arguments{
@@ -44,6 +46,10 @@
 \item{excluded_names}{Character vector of excluded instrument names.}
 
 \item{has_intercept}{Logical.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 }
 \value{
 List with underid, weak_id, weak_id_robust (or NULL).

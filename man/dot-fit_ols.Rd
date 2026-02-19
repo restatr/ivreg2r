@@ -4,13 +4,17 @@
 \alias{.fit_ols}
 \title{Fit OLS via lm.fit / lm.wfit (QR-based least squares)}
 \usage{
-.fit_ols(parsed, small = FALSE)
+.fit_ols(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L)
 }
 \arguments{
 \item{parsed}{A \code{parsed_formula} object from \code{.parse_formula()}.}
 
 \item{small}{Logical: if \code{TRUE}, use \code{N-K} denominator for sigma;
 if \code{FALSE}, use \code{N}.}
+
+\item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 }
 \value{
 A named list with: \code{coefficients}, \code{residuals}, \code{fitted.values},
