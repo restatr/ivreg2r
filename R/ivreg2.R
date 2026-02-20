@@ -354,7 +354,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     )
 
     # Orthogonality test / instrument-subset C-statistic (J1)
-    if (!is.null(orthog)) {
+    if (!is.null(orthog) && length(orthog) > 0L) {
       # Validate against actual Z column names (not term labels, which can
       # diverge for factor variables). Exclude intercept and endogenous
       # regressor columns — only instrument columns are testable.
