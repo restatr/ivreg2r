@@ -18,7 +18,8 @@ A single-row \code{\link[tibble:tibble]{tibble::tibble()}} with columns:
 \code{weak_id_stat}, \code{weak_id_robust_stat},
 \code{underid_stat}, \code{underid_p},
 \code{overid_stat}, \code{overid_p},
-\code{endogeneity_stat}, \code{endogeneity_p}.
+\code{endogeneity_stat}, \code{endogeneity_p},
+\code{stock_wright_stat}, \code{stock_wright_p}, \code{stock_wright_df}.
 }
 \description{
 Returns a single-row tibble of model-level summary statistics and

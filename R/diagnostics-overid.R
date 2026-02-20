@@ -210,6 +210,101 @@
 
 
 # --------------------------------------------------------------------------
+# .compute_stock_wright
+# --------------------------------------------------------------------------
+#' Stock-Wright LM S statistic
+#'
+#' Weak-instrument-robust LM test of H0: all endogenous coefficients = 0
+#' and orthogonality conditions are valid. This is the LM counterpart of
+#' the Anderson-Rubin Wald test.
+#'
+#' Unlike Sargan/Hansen J, the S statistic uses residuals from regressing
+#' `y` on the included exogenous regressors only (constraining endogenous
+#' coefficients to zero). For IID, a homoskedastic omega is used
+#' (`sigma^2 * Z'WZ / N`); for robust/cluster, the HC/CL omega is used.
+#'
+#' @param Z N x L instrument matrix.
+#' @param X N x K regressor matrix.
+#' @param y N x 1 response vector.
+#' @param weights Normalized weights (sum to N), or NULL.
+#' @param cluster_vec Cluster membership vector, or NULL.
+#' @param vcov_type Character: `"iid"`, `"HC0"`, `"HC1"`, or `"CL"`.
+#' @param N Number of observations.
+#' @param K1 Number of endogenous regressors.
+#' @param L1 Number of excluded instruments.
+#' @param endo_names Character vector of endogenous variable names.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @return Named list with `stat`, `p`, `df`.
+#' @keywords internal
+.compute_stock_wright <- function(Z, X, y, weights, cluster_vec,
+                                   vcov_type, N, K1, L1,
+                                   endo_names, dofminus = 0L) {
+  # 1. Extract X2 (included exogenous regressors)
+  endo_idx <- match(endo_names, colnames(X))
+  exog_idx <- setdiff(seq_len(ncol(X)), endo_idx)
+  K2 <- length(exog_idx)
+
+  # 2. Constrained residuals: e_0 = y - X2 * b_ols
+  #    (endogenous coefficients constrained to zero)
+  if (K2 > 0L) {
+    X2 <- X[, exog_idx, drop = FALSE]
+    if (is.null(weights)) {
+      e <- stats::lm.fit(X2, y)$residuals
+    } else {
+      e <- stats::lm.wfit(X2, y, weights)$residuals
+    }
+  } else {
+    e <- y
+  }
+
+  # 3. Compute gbar = Z'We / N
+  if (!is.null(weights)) {
+    gbar <- crossprod(Z, weights * e) / N
+  } else {
+    gbar <- crossprod(Z, e) / N
+  }
+
+  # 4. Compute omega (VCE-dependent, matching Stata m_omega)
+  if (vcov_type == "iid") {
+    # Homoskedastic: omega = sigma^2_0 * Z'WZ / N
+    # (Stata livreg2.do lines 194-235)
+    if (!is.null(weights)) {
+      rss_0 <- sum(weights * e^2)
+      ZWZ <- crossprod(Z, weights * Z)
+    } else {
+      rss_0 <- sum(e^2)
+      ZWZ <- crossprod(Z)
+    }
+    sigma2_0 <- rss_0 / (N - dofminus)
+    Omega <- sigma2_0 * ZWZ / N
+  } else {
+    # HC/CL: heteroskedasticity-robust omega
+    Omega <- .compute_omega(Z, e, weights, cluster_vec, N,
+                             dofminus = dofminus)
+  }
+
+  # 5. S = N * gbar' * Omega^{-1} * gbar
+  R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
+  if (is.null(R_chol)) {
+    if (qr(Omega)$rank < ncol(Z)) {
+      warning("Stock-Wright: Omega is rank-deficient; S statistic not computed.",
+              call. = FALSE)
+      return(list(stat = NA_real_, p = NA_real_, df = as.integer(L1)))
+    }
+    Omega_inv_gbar <- qr.solve(Omega, gbar)
+  } else {
+    Omega_inv_gbar <- backsolve(R_chol, forwardsolve(t(R_chol), gbar))
+  }
+
+  stat <- drop(N * crossprod(gbar, Omega_inv_gbar))
+  df <- as.integer(L1)
+  p <- stats::pchisq(stat, df = df, lower.tail = FALSE)
+
+  list(stat = stat, p = p, df = df)
+}
+
+
+# --------------------------------------------------------------------------
 # .compute_overid_test
 # --------------------------------------------------------------------------
 #' Dispatcher for overidentification tests

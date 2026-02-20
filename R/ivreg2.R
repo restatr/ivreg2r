@@ -267,6 +267,15 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       dofminus = dofminus, sdofminus = sdofminus
     )
 
+    # Stock-Wright S statistic (J2)
+    diagnostics$stock_wright <- .compute_stock_wright(
+      Z = parsed$Z, X = parsed$X, y = parsed$y,
+      weights = parsed$weights, cluster_vec = cluster_vec,
+      vcov_type = effective_vcov_type,
+      N = parsed$N, K1 = parsed$K1, L1 = parsed$L1,
+      endo_names = parsed$endo_names, dofminus = dofminus
+    )
+
     # Endogeneity test / C-statistic (E4)
     if (!is.null(endog)) {
       bad <- setdiff(endog, parsed$endo_names)

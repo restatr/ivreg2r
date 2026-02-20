@@ -505,6 +505,30 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
         " (p ", .format_pval(uid$p), ")\n", sep = "")
   }
 
+  # --- Weak-instrument-robust inference ---
+  ar <- diag$anderson_rubin
+  sw <- diag$stock_wright
+  if (!is.null(ar) || !is.null(sw)) {
+    cat("\nWeak-instrument-robust inference:\n")
+    cat("  H0: B1=0 and orthogonality conditions are valid\n")
+    if (!is.null(ar)) {
+      cat("  Anderson-Rubin Wald F(",
+          ar$f_df1, ",", ar$f_df2, ") = ",
+          formatC(ar$f_stat, digits = 2, format = "f"),
+          " (p ", .format_pval(ar$f_p), ")\n", sep = "")
+      cat("  Anderson-Rubin Wald Chi-sq(",
+          ar$chi2_df, ") = ",
+          formatC(ar$chi2_stat, digits = 2, format = "f"),
+          " (p ", .format_pval(ar$chi2_p), ")\n", sep = "")
+    }
+    if (!is.null(sw) && !is.na(sw$stat)) {
+      cat("  Stock-Wright LM S Chi-sq(",
+          sw$df, ") = ",
+          formatC(sw$stat, digits = 2, format = "f"),
+          " (p ", .format_pval(sw$p), ")\n", sep = "")
+    }
+  }
+
   # --- Overidentification ---
   if (!is.null(diag$overid)) {
     oid <- diag$overid
