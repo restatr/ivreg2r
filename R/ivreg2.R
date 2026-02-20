@@ -355,12 +355,12 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
     # Orthogonality test / instrument-subset C-statistic (J1)
     if (!is.null(orthog)) {
-      # Valid orthog vars: excluded instruments or exogenous regressors
-      # (not intercept, not endogenous)
-      valid_orthog <- setdiff(
-        c(parsed$excluded_names, parsed$exog_names),
-        "(Intercept)"
-      )
+      # Validate against actual Z column names (not term labels, which can
+      # diverge for factor variables). Exclude intercept and endogenous
+      # regressor columns — only instrument columns are testable.
+      endo_cols <- if (parsed$K1 > 0L) parsed$endo_names else character(0L)
+      valid_orthog <- setdiff(colnames(parsed$Z),
+                              c("(Intercept)", endo_cols))
       bad <- setdiff(orthog, valid_orthog)
       if (length(bad) > 0L) {
         stop("`orthog` contains variables not in the instrument list: ",
@@ -368,18 +368,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
              ". Must be excluded or exogenous instruments (not endogenous ",
              "regressors or the intercept).", call. = FALSE)
       }
-      # Map orthog var names to Z column indices
-      orthog_in_z <- orthog[orthog %in% colnames(parsed$Z)]
-      if (length(orthog_in_z) > 0L) {
-        diagnostics$orthog <- .compute_orthog_test(
-          Z = parsed$Z, X = parsed$X, y = parsed$y,
-          residuals = fit$residuals, rss = fit$rss,
-          weights = parsed$weights, cluster_vec = cluster_vec,
-          vcov_type = effective_vcov_type,
-          N = parsed$N, K = parsed$K, L = parsed$L,
-          orthog_vars = orthog_in_z, dofminus = dofminus
-        )
-      }
+      diagnostics$orthog <- .compute_orthog_test(
+        Z = parsed$Z, X = parsed$X, y = parsed$y,
+        residuals = fit$residuals, rss = fit$rss,
+        weights = parsed$weights, cluster_vec = cluster_vec,
+        vcov_type = effective_vcov_type,
+        N = parsed$N, K = parsed$K, L = parsed$L,
+        orthog_vars = orthog, dofminus = dofminus
+      )
     }
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
