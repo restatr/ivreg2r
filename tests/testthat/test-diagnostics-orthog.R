@@ -42,6 +42,13 @@ test_that("orthog is NULL when not requested", {
   expect_null(fit$diagnostics$orthog)
 })
 
+test_that("orthog = character(0) is silently skipped", {
+  skip_if(!file.exists(card_path), "card data not found")
+  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
+                data = card, orthog = character(0))
+  expect_null(fit$diagnostics$orthog)
+})
+
 test_that("orthog is NULL for OLS models", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars, orthog = "wt")
   expect_null(fit$diagnostics)
