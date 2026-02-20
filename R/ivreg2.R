@@ -160,15 +160,15 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop('`method` must be one of "2sls", "liml", or "kclass".',
          call. = FALSE)
   }
-  if (!is.numeric(fuller) || length(fuller) != 1L || is.na(fuller)) {
-    stop("`fuller` must be a single numeric value.", call. = FALSE)
+  if (!is.numeric(fuller) || length(fuller) != 1L || !is.finite(fuller)) {
+    stop("`fuller` must be a single finite numeric value.", call. = FALSE)
   }
   if (fuller < 0) {
     stop("`fuller` must be non-negative.", call. = FALSE)
   }
   if (!is.null(kclass)) {
-    if (!is.numeric(kclass) || length(kclass) != 1L || is.na(kclass)) {
-      stop("`kclass` must be a single numeric value.", call. = FALSE)
+    if (!is.numeric(kclass) || length(kclass) != 1L || !is.finite(kclass)) {
+      stop("`kclass` must be a single finite numeric value.", call. = FALSE)
     }
     if (kclass < 0) {
       stop("`kclass` must be non-negative.", call. = FALSE)
@@ -188,6 +188,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       stop('Cannot specify `kclass` with `method = "liml"`.', call. = FALSE)
     }
     method <- "kclass"
+  }
+  # method = "kclass" requires an explicit kclass value
+  if (method == "kclass" && is.null(kclass)) {
+    stop('`method = "kclass"` requires a numeric `kclass` value.',
+         call. = FALSE)
   }
 
   # --- 3. Forward to parser ---

@@ -520,6 +520,42 @@ test_that("invalid method is rejected", {
   )
 })
 
+test_that("method='kclass' without kclass value is rejected", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  expect_error(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "kclass"),
+    'requires a numeric'
+  )
+})
+
+test_that("kclass = Inf is rejected", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  expect_error(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, kclass = Inf),
+    'finite'
+  )
+})
+
+test_that("fuller = Inf is rejected", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  expect_error(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, fuller = Inf),
+    'finite'
+  )
+})
+
+test_that("kclass = NaN is rejected", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  expect_error(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, kclass = NaN),
+    'finite'
+  )
+})
+
 test_that("fuller auto-promotes method to liml", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
