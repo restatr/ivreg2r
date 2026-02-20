@@ -156,7 +156,17 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   M1 <- NULL
   M2 <- NULL
   if (!is.null(clusters)) {
-    cluster_var_names <- all.vars(clusters)
+    # Use terms() to distinguish ~a+b (two additive terms) from ~a:b (one
+    # interaction term).  all.vars() strips operators, making them ambiguous.
+    cl_terms <- attr(stats::terms(clusters), "term.labels")
+    # Reject interaction terms (`:` or `*`) — user should pre-compute the
+    # interaction variable for one-way clustering, or use `+` for two-way.
+    has_interaction <- any(grepl(":", cl_terms, fixed = TRUE))
+    if (has_interaction)
+      stop("`clusters` must use `+` for two-way clustering (e.g. ~a + b), ",
+           "not `:` or `*`. For one-way clustering on an interaction, ",
+           "create the variable first (e.g. interaction(a, b)).", call. = FALSE)
+    cluster_var_names <- cl_terms
     n_clvars <- length(cluster_var_names)
     if (n_clvars < 1L || n_clvars > 2L)
       stop("`clusters` must reference one or two variables.", call. = FALSE)

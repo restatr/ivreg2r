@@ -497,3 +497,17 @@ test_that("single-level second cluster variable gives error", {
     "At least 2 clusters"
   )
 })
+
+test_that("interaction operator in clusters formula gives error", {
+  expect_error(
+    ivreg2(mpg ~ wt + hp, data = mtcars, clusters = ~ cyl:gear),
+    "not `:` or `\\*`"
+  )
+})
+
+test_that("star operator in clusters formula gives error", {
+  expect_error(
+    ivreg2(mpg ~ wt + hp, data = mtcars, clusters = ~ cyl * gear),
+    "not `:` or `\\*`"
+  )
+})
