@@ -33,8 +33,8 @@
 \value{
 A named list with \code{coefficients}, \code{residuals}, \code{fitted.values},
 \code{vcov}, \code{sigma}, \code{df.residual}, \code{rank}, \code{r.squared}, \code{adj.r.squared},
-\code{rss}, \code{r2u}, \code{r2c}, \code{mss}, \code{bread}, \code{X_hat}, \code{lambda}, \code{kclass_value},
-\code{method}, \code{fuller_param}.
+\code{rss}, \code{r2u}, \code{r2c}, \code{mss}, \code{bread}, \code{bread_kclass}, \code{X_hat}, \code{lambda},
+\code{kclass_value}, \code{method}, \code{fuller_param}.
 }
 \description{
 Computes k-class IV estimates. When \code{method = "liml"}, the LIML eigenvalue

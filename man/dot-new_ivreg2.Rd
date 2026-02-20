@@ -48,6 +48,7 @@
   lambda = NA_real_,
   kclass_value = NA_real_,
   fuller_parameter = 0,
+  coviv = FALSE,
   contrasts = NULL,
   xlevels = NULL,
   model = NULL,
@@ -148,6 +149,8 @@ or \code{"kclass"}).}
 \item{kclass_value}{Numeric: the k value actually used (NA for OLS/2SLS).}
 
 \item{fuller_parameter}{Numeric: Fuller modification parameter (0 if none).}
+
+\item{coviv}{Logical: whether COVIV (2SLS bread) was used for VCV.}
 
 \item{contrasts}{List of contrasts used for factor variables (or NULL).}
 

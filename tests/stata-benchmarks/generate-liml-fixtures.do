@@ -407,6 +407,165 @@ save_ivreg2_results, prefix(sim_multi_endo_fuller1) suffix(iid_small) outdir(`ou
 
 
 /*===========================================================================
+  FIXTURE 10: card_liml_overid — robust/cluster
+  Purpose: LIML overid with HC and cluster VCE
+===========================================================================*/
+display _newline(2) "=== FIXTURE 10: card_liml_overid robust/cluster ==="
+
+use "`outdir'/_card_liml_temp.dta", clear
+
+// --- HC1 (Stata robust), small=FALSE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml robust first
+save_ivreg2_results, prefix(card_liml_overid) suffix(hc1) outdir(`outdir')
+
+// --- HC1, small=TRUE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml robust small first
+save_ivreg2_results, prefix(card_liml_overid) suffix(hc1_small) outdir(`outdir')
+
+// --- Cluster on smsa66, small=FALSE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml cluster(smsa66) first
+save_ivreg2_results, prefix(card_liml_overid) suffix(cl) outdir(`outdir')
+
+// --- Cluster on smsa66, small=TRUE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml cluster(smsa66) small first
+save_ivreg2_results, prefix(card_liml_overid) suffix(cl_small) outdir(`outdir')
+
+
+/*===========================================================================
+  FIXTURE 11: card_liml_overid_coviv
+  Purpose: LIML overid with COVIV (coviv option), all VCE types
+===========================================================================*/
+display _newline(2) "=== FIXTURE 11: card_liml_overid_coviv ==="
+
+use "`outdir'/_card_liml_temp.dta", clear
+
+// --- IID, small=FALSE, coviv ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml coviv first
+save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(iid) outdir(`outdir')
+
+// --- IID, small=TRUE, coviv ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml coviv small first
+save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(iid_small) outdir(`outdir')
+
+// --- HC1, small=FALSE, coviv ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml robust coviv first
+save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(hc1) outdir(`outdir')
+
+// --- HC1, small=TRUE, coviv ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml robust small coviv first
+save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(hc1_small) outdir(`outdir')
+
+// --- Cluster, small=FALSE, coviv ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml cluster(smsa66) coviv first
+save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(cl) outdir(`outdir')
+
+// --- Cluster, small=TRUE, coviv ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml cluster(smsa66) small coviv first
+save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(cl_small) outdir(`outdir')
+
+
+/*===========================================================================
+  FIXTURE 12: card_liml_justid — robust/cluster
+  Purpose: Just-identified LIML (k=1), verifies LIML=2SLS under robust/cluster
+===========================================================================*/
+display _newline(2) "=== FIXTURE 12: card_liml_justid robust/cluster ==="
+
+use "`outdir'/_card_liml_temp.dta", clear
+
+// --- HC1, small=FALSE ---
+ivreg2 lwage exper expersq black south (educ = nearc4), liml robust first
+save_ivreg2_results, prefix(card_liml_justid) suffix(hc1) outdir(`outdir')
+
+// --- HC1, small=TRUE ---
+ivreg2 lwage exper expersq black south (educ = nearc4), liml robust small first
+save_ivreg2_results, prefix(card_liml_justid) suffix(hc1_small) outdir(`outdir')
+
+// --- Cluster, small=FALSE ---
+ivreg2 lwage exper expersq black south (educ = nearc4), liml cluster(smsa66) first
+save_ivreg2_results, prefix(card_liml_justid) suffix(cl) outdir(`outdir')
+
+// --- Cluster, small=TRUE ---
+ivreg2 lwage exper expersq black south (educ = nearc4), liml cluster(smsa66) small first
+save_ivreg2_results, prefix(card_liml_justid) suffix(cl_small) outdir(`outdir')
+
+
+/*===========================================================================
+  FIXTURE 13: card_fuller1_overid — robust/cluster
+  Purpose: Fuller(1) + robust/cluster VCE
+===========================================================================*/
+display _newline(2) "=== FIXTURE 13: card_fuller1_overid robust/cluster ==="
+
+use "`outdir'/_card_liml_temp.dta", clear
+
+// --- HC1, small=FALSE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) robust first
+save_ivreg2_results, prefix(card_fuller1_overid) suffix(hc1) outdir(`outdir')
+
+// --- HC1, small=TRUE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) robust small first
+save_ivreg2_results, prefix(card_fuller1_overid) suffix(hc1_small) outdir(`outdir')
+
+// --- Cluster, small=FALSE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) cluster(smsa66) first
+save_ivreg2_results, prefix(card_fuller1_overid) suffix(cl) outdir(`outdir')
+
+// --- Cluster, small=TRUE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) cluster(smsa66) small first
+save_ivreg2_results, prefix(card_fuller1_overid) suffix(cl_small) outdir(`outdir')
+
+
+/*===========================================================================
+  FIXTURE 14: card_kclass_half — robust
+  Purpose: kclass(0.5) + robust VCE
+===========================================================================*/
+display _newline(2) "=== FIXTURE 14: card_kclass_half robust ==="
+
+use "`outdir'/_card_liml_temp.dta", clear
+
+// --- HC1, small=FALSE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), kclass(0.5) robust first
+save_ivreg2_results, prefix(card_kclass_half) suffix(hc1) outdir(`outdir')
+
+// --- HC1, small=TRUE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), kclass(0.5) robust small first
+save_ivreg2_results, prefix(card_kclass_half) suffix(hc1_small) outdir(`outdir')
+
+
+/*===========================================================================
+  FIXTURE 15: card_liml_weighted — robust
+  Purpose: Weighted LIML + robust VCE
+===========================================================================*/
+display _newline(2) "=== FIXTURE 15: card_liml_weighted robust ==="
+
+use "`outdir'/_card_liml_temp.dta", clear
+
+// --- HC1, small=FALSE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [aw=weight], liml robust first
+save_ivreg2_results, prefix(card_liml_weighted) suffix(hc1) outdir(`outdir')
+
+// --- HC1, small=TRUE ---
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [aw=weight], liml robust small first
+save_ivreg2_results, prefix(card_liml_weighted) suffix(hc1_small) outdir(`outdir')
+
+
+/*===========================================================================
+  FIXTURE 16: sim_multi_endo_liml — robust
+  Purpose: Multi-endogenous LIML + robust VCE
+===========================================================================*/
+display _newline(2) "=== FIXTURE 16: sim_multi_endo_liml robust ==="
+
+import delimited using "`outdir'/sim_multi_endo_data.csv", clear
+
+// --- HC1, small=FALSE ---
+ivreg2 y x1 x2 (endo1 endo2 = z1 z2 z3 z4), liml robust first
+save_ivreg2_results, prefix(sim_multi_endo_liml) suffix(hc1) outdir(`outdir')
+
+// --- HC1, small=TRUE ---
+ivreg2 y x1 x2 (endo1 endo2 = z1 z2 z3 z4), liml robust small first
+save_ivreg2_results, prefix(sim_multi_endo_liml) suffix(hc1_small) outdir(`outdir')
+
+
+/*===========================================================================
   Clean up
 ===========================================================================*/
 capture erase "`outdir'/_card_liml_temp.dta"

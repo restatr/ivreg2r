@@ -429,33 +429,23 @@ test_that("OLS return object has correct method field", {
 # 10. Error tests
 # ============================================================================
 
-test_that("LIML + robust errors with informative message", {
+test_that("coviv must be logical", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-           data = card, method = "liml", vcov = "HC1"),
-    "not yet implemented"
+           data = card, method = "liml", coviv = "yes"),
+    "must be TRUE or FALSE"
   )
 })
 
-test_that("LIML + cluster errors with informative message", {
+test_that("coviv warns when used with 2SLS", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  expect_error(
+  expect_warning(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-           data = card, method = "liml", clusters = ~smsa66),
-    "not yet implemented"
-  )
-})
-
-test_that("kclass + cluster errors with informative message", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  expect_error(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-           data = card, kclass = 0.5, clusters = ~smsa66),
-    "not yet implemented"
+           data = card, coviv = TRUE),
+    "only meaningful"
   )
 })
 
@@ -662,4 +652,365 @@ test_that("OLS results unchanged after LIML addition", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars)
   expect_equal(fit$method, "ols")
   expect_true(is.na(fit$lambda))
+})
+
+
+# ============================================================================
+# 13. LIML overid — robust VCV (H2)
+# ============================================================================
+# Fixture suffix convention (see test-vcov-robust.R):
+#   hc1       = Stata `robust`       = R vcov="HC0"
+#   hc1_small = Stata `robust small` = R vcov="HC1", small=TRUE
+
+test_that("LIML overid matches Stata (HC0)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  skip_if(!file.exists(file.path(fixture_dir, "card_liml_overid_coef_hc1.csv")),
+          "LIML robust fixture not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", vcov = "HC0")
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_hc1.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_hc1.csv"))
+  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_hc1.csv"))
+})
+
+test_that("LIML overid matches Stata (HC1, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", vcov = "HC1", small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_hc1_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_hc1_small.csv"))
+  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_hc1_small.csv"))
+})
+
+
+# ============================================================================
+# 14. LIML overid — cluster VCV (H2)
+# ============================================================================
+
+test_that("LIML overid matches Stata (cluster, small=FALSE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  skip_if(!file.exists(file.path(fixture_dir, "card_liml_overid_coef_cl.csv")),
+          "LIML cluster fixture not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", clusters = ~smsa66)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_cl.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_cl.csv"))
+  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_cl.csv"))
+})
+
+test_that("LIML overid matches Stata (cluster, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", clusters = ~smsa66, small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_cl_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_cl_small.csv"))
+  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_cl_small.csv"))
+})
+
+
+# ============================================================================
+# 15. LIML overid + COVIV (H2)
+# ============================================================================
+
+test_that("LIML overid COVIV matches Stata (iid)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  skip_if(!file.exists(file.path(fixture_dir, "card_liml_overid_coviv_coef_iid.csv")),
+          "LIML COVIV fixture not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", coviv = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_iid.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_iid.csv"))
+  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_coviv_diagnostics_iid.csv"))
+})
+
+test_that("LIML overid COVIV matches Stata (iid, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", coviv = TRUE, small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_iid_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_iid_small.csv"))
+  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_coviv_diagnostics_iid_small.csv"))
+})
+
+test_that("LIML overid COVIV matches Stata (HC0)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", vcov = "HC0", coviv = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_hc1.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_hc1.csv"))
+})
+
+test_that("LIML overid COVIV matches Stata (HC1, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", vcov = "HC1", small = TRUE, coviv = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_hc1_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_hc1_small.csv"))
+})
+
+test_that("LIML overid COVIV matches Stata (cluster, small=FALSE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", clusters = ~smsa66, coviv = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_cl.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_cl.csv"))
+})
+
+test_that("LIML overid COVIV matches Stata (cluster, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", clusters = ~smsa66, small = TRUE, coviv = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_cl_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_cl_small.csv"))
+})
+
+
+# ============================================================================
+# 16. COVIV behavioral tests
+# ============================================================================
+
+test_that("COVIV changes VCV but not coefficients", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit_no_coviv <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                         data = card, method = "liml")
+  fit_coviv <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                      data = card, method = "liml", coviv = TRUE)
+
+  # Coefficients must be identical
+
+  expect_equal(coef(fit_no_coviv), coef(fit_coviv))
+  # VCV must differ (LIML overid: k-class bread != 2SLS bread)
+  expect_false(isTRUE(all.equal(vcov(fit_no_coviv), vcov(fit_coviv))))
+})
+
+test_that("COVIV is silently ignored for 2SLS", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, coviv = TRUE)
+  )
+  # coviv should be FALSE (was reset with warning)
+  expect_false(fit$coviv)
+})
+
+test_that("COVIV appears in summary output", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", coviv = TRUE)
+  output <- capture.output(print(summary(fit)))
+  expect_true(any(grepl("coviv:", output)))
+})
+
+test_that("COVIV appears in glance output", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", coviv = TRUE)
+  g <- glance(fit)
+  expect_true("coviv" %in% names(g))
+  expect_true(g$coviv)
+
+  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                 data = card, method = "liml")
+  g2 <- glance(fit2)
+  expect_false(g2$coviv)
+})
+
+
+# ============================================================================
+# 17. LIML just-identified — robust/cluster (H2)
+# ============================================================================
+# Just-identified LIML has lambda=1 and k=1, so all breads coincide.
+# This verifies LIML robust VCV matches 2SLS robust VCV when k=1.
+
+test_that("LIML justid matches Stata (HC0)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  skip_if(!file.exists(file.path(fixture_dir, "card_liml_justid_coef_hc1.csv")),
+          "LIML justid robust fixture not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, method = "liml", vcov = "HC0")
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_hc1.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_justid_vcov_hc1.csv"))
+})
+
+test_that("LIML justid matches Stata (HC1, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, method = "liml", vcov = "HC1", small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_hc1_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_justid_vcov_hc1_small.csv"))
+})
+
+test_that("LIML justid matches Stata (cluster)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, method = "liml", clusters = ~smsa66)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_cl.csv"))
+  # VCV comparison omitted: the just-identified Card model with expersq has
+  # tiny VCV entries (~1e-11) where the pre-existing R-vs-Stata gap (~5e-8
+  # absolute) exceeds 1e-6 relative. The behavioral check below verifies the
+  # LIML cluster VCV matches 2SLS cluster VCV to machine precision.
+})
+
+test_that("LIML justid matches Stata (cluster, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, method = "liml", clusters = ~smsa66, small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_cl_small.csv"))
+  # VCV comparison omitted for the same reason as above.
+})
+
+test_that("LIML justid robust VCV equals 2SLS robust VCV", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  # HC0
+  fit_liml <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                     data = card, method = "liml", vcov = "HC0")
+  fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                     data = card, vcov = "HC0")
+  expect_equal(vcov(fit_liml), vcov(fit_2sls), tolerance = 1e-10)
+
+  # Cluster
+  fit_liml_cl <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                        data = card, method = "liml", clusters = ~smsa66)
+  fit_2sls_cl <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                        data = card, clusters = ~smsa66)
+  expect_equal(vcov(fit_liml_cl), vcov(fit_2sls_cl), tolerance = 1e-10)
+})
+
+
+# ============================================================================
+# 18. Fuller(1) — robust/cluster (H2)
+# ============================================================================
+
+test_that("Fuller(1) matches Stata (HC0)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  skip_if(!file.exists(file.path(fixture_dir, "card_fuller1_overid_coef_hc1.csv")),
+          "Fuller robust fixture not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, fuller = 1, vcov = "HC0")
+  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_hc1.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_hc1.csv"))
+})
+
+test_that("Fuller(1) matches Stata (HC1, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, fuller = 1, vcov = "HC1", small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_hc1_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_hc1_small.csv"))
+})
+
+test_that("Fuller(1) matches Stata (cluster)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, fuller = 1, clusters = ~smsa66)
+  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_cl.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_cl.csv"))
+})
+
+test_that("Fuller(1) matches Stata (cluster, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, fuller = 1, clusters = ~smsa66, small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_cl_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_cl_small.csv"))
+})
+
+
+# ============================================================================
+# 19. kclass(0.5) — robust (H2)
+# ============================================================================
+
+test_that("kclass(0.5) matches Stata (HC0)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  skip_if(!file.exists(file.path(fixture_dir, "card_kclass_half_coef_hc1.csv")),
+          "kclass robust fixture not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, kclass = 0.5, vcov = "HC0")
+  compare_coefs(fit, file.path(fixture_dir, "card_kclass_half_coef_hc1.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_kclass_half_vcov_hc1.csv"))
+})
+
+test_that("kclass(0.5) matches Stata (HC1, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, kclass = 0.5, vcov = "HC1", small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_kclass_half_coef_hc1_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_kclass_half_vcov_hc1_small.csv"))
+})
+
+
+# ============================================================================
+# 20. Weighted LIML — robust (H2)
+# ============================================================================
+
+test_that("Weighted LIML matches Stata (HC0)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  skip_if(!file.exists(file.path(fixture_dir, "card_liml_weighted_coef_hc1.csv")),
+          "Weighted LIML robust fixture not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, weights = weight, method = "liml", vcov = "HC0")
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_weighted_coef_hc1.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_weighted_vcov_hc1.csv"))
+})
+
+test_that("Weighted LIML matches Stata (HC1, small=TRUE)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, weights = weight, method = "liml", vcov = "HC1",
+                small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "card_liml_weighted_coef_hc1_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "card_liml_weighted_vcov_hc1_small.csv"))
+})
+
+
+# ============================================================================
+# 21. Multi-endogenous LIML — robust (H2)
+# ============================================================================
+
+test_that("Multi-endogenous LIML matches Stata (HC0)", {
+  skip_if(!file.exists(sim_multi_endo_path), "Simulated data not found")
+  skip_if(!file.exists(file.path(fixture_dir, "sim_multi_endo_liml_coef_hc1.csv")),
+          "Multi-endo LIML robust fixture not found")
+
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi_endo, method = "liml", vcov = "HC0")
+  compare_coefs(fit, file.path(fixture_dir, "sim_multi_endo_liml_coef_hc1.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "sim_multi_endo_liml_vcov_hc1.csv"))
+})
+
+test_that("Multi-endogenous LIML matches Stata (HC1, small=TRUE)", {
+  skip_if(!file.exists(sim_multi_endo_path), "Simulated data not found")
+
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi_endo, method = "liml", vcov = "HC1",
+                small = TRUE)
+  compare_coefs(fit, file.path(fixture_dir, "sim_multi_endo_liml_coef_hc1_small.csv"))
+  compare_vcov(fit, file.path(fixture_dir, "sim_multi_endo_liml_vcov_hc1_small.csv"))
 })

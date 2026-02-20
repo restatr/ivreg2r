@@ -15,7 +15,7 @@
 A single-row \code{\link[tibble:tibble]{tibble::tibble()}} with columns:
 \code{r.squared}, \code{adj.r.squared}, \code{sigma}, \code{statistic}, \code{p.value}, \code{df},
 \code{df.residual}, \code{nobs}, \code{vcov_type}, \code{method}, \code{lambda}, \code{kclass_value},
-\code{fuller_parameter},
+\code{fuller_parameter}, \code{coviv},
 \code{n_clusters1}, \code{n_clusters2},
 \code{weak_id_stat}, \code{weak_id_robust_stat},
 \code{underid_stat}, \code{underid_p},

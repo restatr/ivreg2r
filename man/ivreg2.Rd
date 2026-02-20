@@ -17,6 +17,7 @@ ivreg2(
   method = "2sls",
   kclass = NULL,
   fuller = 0,
+  coviv = FALSE,
   small = FALSE,
   dofminus = 0L,
   sdofminus = 0L,
@@ -87,6 +88,12 @@ Must be positive. When supplied, \code{method} is automatically set to
 \code{"liml"} and \code{k = lambda - fuller / (N - L)}. \code{fuller = 1} gives the
 bias-corrected LIML estimator; \code{fuller = 4} targets MSE. Cannot be
 combined with \code{kclass}.}
+
+\item{coviv}{Logical: if \code{TRUE}, use the 2SLS bread \verb{(X_hat'X_hat)^\{-1\}}
+instead of the k-class bread for VCV computation in LIML/k-class
+estimation. This gives the "COVIV" (covariance at the IV estimates)
+VCV that is robust to misspecification of the LIML model. Silently
+ignored for OLS and 2SLS. Default \code{FALSE}.}
 
 \item{small}{Logical: if \code{TRUE}, use small-sample corrections
 (t/F instead of z/chi-squared, \code{N-K} denominator for sigma).}

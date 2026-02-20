@@ -23,8 +23,8 @@
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return A named list with `coefficients`, `residuals`, `fitted.values`,
 #'   `vcov`, `sigma`, `df.residual`, `rank`, `r.squared`, `adj.r.squared`,
-#'   `rss`, `r2u`, `r2c`, `mss`, `bread`, `X_hat`, `lambda`, `kclass_value`,
-#'   `method`, `fuller_param`.
+#'   `rss`, `r2u`, `r2c`, `mss`, `bread`, `bread_kclass`, `X_hat`, `lambda`,
+#'   `kclass_value`, `method`, `fuller_param`.
 #' @keywords internal
 .fit_kclass <- function(parsed, method = "liml", kclass = NULL, fuller = 0,
                         small = FALSE, dofminus = 0L, sdofminus = 0L) {
@@ -177,6 +177,7 @@
     r2c           = r2c,
     mss           = mss,
     bread         = XtPX_inv,
+    bread_kclass  = XhXh_inv,
     X_hat         = X_hat,
     lambda        = lambda,
     kclass_value  = k,

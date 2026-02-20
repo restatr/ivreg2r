@@ -66,6 +66,11 @@
 #'   `"liml"` and `k = lambda - fuller / (N - L)`. `fuller = 1` gives the
 #'   bias-corrected LIML estimator; `fuller = 4` targets MSE. Cannot be
 #'   combined with `kclass`.
+#' @param coviv Logical: if `TRUE`, use the 2SLS bread `(X_hat'X_hat)^{-1}`
+#'   instead of the k-class bread for VCV computation in LIML/k-class
+#'   estimation. This gives the "COVIV" (covariance at the IV estimates)
+#'   VCV that is robust to misspecification of the LIML model. Silently
+#'   ignored for OLS and 2SLS. Default `FALSE`.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -90,6 +95,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
                    orthog = NULL,
                    method = "2sls", kclass = NULL, fuller = 0,
+                   coviv = FALSE,
                    small = FALSE,
                    dofminus = 0L, sdofminus = 0L,
                    reduced_form = "none",
@@ -143,6 +149,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   dofminus <- as.integer(dofminus)
   sdofminus <- as.integer(sdofminus)
 
+  if (!is.logical(coviv) || length(coviv) != 1L || is.na(coviv)) {
+    stop("`coviv` must be TRUE or FALSE.", call. = FALSE)
+  }
+
   valid_rf <- c("none", "rf", "system")
   if (!is.character(reduced_form) || length(reduced_form) != 1L ||
       !reduced_form %in% valid_rf) {
@@ -194,6 +204,12 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop('`method = "kclass"` requires a numeric `kclass` value.',
          call. = FALSE)
   }
+  # coviv is only meaningful for LIML/kclass
+  if (coviv && !method %in% c("liml", "kclass")) {
+    warning("`coviv` is only meaningful for LIML/k-class estimation; ignored.",
+            call. = FALSE)
+    coviv <- FALSE
+  }
 
   # --- 3. Forward to parser ---
   # Build a call to .parse_formula() using the NSE arguments from ivreg2().
@@ -231,13 +247,6 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("`fuller` (", fuller, ") must be less than N - L (",
          parsed$N - parsed$L, ").", call. = FALSE)
   }
-  # Block LIML/kclass + robust/cluster until H2
-  if (method %in% c("liml", "kclass") &&
-      (vcov %in% c("HC0", "HC1") || !is.null(clusters))) {
-    stop("Robust/cluster VCV with LIML/k-class is not yet implemented. ",
-         "Use `vcov = \"iid\"` for now.", call. = FALSE)
-  }
-
   # --- 3c. Validate and normalize weights ---
   w_raw <- parsed$weights
   if (!is.null(w_raw) && any(!is.finite(w_raw)))
@@ -331,6 +340,20 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 5. VCV ---
+  # For LIML/kclass, select bread: k-class bread by default, 2SLS bread if coviv
+  bread_vcov <- if (method %in% c("liml", "kclass") && !coviv) {
+    fit$bread_kclass
+  } else {
+    fit$bread
+  }
+
+  # COVIV + IID: override the k-class IID VCV with 2SLS-bread IID VCV
+  if (method %in% c("liml", "kclass") && coviv &&
+      vcov == "iid" && is.null(cluster_vec)) {
+    fit$vcov <- fit$sigma^2 * fit$bread
+    colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
+  }
+
   # For HC/CL VCV with weights: transform X_hat and residuals by sqrt(w)
   # at the call site so VCV functions remain weight-agnostic.
   # scores = sqrt(w)*X_hat * sqrt(w)*e = w*X_hat*e (correct weighted sandwich)
@@ -345,12 +368,12 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   if (!is.null(cluster_vec)) {
-    fit$vcov <- .compute_cl_vcov(fit$bread, X_hat_vcov, resid_vcov,
+    fit$vcov <- .compute_cl_vcov(bread_vcov, X_hat_vcov, resid_vcov,
                                   cluster_vec, parsed$N, parsed$K, M, small,
                                   dofminus = dofminus, sdofminus = sdofminus)
     fit$df.residual <- as.integer(M - 1L)
   } else if (vcov %in% c("HC0", "HC1")) {
-    fit$vcov <- .compute_hc_vcov(fit$bread, X_hat_vcov, resid_vcov,
+    fit$vcov <- .compute_hc_vcov(bread_vcov, X_hat_vcov, resid_vcov,
                                   parsed$N, parsed$K, vcov,
                                   small = small, dofminus = dofminus,
                                   sdofminus = sdofminus)
@@ -567,6 +590,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     lambda            = fit$lambda %||% NA_real_,
     kclass_value      = fit$kclass_value %||% NA_real_,
     fuller_parameter  = fit$fuller_param %||% 0,
+    coviv             = coviv,
     model         = if (model) parsed$model_frame else NULL,
     x             = if (x) list(X = parsed$X, Z = parsed$Z) else NULL,
     y             = if (y) parsed$y else NULL

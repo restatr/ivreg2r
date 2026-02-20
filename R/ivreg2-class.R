@@ -57,6 +57,7 @@ NULL
 #' @param lambda Numeric: LIML eigenvalue (NA for OLS/2SLS/kclass).
 #' @param kclass_value Numeric: the k value actually used (NA for OLS/2SLS).
 #' @param fuller_parameter Numeric: Fuller modification parameter (0 if none).
+#' @param coviv Logical: whether COVIV (2SLS bread) was used for VCV.
 #' @param contrasts List of contrasts used for factor variables (or NULL).
 #' @param xlevels List of factor levels (or NULL).
 #' @param model Model frame (or NULL if `model = FALSE`).
@@ -85,6 +86,7 @@ NULL
                          lambda = NA_real_,
                          kclass_value = NA_real_,
                          fuller_parameter = 0,
+                         coviv = FALSE,
                          contrasts = NULL, xlevels = NULL,
                          model = NULL, x = NULL, y = NULL) {
   structure(
@@ -132,6 +134,7 @@ NULL
       lambda         = lambda,
       kclass_value   = kclass_value,
       fuller_parameter = fuller_parameter,
+      coviv          = coviv,
       contrasts      = contrasts,
       xlevels        = xlevels,
       model          = model,
@@ -412,6 +415,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     if (!is.null(x$fuller_parameter) && x$fuller_parameter > 0) {
       cat("fuller:      ", x$fuller_parameter, "\n")
     }
+    if (isTRUE(x$coviv)) cat("coviv:        TRUE\n")
   }
 
   # --- Coefficient table ---
