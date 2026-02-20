@@ -196,6 +196,18 @@ program define save_ivreg2_results
         capture replace lambda = e(lambda)
         capture replace fuller = e(fuller)
 
+        // --- AR LIML overidentification (H3) ---
+        gen double arubin = .
+        gen double arubinp = .
+        gen double arubin_lin = .
+        gen double arubin_linp = .
+        gen double arubindf = .
+        capture replace arubin = e(arubin)
+        capture replace arubinp = e(arubinp)
+        capture replace arubin_lin = e(arubin_lin)
+        capture replace arubin_linp = e(arubin_linp)
+        capture replace arubindf = e(arubindf)
+
         export delimited using ///
             "`outdir'/`prefix'_diagnostics_`suffix'.csv", replace
         restore

@@ -20,6 +20,8 @@ A single-row \code{\link[tibble:tibble]{tibble::tibble()}} with columns:
 \code{weak_id_stat}, \code{weak_id_robust_stat},
 \code{underid_stat}, \code{underid_p},
 \code{overid_stat}, \code{overid_p},
+\code{ar_overid_lr_stat}, \code{ar_overid_lr_p},
+\code{ar_overid_lin_stat}, \code{ar_overid_lin_p}, \code{ar_overid_df},
 \code{endogeneity_stat}, \code{endogeneity_p},
 \code{stock_wright_stat}, \code{stock_wright_p}, \code{stock_wright_df},
 \code{orthog_stat}, \code{orthog_p},

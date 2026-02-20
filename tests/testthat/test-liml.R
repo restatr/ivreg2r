@@ -1014,3 +1014,175 @@ test_that("Multi-endogenous LIML matches Stata (HC1, small=TRUE)", {
   compare_coefs(fit, file.path(fixture_dir, "sim_multi_endo_liml_coef_hc1_small.csv"))
   compare_vcov(fit, file.path(fixture_dir, "sim_multi_endo_liml_vcov_hc1_small.csv"))
 })
+
+
+# ============================================================================
+# 22. AR LIML overidentification statistics (Ticket H3)
+# ============================================================================
+
+# --- Helper: compare AR LIML overid against Stata fixture ---
+compare_ar_liml_overid <- function(fit, fixture_path,
+                                   tol_stat = stata_tol$stat,
+                                   tol_pval = stata_tol$pval) {
+  diag <- read.csv(fixture_path)
+  aro <- fit$diagnostics$anderson_rubin_overid
+
+  expect_false(is.null(aro), info = "anderson_rubin_overid should not be NULL")
+
+  # df
+  expect_equal(aro$df, as.integer(diag$arubindf),
+               info = "AR LIML overid df mismatch")
+
+  if (aro$df == 0L) {
+    # Exactly identified: stats = 0, p = NA
+    expect_equal(aro$lr_stat, 0, info = "AR LR stat should be 0 for exact-id")
+    expect_equal(aro$lin_stat, 0, info = "AR lin stat should be 0 for exact-id")
+    expect_true(is.na(aro$lr_p), info = "AR LR p should be NA for exact-id")
+    expect_true(is.na(aro$lin_p), info = "AR lin p should be NA for exact-id")
+  } else {
+    # Overidentified: compare to Stata values
+    expect_equal(aro$lr_stat, diag$arubin, tolerance = tol_stat,
+                 info = "AR LR stat mismatch")
+    expect_equal(aro$lr_p, diag$arubinp, tolerance = tol_pval,
+                 info = "AR LR p-value mismatch")
+    expect_equal(aro$lin_stat, diag$arubin_lin, tolerance = tol_stat,
+                 info = "AR lin stat mismatch")
+    expect_equal(aro$lin_p, diag$arubin_linp, tolerance = tol_pval,
+                 info = "AR lin p-value mismatch")
+  }
+}
+
+test_that("AR LIML overid: LIML overid IID matches Stata", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml")
+  compare_ar_liml_overid(
+    fit, file.path(fixture_dir, "card_liml_overid_diagnostics_iid.csv")
+  )
+})
+
+test_that("AR LIML overid: LIML overid IID small matches Stata", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", small = TRUE)
+  compare_ar_liml_overid(
+    fit, file.path(fixture_dir, "card_liml_overid_diagnostics_iid_small.csv")
+  )
+})
+
+test_that("AR LIML overid: exactly-identified LIML returns zero-stat placeholder", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, method = "liml")
+  compare_ar_liml_overid(
+    fit, file.path(fixture_dir, "card_liml_justid_diagnostics_iid.csv")
+  )
+})
+
+test_that("AR LIML overid: Fuller overid IID matches Stata (same lambda)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, fuller = 1)
+  compare_ar_liml_overid(
+    fit, file.path(fixture_dir, "card_fuller1_overid_diagnostics_iid.csv")
+  )
+})
+
+test_that("AR LIML overid: Fuller(4) overid IID matches Stata", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, fuller = 4)
+  compare_ar_liml_overid(
+    fit, file.path(fixture_dir, "card_fuller4_overid_diagnostics_iid.csv")
+  )
+})
+
+test_that("AR LIML overid: multi-endogenous LIML IID matches Stata", {
+  skip_if(!file.exists(sim_multi_endo_path), "Simulated data not found")
+
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi_endo, method = "liml")
+  compare_ar_liml_overid(
+    fit, file.path(fixture_dir, "sim_multi_endo_liml_diagnostics_iid.csv")
+  )
+})
+
+test_that("AR LIML overid: NULL for robust LIML", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", vcov = "HC0")
+  expect_null(fit$diagnostics$anderson_rubin_overid)
+})
+
+test_that("AR LIML overid: NULL for cluster LIML", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", clusters = ~smsa66)
+  expect_null(fit$diagnostics$anderson_rubin_overid)
+})
+
+test_that("AR LIML overid: NULL for kclass", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, kclass = 0.5)
+  expect_null(fit$diagnostics$anderson_rubin_overid)
+})
+
+test_that("AR LIML overid: NULL for 2SLS", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card)
+  expect_null(fit$diagnostics$anderson_rubin_overid)
+})
+
+test_that("AR LIML overid: NULL for OLS", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south, data = card)
+  expect_true(is.null(fit$diagnostics) ||
+              is.null(fit$diagnostics$anderson_rubin_overid))
+})
+
+test_that("AR LIML overid: weighted LIML IID matches Stata", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml", weights = weight)
+  compare_ar_liml_overid(
+    fit, file.path(fixture_dir, "card_liml_weighted_diagnostics_iid.csv")
+  )
+})
+
+test_that("AR LIML overid appears in glance()", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card, method = "liml")
+  gl <- generics::glance(fit)
+  expect_true("ar_overid_lr_stat" %in% names(gl))
+  expect_true("ar_overid_lr_p" %in% names(gl))
+  expect_true("ar_overid_lin_stat" %in% names(gl))
+  expect_true("ar_overid_lin_p" %in% names(gl))
+  expect_true("ar_overid_df" %in% names(gl))
+  expect_false(is.na(gl$ar_overid_lr_stat))
+  expect_false(is.na(gl$ar_overid_lin_stat))
+})
+
+test_that("AR LIML overid: glance() returns NA for 2SLS", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                data = card)
+  gl <- generics::glance(fit)
+  expect_true(is.na(gl$ar_overid_lr_stat))
+  expect_true(is.na(gl$ar_overid_lin_stat))
+})

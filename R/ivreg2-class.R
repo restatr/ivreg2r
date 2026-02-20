@@ -613,6 +613,22 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     }
   }
 
+  # --- AR LIML overidentification (H3) ---
+  if (!is.null(diag$anderson_rubin_overid)) {
+    aro <- diag$anderson_rubin_overid
+    cat("\nAnderson-Rubin overidentification:", sep = "")
+    if (aro$df == 0L) {
+      cat("  excluded (exactly identified)\n")
+    } else {
+      cat("\n  LR Chi-sq(", aro$df, ") = ",
+          formatC(aro$lr_stat, digits = 3, format = "f"),
+          " (p ", .format_pval(aro$lr_p), ")\n", sep = "")
+      cat("  Linearized Chi-sq(", aro$df, ") = ",
+          formatC(aro$lin_stat, digits = 3, format = "f"),
+          " (p ", .format_pval(aro$lin_p), ")\n", sep = "")
+    }
+  }
+
   # --- Endogeneity ---
   if (!is.null(diag$endogeneity)) {
     endog <- diag$endogeneity

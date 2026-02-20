@@ -348,3 +348,44 @@
                    N, K, L, overid_df, dofminus = dofminus)
   }
 }
+
+
+# --------------------------------------------------------------------------
+# .compute_ar_liml_overid
+# --------------------------------------------------------------------------
+#' Anderson-Rubin LIML overidentification statistics
+#'
+#' Computes the LR and linearized forms of the Anderson-Rubin
+#' overidentification test for LIML estimation under IID errors.
+#'
+#' Both statistics are chi-squared(L - K) under the null that all
+#' overidentifying restrictions are valid. The LR form uses
+#' \eqn{(N - \text{dofminus}) \ln(\lambda)}{(N - dofminus) * ln(lambda)}
+#' and the linearized form uses
+#' \eqn{(N - \text{dofminus})(\lambda - 1)}{(N - dofminus) * (lambda - 1)}.
+#'
+#' @param lambda Numeric: LIML eigenvalue from `.fit_kclass()`.
+#' @param N Integer: number of observations.
+#' @param overid_df Integer: degree of overidentification (L - K).
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @return Named list with `lr_stat`, `lr_p`, `lin_stat`, `lin_p`, `df`,
+#'   or a zero-stat placeholder when exactly identified (df == 0).
+#' @keywords internal
+.compute_ar_liml_overid <- function(lambda, N, overid_df, dofminus = 0L) {
+  if (overid_df == 0L) {
+    return(list(lr_stat = 0, lr_p = NA_real_,
+                lin_stat = 0, lin_p = NA_real_,
+                df = 0L))
+  }
+
+  scale <- N - dofminus
+  lr_stat  <- scale * log(lambda)
+  lin_stat <- scale * (lambda - 1)
+
+  lr_p  <- stats::pchisq(lr_stat,  df = overid_df, lower.tail = FALSE)
+  lin_p <- stats::pchisq(lin_stat, df = overid_df, lower.tail = FALSE)
+
+  list(lr_stat = lr_stat, lr_p = lr_p,
+       lin_stat = lin_stat, lin_p = lin_p,
+       df = as.integer(overid_df))
+}

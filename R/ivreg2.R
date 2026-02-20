@@ -394,6 +394,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       overid_df = parsed$overid_df, dofminus = dofminus
     )
 
+    # AR LIML overidentification (H3) — only for LIML/Fuller + IID
+    if (method == "liml" && effective_vcov_type == "iid") {
+      diagnostics$anderson_rubin_overid <- .compute_ar_liml_overid(
+        lambda = fit$lambda, N = parsed$N,
+        overid_df = parsed$overid_df, dofminus = dofminus
+      )
+    }
+
     # Identification tests (D2)
     id_tests <- .compute_id_tests(
       X = parsed$X, Z = parsed$Z, y = parsed$y,
