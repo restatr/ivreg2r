@@ -572,6 +572,22 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
       cat("  Tested: ", paste(endog$tested_vars, collapse = ", "), "\n", sep = "")
     }
   }
+
+  # --- Orthogonality (instrument subset) ---
+  if (!is.null(diag$orthog)) {
+    orth <- diag$orthog
+    cat("\nOrthogonality test (C-stat):", sep = "")
+    if (is.na(orth$stat)) {
+      cat("  not computed (rank-deficient S)\n")
+    } else if (orth$stat == 0 && orth$df == 0L) {
+      cat("  not computed (collinearity or underidentification)\n")
+    } else {
+      cat("\n  Chi-sq(", orth$df, ") = ",
+          formatC(orth$stat, digits = 2, format = "f"),
+          " (p ", .format_pval(orth$p), ")\n", sep = "")
+      cat("  Tested: ", paste(orth$tested_vars, collapse = ", "), "\n", sep = "")
+    }
+  }
 }
 
 #' Print first-stage diagnostics table

@@ -38,6 +38,11 @@
 #'   exogeneity (endogeneity test / C-statistic). If `NULL` (default), tests
 #'   all endogenous regressors. Names must match variables in the endogenous
 #'   part of the formula. Ignored for OLS models.
+#' @param orthog Character vector of instrument names to test for
+#'   orthogonality (instrument-subset C-statistic). Names must be included
+#'   or excluded instruments (not endogenous regressors or the intercept).
+#'   If `NULL` (default), no orthogonality test is computed. Ignored for
+#'   OLS models. Equivalent to Stata's `orthog()` option.
 #' @param small Logical: if `TRUE`, use small-sample corrections
 #'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
 #' @param dofminus Non-negative integer: large-sample degrees-of-freedom
@@ -65,6 +70,7 @@
 #' @export
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
+                   orthog = NULL,
                    small = FALSE,
                    dofminus = 0L, sdofminus = 0L,
                    model = TRUE, x = FALSE, y = TRUE) {
@@ -94,6 +100,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (!is.null(endog) && anyDuplicated(endog)) {
     endog <- unique(endog)
     warning("`endog` contained duplicate entries; duplicates removed.",
+            call. = FALSE)
+  }
+  if (!is.null(orthog) && !is.character(orthog)) {
+    stop("`orthog` must be a character vector or NULL.", call. = FALSE)
+  }
+  if (!is.null(orthog) && anyDuplicated(orthog)) {
+    orthog <- unique(orthog)
+    warning("`orthog` contained duplicate entries; duplicates removed.",
             call. = FALSE)
   }
   if (!is.numeric(dofminus) || length(dofminus) != 1L || is.na(dofminus) ||
@@ -338,6 +352,35 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       K1 = parsed$K1, endo_names = parsed$endo_names,
       endog_vars = endog, dofminus = dofminus
     )
+
+    # Orthogonality test / instrument-subset C-statistic (J1)
+    if (!is.null(orthog)) {
+      # Valid orthog vars: excluded instruments or exogenous regressors
+      # (not intercept, not endogenous)
+      valid_orthog <- setdiff(
+        c(parsed$excluded_names, parsed$exog_names),
+        "(Intercept)"
+      )
+      bad <- setdiff(orthog, valid_orthog)
+      if (length(bad) > 0L) {
+        stop("`orthog` contains variables not in the instrument list: ",
+             paste0("'", bad, "'", collapse = ", "),
+             ". Must be excluded or exogenous instruments (not endogenous ",
+             "regressors or the intercept).", call. = FALSE)
+      }
+      # Map orthog var names to Z column indices
+      orthog_in_z <- orthog[orthog %in% colnames(parsed$Z)]
+      if (length(orthog_in_z) > 0L) {
+        diagnostics$orthog <- .compute_orthog_test(
+          Z = parsed$Z, X = parsed$X, y = parsed$y,
+          residuals = fit$residuals, rss = fit$rss,
+          weights = parsed$weights, cluster_vec = cluster_vec,
+          vcov_type = effective_vcov_type,
+          N = parsed$N, K = parsed$K, L = parsed$L,
+          orthog_vars = orthog_in_z, dofminus = dofminus
+        )
+      }
+    }
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
 

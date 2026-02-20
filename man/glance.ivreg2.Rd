@@ -19,7 +19,8 @@ A single-row \code{\link[tibble:tibble]{tibble::tibble()}} with columns:
 \code{underid_stat}, \code{underid_p},
 \code{overid_stat}, \code{overid_p},
 \code{endogeneity_stat}, \code{endogeneity_p},
-\code{stock_wright_stat}, \code{stock_wright_p}, \code{stock_wright_df}.
+\code{stock_wright_stat}, \code{stock_wright_p}, \code{stock_wright_df},
+\code{orthog_stat}, \code{orthog_p}.
 }
 \description{
 Returns a single-row tibble of model-level summary statistics and

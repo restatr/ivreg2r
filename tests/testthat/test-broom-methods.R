@@ -97,7 +97,7 @@ test_that("glance OLS returns 1-row tibble with 17 columns", {
   gl <- glance(fit)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 22L)
+  expect_equal(ncol(gl), 24L)
 })
 
 test_that("glance OLS has correct column names", {
@@ -111,7 +111,8 @@ test_that("glance OLS has correct column names", {
                       "overid_stat", "overid_p",
                       "endogeneity_stat", "endogeneity_p",
                       "stock_wright_stat", "stock_wright_p",
-                      "stock_wright_df")
+                      "stock_wright_df",
+                      "orthog_stat", "orthog_p")
   expect_named(gl, expected_names)
 })
 
@@ -126,13 +127,14 @@ test_that("glance OLS column types are correct", {
   expect_type(gl$vcov_type, "character")
 })
 
-test_that("glance OLS: all 8 diagnostic columns are NA", {
+test_that("glance OLS: all diagnostic columns are NA", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
   gl <- glance(fit)
   diag_cols <- c("weak_id_stat", "weak_id_robust_stat",
                  "underid_stat", "underid_p",
                  "overid_stat", "overid_p",
-                 "endogeneity_stat", "endogeneity_p")
+                 "endogeneity_stat", "endogeneity_p",
+                 "orthog_stat", "orthog_p")
   for (col in diag_cols) {
     expect_true(is.na(gl[[col]]), info = paste(col, "should be NA for OLS"))
   }

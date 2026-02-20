@@ -13,6 +13,7 @@ ivreg2(
   vcov = "iid",
   clusters = NULL,
   endog = NULL,
+  orthog = NULL,
   small = FALSE,
   dofminus = 0L,
   sdofminus = 0L,
@@ -60,6 +61,12 @@ The \code{small} argument controls whether the finite-sample correction
 exogeneity (endogeneity test / C-statistic). If \code{NULL} (default), tests
 all endogenous regressors. Names must match variables in the endogenous
 part of the formula. Ignored for OLS models.}
+
+\item{orthog}{Character vector of instrument names to test for
+orthogonality (instrument-subset C-statistic). Names must be included
+or excluded instruments (not endogenous regressors or the intercept).
+If \code{NULL} (default), no orthogonality test is computed. Ignored for
+OLS models. Equivalent to Stata's \code{orthog()} option.}
 
 \item{small}{Logical: if \code{TRUE}, use small-sample corrections
 (t/F instead of z/chi-squared, \code{N-K} denominator for sigma).}

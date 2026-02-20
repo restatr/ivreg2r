@@ -88,7 +88,8 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
 #'   `underid_stat`, `underid_p`,
 #'   `overid_stat`, `overid_p`,
 #'   `endogeneity_stat`, `endogeneity_p`,
-#'   `stock_wright_stat`, `stock_wright_p`, `stock_wright_df`.
+#'   `stock_wright_stat`, `stock_wright_p`, `stock_wright_df`,
+#'   `orthog_stat`, `orthog_p`.
 #' @export
 glance.ivreg2 <- function(x, ...) {
   diag <- x$diagnostics
@@ -123,7 +124,9 @@ glance.ivreg2 <- function(x, ...) {
     endogeneity_p      = .safe_diag(diag, "endogeneity", "p"),
     stock_wright_stat  = .safe_diag(diag, "stock_wright", "stat"),
     stock_wright_p     = .safe_diag(diag, "stock_wright", "p"),
-    stock_wright_df    = .safe_diag(diag, "stock_wright", "df")
+    stock_wright_df    = .safe_diag(diag, "stock_wright", "df"),
+    orthog_stat        = .safe_diag(diag, "orthog", "stat"),
+    orthog_p           = .safe_diag(diag, "orthog", "p")
   )
 }
 
