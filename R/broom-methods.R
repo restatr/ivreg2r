@@ -83,7 +83,8 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
 #' @param ... Additional arguments (ignored).
 #' @return A single-row [tibble::tibble()] with columns:
 #'   `r.squared`, `adj.r.squared`, `sigma`, `statistic`, `p.value`, `df`,
-#'   `df.residual`, `nobs`, `vcov_type`,
+#'   `df.residual`, `nobs`, `vcov_type`, `method`, `lambda`, `kclass_value`,
+#'   `fuller_parameter`,
 #'   `n_clusters1`, `n_clusters2`,
 #'   `weak_id_stat`, `weak_id_robust_stat`,
 #'   `underid_stat`, `underid_p`,
@@ -114,6 +115,10 @@ glance.ivreg2 <- function(x, ...) {
     df.residual        = x$df.residual,
     nobs               = as.integer(x$nobs),
     vcov_type          = x$vcov_type,
+    method             = x$method %||% NA_character_,
+    lambda             = x$lambda %||% NA_real_,
+    kclass_value       = x$kclass_value %||% NA_real_,
+    fuller_parameter   = x$fuller_parameter %||% NA_real_,
     n_clusters1        = x$n_clusters1 %||% NA_integer_,
     n_clusters2        = x$n_clusters2 %||% NA_integer_,
     weak_id_stat       = .safe_diag(diag, "weak_id", "stat"),

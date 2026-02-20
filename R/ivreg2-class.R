@@ -52,6 +52,11 @@ NULL
 #'   reclassified as exogenous because they were collinear with the instruments.
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
+#' @param method Character: estimation method (`"ols"`, `"2sls"`, `"liml"`,
+#'   or `"kclass"`).
+#' @param lambda Numeric: LIML eigenvalue (NA for OLS/2SLS/kclass).
+#' @param kclass_value Numeric: the k value actually used (NA for OLS/2SLS).
+#' @param fuller_parameter Numeric: Fuller modification parameter (0 if none).
 #' @param contrasts List of contrasts used for factor variables (or NULL).
 #' @param xlevels List of factor levels (or NULL).
 #' @param model Model frame (or NULL if `model = FALSE`).
@@ -76,6 +81,10 @@ NULL
                          dropped_regressors = character(0),
                          dropped_instruments = character(0),
                          reclassified_endogenous = character(0),
+                         method = "ols",
+                         lambda = NA_real_,
+                         kclass_value = NA_real_,
+                         fuller_parameter = 0,
                          contrasts = NULL, xlevels = NULL,
                          model = NULL, x = NULL, y = NULL) {
   structure(
@@ -119,6 +128,10 @@ NULL
       dropped_regressors      = dropped_regressors,
       dropped_instruments     = dropped_instruments,
       reclassified_endogenous = reclassified_endogenous,
+      method         = method,
+      lambda         = lambda,
+      kclass_value   = kclass_value,
+      fuller_parameter = fuller_parameter,
       contrasts      = contrasts,
       xlevels        = xlevels,
       model          = model,
@@ -141,7 +154,7 @@ NULL
 #' @return `x`, invisibly.
 #' @export
 print.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L), ...) {
-  est_type <- if (length(x$endogenous) > 0L) "2SLS Estimation" else "OLS Estimation"
+  est_type <- .estimation_label(x)
   cat("\n", est_type, "\n\n", sep = "")
   cat("Call:\n")
   print(x$call)
@@ -360,7 +373,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
                                   signif.stars = getOption("show.signif.stars", TRUE),
                                   ...) {
   is_iv <- length(x$endogenous) > 0L
-  est_type <- if (is_iv) "2SLS Estimation" else "OLS Estimation"
+  est_type <- .estimation_label(x)
 
   # --- Header ---
   cat("\n", est_type, "\n\n", sep = "")
@@ -387,6 +400,18 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   }
   if (!is.null(x$sdofminus) && x$sdofminus > 0L) {
     cat("sdofminus:   ", x$sdofminus, "\n")
+  }
+  if (!is.null(x$method) && x$method %in% c("liml", "kclass")) {
+    if (!is.na(x$lambda)) {
+      cat("lambda:      ", formatC(x$lambda, digits = 6, format = "f"), "\n")
+    }
+    if (!is.na(x$kclass_value)) {
+      cat("kclass:      ", formatC(x$kclass_value, digits = 6, format = "f"),
+          "\n")
+    }
+    if (!is.null(x$fuller_parameter) && x$fuller_parameter > 0) {
+      cat("fuller:      ", x$fuller_parameter, "\n")
+    }
   }
 
   # --- Coefficient table ---
@@ -447,6 +472,24 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
 # --------------------------------------------------------------------------
 # print.summary helpers
 # --------------------------------------------------------------------------
+
+#' Generate estimation type label for display
+#' @keywords internal
+#' @noRd
+.estimation_label <- function(x) {
+  m <- x$method %||% (if (length(x$endogenous) > 0L) "2sls" else "ols")
+  switch(m,
+    "ols"    = "OLS Estimation",
+    "2sls"   = "2SLS Estimation",
+    "liml"   = if (!is.null(x$fuller_parameter) && x$fuller_parameter > 0) {
+                 "Fuller LIML Estimation"
+               } else {
+                 "LIML Estimation"
+               },
+    "kclass" = "k-class Estimation",
+    paste0(toupper(m), " Estimation")
+  )
+}
 
 #' Format a VCV type description
 #' @keywords internal

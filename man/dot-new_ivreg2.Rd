@@ -44,6 +44,10 @@
   dropped_regressors = character(0),
   dropped_instruments = character(0),
   reclassified_endogenous = character(0),
+  method = "ols",
+  lambda = NA_real_,
+  kclass_value = NA_real_,
+  fuller_parameter = 0,
   contrasts = NULL,
   xlevels = NULL,
   model = NULL,
@@ -135,6 +139,15 @@ to collinearity.}
 
 \item{reclassified_endogenous}{Character vector of endogenous variable names
 reclassified as exogenous because they were collinear with the instruments.}
+
+\item{method}{Character: estimation method (\code{"ols"}, \code{"2sls"}, \code{"liml"},
+or \code{"kclass"}).}
+
+\item{lambda}{Numeric: LIML eigenvalue (NA for OLS/2SLS/kclass).}
+
+\item{kclass_value}{Numeric: the k value actually used (NA for OLS/2SLS).}
+
+\item{fuller_parameter}{Numeric: Fuller modification parameter (0 if none).}
 
 \item{contrasts}{List of contrasts used for factor variables (or NULL).}
 

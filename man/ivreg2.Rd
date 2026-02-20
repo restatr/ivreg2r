@@ -14,6 +14,9 @@ ivreg2(
   clusters = NULL,
   endog = NULL,
   orthog = NULL,
+  method = "2sls",
+  kclass = NULL,
+  fuller = 0,
   small = FALSE,
   dofminus = 0L,
   sdofminus = 0L,
@@ -69,6 +72,22 @@ or excluded instruments (not endogenous regressors or the intercept).
 If \code{NULL} (default), no orthogonality test is computed. Ignored for
 OLS models. Equivalent to Stata's \code{orthog()} option.}
 
+\item{method}{Character: estimation method. One of \code{"2sls"} (default),
+\code{"liml"}, or \code{"kclass"}. For OLS models (1-part formula), this is
+ignored. When \code{fuller > 0} is specified, method is automatically
+promoted to \code{"liml"}.}
+
+\item{kclass}{Numeric scalar: user-supplied k value for k-class
+estimation. When supplied, \code{method} is automatically set to \code{"kclass"}.
+Must be non-negative. Cannot be combined with \code{method = "liml"} or
+\code{fuller}.}
+
+\item{fuller}{Numeric scalar: Fuller (1977) modification parameter.
+Must be positive. When supplied, \code{method} is automatically set to
+\code{"liml"} and \code{k = lambda - fuller / (N - L)}. \code{fuller = 1} gives the
+bias-corrected LIML estimator; \code{fuller = 4} targets MSE. Cannot be
+combined with \code{kclass}.}
+
 \item{small}{Logical: if \code{TRUE}, use small-sample corrections
 (t/F instead of z/chi-squared, \code{N-K} denominator for sigma).}
 
@@ -101,8 +120,8 @@ return object.}
 An object of class \code{"ivreg2"}.
 }
 \description{
-Estimate models by OLS or two-stage least squares (2SLS) with automatic
-diagnostic tests. Uses a three-part formula for IV:
+Estimate models by OLS, two-stage least squares (2SLS), LIML, Fuller, or
+k-class with automatic diagnostic tests. Uses a three-part formula for IV:
 \code{y ~ exog | endo | instruments}.
 }
 \examples{

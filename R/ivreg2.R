@@ -3,8 +3,8 @@
 # --------------------------------------------------------------------------
 #' Extended Instrumental Variables Estimation
 #'
-#' Estimate models by OLS or two-stage least squares (2SLS) with automatic
-#' diagnostic tests. Uses a three-part formula for IV:
+#' Estimate models by OLS, two-stage least squares (2SLS), LIML, Fuller, or
+#' k-class with automatic diagnostic tests. Uses a three-part formula for IV:
 #' `y ~ exog | endo | instruments`.
 #'
 #' @param formula A formula: `y ~ exog` (OLS) or
@@ -53,6 +53,19 @@
 #'   adjustment. Subtracted from the residual degrees of freedom alongside K
 #'   (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
 #'   partialling out regressors. Equivalent to Stata's `sdofminus()` option.
+#' @param method Character: estimation method. One of `"2sls"` (default),
+#'   `"liml"`, or `"kclass"`. For OLS models (1-part formula), this is
+#'   ignored. When `fuller > 0` is specified, method is automatically
+#'   promoted to `"liml"`.
+#' @param kclass Numeric scalar: user-supplied k value for k-class
+#'   estimation. When supplied, `method` is automatically set to `"kclass"`.
+#'   Must be non-negative. Cannot be combined with `method = "liml"` or
+#'   `fuller`.
+#' @param fuller Numeric scalar: Fuller (1977) modification parameter.
+#'   Must be positive. When supplied, `method` is automatically set to
+#'   `"liml"` and `k = lambda - fuller / (N - L)`. `fuller = 1` gives the
+#'   bias-corrected LIML estimator; `fuller = 4` targets MSE. Cannot be
+#'   combined with `kclass`.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -76,6 +89,7 @@
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
                    orthog = NULL,
+                   method = "2sls", kclass = NULL, fuller = 0,
                    small = FALSE,
                    dofminus = 0L, sdofminus = 0L,
                    reduced_form = "none",
@@ -136,6 +150,46 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
          call. = FALSE)
   }
 
+  # --- 2b. Validate method / kclass / fuller ---
+  if (!is.character(method) || length(method) != 1L) {
+    stop("`method` must be a single character string.", call. = FALSE)
+  }
+  method <- tolower(method)
+  valid_methods <- c("2sls", "liml", "kclass")
+  if (!method %in% valid_methods) {
+    stop('`method` must be one of "2sls", "liml", or "kclass".',
+         call. = FALSE)
+  }
+  if (!is.numeric(fuller) || length(fuller) != 1L || is.na(fuller)) {
+    stop("`fuller` must be a single numeric value.", call. = FALSE)
+  }
+  if (fuller < 0) {
+    stop("`fuller` must be non-negative.", call. = FALSE)
+  }
+  if (!is.null(kclass)) {
+    if (!is.numeric(kclass) || length(kclass) != 1L || is.na(kclass)) {
+      stop("`kclass` must be a single numeric value.", call. = FALSE)
+    }
+    if (kclass < 0) {
+      stop("`kclass` must be non-negative.", call. = FALSE)
+    }
+  }
+  # Mutual exclusion: fuller and kclass cannot both be specified
+  if (fuller > 0 && !is.null(kclass)) {
+    stop("Cannot specify both `fuller` and `kclass`.", call. = FALSE)
+  }
+  # fuller implies liml
+  if (fuller > 0 && method != "liml") {
+    method <- "liml"
+  }
+  # kclass supplied implies method = "kclass"
+  if (!is.null(kclass) && method != "kclass") {
+    if (method == "liml") {
+      stop('Cannot specify `kclass` with `method = "liml"`.', call. = FALSE)
+    }
+    method <- "kclass"
+  }
+
   # --- 3. Forward to parser ---
   # Build a call to .parse_formula() using the NSE arguments from ivreg2().
   # Evaluate in an environment where .parse_formula is visible (it's unexported)
@@ -163,7 +217,23 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
          " (must be > 0).", call. = FALSE)
   }
 
-  # --- 3b. Validate and normalize weights ---
+  # --- 3b. Validate method against parsed model ---
+  if (method %in% c("liml", "kclass") && !parsed$is_iv) {
+    stop('`method = "', method, '"` requires an IV model (3-part formula).',
+         call. = FALSE)
+  }
+  if (fuller > 0 && parsed$is_iv && fuller >= (parsed$N - parsed$L)) {
+    stop("`fuller` (", fuller, ") must be less than N - L (",
+         parsed$N - parsed$L, ").", call. = FALSE)
+  }
+  # Block LIML/kclass + robust/cluster until H2
+  if (method %in% c("liml", "kclass") &&
+      (vcov %in% c("HC0", "HC1") || !is.null(clusters))) {
+    stop("Robust/cluster VCV with LIML/k-class is not yet implemented. ",
+         "Use `vcov = \"iid\"` for now.", call. = FALSE)
+  }
+
+  # --- 3c. Validate and normalize weights ---
   w_raw <- parsed$weights
   if (!is.null(w_raw) && any(!is.finite(w_raw)))
     stop("Weights must be finite and non-missing.", call. = FALSE)
@@ -244,7 +314,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 4. Dispatch ---
-  fit <- if (parsed$is_iv) {
+  fit <- if (method %in% c("liml", "kclass")) {
+    .fit_kclass(parsed, method = method, kclass = kclass, fuller = fuller,
+                small = small, dofminus = dofminus, sdofminus = sdofminus)
+  } else if (parsed$is_iv) {
     .fit_2sls(parsed, small = small, dofminus = dofminus,
               sdofminus = sdofminus)
   } else {
@@ -434,6 +507,15 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   )
 
   # --- 6. Assemble return object ---
+  # Determine effective method for the return object
+  est_method <- if (method %in% c("liml", "kclass")) {
+    method
+  } else if (parsed$is_iv) {
+    "2sls"
+  } else {
+    "ols"
+  }
+
   .new_ivreg2(
     coefficients  = fit$coefficients,
     residuals     = fit$residuals,
@@ -476,6 +558,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     reclassified_endogenous = parsed$reclassified_endogenous,
     contrasts     = parsed$contrasts,
     xlevels       = parsed$xlevels,
+    method            = est_method,
+    lambda            = fit$lambda %||% NA_real_,
+    kclass_value      = fit$kclass_value %||% NA_real_,
+    fuller_parameter  = fit$fuller_param %||% 0,
     model         = if (model) parsed$model_frame else NULL,
     x             = if (x) list(X = parsed$X, Z = parsed$Z) else NULL,
     y             = if (y) parsed$y else NULL
