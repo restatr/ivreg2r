@@ -419,7 +419,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     diagnostics$weak_id_robust <- id_tests$weak_id_robust
 
     # Stock-Yogo critical values (D3)
-    diagnostics$weak_id_sy <- .stock_yogo_lookup(parsed$K1, parsed$L1)
+    diagnostics$weak_id_sy <- .stock_yogo_lookup(
+      parsed$K1, parsed$L1, method = method, fuller = fuller
+    )
 
     # First-stage diagnostics (E1)
     first_stage <- .compute_first_stage(

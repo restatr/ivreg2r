@@ -544,24 +544,59 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     if (x$vcov_type != "iid") {
       cat("  (Stock-Yogo critical values are for iid errors)\n")
     }
-    # Size distortion first, then bias
-    size_rows <- sy[sy$type == "IV size", ]
-    bias_rows <- sy[sy$type == "IV relative bias", ]
-    if (nrow(size_rows) > 0L) {
+    # IV size distortion
+    iv_size <- sy[sy$type == "IV size", ]
+    if (nrow(iv_size) > 0L) {
       cat("  Stock-Yogo critical values (IV size):\n")
-      for (i in seq_len(nrow(size_rows))) {
-        cat("    ", size_rows$threshold[i], " maximal IV size",
-            "     ", formatC(size_rows$critical_value[i], digits = 2,
+      for (i in seq_len(nrow(iv_size))) {
+        cat("    ", iv_size$threshold[i], " maximal IV size",
+            "     ", formatC(iv_size$critical_value[i], digits = 2,
                              format = "f"), "\n")
       }
     }
-    if (nrow(bias_rows) > 0L) {
+    # IV relative bias
+    iv_bias <- sy[sy$type == "IV relative bias", ]
+    if (nrow(iv_bias) > 0L) {
       cat("  Stock-Yogo critical values (IV relative bias):\n")
-      for (i in seq_len(nrow(bias_rows))) {
-        cat("    ", bias_rows$threshold[i], " maximal IV relative bias",
-            " ", formatC(bias_rows$critical_value[i], digits = 2,
+      for (i in seq_len(nrow(iv_bias))) {
+        cat("    ", iv_bias$threshold[i], " maximal IV relative bias",
+            " ", formatC(iv_bias$critical_value[i], digits = 2,
                          format = "f"), "\n")
       }
+    }
+    # LIML size distortion
+    liml_size <- sy[sy$type == "LIML size", ]
+    if (nrow(liml_size) > 0L) {
+      cat("  Stock-Yogo critical values (LIML size):\n")
+      for (i in seq_len(nrow(liml_size))) {
+        cat("    ", liml_size$threshold[i], " maximal LIML size",
+            "    ", formatC(liml_size$critical_value[i], digits = 2,
+                            format = "f"), "\n")
+      }
+    }
+    # Fuller relative bias
+    full_rel <- sy[sy$type == "Fuller relative bias", ]
+    if (nrow(full_rel) > 0L) {
+      cat("  Stock-Yogo critical values (Fuller relative bias):\n")
+      for (i in seq_len(nrow(full_rel))) {
+        cat("    ", full_rel$threshold[i], " maximal Fuller rel. bias",
+            " ", formatC(full_rel$critical_value[i], digits = 2,
+                         format = "f"), "\n")
+      }
+    }
+    # Fuller maximum bias
+    full_max <- sy[sy$type == "Fuller maximum bias", ]
+    if (nrow(full_max) > 0L) {
+      cat("  Stock-Yogo critical values (Fuller maximum bias):\n")
+      for (i in seq_len(nrow(full_max))) {
+        cat("    ", full_max$threshold[i], " Fuller maximum bias",
+            "     ", formatC(full_max$critical_value[i], digits = 2,
+                             format = "f"), "\n")
+      }
+    }
+    # Fuller warning (matches Stata line 3426)
+    if (nrow(full_rel) > 0L || nrow(full_max) > 0L) {
+      cat("  NB: Critical values based on Fuller parameter=1\n")
     }
   } else {
     cat("  Stock-Yogo critical values:   <not available>\n")

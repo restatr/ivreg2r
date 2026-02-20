@@ -164,3 +164,197 @@ test_that("weak_id_sy is VCE-invariant (same tables for iid vs robust)", {
 
   expect_equal(fit_iid$diagnostics$weak_id_sy, fit_hc1$diagnostics$weak_id_sy)
 })
+
+
+# ============================================================================
+# Unit tests: LIML/Fuller/kclass Stock-Yogo tables (Ticket H4)
+# ============================================================================
+
+# --- Spot-check values for new tables ---
+
+test_that("Fuller relative bias tables: spot-check values", {
+  result <- ivreg2r:::.stock_yogo_lookup(1L, 1L, method = "liml", fuller = 1)
+  full_rel <- result[result$type == "Fuller relative bias", ]
+  expect_equal(full_rel$critical_value[full_rel$threshold == "5%"], 24.09)
+  expect_equal(full_rel$critical_value[full_rel$threshold == "10%"], 19.36)
+  expect_equal(full_rel$critical_value[full_rel$threshold == "20%"], 15.64)
+  expect_equal(full_rel$critical_value[full_rel$threshold == "30%"], 12.71)
+})
+
+test_that("Fuller relative bias K1=2: spot-check", {
+  result <- ivreg2r:::.stock_yogo_lookup(2L, 2L, method = "liml", fuller = 1)
+  full_rel <- result[result$type == "Fuller relative bias", ]
+  expect_equal(full_rel$critical_value[full_rel$threshold == "5%"], 15.50)
+  expect_equal(full_rel$critical_value[full_rel$threshold == "10%"], 12.55)
+})
+
+test_that("Fuller maximum bias tables: spot-check values", {
+  result <- ivreg2r:::.stock_yogo_lookup(1L, 1L, method = "liml", fuller = 1)
+  full_max <- result[result$type == "Fuller maximum bias", ]
+  expect_equal(full_max$critical_value[full_max$threshold == "5%"], 23.81)
+  expect_equal(full_max$critical_value[full_max$threshold == "10%"], 19.40)
+  expect_equal(full_max$critical_value[full_max$threshold == "20%"], 15.39)
+  expect_equal(full_max$critical_value[full_max$threshold == "30%"], 12.76)
+})
+
+test_that("Fuller maximum bias K1=2: spot-check", {
+  result <- ivreg2r:::.stock_yogo_lookup(2L, 2L, method = "liml", fuller = 4)
+  full_max <- result[result$type == "Fuller maximum bias", ]
+  expect_equal(full_max$critical_value[full_max$threshold == "5%"], 14.19)
+  expect_equal(full_max$critical_value[full_max$threshold == "10%"], 11.92)
+})
+
+test_that("LIML size distortion tables: spot-check values", {
+  result <- ivreg2r:::.stock_yogo_lookup(1L, 1L, method = "liml", fuller = 0)
+  liml_size <- result[result$type == "LIML size", ]
+  expect_equal(liml_size$critical_value[liml_size$threshold == "10%"], 16.38)
+  expect_equal(liml_size$critical_value[liml_size$threshold == "15%"], 8.96)
+  expect_equal(liml_size$critical_value[liml_size$threshold == "20%"], 6.66)
+  expect_equal(liml_size$critical_value[liml_size$threshold == "25%"], 5.53)
+})
+
+test_that("LIML size K1=2, L1=2: spot-check", {
+  result <- ivreg2r:::.stock_yogo_lookup(2L, 2L, method = "liml", fuller = 0)
+  liml_size <- result[result$type == "LIML size", ]
+  expect_equal(liml_size$critical_value[liml_size$threshold == "10%"], 7.03)
+  expect_equal(liml_size$critical_value[liml_size$threshold == "15%"], 4.58)
+  expect_equal(liml_size$critical_value[liml_size$threshold == "20%"], 3.95)
+  expect_equal(liml_size$critical_value[liml_size$threshold == "25%"], 3.63)
+})
+
+test_that("Last row (L1=100) spot-checks for new tables", {
+  # Fuller relative bias
+  result <- ivreg2r:::.stock_yogo_lookup(1L, 100L, method = "liml", fuller = 1)
+  full_rel <- result[result$type == "Fuller relative bias", ]
+  expect_equal(full_rel$critical_value[full_rel$threshold == "5%"], 1.55)
+
+  # Fuller maximum bias
+  full_max <- result[result$type == "Fuller maximum bias", ]
+  expect_equal(full_max$critical_value[full_max$threshold == "5%"], 1.46)
+
+  # LIML size
+  result2 <- ivreg2r:::.stock_yogo_lookup(1L, 100L, method = "liml", fuller = 0)
+  liml_size <- result2[result2$type == "LIML size", ]
+  expect_equal(liml_size$critical_value[liml_size$threshold == "10%"], 3.83)
+
+  # LIML size K1=2
+  result3 <- ivreg2r:::.stock_yogo_lookup(2L, 100L, method = "liml", fuller = 0)
+  liml_size3 <- result3[result3$type == "LIML size", ]
+  expect_equal(liml_size3$critical_value[liml_size3$threshold == "10%"], 4.59)
+  expect_equal(liml_size3$critical_value[liml_size3$threshold == "25%"], 2.11)
+})
+
+# --- Method dispatch ---
+
+test_that("method='2sls' returns IV tables (default behavior)", {
+  result <- ivreg2r:::.stock_yogo_lookup(1L, 5L, method = "2sls")
+  types <- unique(result$type)
+  expect_true("IV relative bias" %in% types)
+  expect_true("IV size" %in% types)
+  expect_false("LIML size" %in% types)
+  expect_false("Fuller relative bias" %in% types)
+})
+
+test_that("method='liml', fuller=0 returns LIML size only", {
+  result <- ivreg2r:::.stock_yogo_lookup(1L, 5L, method = "liml", fuller = 0)
+  types <- unique(result$type)
+  expect_equal(types, "LIML size")
+})
+
+test_that("method='liml', fuller=1 returns Fuller rel bias + max bias", {
+  result <- ivreg2r:::.stock_yogo_lookup(1L, 5L, method = "liml", fuller = 1)
+  types <- unique(result$type)
+  expect_true("Fuller relative bias" %in% types)
+  expect_true("Fuller maximum bias" %in% types)
+  expect_false("LIML size" %in% types)
+  expect_false("IV size" %in% types)
+})
+
+test_that("method='kclass' returns NULL", {
+  expect_null(ivreg2r:::.stock_yogo_lookup(1L, 5L, method = "kclass"))
+  expect_null(ivreg2r:::.stock_yogo_lookup(2L, 10L, method = "kclass"))
+})
+
+# --- K1 boundary for LIML/Fuller tables ---
+
+test_that("K1=2 returns LIML/Fuller results, K1=3 returns NULL", {
+  # LIML size: K1=2 works, K1=3 returns NULL
+  result <- ivreg2r:::.stock_yogo_lookup(2L, 5L, method = "liml", fuller = 0)
+  expect_s3_class(result, "data.frame")
+
+  expect_null(ivreg2r:::.stock_yogo_lookup(3L, 5L, method = "liml", fuller = 0))
+
+  # Fuller: K1=2 works, K1=3 returns NULL
+  result2 <- ivreg2r:::.stock_yogo_lookup(2L, 5L, method = "liml", fuller = 1)
+  expect_s3_class(result2, "data.frame")
+
+  expect_null(ivreg2r:::.stock_yogo_lookup(3L, 5L, method = "liml", fuller = 1))
+})
+
+# --- Backward compatibility ---
+
+test_that("Default args (no method) match explicit method='2sls'", {
+  default <- ivreg2r:::.stock_yogo_lookup(1L, 5L)
+  explicit <- ivreg2r:::.stock_yogo_lookup(1L, 5L, method = "2sls")
+  expect_equal(default, explicit)
+})
+
+test_that("Fuller with any positive value dispatches to Fuller tables", {
+  result1 <- ivreg2r:::.stock_yogo_lookup(1L, 5L, method = "liml", fuller = 1)
+  result4 <- ivreg2r:::.stock_yogo_lookup(1L, 5L, method = "liml", fuller = 4)
+  # Same tables (Fuller parameter doesn't affect which tables are used)
+  expect_equal(result1, result4)
+})
+
+
+# ============================================================================
+# Integration tests: LIML/Fuller Stock-Yogo in ivreg2() (Ticket H4)
+# ============================================================================
+
+test_that("ivreg2 method='liml' stores LIML size tables", {
+  skip_if(!file.exists(card_path), "card data not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, method = "liml")
+  sy <- fit$diagnostics$weak_id_sy
+  expect_s3_class(sy, "data.frame")
+
+  types <- unique(sy$type)
+  expect_equal(types, "LIML size")
+  expect_equal(sy$critical_value[sy$threshold == "10%"], 16.38)
+})
+
+test_that("ivreg2 fuller=1 stores Fuller bias tables", {
+  skip_if(!file.exists(card_path), "card data not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, fuller = 1)
+  sy <- fit$diagnostics$weak_id_sy
+  expect_s3_class(sy, "data.frame")
+
+  types <- unique(sy$type)
+  expect_true("Fuller relative bias" %in% types)
+  expect_true("Fuller maximum bias" %in% types)
+  expect_false("LIML size" %in% types)
+})
+
+test_that("ivreg2 kclass=0.5 has NULL Stock-Yogo", {
+  skip_if(!file.exists(card_path), "card data not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, kclass = 0.5)
+  expect_null(fit$diagnostics$weak_id_sy)
+})
+
+test_that("2SLS Stock-Yogo unchanged after H4", {
+  skip_if(!file.exists(card_path), "card data not found")
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card)
+  sy <- fit$diagnostics$weak_id_sy
+  expect_s3_class(sy, "data.frame")
+
+  types <- unique(sy$type)
+  expect_true("IV size" %in% types)
+  expect_false("LIML size" %in% types)
+})
