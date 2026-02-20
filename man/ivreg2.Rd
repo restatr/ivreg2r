@@ -17,6 +17,7 @@ ivreg2(
   small = FALSE,
   dofminus = 0L,
   sdofminus = 0L,
+  reduced_form = "none",
   model = TRUE,
   x = FALSE,
   y = TRUE
@@ -80,6 +81,12 @@ partialled out. Equivalent to Stata's \code{dofminus()} option.}
 adjustment. Subtracted from the residual degrees of freedom alongside K
 (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
 partialling out regressors. Equivalent to Stata's \code{sdofminus()} option.}
+
+\item{reduced_form}{Character: what reduced-form output to store.
+\code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression
+(equivalent to Stata's \code{saverf}). \code{"system"} stores the full system of
+y + all endogenous variables regressed on Z, with cross-equation VCV
+(equivalent to Stata's \code{savesfirst}). Silently ignored for OLS models.}
 
 \item{model}{Logical: if \code{TRUE} (default), store the model frame in the
 return object.}

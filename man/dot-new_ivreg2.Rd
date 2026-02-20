@@ -24,6 +24,7 @@
   model_f_df2 = NULL,
   diagnostics = NULL,
   first_stage = NULL,
+  reduced_form = NULL,
   call,
   formula,
   terms,
@@ -88,6 +89,9 @@
 \item{diagnostics}{List of diagnostic test results (NULL for OLS).}
 
 \item{first_stage}{List of first-stage results (NULL for OLS).}
+
+\item{reduced_form}{List of reduced-form regression results (NULL if not
+requested or for OLS). See \code{\link[=ivreg2]{ivreg2()}} \code{reduced_form} argument.}
 
 \item{call}{The original function call.}
 

@@ -26,6 +26,8 @@ NULL
 #' @param model_f_df2 Denominator df for model F-test.
 #' @param diagnostics List of diagnostic test results (NULL for OLS).
 #' @param first_stage List of first-stage results (NULL for OLS).
+#' @param reduced_form List of reduced-form regression results (NULL if not
+#'   requested or for OLS). See [ivreg2()] `reduced_form` argument.
 #' @param call The original function call.
 #' @param formula The parsed Formula object.
 #' @param terms List of terms objects.
@@ -63,6 +65,7 @@ NULL
                          model_f = NULL, model_f_p = NULL,
                          model_f_df1 = NULL, model_f_df2 = NULL,
                          diagnostics = NULL, first_stage = NULL,
+                         reduced_form = NULL,
                          call, formula, terms, nobs, vcov_type, small,
                          dofminus = 0L, sdofminus = 0L,
                          cluster_var = NULL, n_clusters = NULL,
@@ -96,6 +99,7 @@ NULL
       model_f_df2    = model_f_df2,
       diagnostics    = diagnostics,
       first_stage    = first_stage,
+      reduced_form   = reduced_form,
       call           = call,
       formula        = formula,
       terms          = terms,
@@ -419,6 +423,11 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     .print_first_stage_table(x$first_stage, digits)
   }
 
+  # --- Reduced-form (IV only) ---
+  if (is_iv && !is.null(x$reduced_form)) {
+    .print_reduced_form(x$reduced_form, digits)
+  }
+
   # --- Footer (IV only) ---
   if (is_iv) {
     cat("\nInstrumented:         ", paste(x$endogenous, collapse = ", "), "\n")
@@ -640,5 +649,40 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     formatC("\u2014", width = width)
   } else {
     formatC(x, digits = digits, format = "f", width = width)
+  }
+}
+
+
+#' Print reduced-form regression summary
+#' @keywords internal
+#' @noRd
+.print_reduced_form <- function(rf, digits) {
+  if (rf$mode == "rf") {
+    cat("\nReduced-form regression (", rf$depvar, " ~ instruments):\n", sep = "")
+    cat("  Root MSE:   ", formatC(rf$sigma, digits = 4, format = "f"), "\n")
+    if (!is.na(rf$f_stat)) {
+      cat("  F(", rf$f_df1, ", ", rf$f_df2, ") = ",
+          formatC(rf$f_stat, digits = 2, format = "f"),
+          " (p ", .format_pval(rf$f_p), ")\n", sep = "")
+    }
+    if (!is.na(rf$partial_r2)) {
+      cat("  Partial R2: ", formatC(rf$partial_r2, digits = 4, format = "f"),
+          "\n")
+    }
+  } else {
+    # System mode
+    cat("\nReduced-form system (instruments on all endogenous + depvar):\n")
+    eq_names <- rf$depvar
+    for (j in seq_along(eq_names)) {
+      eq <- rf$equations[[j]]
+      cat("  ", eq_names[j], ":",
+          " RMSE=", formatC(rf$sigma[j], digits = 4, format = "f"),
+          sep = "")
+      if (!is.na(eq$f_stat)) {
+        cat("  F(", eq$f_df1, ",", eq$f_df2, ")=",
+            formatC(eq$f_stat, digits = 2, format = "f"), sep = "")
+      }
+      cat("\n")
+    }
   }
 }

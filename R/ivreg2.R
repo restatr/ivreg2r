@@ -53,6 +53,11 @@
 #'   adjustment. Subtracted from the residual degrees of freedom alongside K
 #'   (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
 #'   partialling out regressors. Equivalent to Stata's `sdofminus()` option.
+#' @param reduced_form Character: what reduced-form output to store.
+#'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
+#'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
+#'   y + all endogenous variables regressed on Z, with cross-equation VCV
+#'   (equivalent to Stata's `savesfirst`). Silently ignored for OLS models.
 #' @param model Logical: if `TRUE` (default), store the model frame in the
 #'   return object.
 #' @param x Logical: if `TRUE`, store model matrices (`X`, `Z`) in the
@@ -73,6 +78,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    orthog = NULL,
                    small = FALSE,
                    dofminus = 0L, sdofminus = 0L,
+                   reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
 
   # --- 1. Capture call ---
@@ -122,6 +128,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
   dofminus <- as.integer(dofminus)
   sdofminus <- as.integer(sdofminus)
+
+  valid_rf <- c("none", "rf", "system")
+  if (!is.character(reduced_form) || length(reduced_form) != 1L ||
+      !reduced_form %in% valid_rf) {
+    stop('`reduced_form` must be one of "none", "rf", or "system".',
+         call. = FALSE)
+  }
 
   # --- 3. Forward to parser ---
   # Build a call to .parse_formula() using the NSE arguments from ivreg2().
@@ -380,6 +393,33 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
 
+  # --- 5b2. Reduced-form regression ---
+  reduced_form_result <- NULL
+  if (parsed$is_iv && reduced_form != "none") {
+    # Extract depvar name from parsed formula
+    rf_depvar <- all.vars(parsed$formula)[1L]
+    reduced_form_result <- .compute_reduced_form(
+      mode           = reduced_form,
+      Z              = parsed$Z,
+      X              = parsed$X,
+      y              = parsed$y,
+      weights        = parsed$weights,
+      cluster_vec    = cluster_vec,
+      vcov_type      = effective_vcov_type,
+      N              = parsed$N,
+      K              = parsed$K,
+      L              = parsed$L,
+      K1             = parsed$K1,
+      L1             = parsed$L1,
+      M              = M,
+      endo_names     = parsed$endo_names,
+      excluded_names = parsed$excluded_names,
+      depvar_name    = rf_depvar,
+      dofminus       = dofminus,
+      sdofminus      = sdofminus
+    )
+  }
+
   # --- 5c. Model F-test ---
   model_f_result <- .compute_model_f(
     coefficients  = fit$coefficients,
@@ -415,6 +455,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     model_f_df2   = model_f_result$model_f_df2,
     diagnostics   = diagnostics,
     first_stage   = first_stage,
+    reduced_form  = reduced_form_result,
     call          = cl,
     formula       = parsed$formula,
     terms         = parsed$terms,
