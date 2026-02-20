@@ -439,14 +439,14 @@ test_that("coviv must be logical", {
   )
 })
 
-test_that("coviv warns when used with 2SLS", {
+test_that("coviv is silently ignored for 2SLS", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  expect_warning(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-           data = card, coviv = TRUE),
-    "only meaningful"
+  expect_no_warning(
+    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                  data = card, coviv = TRUE)
   )
+  expect_false(fit$coviv)
 })
 
 test_that("LIML + kclass is rejected", {
@@ -794,15 +794,15 @@ test_that("COVIV changes VCV but not coefficients", {
   expect_false(isTRUE(all.equal(vcov(fit_no_coviv), vcov(fit_coviv))))
 })
 
-test_that("COVIV is silently ignored for 2SLS", {
+test_that("COVIV silently ignored for 2SLS: VCV equals non-COVIV", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- suppressWarnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-           data = card, coviv = TRUE)
-  )
-  # coviv should be FALSE (was reset with warning)
-  expect_false(fit$coviv)
+  fit_coviv <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                      data = card, coviv = TRUE)
+  fit_plain <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                      data = card)
+  expect_false(fit_coviv$coviv)
+  expect_equal(vcov(fit_coviv), vcov(fit_plain))
 })
 
 test_that("COVIV appears in summary output", {

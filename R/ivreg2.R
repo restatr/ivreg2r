@@ -204,10 +204,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop('`method = "kclass"` requires a numeric `kclass` value.',
          call. = FALSE)
   }
-  # coviv is only meaningful for LIML/kclass
+  # coviv is only meaningful for LIML/kclass — silently ignored otherwise
   if (coviv && !method %in% c("liml", "kclass")) {
-    warning("`coviv` is only meaningful for LIML/k-class estimation; ignored.",
-            call. = FALSE)
     coviv <- FALSE
   }
 
