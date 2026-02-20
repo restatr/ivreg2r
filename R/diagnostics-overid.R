@@ -378,6 +378,20 @@
                 df = 0L))
   }
 
+  # Guard: lambda must be >= 1 for a well-posed problem. Values < 1 indicate
+
+  # numerical issues (rank-deficient concentration matrices, many-instrument
+  # pathology). Stata produces missing silently; we warn and return NA.
+  if (!is.finite(lambda) || lambda <= 0) {
+    warning("LIML eigenvalue is non-positive (lambda = ",
+            format(lambda, digits = 4),
+            "); AR overidentification statistics not computed.",
+            call. = FALSE)
+    return(list(lr_stat = NA_real_, lr_p = NA_real_,
+                lin_stat = NA_real_, lin_p = NA_real_,
+                df = as.integer(overid_df)))
+  }
+
   scale <- N - dofminus
   lr_stat  <- scale * log(lambda)
   lin_stat <- scale * (lambda - 1)
