@@ -15,12 +15,14 @@
 A single-row \code{\link[tibble:tibble]{tibble::tibble()}} with columns:
 \code{r.squared}, \code{adj.r.squared}, \code{sigma}, \code{statistic}, \code{p.value}, \code{df},
 \code{df.residual}, \code{nobs}, \code{vcov_type},
+\code{n_clusters1}, \code{n_clusters2},
 \code{weak_id_stat}, \code{weak_id_robust_stat},
 \code{underid_stat}, \code{underid_p},
 \code{overid_stat}, \code{overid_p},
 \code{endogeneity_stat}, \code{endogeneity_p},
 \code{stock_wright_stat}, \code{stock_wright_p}, \code{stock_wright_df},
-\code{orthog_stat}, \code{orthog_p}.
+\code{orthog_stat}, \code{orthog_p},
+\code{rf_f_stat}, \code{rf_f_p}.
 }
 \description{
 Returns a single-row tibble of model-level summary statistics and

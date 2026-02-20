@@ -396,8 +396,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   # --- 5b2. Reduced-form regression ---
   reduced_form_result <- NULL
   if (parsed$is_iv && reduced_form != "none") {
-    # Extract depvar name from parsed formula
-    rf_depvar <- all.vars(parsed$formula)[1L]
+    rf_depvar <- parsed$y_name
     reduced_form_result <- .compute_reduced_form(
       mode           = reduced_form,
       Z              = parsed$Z,

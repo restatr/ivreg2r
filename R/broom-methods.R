@@ -84,12 +84,14 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
 #' @return A single-row [tibble::tibble()] with columns:
 #'   `r.squared`, `adj.r.squared`, `sigma`, `statistic`, `p.value`, `df`,
 #'   `df.residual`, `nobs`, `vcov_type`,
+#'   `n_clusters1`, `n_clusters2`,
 #'   `weak_id_stat`, `weak_id_robust_stat`,
 #'   `underid_stat`, `underid_p`,
 #'   `overid_stat`, `overid_p`,
 #'   `endogeneity_stat`, `endogeneity_p`,
 #'   `stock_wright_stat`, `stock_wright_p`, `stock_wright_df`,
-#'   `orthog_stat`, `orthog_p`.
+#'   `orthog_stat`, `orthog_p`,
+#'   `rf_f_stat`, `rf_f_p`.
 #' @export
 glance.ivreg2 <- function(x, ...) {
   diag <- x$diagnostics
