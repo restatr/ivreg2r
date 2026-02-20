@@ -34,6 +34,8 @@
   sdofminus = 0L,
   cluster_var = NULL,
   n_clusters = NULL,
+  n_clusters1 = NULL,
+  n_clusters2 = NULL,
   na.action = NULL,
   weights = NULL,
   endogenous = character(0),
@@ -103,9 +105,15 @@
 
 \item{sdofminus}{Integer: small-sample DoF adjustment (default 0).}
 
-\item{cluster_var}{Name of cluster variable (or NULL).}
+\item{cluster_var}{Name of cluster variable(s) (character scalar for one-way,
+character vector of length 2 for two-way, or NULL).}
 
-\item{n_clusters}{Number of clusters (or NULL).}
+\item{n_clusters}{Number of clusters: effective count used for small-sample
+corrections (min(M1, M2) for two-way), or NULL.}
+
+\item{n_clusters1}{Number of clusters in first dimension (two-way only), or NULL.}
+
+\item{n_clusters2}{Number of clusters in second dimension (two-way only), or NULL.}
 
 \item{na.action}{Information about removed observations.}
 

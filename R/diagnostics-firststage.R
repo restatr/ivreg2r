@@ -133,10 +133,10 @@
       }
 
       if (!is.null(cluster_vec)) {
-        scores <- rowsum(scores, cluster_vec, reorder = FALSE)
+        meat <- .cluster_meat(scores, cluster_vec)
+      } else {
+        meat <- crossprod(scores)
       }
-
-      meat <- crossprod(scores)
       robust_vcov <- ZtWZ_inv %*% meat %*% ZtWZ_inv
       RVR_robust <- robust_vcov[excl_idx, excl_idx, drop = FALSE]
 
@@ -328,9 +328,10 @@
             scores <- (sqrt_w * Z) * (sqrt_w * resid_aux)
           }
           if (!is.null(cluster_vec)) {
-            scores <- rowsum(scores, cluster_vec, reorder = FALSE)
+            meat <- .cluster_meat(scores, cluster_vec)
+          } else {
+            meat <- crossprod(scores)
           }
-          meat <- crossprod(scores)
           robust_vcov <- ZtWZ_inv %*% meat %*% ZtWZ_inv
           robust_vcov <- (robust_vcov + t(robust_vcov)) / 2
           RVR_robust <- robust_vcov[excl_idx, excl_idx, drop = FALSE]

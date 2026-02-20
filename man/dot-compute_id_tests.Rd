@@ -17,6 +17,7 @@
   L,
   K1,
   L1,
+  M = NULL,
   endo_names,
   excluded_names,
   has_intercept,

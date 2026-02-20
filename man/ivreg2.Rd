@@ -48,10 +48,12 @@ Coefficients, SEs, and the VCV matrix are identical to \code{lm()} for OLS.}
 Stata's \verb{ivreg2, robust}: use \code{"HC0"}. To match
 Stata's \verb{ivreg2, robust small}: use \code{"HC1"} with \code{small = TRUE}.}
 
-\item{clusters}{One-sided formula specifying a cluster variable (e.g.
-\code{~ firmid}). When supplied, computes one-way cluster-robust standard
-errors. The \code{small} argument controls whether the finite-sample
-correction \code{(N-1)/(N-K) * M/(M-1)} is applied (matching Stata's
+\item{clusters}{One-sided formula specifying one or two cluster variables
+(e.g. \code{~ firmid} for one-way, \code{~ firmid + year} for two-way).
+Two-way clustering uses the Cameron-Gelbach-Miller (2006) formula.
+The effective cluster count is \code{min(M1, M2)} per Stata convention.
+The \code{small} argument controls whether the finite-sample correction
+\code{(N-1)/(N-K) * M/(M-1)} is applied (matching Stata's
 \verb{cluster() small} combination).}
 
 \item{endog}{Character vector of endogenous regressor names to test for

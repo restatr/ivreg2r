@@ -81,10 +81,10 @@
     }
 
     if (!is.null(cluster_vec)) {
-      scores <- rowsum(scores, cluster_vec, reorder = FALSE)
+      meat <- .cluster_meat(scores, cluster_vec)
+    } else {
+      meat <- crossprod(scores)
     }
-
-    meat <- crossprod(scores)
     sandwich_full <- ZtWZ_inv %*% meat %*% ZtWZ_inv
 
     # Extract excluded-IV block and force symmetry

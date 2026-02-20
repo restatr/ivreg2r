@@ -247,10 +247,10 @@ test_that("non-formula clusters arg gives error", {
 # Input validation: multi-variable clusters → error
 # ============================================================================
 
-test_that("multi-variable clusters formula gives error", {
+test_that("three-variable clusters formula gives error", {
   expect_error(
-    ivreg2(mpg ~ wt + hp, data = mtcars, clusters = ~ cyl + gear),
-    "exactly one variable"
+    ivreg2(mpg ~ wt + hp, data = mtcars, clusters = ~ cyl + gear + carb),
+    "one or two variables"
   )
 })
 

@@ -27,10 +27,12 @@
 #'   (White robust with N/(N-K) finite-sample correction). To match
 #'   Stata's `ivreg2, robust`: use `"HC0"`. To match
 #'   Stata's `ivreg2, robust small`: use `"HC1"` with `small = TRUE`.
-#' @param clusters One-sided formula specifying a cluster variable (e.g.
-#'   `~ firmid`). When supplied, computes one-way cluster-robust standard
-#'   errors. The `small` argument controls whether the finite-sample
-#'   correction `(N-1)/(N-K) * M/(M-1)` is applied (matching Stata's
+#' @param clusters One-sided formula specifying one or two cluster variables
+#'   (e.g. `~ firmid` for one-way, `~ firmid + year` for two-way).
+#'   Two-way clustering uses the Cameron-Gelbach-Miller (2006) formula.
+#'   The effective cluster count is `min(M1, M2)` per Stata convention.
+#'   The `small` argument controls whether the finite-sample correction
+#'   `(N-1)/(N-K) * M/(M-1)` is applied (matching Stata's
 #'   `cluster() small` combination).
 #' @param endog Character vector of endogenous regressor names to test for
 #'   exogeneity (endogeneity test / C-statistic). If `NULL` (default), tests
@@ -151,24 +153,57 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   cluster_vec <- NULL
   cluster_var_name <- NULL
   M <- NULL
+  M1 <- NULL
+  M2 <- NULL
   if (!is.null(clusters)) {
-    cluster_var_name <- all.vars(clusters)
-    if (length(cluster_var_name) != 1L)
-      stop("`clusters` must reference exactly one variable.", call. = FALSE)
-    if (!cluster_var_name %in% names(data))
-      stop("Cluster variable '", cluster_var_name, "' not found in data.",
-           call. = FALSE)
+    cluster_var_names <- all.vars(clusters)
+    n_clvars <- length(cluster_var_names)
+    if (n_clvars < 1L || n_clvars > 2L)
+      stop("`clusters` must reference one or two variables.", call. = FALSE)
+
     # Align with model frame (respects subset + na.action).
-    # Use match() on rownames for integer positions, [[ for vector extraction.
-    # This works for tibbles (no character row indexing) and data.tables alike.
     mf_rows <- match(rownames(parsed$model_frame), rownames(data))
-    cluster_vec <- data[[cluster_var_name]][mf_rows]
-    if (anyNA(cluster_vec))
-      stop("Cluster variable '", cluster_var_name, "' contains NA values.",
-           call. = FALSE)
-    M <- length(unique(cluster_vec))
-    if (M < 2L)
-      stop("At least 2 clusters required; found ", M, ".", call. = FALSE)
+
+    if (n_clvars == 1L) {
+      # --- One-way clustering ---
+      cluster_var_name <- cluster_var_names
+      if (!cluster_var_name %in% names(data))
+        stop("Cluster variable '", cluster_var_name, "' not found in data.",
+             call. = FALSE)
+      cluster_vec <- data[[cluster_var_name]][mf_rows]
+      if (anyNA(cluster_vec))
+        stop("Cluster variable '", cluster_var_name, "' contains NA values.",
+             call. = FALSE)
+      M <- length(unique(cluster_vec))
+      if (M < 2L)
+        stop("At least 2 clusters required; found ", M, ".", call. = FALSE)
+    } else {
+      # --- Two-way clustering (Cameron-Gelbach-Miller) ---
+      cluster_var_name <- cluster_var_names
+      for (cvn in cluster_var_name) {
+        if (!cvn %in% names(data))
+          stop("Cluster variable '", cvn, "' not found in data.",
+               call. = FALSE)
+      }
+      cv1 <- data[[cluster_var_name[1L]]][mf_rows]
+      cv2 <- data[[cluster_var_name[2L]]][mf_rows]
+      if (anyNA(cv1))
+        stop("Cluster variable '", cluster_var_name[1L],
+             "' contains NA values.", call. = FALSE)
+      if (anyNA(cv2))
+        stop("Cluster variable '", cluster_var_name[2L],
+             "' contains NA values.", call. = FALSE)
+      M1 <- length(unique(cv1))
+      M2 <- length(unique(cv2))
+      if (M1 < 2L)
+        stop("At least 2 clusters required in '", cluster_var_name[1L],
+             "'; found ", M1, ".", call. = FALSE)
+      if (M2 < 2L)
+        stop("At least 2 clusters required in '", cluster_var_name[2L],
+             "'; found ", M2, ".", call. = FALSE)
+      M <- min(M1, M2)  # Stata convention: effective M = min(M1, M2)
+      cluster_vec <- list(cv1, cv2)
+    }
   }
 
   # --- 4. Dispatch ---
@@ -229,7 +264,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       residuals = fit$residuals, weights = parsed$weights,
       cluster_vec = cluster_vec, vcov_type = effective_vcov_type,
       N = parsed$N, K = parsed$K, L = parsed$L,
-      K1 = parsed$K1, L1 = parsed$L1,
+      K1 = parsed$K1, L1 = parsed$L1, M = M,
       endo_names = parsed$endo_names,
       excluded_names = parsed$excluded_names,
       has_intercept = parsed$has_intercept,
@@ -341,6 +376,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     sdofminus     = sdofminus,
     cluster_var   = cluster_var_name,
     n_clusters    = M,
+    n_clusters1   = M1,
+    n_clusters2   = M2,
     na.action     = parsed$na.action,
     weights       = w_raw,
     endogenous    = parsed$endo_names,

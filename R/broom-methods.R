@@ -111,6 +111,8 @@ glance.ivreg2 <- function(x, ...) {
     df.residual        = x$df.residual,
     nobs               = as.integer(x$nobs),
     vcov_type          = x$vcov_type,
+    n_clusters1        = x$n_clusters1 %||% NA_integer_,
+    n_clusters2        = x$n_clusters2 %||% NA_integer_,
     weak_id_stat       = .safe_diag(diag, "weak_id", "stat"),
     weak_id_robust_stat = .safe_diag(diag, "weak_id_robust", "stat"),
     underid_stat       = .safe_diag(diag, "underid", "stat"),

@@ -32,8 +32,12 @@ NULL
 #' @param nobs Number of observations (integer).
 #' @param vcov_type Character: `"iid"`, `"HC0"`, `"HC1"`, or `"CL"`.
 #' @param small Logical: whether small-sample corrections were applied.
-#' @param cluster_var Name of cluster variable (or NULL).
-#' @param n_clusters Number of clusters (or NULL).
+#' @param cluster_var Name of cluster variable(s) (character scalar for one-way,
+#'   character vector of length 2 for two-way, or NULL).
+#' @param n_clusters Number of clusters: effective count used for small-sample
+#'   corrections (min(M1, M2) for two-way), or NULL.
+#' @param n_clusters1 Number of clusters in first dimension (two-way only), or NULL.
+#' @param n_clusters2 Number of clusters in second dimension (two-way only), or NULL.
 #' @param na.action Information about removed observations.
 #' @param weights Weights used (or NULL).
 #' @param endogenous Character vector of endogenous variable names.
@@ -62,6 +66,7 @@ NULL
                          call, formula, terms, nobs, vcov_type, small,
                          dofminus = 0L, sdofminus = 0L,
                          cluster_var = NULL, n_clusters = NULL,
+                         n_clusters1 = NULL, n_clusters2 = NULL,
                          na.action = NULL, weights = NULL,
                          endogenous = character(0),
                          instruments = character(0),
@@ -101,6 +106,8 @@ NULL
       sdofminus      = sdofminus,
       cluster_var    = cluster_var,
       n_clusters     = n_clusters,
+      n_clusters1    = n_clusters1,
+      n_clusters2    = n_clusters2,
       na.action      = na.action,
       weights        = weights,
       endogenous     = endogenous,
@@ -360,8 +367,16 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   cat("\nObservations:", format(x$nobs, big.mark = ","), "\n")
   cat("VCV type:    ", .vcov_description(x$vcov_type, x$small), "\n")
   if (!is.null(x$n_clusters)) {
-    cat("Clusters:    ", format(x$n_clusters, big.mark = ","),
-        " (", x$cluster_var, ")\n", sep = "")
+    if (!is.null(x$n_clusters1)) {
+      # Two-way clustering
+      cat("Clusters:     ", format(x$n_clusters1, big.mark = ","),
+          " (", x$cluster_var[1L], "), ",
+          format(x$n_clusters2, big.mark = ","),
+          " (", x$cluster_var[2L], ")\n", sep = "")
+    } else {
+      cat("Clusters:    ", format(x$n_clusters, big.mark = ","),
+          " (", x$cluster_var, ")\n", sep = "")
+    }
   }
   if (!is.null(x$dofminus) && x$dofminus > 0L) {
     cat("dofminus:    ", x$dofminus, "\n")

@@ -2,7 +2,7 @@
 % Please edit documentation in R/vcov-robust.R
 \name{.compute_cl_vcov}
 \alias{.compute_cl_vcov}
-\title{Compute one-way cluster-robust VCV}
+\title{Compute cluster-robust VCV (one-way or two-way)}
 \usage{
 .compute_cl_vcov(
   bread,
@@ -25,14 +25,14 @@
 
 \item{resid}{Length-N residual vector.}
 
-\item{cluster_vec}{Length-N vector of cluster identifiers (need not be
-sequential integers).}
+\item{cluster_vec}{Length-N vector (one-way) or list of 2 vectors (two-way)
+of cluster identifiers.}
 
 \item{N}{Integer: number of observations.}
 
 \item{K}{Integer: number of regressors.}
 
-\item{M}{Integer: number of clusters.}
+\item{M}{Integer: number of clusters (min(M1, M2) for two-way).}
 
 \item{small}{Logical: if \code{TRUE}, apply the finite-sample correction
 \code{(N-1)/(N-K-sdofminus) * M/(M-1)}.}
@@ -47,7 +47,7 @@ K x K variance-covariance matrix.
 }
 \description{
 Sandwich estimator with scores aggregated within clusters via
-\code{\link[=rowsum]{rowsum()}}.  When \code{small = TRUE}, applies the Stata \code{ivreg2} correction
-\code{(N-1)/(N-K) * M/(M-1)}.
+\code{\link[=.cluster_meat]{.cluster_meat()}}.  When \code{small = TRUE}, applies the Stata \code{ivreg2}
+correction \code{(N-1)/(N-K-sdofminus) * M/(M-1)}.
 }
 \keyword{internal}

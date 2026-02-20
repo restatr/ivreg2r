@@ -222,10 +222,10 @@
 
   # Cluster or HC aggregation
   if (!is.null(cluster_vec)) {
-    scores <- rowsum(scores, cluster_vec, reorder = FALSE)
+    shat0 <- .cluster_meat(scores, cluster_vec) / N
+  } else {
+    shat0 <- crossprod(scores) / N
   }
-
-  shat0 <- crossprod(scores) / N
   (shat0 + t(shat0)) / 2  # force symmetry
 }
 
@@ -344,7 +344,7 @@
 #' @return List with underid, weak_id, weak_id_robust (or NULL).
 #' @keywords internal
 .compute_id_tests <- function(X, Z, y, residuals, weights, cluster_vec,
-                              vcov_type, N, K, L, K1, L1,
+                              vcov_type, N, K, L, K1, L1, M = NULL,
                               endo_names, excluded_names, has_intercept,
                               dofminus = 0L, sdofminus = 0L) {
 
@@ -437,7 +437,6 @@
     if (is.null(cluster_vec)) {
       wald_f <- kp_wald$chi2 / N * (N - L - dofminus - sdofminus) / L1
     } else {
-      M <- length(unique(cluster_vec))
       wald_f <- kp_wald$chi2 / (N - 1) * (N - L - sdofminus) *
         (M - 1) / M / L1
     }

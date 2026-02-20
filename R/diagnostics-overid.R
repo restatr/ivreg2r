@@ -48,8 +48,7 @@
     } else {
       scores <- Z * residuals
     }
-    cluster_scores <- rowsum(scores, cluster_vec, reorder = FALSE)
-    Omega <- crossprod(cluster_scores) / N
+    Omega <- .cluster_meat(scores, cluster_vec) / N
   } else {
     # HC path — divisor is N - dofminus (Stata livreg2.do line 326)
     if (!is.null(weights)) {
