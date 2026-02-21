@@ -42,6 +42,7 @@
   weight_type = "aweight",
   n_physical = NULL,
   endogenous = character(0),
+  endo_colnames = character(0),
   instruments = character(0),
   dropped_regressors = character(0),
   dropped_instruments = character(0),

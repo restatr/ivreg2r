@@ -79,6 +79,7 @@ NULL
                          na.action = NULL, weights = NULL,
                          weight_type = "aweight", n_physical = NULL,
                          endogenous = character(0),
+                         endo_colnames = character(0),
                          instruments = character(0),
                          dropped_regressors = character(0),
                          dropped_instruments = character(0),
@@ -129,6 +130,7 @@ NULL
       weight_type    = weight_type,
       n_physical     = n_physical,
       endogenous     = endogenous,
+      endo_colnames  = endo_colnames,
       instruments    = instruments,
       dropped_regressors      = dropped_regressors,
       dropped_instruments     = dropped_instruments,
@@ -471,7 +473,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   if (is_iv) {
     cat("\nInstrumented:         ", paste(x$endogenous, collapse = ", "), "\n")
     # Included instruments = exogenous regressors (excl intercept)
-    incl <- setdiff(names(coef(x)), c(x$endogenous, "(Intercept)"))
+    incl <- setdiff(names(coef(x)), c(x$endo_colnames, "(Intercept)"))
     if (length(incl) > 0L) {
       cat("Included instruments: ", paste(incl, collapse = ", "), "\n")
     }

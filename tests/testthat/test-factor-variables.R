@@ -88,6 +88,13 @@ test_that("factor endogenous regressor: diagnostics produce numeric results", {
   expect_true(is.finite(s$diagnostics$anderson_rubin$f_stat))
   expect_true(is.finite(s$diagnostics$endogeneity$stat))
 
+  # Summary footer should not list factor dummies as included instruments
+  footer <- capture.output(print(s))
+  incl_line <- grep("Included instruments:", footer, value = TRUE)
+  expect_false(grepl("region2", incl_line))
+  expect_false(grepl("region3", incl_line))
+  expect_false(grepl("region4", incl_line))
+
   # First-stage: one entry per dummy column
   expect_equal(length(fit$first_stage), 3L)
   expect_true(all(c("region2", "region3", "region4") %in%
