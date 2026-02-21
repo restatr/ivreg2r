@@ -160,25 +160,32 @@ See `?ivreg2` for full argument documentation.
 
 ## Stata parity
 
-`ivreg2r` is designed as a Stata `ivreg2` translation. The Tier 1 release
-matches Stata output within tight numerical tolerances (coefficients/SEs to
-1e-6 relative, test statistics to 1e-4 relative) across all VCE types.
+`ivreg2r` is designed as a Stata `ivreg2` translation. All outputs match
+Stata within tight numerical tolerances (coefficients/SEs to 1e-6 relative,
+test statistics to 1e-4 relative) across all VCE types. Verified against
+569 Stata fixture files and 5782 automated tests.
 
-### Tier 1 (current release)
+### Parity matrix (current release)
 
 | Category | Outputs |
 |----------|---------|
-| **Estimation** | 2SLS coefficients, SEs, VCV, residuals, fitted values |
+| **Estimation** | 2SLS, LIML, Fuller, k-class coefficients, SEs, VCV, residuals, fitted values |
 | **Model statistics** | R-squared, adjusted R-squared, RMSE, model F |
-| **Robust VCE** | Classical (iid), HC0, HC1, one-way cluster-robust |
+| **Robust VCE** | Classical (iid), HC0, HC1, one-way cluster, two-way cluster |
 | **Small-sample** | t/F vs z/chi-sq, N-K denominator, cluster corrections |
-| **Overidentification** | Sargan (iid), Hansen J (robust/cluster) |
+| **LIML/k-class** | Lambda, kclass_value, Fuller parameter; COVIV (2SLS bread) option |
+| **Overidentification** | Sargan (iid), Hansen J (robust/cluster), AR LIML overid (LR + linearized) |
 | **Identification** | Anderson LM, Cragg-Donald F, Kleibergen-Paap rk LM/F |
-| **Weak ID** | Stock-Yogo critical values (size/bias) |
+| **Weak ID** | Stock-Yogo critical values: IV size/bias, LIML size, Fuller rel/max bias |
 | **Endogeneity** | C-statistic (all VCE types) |
 | **Anderson-Rubin** | AR F and chi-sq (all VCE types) |
+| **Stock-Wright** | S statistic (weak-instrument-robust LM, all VCE types) |
+| **Orthogonality** | Instrument-subset C-stat via `orthog` (all VCE types) |
+| **Reduced-form** | RF coefficients, SEs, RMSE, F-stat; system mode with cross-equation VCV |
 | **First stage** | F-stat, partial R-sq, Shea partial R-sq, SW F/chi-sq, AP F/chi-sq |
-| **Weights** | Analytic weights (aweight) |
+| **Weights** | Analytic weights (aweight), frequency weights (fweight), probability weights (pweight) |
+| **DoF adjustments** | `dofminus`, `sdofminus` threaded through all computations |
+| **Factor variables** | Factor expansion for exog/endo/excluded; predict(newdata); collinear drops |
 | **S3 methods** | coef, vcov, residuals, fitted, nobs, formula, confint, predict, summary, print |
 | **Broom** | tidy, glance, augment |
 
@@ -186,10 +193,6 @@ matches Stata output within tight numerical tolerances (coefficients/SEs to
 
 | Feature | Tier |
 |---------|------|
-| LIML / Fuller / k-class | 2 |
-| Two-way clustering | 2 |
-| `orthog()` instrument orthogonality test | 2 |
-| Frequency / probability weights | 2 |
 | GMM / CUE | 3 |
 | HAC / AC kernels | 3 |
 
@@ -201,6 +204,11 @@ matches Stata output within tight numerical tolerances (coefficients/SEs to
 | Numerical method | Cross-products via Mata | QR decomposition | Better conditioning |
 | Diagnostics | Some computed at post-estimation | All computed at estimation time | Always available in `glance()` |
 | Sigma (weighted) | Weights normalized to sum to N | Same | Matches Stata; differs from `lm()` by `sqrt(N/sum(w))` |
+| Factor variables | `i.` prefix syntax | R `model.matrix()` / contrasts | R convention |
+| COVIV | Implicit for LIML+robust | Explicit `coviv = TRUE` | Explicit > implicit |
+| Reduced-form | `saverf` / `saverfprefix` | `reduced_form = "rf"` / `"system"` | R API convention |
+| Weight syntax | `[aw=var]` brackets | `weights=`, `weight_type=` args | R API convention |
+| dofminus | `dofminus()` option | `dofminus=` argument | Same behavior, R syntax |
 
 ## License
 
