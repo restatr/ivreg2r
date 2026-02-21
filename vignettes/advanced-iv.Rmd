@@ -401,20 +401,26 @@ out manually, then tell `ivreg2()` how many degrees of freedom were consumed.
 into dummy variables using R's standard contrast coding.
 
 ```{r factors}
-# Create a categorical variable
+# Create a three-level categorical variable from education
 mroz_work$educ_cat <- cut(mroz_work$educ, breaks = c(0, 11, 13, 20),
                           labels = c("low", "mid", "high"))
 
-fit_factor <- ivreg2(lwage ~ exper + expersq + factor(city),
+fit_factor <- ivreg2(lwage ~ exper + expersq + educ_cat,
                      data = mroz_work)
 coef(fit_factor)
 ```
+
+The factor `educ_cat` has three levels; with treatment contrasts (the default),
+two dummy variables appear in the output (`educ_catmid` and `educ_cathigh`),
+with `low` as the reference category.
 
 Prediction with `newdata` works correctly with factor variables --- the model
 remembers the factor levels from estimation and applies the same contrasts:
 
 ```{r factor-predict}
-new_obs <- data.frame(exper = 10, expersq = 100, city = c(0, 1))
+new_obs <- data.frame(exper = 10, expersq = 100,
+                      educ_cat = factor(c("low", "high"),
+                                        levels = c("low", "mid", "high")))
 predict(fit_factor, newdata = new_obs)
 ```
 
@@ -470,7 +476,7 @@ equivalents. For the basic feature mapping, see `vignette("introduction")`.
 | DoF adjustment | `ivreg2 ..., dofminus(5)` | `ivreg2(..., dofminus = 5)` |
 | Small-sample DoF adj. | `ivreg2 ..., sdofminus(2)` | `ivreg2(..., sdofminus = 2)` |
 | Reduced form (y-eq) | `ivreg2 ..., rf` | `ivreg2(..., reduced_form = "rf")` |
-| Reduced form (system) | `ivreg2 ..., savefirst` | `ivreg2(..., reduced_form = "system")` |
+| Reduced form (system) | `ivreg2 ..., savesfirst` | `ivreg2(..., reduced_form = "system")` |
 
 ## References
 
