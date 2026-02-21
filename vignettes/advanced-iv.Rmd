@@ -1,0 +1,498 @@
+---
+title: "Advanced IV Estimation with ivreg2r"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Advanced IV Estimation with ivreg2r}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+This vignette covers advanced features of `ivreg2r` beyond the basic 2SLS
+workflow introduced in `vignette("introduction")`. Topics include:
+
+- LIML, Fuller, and k-class estimation
+- Instrument validity tests (orthogonality C-statistic)
+- Weak-instrument-robust inference (Stock-Wright S statistic)
+- Two-way clustering
+- Reduced-form regression
+- Frequency and probability weights
+- Degrees-of-freedom adjustments
+- Factor variables
+
+We use two datasets: the Mroz (1987) female labor supply data and the
+Wooldridge wage panel.
+
+```{r setup}
+library(ivreg2r)
+data(mroz)
+data(wagepan)
+```
+
+## The Mroz dataset
+
+The Mroz (1987) dataset contains 753 married white women from the 1975 Panel
+Study of Income Dynamics (PSID). Of these, 428 were working (`inlf == 1`) and
+have observed wages. This is a classic IV application: years of education
+(`educ`) is potentially endogenous in a wage equation due to ability bias, and
+parental education (`motheduc`, `fatheduc`) serves as instruments.
+
+```{r mroz-subset}
+mroz_work <- subset(mroz, inlf == 1)
+nrow(mroz_work)
+```
+
+Our baseline specification regresses log wages on experience and its square
+(exogenous), with education instrumented by both parents' education:
+
+```{r mroz-baseline}
+fit_2sls <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                   data = mroz_work)
+summary(fit_2sls)
+```
+
+This overidentified model (2 instruments for 1 endogenous variable) provides a
+foundation for comparing estimators and exploring instrument diagnostics.
+
+## LIML and Fuller estimation
+
+### LIML
+
+Limited Information Maximum Likelihood (LIML) is an alternative to 2SLS that
+is less biased when instruments are weak. Use `method = "liml"`:
+
+```{r liml}
+fit_liml <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                   data = mroz_work, method = "liml")
+summary(fit_liml)
+```
+
+The output reports `lambda`, the LIML eigenvalue. When `lambda` is close to 1,
+LIML and 2SLS give similar results (2SLS is the special case `k = 1`). Large
+values of `lambda` indicate potential weak instrument problems.
+
+### Fuller modification
+
+Fuller's (1977) modified LIML uses `k = lambda - alpha / (N - L)` where `L`
+is the number of instruments (including exogenous regressors) and `alpha` is
+the Fuller parameter. Use `fuller = 1` for bias correction or `fuller = 4` to
+target minimum MSE:
+
+```{r fuller}
+fit_fuller1 <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                      data = mroz_work, fuller = 1)
+fit_fuller4 <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                      data = mroz_work, fuller = 4)
+```
+
+### k-class estimation
+
+The k-class family nests OLS (`k = 0`), 2SLS (`k = 1`), and LIML
+(`k = lambda`) as special cases. You can specify an arbitrary `k` via the
+`kclass` parameter:
+
+```{r kclass}
+fit_k05 <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                  data = mroz_work, kclass = 0.5)
+```
+
+### COVIV
+
+When using LIML or k-class with robust or cluster-robust standard errors, the
+default sandwich bread uses the k-class projection matrix. The COVIV option
+(`coviv = TRUE`) switches to the 2SLS bread `(X_hat'X_hat)^{-1}`, which can be
+more robust to misspecification of the LIML model:
+
+```{r coviv}
+fit_coviv <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                    data = mroz_work, method = "liml", vcov = "HC1",
+                    small = TRUE, coviv = TRUE)
+```
+
+### Comparing estimators
+
+Use `tidy()` to build a comparison table across estimators:
+
+```{r compare-estimators}
+models <- list(
+  "2SLS"      = fit_2sls,
+  "LIML"      = fit_liml,
+  "Fuller(1)" = fit_fuller1,
+  "Fuller(4)" = fit_fuller4,
+  "k=0.5"     = fit_k05
+)
+comparison <- do.call(rbind, lapply(names(models), function(nm) {
+  tbl <- tidy(models[[nm]])
+  tbl$model <- nm
+  tbl
+}))
+# Show education coefficient across estimators
+comparison[comparison$term == "educ", c("model", "estimate", "std.error")]
+```
+
+With strong instruments (as in this specification), all estimators produce
+similar point estimates. Differences become more pronounced with weaker
+instruments.
+
+## Instrument validity tests
+
+### Overidentification recap
+
+With two instruments and one endogenous variable, the Sargan (1958) test
+checks whether both instruments satisfy the exclusion restriction:
+
+```{r sargan}
+glance(fit_2sls)[, c("overid_stat", "overid_p")]
+```
+
+### Orthogonality test (C-statistic)
+
+The `orthog` argument tests whether a *subset* of instruments is exogenous,
+conditional on the remaining instruments being valid. This implements the
+difference-in-Sargan C-statistic (Hayashi, 2000).
+
+For example, to test whether `motheduc` is a valid instrument while
+maintaining `fatheduc`:
+
+```{r orthog}
+fit_orthog <- ivreg2(
+  lwage ~ exper + expersq | educ | motheduc + fatheduc,
+  data = mroz_work, orthog = c("motheduc")
+)
+summary(fit_orthog)
+```
+
+The orthogonality test null hypothesis is that `motheduc` is uncorrelated with
+the structural error. Failure to reject supports its validity as an instrument.
+
+The test also works with robust and cluster-robust standard errors, where it
+uses the Hansen J difference form:
+
+```{r orthog-robust}
+fit_orthog_robust <- ivreg2(
+  lwage ~ exper + expersq | educ | motheduc + fatheduc,
+  data = mroz_work, orthog = c("motheduc"), vcov = "HC1", small = TRUE
+)
+glance(fit_orthog_robust)[, c("orthog_stat", "orthog_p")]
+```
+
+### Anderson-Rubin LIML overidentification
+
+When using LIML with iid errors, two additional overidentification statistics
+are reported: the Anderson-Rubin likelihood-ratio (LR) statistic and its
+linearized form. These are alternatives to the Sargan test specific to the
+LIML framework:
+
+```{r ar-overid}
+glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
+                      "ar_overid_lin_stat", "ar_overid_lin_p")]
+```
+
+## Weak-instrument-robust inference
+
+### Stock-Wright S statistic
+
+The Stock-Wright (2000) S statistic is a weak-instrument-robust analog of the
+overidentification test. Unlike the Wald test on 2SLS coefficients, the S
+statistic has correct size even when instruments are weak. It is automatically
+computed for all IV models:
+
+```{r stock-wright}
+glance(fit_2sls)[, c("stock_wright_stat", "stock_wright_p")]
+```
+
+Under iid errors, the S statistic equals the Sargan statistic (for 2SLS). The
+two diverge with robust or clustered standard errors.
+
+### When instruments are genuinely weak
+
+To illustrate the value of weak-instrument-robust inference, consider an
+overambitious specification that treats both `educ` and `exper` as endogenous,
+instrumenting with `motheduc`, `fatheduc`, and `huseduc`:
+
+```{r weak-instruments}
+fit_weak <- ivreg2(
+  lwage ~ expersq | educ + exper | motheduc + fatheduc + huseduc,
+  data = mroz_work, small = TRUE
+)
+summary(fit_weak)
+```
+
+Note the weak identification F statistic --- with multiple endogenous
+variables and marginal instruments, the Cragg-Donald F drops substantially.
+In such cases, the Stock-Wright S statistic provides more reliable inference
+than standard Wald tests on the 2SLS coefficients.
+
+## Two-way clustering
+
+### The wagepan dataset
+
+The Wooldridge wage panel contains 4,360 observations on 545 young men from
+the NLSY, observed annually from 1980 to 1987:
+
+```{r wagepan-overview}
+nrow(wagepan)
+length(unique(wagepan$nr))    # persons
+length(unique(wagepan$year))  # years
+```
+
+Panel data like this can exhibit correlation within individuals over time
+*and* within years across individuals. Two-way clustering accounts for both.
+
+### One-way vs. two-way clustering
+
+Compare one-way clustering (by person) with two-way clustering (by person and
+year):
+
+```{r twoway}
+fit_1way <- ivreg2(
+  lwage ~ educ + black + hisp + exper + expersq + married + union,
+  data = wagepan, clusters = ~ nr, small = TRUE
+)
+
+fit_2way <- ivreg2(
+  lwage ~ educ + black + hisp + exper + expersq + married + union,
+  data = wagepan, clusters = ~ nr + year, small = TRUE
+)
+```
+
+Compare the standard errors:
+
+```{r twoway-compare}
+se_comparison <- data.frame(
+  term = names(coef(fit_1way)),
+  se_1way = tidy(fit_1way)$std.error,
+  se_2way = tidy(fit_2way)$std.error
+)
+se_comparison$ratio <- se_comparison$se_2way / se_comparison$se_1way
+se_comparison
+```
+
+Two-way clustering uses the Cameron, Gelbach & Miller (2011) formula:
+`V_twoway = V_cluster1 + V_cluster2 - V_intersection`. The effective cluster
+count is `min(M1, M2)`. With 545 persons but only 8 years, the effective
+cluster count is 8, which affects degrees of freedom for t-tests (df = 7
+for the cluster dimension).
+
+## Reduced-form regression
+
+The reduced form regresses the outcome directly on the full instrument set
+(exogenous regressors plus excluded instruments), bypassing the first stage.
+
+### Single-equation reduced form
+
+Use `reduced_form = "rf"` to store the y-equation reduced form alongside the
+structural estimates:
+
+```{r rf}
+fit_rf <- ivreg2(
+  lwage ~ exper + expersq | educ | motheduc + fatheduc,
+  data = mroz_work, reduced_form = "rf"
+)
+
+# Reduced-form coefficients
+fit_rf$reduced_form$coefficients
+
+# The RF F-statistic for excluded instruments equals the Anderson-Rubin F
+fit_rf$reduced_form$f_stat
+```
+
+### System reduced form
+
+Use `reduced_form = "system"` to estimate the full system --- one equation for
+each endogenous variable plus the outcome --- with a cross-equation
+variance-covariance matrix:
+
+```{r rf-system}
+fit_system <- ivreg2(
+  lwage ~ exper + expersq | educ | motheduc + fatheduc,
+  data = mroz_work, reduced_form = "system"
+)
+
+# Equation names
+fit_system$reduced_form$depvar
+
+# Cross-equation VCV dimensions
+dim(fit_system$reduced_form$vcov)
+```
+
+## Weight types
+
+`ivreg2r` supports three weight types, matching Stata's `[aw=]`, `[fw=]`, and
+`[pw=]` syntax.
+
+### Analytic weights (default)
+
+Analytic weights (`weight_type = "aweight"`, the default) are the standard
+weighted least squares weights, normalized internally to sum to N:
+
+```{r aweight}
+fit_aw <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                 data = mroz_work, weights = hours, weight_type = "aweight")
+```
+
+### Frequency weights
+
+Frequency weights (`weight_type = "fweight"`) treat each observation as
+representing `w` identical observations. The effective sample size becomes
+`N = sum(weights)`, which affects all degrees-of-freedom calculations:
+
+```{r fweight}
+# Create an integer frequency weight for illustration
+mroz_work$fw <- as.integer(pmin(mroz_work$hours %/% 500, 5) + 1L)
+
+fit_fw <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                 data = mroz_work, weights = fw, weight_type = "fweight")
+nobs(fit_fw)  # N = sum(fw), not nrow(mroz_work)
+```
+
+### Probability weights
+
+Probability weights (`weight_type = "pweight"`) are sampling/survey weights.
+They automatically force robust standard errors regardless of the `vcov`
+argument:
+
+```{r pweight}
+fit_pw <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                 data = mroz_work, weights = hours, weight_type = "pweight")
+fit_pw$vcov_type  # forced to HC0 or HC1
+```
+
+## Degrees-of-freedom adjustments
+
+When fixed effects or other controls have been partialled out before
+estimation, use `dofminus` and `sdofminus` to adjust the degrees of freedom
+without re-estimating:
+
+- `dofminus`: subtracted from N in large-sample variance formulas (affects
+  sigma and VCV scaling)
+- `sdofminus`: subtracted from residual df alongside K (affects small-sample
+  corrections)
+
+```{r dofminus}
+fit_base <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                   data = mroz_work, small = TRUE)
+
+fit_dof <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+                  data = mroz_work, small = TRUE,
+                  dofminus = 5, sdofminus = 2)
+
+# Compare sigma (RMSE)
+c(base = fit_base$sigma, adjusted = fit_dof$sigma)
+
+# Compare residual df
+c(base = fit_base$df.residual, adjusted = fit_dof$df.residual)
+```
+
+This is useful when absorbing high-dimensional fixed effects: you partial them
+out manually, then tell `ivreg2()` how many degrees of freedom were consumed.
+
+## Factor variables
+
+`ivreg2r` handles factor (categorical) variables automatically, expanding them
+into dummy variables using R's standard contrast coding.
+
+```{r factors}
+# Create a categorical variable
+mroz_work$educ_cat <- cut(mroz_work$educ, breaks = c(0, 11, 13, 20),
+                          labels = c("low", "mid", "high"))
+
+fit_factor <- ivreg2(lwage ~ exper + expersq + factor(city),
+                     data = mroz_work)
+coef(fit_factor)
+```
+
+Prediction with `newdata` works correctly with factor variables --- the model
+remembers the factor levels from estimation and applies the same contrasts:
+
+```{r factor-predict}
+new_obs <- data.frame(exper = 10, expersq = 100, city = c(0, 1))
+predict(fit_factor, newdata = new_obs)
+```
+
+## Model comparison workflow
+
+A common workflow is to compare OLS, 2SLS, LIML, and Fuller(1) estimates for
+the same specification. The `tidy()` and `glance()` methods make this easy:
+
+```{r model-comparison}
+models <- list(
+  OLS       = ivreg2(lwage ~ exper + expersq + educ, data = mroz_work),
+  `2SLS`    = fit_2sls,
+  LIML      = fit_liml,
+  `Fuller(1)` = fit_fuller1
+)
+
+# Coefficient comparison for education
+coef_table <- do.call(rbind, lapply(names(models), function(nm) {
+  tbl <- tidy(models[[nm]])
+  tbl$model <- nm
+  tbl
+}))
+coef_table[coef_table$term == "educ",
+           c("model", "estimate", "std.error", "p.value")]
+```
+
+```{r model-diagnostics}
+# Model-level diagnostics comparison
+diag_table <- do.call(rbind, lapply(names(models), function(nm) {
+  gl <- glance(models[[nm]])
+  gl$model <- nm
+  gl
+}))
+diag_table[, c("model", "method", "r.squared", "sigma", "nobs")]
+```
+
+## Stata migration --- advanced features
+
+The table below maps Tier 2 Stata `ivreg2` commands to their `ivreg2r`
+equivalents. For the basic feature mapping, see `vignette("introduction")`.
+
+| Task | Stata | R (`ivreg2r`) |
+|------|-------|---------------|
+| LIML | `ivreg2 ..., liml` | `ivreg2(..., method = "liml")` |
+| Fuller(1) | `ivreg2 ..., fuller(1)` | `ivreg2(..., fuller = 1)` |
+| Fuller(4) | `ivreg2 ..., fuller(4)` | `ivreg2(..., fuller = 4)` |
+| k-class | `ivreg2 ..., kclass(0.5)` | `ivreg2(..., kclass = 0.5)` |
+| COVIV | `ivreg2 ..., liml coviv` | `ivreg2(..., method = "liml", coviv = TRUE)` |
+| Two-way cluster | `ivreg2 ..., cluster(g1 g2)` | `ivreg2(..., clusters = ~ g1 + g2)` |
+| Orthogonality test | `ivreg2 ..., orthog(z1)` | `ivreg2(..., orthog = c("z1"))` |
+| Frequency weights | `ivreg2 ... [fw=w]` | `ivreg2(..., weights = w, weight_type = "fweight")` |
+| Probability weights | `ivreg2 ... [pw=w]` | `ivreg2(..., weights = w, weight_type = "pweight")` |
+| DoF adjustment | `ivreg2 ..., dofminus(5)` | `ivreg2(..., dofminus = 5)` |
+| Small-sample DoF adj. | `ivreg2 ..., sdofminus(2)` | `ivreg2(..., sdofminus = 2)` |
+| Reduced form (y-eq) | `ivreg2 ..., rf` | `ivreg2(..., reduced_form = "rf")` |
+| Reduced form (system) | `ivreg2 ..., savefirst` | `ivreg2(..., reduced_form = "system")` |
+
+## References
+
+- Anderson, T.W. and Rubin, H. (1949). "Estimation of the Parameters of a
+  Single Equation in a Complete System of Stochastic Equations." *Annals of
+  Mathematical Statistics*, 20(1), 46--63.
+- Cameron, A.C., Gelbach, J.B., and Miller, D.L. (2011). "Robust Inference
+  with Multiway Clustering." *Journal of Business & Economic Statistics*,
+  29(2), 238--249.
+- Fuller, W.A. (1977). "Some Properties of a Modification of the Limited
+  Information Estimator." *Econometrica*, 45(4), 939--953.
+- Hayashi, F. (2000). *Econometrics*. Princeton University Press.
+- Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married
+  Women's Hours of Work to Economic and Statistical Assumptions."
+  *Econometrica*, 55(4), 765--799.
+- Sargan, J.D. (1958). "The Estimation of Economic Relationships Using
+  Instrumental Variables." *Econometrica*, 26(3), 393--415.
+- Stock, J.H. and Wright, J.H. (2000). "GMM with Weak Identification."
+  *Econometrica*, 68(5), 1055--1096.
+- Stock, J.H. and Yogo, M. (2005). "Testing for Weak Instruments in Linear IV
+  Regression." In D.W.K. Andrews and J.H. Stock (Eds.), *Identification and
+  Inference for Econometric Models: Essays in Honor of Thomas Rothenberg*.
+  Cambridge University Press.
+- Wooldridge, J.M. (2010). *Econometric Analysis of Cross Section and Panel
+  Data*, 2nd ed. MIT Press.

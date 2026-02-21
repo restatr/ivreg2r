@@ -157,6 +157,9 @@ Important caveats:
 - The test has low power when instruments are weak --- failure to reject does
   not guarantee that the instruments are valid.
 
+To test a *subset* of instruments while maintaining the rest, use the `orthog`
+argument --- see `vignette("advanced-iv")` for details.
+
 ### Endogeneity test (C-statistic)
 
 ```
@@ -187,6 +190,10 @@ jointly zero *and* the overidentifying restrictions hold.
 This serves as a useful cross-check: if the standard t-test says an endogenous
 regressor is significant but the AR test does not reject, weak instruments may
 be distorting inference.
+
+The Stock-Wright (2000) S statistic is a related weak-instrument-robust test
+that is also automatically computed. See `vignette("advanced-iv")` for more on
+weak-instrument-robust inference.
 
 ## First-stage diagnostics
 
@@ -245,6 +252,9 @@ Cluster-robust VCE is automatically used when `clusters` is supplied. The
 `small = TRUE` option adds the standard cluster finite-sample correction
 factor, `(N-1)/(N-K) * M/(M-1)`, where M is the number of clusters.
 
+For two-way clustering (e.g., by firm and year in a panel), use
+`clusters = ~ var1 + var2`. See `vignette("advanced-iv")` for details.
+
 ### VCE option summary
 
 | `vcov` | `clusters` | `small` | Equivalent Stata command |
@@ -270,6 +280,18 @@ summary(fit_wt)
 Weights are internally normalized to sum to N, following Stata's convention.
 Coefficients, standard errors, and all test statistics are unaffected by weight
 scale.
+
+`ivreg2r` also supports frequency weights (`weight_type = "fweight"`) and
+probability/sampling weights (`weight_type = "pweight"`). See
+`vignette("advanced-iv")` for details.
+
+## Beyond 2SLS
+
+This vignette focuses on 2SLS, but `ivreg2r` also supports LIML, Fuller,
+and k-class estimation via the `method`, `fuller`, and `kclass` arguments.
+These alternative estimators are less biased than 2SLS when instruments are
+weak, at the cost of slightly larger variance. See `vignette("advanced-iv")`
+for examples and comparisons.
 
 ## Confidence intervals
 
@@ -331,6 +353,18 @@ augment(fit_iv) |> head()
 | Tidy coef table | — | `tidy(fit)` |
 | Summary statistics | `ereturn list` | `glance(fit)` |
 | Diagnostics | Displayed after estimation | Displayed by `summary(fit)` |
+| LIML | `ivreg2 ..., liml` | `ivreg2(..., method = "liml")` |
+| Fuller(1) | `ivreg2 ..., fuller(1)` | `ivreg2(..., fuller = 1)` |
+| k-class | `ivreg2 ..., kclass(0.5)` | `ivreg2(..., kclass = 0.5)` |
+| COVIV | `ivreg2 ..., liml coviv` | `ivreg2(..., method = "liml", coviv = TRUE)` |
+| Two-way cluster | `ivreg2 ..., cluster(g1 g2)` | `ivreg2(..., clusters = ~ g1 + g2)` |
+| Orthogonality test | `ivreg2 ..., orthog(z1)` | `ivreg2(..., orthog = c("z1"))` |
+| Frequency weights | `ivreg2 ... [fw=w]` | `ivreg2(..., weights = w, weight_type = "fweight")` |
+| Probability weights | `ivreg2 ... [pw=w]` | `ivreg2(..., weights = w, weight_type = "pweight")` |
+| DoF adjustment | `ivreg2 ..., dofminus(5)` | `ivreg2(..., dofminus = 5)` |
+| Reduced form | `ivreg2 ..., rf` | `ivreg2(..., reduced_form = "rf")` |
+
+See `vignette("advanced-iv")` for detailed examples of all advanced features.
 
 ## References
 

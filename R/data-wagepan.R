@@ -1,0 +1,33 @@
+#' Wooldridge Wage Panel Dataset
+#'
+#' Balanced panel data from the National Longitudinal Survey of Youth (NLSY),
+#' 1980--1987. Contains 4,360 observations on 545 young men observed over 8
+#' years. Useful for demonstrating panel methods, including two-way clustering
+#' by individual and year.
+#'
+#' @format A data frame with 4,360 observations and 11 variables:
+#' \describe{
+#'   \item{nr}{Person identifier.}
+#'   \item{year}{Calendar year (1980--1987).}
+#'   \item{lwage}{Log hourly wage.}
+#'   \item{educ}{Years of education.}
+#'   \item{black}{Black (binary).}
+#'   \item{hisp}{Hispanic (binary).}
+#'   \item{exper}{Years of labor market experience.}
+#'   \item{expersq}{Experience squared (\code{exper^2}).}
+#'   \item{married}{Married (binary).}
+#'   \item{union}{Union member (binary).}
+#'   \item{hours}{Annual hours worked.}
+#' }
+#'
+#' @source
+#' Wooldridge, J.M. (2010). *Econometric Analysis of Cross Section and Panel
+#' Data*, 2nd ed. MIT Press.
+#'
+#' @examples
+#' data(wagepan)
+#' # OLS with two-way clustering by person and year
+#' fit <- ivreg2(lwage ~ educ + black + hisp + exper + expersq + married + union,
+#'               data = wagepan, clusters = ~ nr + year, small = TRUE)
+#' summary(fit)
+"wagepan"

@@ -1,0 +1,49 @@
+#' Mroz (1987) Female Labor Supply Dataset
+#'
+#' Cross-sectional data on 753 married white women from the Panel Study of
+#' Income Dynamics (PSID), 1975. Of these, 428 were working (\code{inlf == 1})
+#' with observed wages. Used by Mroz (1987) to study married women's labor
+#' force participation and hours of work. A classic IV application instruments
+#' education with parental education (\code{motheduc}, \code{fatheduc}).
+#'
+#' @format A data frame with 753 observations and 22 variables:
+#' \describe{
+#'   \item{inlf}{In the labor force in 1975 (binary).}
+#'   \item{hours}{Hours worked in 1975.}
+#'   \item{kidslt6}{Number of children younger than 6.}
+#'   \item{kidsge6}{Number of children aged 6--18.}
+#'   \item{age}{Age in years.}
+#'   \item{educ}{Years of education.}
+#'   \item{wage}{Estimated hourly wage (1975 dollars).}
+#'   \item{repwage}{Reported hourly wage at interview (1976).}
+#'   \item{hushrs}{Husband's hours worked in 1975.}
+#'   \item{husage}{Husband's age.}
+#'   \item{huseduc}{Husband's years of education.}
+#'   \item{huswage}{Husband's hourly wage (1975 dollars).}
+#'   \item{faminc}{Family income (1975 dollars).}
+#'   \item{mtr}{Federal marginal tax rate facing the woman.}
+#'   \item{motheduc}{Mother's years of education.}
+#'   \item{fatheduc}{Father's years of education.}
+#'   \item{unem}{Unemployment rate in county of residence.}
+#'   \item{city}{Lives in SMSA (binary).}
+#'   \item{exper}{Years of labor market experience.}
+#'   \item{nwifeinc}{Non-wife household income (\code{faminc - wage * hours},
+#'     in thousands of 1975 dollars).}
+#'   \item{lwage}{Log estimated hourly wage.}
+#'   \item{expersq}{Experience squared (\code{exper^2}).}
+#' }
+#'
+#' @source
+#' Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married
+#' Women's Hours of Work to Economic and Statistical Assumptions."
+#' *Econometrica*, 55(4), 765--799.
+#'
+#' @examples
+#' data(mroz)
+#' # Restrict to working women (observed wages)
+#' mroz_work <- subset(mroz, inlf == 1)
+#' # IV regression: instrument education with parental education
+#' fit <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+#'               data = mroz_work)
+#' summary(fit)
+"mroz"
