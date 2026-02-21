@@ -268,3 +268,33 @@ for (vce_combo in list(
     check_anderson_rubin(fit, fixture_file, label)
   }
 }
+
+
+# ============================================================================
+# sim_no_constant: y ~ 0 + x1 | endo1 | z1+z2 (noconstant)
+# ============================================================================
+
+sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+if (file.exists(sim_noconst_path)) {
+  sim_noconst <- read.csv(sim_noconst_path)
+}
+
+for (vce_combo in list(
+  list(vcov = "iid",  small = FALSE, suffix = "iid"),
+  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
+  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
+  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+)) {
+  fixture_file <- file.path(
+    fixture_dir,
+    paste0("sim_no_constant_diagnostics_", vce_combo$suffix, ".csv")
+  )
+  label <- paste("sim_no_constant", vce_combo$suffix)
+
+  if (file.exists(sim_noconst_path) && file.exists(fixture_file)) {
+    fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2,
+                  data = sim_noconst, vcov = vce_combo$vcov,
+                  small = vce_combo$small)
+    check_anderson_rubin(fit, fixture_file, label)
+  }
+}

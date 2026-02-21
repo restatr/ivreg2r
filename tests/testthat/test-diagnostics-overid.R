@@ -231,3 +231,178 @@ test_that("HC0 and HC1 produce identical Hansen J statistic", {
   expect_equal(fit_hc0$diagnostics$overid$stat,
                fit_hc1$diagnostics$overid$stat)
 })
+
+
+# ============================================================================
+# sim_no_constant: y ~ 0 + x1 | endo1 | z1+z2 (noconstant, overid_df=1)
+# ============================================================================
+
+sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+if (file.exists(sim_noconst_path)) {
+  sim_noconst <- read.csv(sim_noconst_path)
+}
+
+test_that("Sargan stat matches Stata sim_no_constant iid fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_iid.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$overid$test_name, "Sargan")
+  expect_equal(fit$diagnostics$overid$stat, fixture$sargan,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, fixture$sarganp,
+               tolerance = stata_tol$pval)
+  expect_identical(fit$diagnostics$overid$df, as.integer(fixture$sargandf))
+})
+
+test_that("Sargan stat matches Stata sim_no_constant iid_small fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_iid_small.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, small = TRUE)
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$overid$stat, fixture$sargan,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, fixture$sarganp,
+               tolerance = stata_tol$pval)
+})
+
+test_that("Hansen J stat matches Stata sim_no_constant hc1 fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
+  expect_equal(fit$diagnostics$overid$stat, fixture$j,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, fixture$jp,
+               tolerance = stata_tol$pval)
+  expect_identical(fit$diagnostics$overid$df, as.integer(fixture$jdf))
+})
+
+test_that("Hansen J stat matches Stata sim_no_constant hc1_small fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1_small.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst,
+                vcov = "HC1", small = TRUE)
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$overid$stat, fixture$j,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, fixture$jp,
+               tolerance = stata_tol$pval)
+})
+
+test_that("small does not change overid statistic (sim_no_constant)", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+
+  fit1 <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, small = FALSE)
+  fit2 <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, small = TRUE)
+  expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
+
+  fit3 <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst,
+                 vcov = "HC1", small = FALSE)
+  fit4 <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst,
+                 vcov = "HC1", small = TRUE)
+  expect_equal(fit3$diagnostics$overid$stat, fit4$diagnostics$overid$stat)
+})
+
+
+# ============================================================================
+# sim_multi_endo: y ~ x1+x2 | endo1+endo2 | z1+z2+z3+z4 (overid_df=2)
+# ============================================================================
+
+sim_multi_path <- file.path(fixture_dir, "sim_multi_endo_data.csv")
+if (file.exists(sim_multi_path)) {
+  sim_multi <- read.csv(sim_multi_path)
+}
+
+test_that("Sargan stat matches Stata sim_multi_endo iid fixture", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_iid.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi)
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$overid$test_name, "Sargan")
+  expect_equal(fit$diagnostics$overid$stat, fixture$sargan,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, fixture$sarganp,
+               tolerance = stata_tol$pval)
+  expect_identical(fit$diagnostics$overid$df, as.integer(fixture$sargandf))
+})
+
+test_that("Sargan stat matches Stata sim_multi_endo iid_small fixture", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_iid_small.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi, small = TRUE)
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$overid$stat, fixture$sargan,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, fixture$sarganp,
+               tolerance = stata_tol$pval)
+})
+
+test_that("Hansen J stat matches Stata sim_multi_endo hc1 fixture", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_hc1.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi, vcov = "HC1")
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
+  expect_equal(fit$diagnostics$overid$stat, fixture$j,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, fixture$jp,
+               tolerance = stata_tol$pval)
+  expect_identical(fit$diagnostics$overid$df, as.integer(fixture$jdf))
+})
+
+test_that("Hansen J stat matches Stata sim_multi_endo hc1_small fixture", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_hc1_small.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi, vcov = "HC1", small = TRUE)
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$overid$stat, fixture$j,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, fixture$jp,
+               tolerance = stata_tol$pval)
+})
+
+test_that("small does not change overid statistic (sim_multi_endo)", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+
+  fit1 <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                 data = sim_multi, small = FALSE)
+  fit2 <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                 data = sim_multi, small = TRUE)
+  expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
+
+  fit3 <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                 data = sim_multi, vcov = "HC1", small = FALSE)
+  fit4 <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                 data = sim_multi, vcov = "HC1", small = TRUE)
+  expect_equal(fit3$diagnostics$overid$stat, fit4$diagnostics$overid$stat)
+})

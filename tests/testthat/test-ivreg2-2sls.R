@@ -271,3 +271,69 @@ test_that("2SLS small=TRUE uses N-K denominator", {
   expect_equal(fit_small$sigma^2 * (N - K), fit_large$sigma^2 * N,
                tolerance = .Machine$double.eps^0.5)
 })
+
+
+# ============================================================================
+# sim_no_constant: y ~ 0 + x1 | endo1 | z1+z2 (noconstant)
+# ============================================================================
+
+sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+if (file.exists(sim_noconst_path)) {
+  sim_noconst <- read.csv(sim_noconst_path)
+}
+
+test_that("2SLS coefficients match Stata sim_no_constant iid fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  noconst_coef_path <- file.path(fixture_dir, "sim_no_constant_coef_iid.csv")
+  skip_if(!file.exists(noconst_coef_path), "Coefficient fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
+  fixture <- read.csv(noconst_coef_path)
+
+  for (i in seq_len(nrow(fixture))) {
+    term <- fixture$term[i]
+    r_name <- if (term == "_cons") "(Intercept)" else term
+    expect_true(r_name %in% names(coef(fit)),
+                info = paste("Missing coefficient:", r_name))
+    expect_equal(
+      unname(coef(fit)[r_name]), fixture$estimate[i],
+      tolerance = stata_tol$coef,
+      info = paste("Coefficient mismatch:", r_name)
+    )
+  }
+})
+
+test_that("no-constant model has no intercept in coef()", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
+  expect_false("(Intercept)" %in% names(coef(fit)))
+})
+
+test_that("2SLS vcov matches Stata sim_no_constant iid fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  noconst_vcov_path <- file.path(fixture_dir, "sim_no_constant_vcov_iid.csv")
+  skip_if(!file.exists(noconst_vcov_path), "VCV fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
+  fixture <- read.csv(noconst_vcov_path)
+
+  stata_names <- fixture$term
+  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
+  vcov_cols <- grep("^vcov_", names(fixture), value = TRUE)
+  V_stata <- as.matrix(fixture[, vcov_cols])
+  rownames(V_stata) <- r_names
+  col_stata <- sub("^vcov_", "", vcov_cols)
+  colnames(V_stata) <- ifelse(col_stata == "_cons", "(Intercept)", col_stata)
+
+  shared <- intersect(r_names, rownames(fit$vcov))
+  for (rn in shared) {
+    for (cn in shared) {
+      expect_equal(
+        fit$vcov[rn, cn], V_stata[rn, cn],
+        tolerance = stata_tol$vcov,
+        info = paste("VCV mismatch:", rn, cn)
+      )
+    }
+  }
+})

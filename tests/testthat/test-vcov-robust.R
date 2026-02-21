@@ -209,3 +209,34 @@ test_that("HC1 VCV is symmetric", {
                 data = card, vcov = "HC1")
   expect_equal(fit$vcov, t(fit$vcov), tolerance = .Machine$double.eps^0.5)
 })
+
+
+# ============================================================================
+# sim_no_constant: HC0/HC1 VCV (noconstant model)
+# ============================================================================
+
+sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+if (file.exists(sim_noconst_path)) {
+  sim_noconst <- read.csv(sim_noconst_path)
+}
+
+# Helper: read VCV fixture and convert Stata names to R names
+# (already defined above as read_vcov_fixture)
+
+test_that("2SLS HC0 VCV matches Stata sim_no_constant robust fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  vcov_path <- file.path(fixture_dir, "sim_no_constant_vcov_hc1.csv")
+  skip_if(!file.exists(vcov_path), "VCV fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC0")
+  expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
+})
+
+test_that("2SLS HC1 VCV matches Stata sim_no_constant robust small fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  vcov_path <- file.path(fixture_dir, "sim_no_constant_vcov_hc1_small.csv")
+  skip_if(!file.exists(vcov_path), "VCV fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
+})

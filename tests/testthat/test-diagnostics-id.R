@@ -426,3 +426,88 @@ test_that("Cragg-Donald F is identical across VCE types", {
   expect_equal(fit_iid$diagnostics$weak_id$stat,
                fit_hc1$diagnostics$weak_id$stat)
 })
+
+
+# ============================================================================
+# sim_no_constant: y ~ 0 + x1 | endo1 | z1+z2 (noconstant)
+# ============================================================================
+
+sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+if (file.exists(sim_noconst_path)) {
+  sim_noconst <- read.csv(sim_noconst_path)
+}
+
+test_that("Anderson LM matches Stata sim_no_constant iid fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_iid.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$underid$p, fixture$idp,
+               tolerance = stata_tol$pval)
+  expect_identical(fit$diagnostics$underid$df, as.integer(fixture$iddf))
+})
+
+test_that("Cragg-Donald F matches Stata sim_no_constant iid fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_iid.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
+               tolerance = stata_tol$stat)
+})
+
+test_that("KP rk LM matches Stata sim_no_constant hc1 fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$underid$p, fixture$idp,
+               tolerance = stata_tol$pval)
+  expect_identical(fit$diagnostics$underid$df, as.integer(fixture$iddf))
+})
+
+test_that("KP rk Wald F matches Stata sim_no_constant hc1 fixture", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$weak_id_robust$stat, fixture$widstat,
+               tolerance = stata_tol$stat)
+})
+
+test_that("small does not change id stats (sim_no_constant)", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+
+  fit1 <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, small = FALSE)
+  fit2 <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, small = TRUE)
+  expect_equal(fit1$diagnostics$underid$stat, fit2$diagnostics$underid$stat)
+  expect_equal(fit1$diagnostics$weak_id$stat, fit2$diagnostics$weak_id$stat)
+})
+
+test_that("Cragg-Donald F present alongside KP stats sim_no_constant (HC1)", {
+  skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
+  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  fixture <- read_diagnostics(diag_path)
+
+  expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
+               tolerance = stata_tol$stat)
+})
