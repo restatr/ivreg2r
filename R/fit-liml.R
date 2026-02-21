@@ -206,12 +206,12 @@
 #' @keywords internal
 .compute_liml_lambda <- function(y, X, Z, parsed, w) {
   # Y = [y, X1] where X1 = endogenous regressor columns
-  endo_cols <- match(parsed$endo_names, colnames(X))
+  endo_cols <- match(parsed$endo_colnames, colnames(X))
   X1 <- X[, endo_cols, drop = FALSE]
   Y_mat <- cbind(y, X1)
 
   # Z2 = included instruments (exogenous regressors in Z)
-  incl_cols <- which(!colnames(Z) %in% parsed$excluded_names)
+  incl_cols <- which(!colnames(Z) %in% parsed$excluded_colnames)
 
   if (is.null(w)) {
     YtY <- crossprod(Y_mat)

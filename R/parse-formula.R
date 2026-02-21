@@ -72,21 +72,46 @@ NULL
     excluded <- NULL
     endo_names <- character(0L)
     excluded_names <- character(0L)
+    endo_colnames <- character(0L)
+    excluded_colnames <- character(0L)
+    endo_assign <- integer(0L)
+    excluded_assign <- integer(0L)
+    endo_ct <- NULL
+    excluded_ct <- NULL
     mt_endo <- NULL
     mt_excl <- NULL
   } else {
     # --- IV path ---
     # Part 2: endogenous regressors (strip intercept)
     mt_endo <- terms(formula, data = data, rhs = 2L)
-    endo <- model.matrix(mt_endo, mf)
-    endo <- .strip_intercept(endo)
+    endo_full <- model.matrix(mt_endo, mf)
+    endo_ct <- attr(endo_full, "contrasts")
+    endo_assign_full <- attr(endo_full, "assign")
+    endo <- .strip_intercept(endo_full)
+    # Build assign vector for non-intercept columns
+    icept_pos <- which(colnames(endo_full) == "(Intercept)")
+    endo_assign <- if (length(icept_pos) > 0L) {
+      endo_assign_full[-icept_pos]
+    } else {
+      endo_assign_full
+    }
     endo_names <- .varnames_from_terms(mt_endo)
+    orig_endo_colnames <- colnames(endo)
 
     # Part 3: excluded instruments (strip intercept)
     mt_excl <- terms(formula, data = data, rhs = 3L)
-    excluded <- model.matrix(mt_excl, mf)
-    excluded <- .strip_intercept(excluded)
+    excluded_full <- model.matrix(mt_excl, mf)
+    excluded_ct <- attr(excluded_full, "contrasts")
+    excluded_assign_full <- attr(excluded_full, "assign")
+    excluded <- .strip_intercept(excluded_full)
+    icept_pos_excl <- which(colnames(excluded_full) == "(Intercept)")
+    excluded_assign <- if (length(icept_pos_excl) > 0L) {
+      excluded_assign_full[-icept_pos_excl]
+    } else {
+      excluded_assign_full
+    }
     excluded_names <- .varnames_from_terms(mt_excl)
+    orig_excluded_colnames <- colnames(excluded)
 
     # --- 6. Check duplicates (on original variable names) ---
     .check_duplicates(formula)
@@ -206,12 +231,32 @@ NULL
 
   # Update name vectors after collinearity detection
   if (!is.null(endo)) {
-    endo_names <- intersect(endo_names, colnames(endo))
-    excluded_names <- intersect(excluded_names, colnames(excluded))
+    # Column-level names: surviving column names from model matrices
+    endo_colnames <- colnames(endo)
+    excluded_colnames <- colnames(excluded)
+
+    # Term-level names: use assign to map surviving columns → terms
+    surviving_endo_col_idx <- match(endo_colnames, orig_endo_colnames)
+    surviving_endo_terms <- unique(endo_assign[surviving_endo_col_idx])
+    endo_names <- attr(mt_endo, "term.labels")[surviving_endo_terms]
+
+    surviving_excl_col_idx <- match(excluded_colnames, orig_excluded_colnames)
+    surviving_excl_terms <- unique(excluded_assign[surviving_excl_col_idx])
+    excluded_names <- attr(mt_excl, "term.labels")[surviving_excl_terms]
+
+    # Re-index assign to map columns → positions in endo_names/excluded_names
+    endo_assign <- match(endo_assign[surviving_endo_col_idx],
+                         surviving_endo_terms)
+    excluded_assign <- match(excluded_assign[surviving_excl_col_idx],
+                             surviving_excl_terms)
   } else {
     # All endo dropped or reclassified (with or without reclassification)
     endo_names <- character(0L)
     excluded_names <- character(0L)
+    endo_colnames <- character(0L)
+    excluded_colnames <- character(0L)
+    endo_assign <- integer(0L)
+    excluded_assign <- integer(0L)
   }
   exog_names <- setdiff(exog_names, dropped_regressors)
   # Only add reclassified vars that survived all passes (not re-dropped in pass 3)
@@ -273,7 +318,7 @@ NULL
   }
 
   # --- 10. Extract contrasts and xlevels (needed by predict with newdata) ---
-  ct <- attr(exog, "contrasts")
+  ct <- c(attr(exog, "contrasts"), endo_ct, excluded_ct)
   xl <- .getXlevels(mt_regressors, mf)
 
   # --- 11. Assemble return list ---
@@ -286,6 +331,10 @@ NULL
       exog_names     = exog_names,
       endo_names     = endo_names,
       excluded_names = excluded_names,
+      endo_colnames  = endo_colnames,
+      excluded_colnames = excluded_colnames,
+      endo_assign    = endo_assign,
+      excluded_assign = excluded_assign,
       X_names        = colnames(X),
       Z_names        = if (!is.null(Z)) colnames(Z) else NULL,
       N              = N,
@@ -437,4 +486,26 @@ NULL
 #' @keywords internal
 .varnames_from_terms <- function(mt) {
   attr(mt, "term.labels")
+}
+
+#' Map term labels to column names using the assign attribute
+#'
+#' Expands user-supplied term labels (e.g., `"race"`) to the corresponding
+#' model matrix column names (e.g., `c("race2", "race3")`) using the assign
+#' attribute that maps each column to its term index.
+#'
+#' @param term_labels Character vector of term labels to expand.
+#' @param all_term_labels Full vector of term labels (from `endo_names` or
+#'   `excluded_names`).
+#' @param all_colnames Full vector of column names (from `endo_colnames` or
+#'   `excluded_colnames`).
+#' @param assign Integer vector mapping each column to its term index in
+#'   `all_term_labels`.
+#' @return Character vector of column names corresponding to the given terms.
+#' @keywords internal
+.expand_terms_to_colnames <- function(term_labels, all_term_labels,
+                                       all_colnames, assign) {
+  term_idx <- match(term_labels, all_term_labels)
+  col_mask <- assign %in% term_idx
+  all_colnames[col_mask]
 }

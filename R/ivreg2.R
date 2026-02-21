@@ -470,8 +470,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       cluster_vec = cluster_vec, vcov_type = effective_vcov_type,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
-      endo_names = parsed$endo_names,
-      excluded_names = parsed$excluded_names,
+      endo_names = parsed$endo_colnames,
+      excluded_names = parsed$excluded_colnames,
       has_intercept = parsed$has_intercept,
       dofminus = dofminus, sdofminus = sdofminus,
       weight_type = weight_type
@@ -490,8 +490,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       X = parsed$X, Z = parsed$Z,
       weights = parsed$weights, cluster_vec = cluster_vec,
       vcov_type = effective_vcov_type,
-      endo_names = parsed$endo_names,
-      excluded_names = parsed$excluded_names,
+      endo_names = parsed$endo_colnames,
+      excluded_names = parsed$excluded_colnames,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
       bread_2sls = fit$bread,
@@ -506,8 +506,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       vcov_type = effective_vcov_type,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
-      endo_names = parsed$endo_names,
-      excluded_names = parsed$excluded_names,
+      endo_names = parsed$endo_colnames,
+      excluded_names = parsed$excluded_colnames,
       dofminus = dofminus, sdofminus = sdofminus,
       weight_type = weight_type
     )
@@ -518,17 +518,22 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       weights = parsed$weights, cluster_vec = cluster_vec,
       vcov_type = effective_vcov_type,
       N = parsed$N, K1 = parsed$K1, L1 = parsed$L1,
-      endo_names = parsed$endo_names, dofminus = dofminus,
+      endo_names = parsed$endo_colnames, dofminus = dofminus,
       weight_type = weight_type
     )
 
     # Endogeneity test / C-statistic (E4)
+    # Validate endog against term labels, then expand to column names
+    endog_cols <- NULL
     if (!is.null(endog)) {
       bad <- setdiff(endog, parsed$endo_names)
       if (length(bad) > 0L) {
         stop("`endog` contains variables not in the endogenous list: ",
              paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
       }
+      endog_cols <- .expand_terms_to_colnames(
+        endog, parsed$endo_names, parsed$endo_colnames, parsed$endo_assign
+      )
     }
     diagnostics$endogeneity <- .compute_endogeneity_test(
       Z = parsed$Z, X = parsed$X, y = parsed$y,
@@ -536,8 +541,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       weights = parsed$weights, cluster_vec = cluster_vec,
       vcov_type = effective_vcov_type,
       N = parsed$N, K = parsed$K, L = parsed$L,
-      K1 = parsed$K1, endo_names = parsed$endo_names,
-      endog_vars = endog, dofminus = dofminus,
+      K1 = parsed$K1, endo_names = parsed$endo_colnames,
+      endog_vars = endog_cols, dofminus = dofminus,
       weight_type = weight_type
     )
 
@@ -546,7 +551,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       # Validate against actual Z column names (not term labels, which can
       # diverge for factor variables). Exclude intercept and endogenous
       # regressor columns — only instrument columns are testable.
-      endo_cols <- if (parsed$K1 > 0L) parsed$endo_names else character(0L)
+      endo_cols <- if (parsed$K1 > 0L) parsed$endo_colnames else character(0L)
       valid_orthog <- setdiff(colnames(parsed$Z),
                               c("(Intercept)", endo_cols))
       bad <- setdiff(orthog, valid_orthog)
@@ -587,8 +592,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       K1             = parsed$K1,
       L1             = parsed$L1,
       M              = M,
-      endo_names     = parsed$endo_names,
-      excluded_names = parsed$excluded_names,
+      endo_names     = parsed$endo_colnames,
+      excluded_names = parsed$excluded_colnames,
       depvar_name    = rf_depvar,
       dofminus       = dofminus,
       sdofminus      = sdofminus,

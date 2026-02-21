@@ -322,7 +322,11 @@ predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
                             xlev = object$xlevels)
   X <- stats::model.matrix(stats::delete.response(tt), mf,
                             contrasts.arg = object$contrasts)
-  drop(X %*% coef(object))
+  cf <- coef(object)
+  # model.matrix may regenerate columns dropped for collinearity;
+  # use only columns that have corresponding coefficients
+  common <- intersect(colnames(X), names(cf))
+  drop(X[, common, drop = FALSE] %*% cf[common])
 }
 
 
