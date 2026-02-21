@@ -23,6 +23,9 @@
 #' @return Canonical kernel name string.
 #' @keywords internal
 .validate_kernel <- function(kernel) {
+  if (!is.character(kernel) || length(kernel) != 1L || is.na(kernel)) {
+    stop("invalid kernel: must be a single character string", call. = FALSE)
+  }
   # Abbreviation lookup table matching Stata's vklist (livreg2.do:96–115)
   kname <- trimws(tolower(kernel))
 
@@ -113,7 +116,7 @@
 #' @keywords internal
 .validate_bandwidth <- function(bw, kernel) {
   if (is.character(bw)) {
-    if (tolower(bw) != "auto") {
+    if (length(bw) != 1L || tolower(bw) != "auto") {
       stop("bandwidth must be numeric > 0 or \"auto\"", call. = FALSE)
     }
     if (!.kernel_supports_auto_bw(kernel)) {
@@ -121,7 +124,7 @@
     }
     return(invisible(bw))
   }
-  if (!is.numeric(bw) || length(bw) != 1L || is.na(bw) || bw <= 0) {
+  if (!is.numeric(bw) || length(bw) != 1L || is.na(bw) || !is.finite(bw) || bw <= 0) {
     stop("bandwidth must be numeric > 0 or \"auto\"", call. = FALSE)
   }
   # Warn if bw=1 means zero lags for this kernel (flag "0" in Stata's vklist)

@@ -66,6 +66,14 @@ test_that(".validate_kernel errors on invalid kernel names", {
   expect_error(.validate_kernel("hanning"), "invalid kernel")
 })
 
+test_that(".validate_kernel errors on NA, NULL, non-character, and vector inputs", {
+  expect_error(.validate_kernel(NA_character_), "single character string")
+  expect_error(.validate_kernel(NA), "single character string")
+  expect_error(.validate_kernel(NULL), "single character string")
+  expect_error(.validate_kernel(42), "single character string")
+  expect_error(.validate_kernel(c("bartlett", "parzen")), "single character string")
+})
+
 
 # ---------------------------------------------------------------------------
 # 2. Kernel type classification (.kernel_type)
@@ -130,6 +138,16 @@ test_that(".validate_bandwidth errors on non-numeric bw", {
   expect_error(.validate_bandwidth(NA, "Bartlett"), "numeric > 0")
   expect_error(.validate_bandwidth(NaN, "Bartlett"), "numeric > 0")
   expect_error(.validate_bandwidth("foo", "Bartlett"), "numeric > 0")
+})
+
+test_that(".validate_bandwidth errors on Inf bandwidth", {
+  expect_error(.validate_bandwidth(Inf, "Bartlett"), "numeric > 0")
+  expect_error(.validate_bandwidth(-Inf, "Bartlett"), "numeric > 0")
+})
+
+test_that(".validate_bandwidth errors on vector inputs", {
+  expect_error(.validate_bandwidth(c(5, 10), "Bartlett"), "numeric > 0")
+  expect_error(.validate_bandwidth(c("auto", "foo"), "Bartlett"), "numeric > 0")
 })
 
 test_that(".validate_bandwidth accepts bw='auto' for compatible kernels", {
