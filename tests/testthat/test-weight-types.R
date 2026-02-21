@@ -120,6 +120,34 @@ test_that("pweight + cluster does not override vcov", {
   expect_equal(fit$vcov_type, "CL")
 })
 
+test_that("pweight + explicit HC0 matches pweight + iid override", {
+  d <- mtcars
+  d$w <- runif(nrow(d), 1, 5)
+  fit_override <- suppressMessages(
+    ivreg2(mpg ~ wt + hp, data = d, weights = w,
+           weight_type = "pweight", vcov = "iid")
+  )
+  fit_explicit <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
+                         weight_type = "pweight", vcov = "HC0")
+  expect_equal(vcov(fit_explicit), vcov(fit_override))
+  expect_equal(coef(fit_explicit), coef(fit_override))
+  expect_equal(fit_explicit$sigma, fit_override$sigma)
+})
+
+test_that("pweight + explicit HC1 + small matches pweight + iid + small override", {
+  d <- mtcars
+  d$w <- runif(nrow(d), 1, 5)
+  fit_override <- suppressMessages(
+    ivreg2(mpg ~ wt + hp, data = d, weights = w,
+           weight_type = "pweight", vcov = "iid", small = TRUE)
+  )
+  fit_explicit <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
+                         weight_type = "pweight", vcov = "HC1", small = TRUE)
+  expect_equal(vcov(fit_explicit), vcov(fit_override))
+  expect_equal(coef(fit_explicit), coef(fit_override))
+  expect_equal(fit_explicit$sigma, fit_override$sigma)
+})
+
 
 # ============================================================================
 # Section 2: N semantics
