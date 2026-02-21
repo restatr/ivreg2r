@@ -305,6 +305,17 @@ test_that("HAC fit y slot is in original row order", {
   expect_equal(unname(fit$y), ts_data$y)
 })
 
+test_that("HAC fit x slot is in original row order", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t",
+                x = TRUE)
+  # X and Z rows should align with model frame / original data
+  expect_equal(unname(fit$x$X[, "w"]), ts_data$w)
+  expect_equal(unname(fit$x$Z[, "z1"]), ts_data$z1)
+  expect_equal(unname(fit$x$Z[, "z2"]), ts_data$z2)
+})
+
 
 # ============================================================================
 # VCE inference: kernel implies VCE type
