@@ -546,11 +546,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       has_intercept = parsed$has_intercept,
       N = parsed$N
     )
-    # Apply bandwidth span check on resolved value
+    # Cap auto-selected bandwidth to time-span limit (short series edge case)
     max_bw <- (time_index$T_span - 1) / time_index$tdelta
     if (bw > max_bw) {
-      stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
-           call. = FALSE)
+      warning("Automatic bandwidth (", formatC(bw, format = "g"),
+              ") exceeds time-span limit (", formatC(max_bw, format = "g"),
+              "); capping at ", formatC(max_bw, format = "g"), ".",
+              call. = FALSE)
+      bw <- max_bw
     }
   }
 

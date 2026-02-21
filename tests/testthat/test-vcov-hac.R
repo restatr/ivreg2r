@@ -630,6 +630,30 @@ test_that("bw = 'auto' with unsupported kernel gives error", {
   )
 })
 
+test_that("bw = 'auto' caps to max_bw with warning for short series", {
+  set.seed(999)
+  n <- 10  # Very short series: max_bw = (10-1)/1 = 9
+  short_data <- data.frame(
+    t = seq_len(n),
+    y = rnorm(n),
+    w = rnorm(n),
+    x = rnorm(n),
+    z1 = rnorm(n),
+    z2 = rnorm(n)
+  )
+  expect_warning(
+    ivreg2(y ~ w | x | z1 + z2, data = short_data,
+           vcov = "HAC", kernel = "bartlett", bw = "auto", tvar = "t"),
+    "exceeds time-span limit"
+  )
+  # Re-run with suppressWarnings to inspect the result
+  fit <- suppressWarnings(
+    ivreg2(y ~ w | x | z1 + z2, data = short_data,
+           vcov = "HAC", kernel = "bartlett", bw = "auto", tvar = "t")
+  )
+  expect_true(fit$bw <= 9)
+})
+
 
 # ============================================================================
 # Auto-bandwidth: Stata fixture tests
