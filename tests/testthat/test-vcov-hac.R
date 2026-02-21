@@ -522,3 +522,220 @@ test_that("HAC VCV diagonal is positive", {
                 vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t")
   expect_true(all(diag(fit$vcov) > 0))
 })
+
+
+# ============================================================================
+# Auto-bandwidth: unit tests for .auto_bandwidth()
+# ============================================================================
+
+test_that(".auto_bandwidth returns positive numeric scalar", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t")
+  ti <- ivreg2r:::.build_time_index(ts_data$t)
+  bw <- ivreg2r:::.auto_bandwidth(
+    resid = fit$residuals[ti$sort_order],
+    Z = model.matrix(~ w + z1 + z2, data = ts_data)[ti$sort_order, ],
+    time_index = ti, kernel = "Bartlett", has_intercept = TRUE,
+    N = nrow(ts_data)
+  )
+  expect_true(is.numeric(bw))
+  expect_length(bw, 1L)
+  expect_true(bw >= 1)
+})
+
+test_that(".auto_bandwidth Bartlett/Parzen return integer bw", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t")
+  ti <- ivreg2r:::.build_time_index(ts_data$t)
+  Z <- model.matrix(~ w + z1 + z2, data = ts_data)[ti$sort_order, ]
+  resid_sorted <- fit$residuals[ti$sort_order]
+
+  bw_bart <- ivreg2r:::.auto_bandwidth(resid_sorted, Z, ti,
+                                        "Bartlett", TRUE, nrow(ts_data))
+  bw_parz <- ivreg2r:::.auto_bandwidth(resid_sorted, Z, ti,
+                                        "Parzen", TRUE, nrow(ts_data))
+  expect_equal(bw_bart, trunc(bw_bart))
+  expect_equal(bw_parz, trunc(bw_parz))
+})
+
+test_that(".auto_bandwidth QS may return non-integer bw", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t")
+  ti <- ivreg2r:::.build_time_index(ts_data$t)
+  Z <- model.matrix(~ w + z1 + z2, data = ts_data)[ti$sort_order, ]
+  resid_sorted <- fit$residuals[ti$sort_order]
+
+  bw_qs <- ivreg2r:::.auto_bandwidth(resid_sorted, Z, ti,
+                                      "Quadratic Spectral", TRUE,
+                                      nrow(ts_data))
+  # QS can return fractional; just check it's positive
+  expect_true(bw_qs > 0)
+})
+
+test_that(".auto_bandwidth warns and returns 1 for mstar=0", {
+  # mstar = trunc(20*(tobs/100)^(2/9)) = 0 requires tobs < 0.00014.
+  # Construct a contrived time_index with very small T_span/tdelta ratio.
+  ti <- list(
+    sort_order = 1L, tvar_sorted = 1, ivar_sorted = NULL,
+    T_span = 1L, tdelta = 10000, n_gaps = 0L, panel_info = NULL
+  )
+  # tobs = T_span / tdelta = 1/10000 = 0.0001 → mstar = 0
+  expect_warning(
+    bw <- ivreg2r:::.auto_bandwidth(1, matrix(1, 1, 1), ti,
+                                     "Bartlett", FALSE, 1L),
+    "Time span too short"
+  )
+  expect_equal(bw, 1)
+})
+
+test_that(".auto_bandwidth warns and returns 1 for zero-variance scores", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  ti <- ivreg2r:::.build_time_index(1:20)
+  # All-zero residuals → zero scores → shat_0 ≈ 0
+  resid0 <- rep(0, 20)
+  Z <- matrix(rnorm(40), 20, 2)
+  expect_warning(
+    bw <- ivreg2r:::.auto_bandwidth(resid0, Z, ti,
+                                     "Bartlett", FALSE, 20L),
+    "No autocorrelation"
+  )
+  expect_equal(bw, 1)
+})
+
+test_that("bw = 'auto' with panel data (ivar) gives error", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  # Create a minimal panel dataset
+  panel_data <- rbind(
+    data.frame(id = 1, t = 1:50, y = rnorm(50), w = rnorm(50),
+               x = rnorm(50), z1 = rnorm(50), z2 = rnorm(50)),
+    data.frame(id = 2, t = 1:50, y = rnorm(50), w = rnorm(50),
+               x = rnorm(50), z1 = rnorm(50), z2 = rnorm(50))
+  )
+  expect_error(
+    ivreg2(y ~ w | x | z1 + z2, data = panel_data,
+           kernel = "bartlett", bw = "auto", tvar = "t", ivar = "id"),
+    "panel data"
+  )
+})
+
+test_that("bw = 'auto' with unsupported kernel gives error", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  expect_error(
+    ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+           kernel = "truncated", bw = "auto", tvar = "t"),
+    "not compatible"
+  )
+})
+
+
+# ============================================================================
+# Auto-bandwidth: Stata fixture tests
+# ============================================================================
+
+# Helper: read auto-bw fixture bandwidth value
+read_autobiw <- function(prefix, suffix) {
+  path <- file.path(fixture_dir, paste0(prefix, "_bw_", suffix, ".csv"))
+  if (!file.exists(path)) return(NA_real_)
+  as.numeric(read.csv(path)$bw)
+}
+
+test_that("HAC auto Bartlett bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_hac", "auto_bartlett")
+  skip_if(is.na(stata_bw), "Auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = "auto", tvar = "t")
+  expect_equal(fit$bw, stata_bw, info = "auto Bartlett bw")
+  check_hac_fixture(fit, "ts_hac", "auto_bartlett")
+})
+
+test_that("HAC auto Parzen bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_hac", "auto_parzen")
+  skip_if(is.na(stata_bw), "Auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "parzen", bw = "auto", tvar = "t")
+  expect_equal(fit$bw, stata_bw, info = "auto Parzen bw")
+  check_hac_fixture(fit, "ts_hac", "auto_parzen")
+})
+
+test_that("HAC auto QS bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_hac", "auto_qs")
+  skip_if(is.na(stata_bw), "Auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "qs", bw = "auto", tvar = "t")
+  # QS bandwidth is fractional; compare within stat tolerance
+  # (Stata truncates via strofreal → ~7 sig digits, so ~1e-5 bw noise)
+  expect_equal(fit$bw, stata_bw, tolerance = stata_tol$stat,
+               info = "auto QS bw")
+  # Use stat tolerance for VCV/SEs (fractional bw noise cascades through
+  # spectral window → ~1e-6 VCV differences, at the vcov tolerance boundary)
+  coef_path <- file.path(fixture_dir, "ts_hac_coef_auto_qs.csv")
+  stata_coef <- read.csv(coef_path, stringsAsFactors = FALSE)
+  stata_coef$term[stata_coef$term == "_cons"] <- "(Intercept)"
+  r_names <- names(coef(fit))
+  m <- match(r_names, stata_coef$term)
+  expect_equal(unname(coef(fit)), stata_coef$estimate[m],
+               tolerance = stata_tol$coef, info = "auto QS coefficients")
+  expect_equal(unname(sqrt(diag(fit$vcov))), stata_coef$std_error[m],
+               tolerance = stata_tol$stat, info = "auto QS std errors")
+})
+
+test_that("AC auto Bartlett bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_ac", "auto_bartlett")
+  skip_if(is.na(stata_bw), "Auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                kernel = "bartlett", bw = "auto", tvar = "t")
+  expect_equal(fit$bw, stata_bw, info = "auto AC Bartlett bw")
+  check_hac_fixture(fit, "ts_ac", "auto_bartlett")
+})
+
+test_that("HAC auto Bartlett just-identified bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_hac", "auto_bartlett_justid")
+  skip_if(is.na(stata_bw), "Auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w | x | z1, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = "auto", tvar = "t")
+  expect_equal(fit$bw, stata_bw, info = "auto Bartlett justid bw")
+  check_hac_fixture(fit, "ts_hac", "auto_bartlett_justid")
+})
+
+test_that("HAC auto Bartlett gappy data bandwidth matches Stata", {
+  skip_if(!file.exists(gap_data_path), "Gap HAC data not found")
+  stata_bw <- read_autobiw("ts_gap_hac", "auto_bartlett")
+  skip_if(is.na(stata_bw), "Auto-bw fixture not found")
+
+  fit <- suppressWarnings(
+    ivreg2(y ~ w | x | z1 + z2, data = ts_gap_data,
+           vcov = "HAC", kernel = "bartlett", bw = "auto", tvar = "t")
+  )
+  expect_equal(fit$bw, stata_bw, info = "auto Bartlett gappy bw")
+  check_hac_fixture(fit, "ts_gap_hac", "auto_bartlett")
+})
+
+test_that("bw = 'auto' stores resolved numeric in fit$bw", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = "auto", tvar = "t")
+  expect_true(is.numeric(fit$bw))
+  expect_true(fit$bw >= 1)
+})
+
+test_that("glance reports resolved bw for auto-bandwidth", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = "auto", tvar = "t")
+  gl <- glance(fit)
+  expect_true(is.numeric(gl$bw))
+  expect_true(gl$bw >= 1)
+})

@@ -260,6 +260,68 @@ export delimited using "`outdir'/ts_gap_hac_data.csv", replace
 
 
 /*---------------------------------------------------------------------------
+  Helper: save auto-bw results (extends save_ivreg2_results with e(bw))
+---------------------------------------------------------------------------*/
+capture program drop save_autobiw_results
+program define save_autobiw_results
+    syntax, prefix(string) suffix(string) outdir(string)
+
+    // Save standard results via existing helper
+    save_ivreg2_results, prefix(`prefix') suffix(`suffix') outdir(`outdir')
+
+    // Save bandwidth value separately
+    quietly {
+        preserve
+        clear
+        set obs 1
+        gen double bw = e(bw)
+        export delimited using "`outdir'/`prefix'_bw_`suffix'.csv", replace
+        restore
+    }
+end
+
+
+/*---------------------------------------------------------------------------
+  Auto-bandwidth fixtures: HAC overidentified (y w (x = z1 z2))
+---------------------------------------------------------------------------*/
+
+// --- HAC auto Bartlett ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w (x = z1 z2), bw(auto) kernel(bartlett) robust
+save_autobiw_results, prefix(ts_hac) suffix(auto_bartlett) outdir(`outdir')
+
+// --- HAC auto Parzen ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w (x = z1 z2), bw(auto) kernel(parzen) robust
+save_autobiw_results, prefix(ts_hac) suffix(auto_parzen) outdir(`outdir')
+
+// --- HAC auto QS ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w (x = z1 z2), bw(auto) kernel(qs) robust
+save_autobiw_results, prefix(ts_hac) suffix(auto_qs) outdir(`outdir')
+
+// --- AC auto Bartlett (iid + kernel) ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w (x = z1 z2), bw(auto) kernel(bartlett)
+save_autobiw_results, prefix(ts_ac) suffix(auto_bartlett) outdir(`outdir')
+
+// --- HAC auto Bartlett just-identified ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w (x = z1), bw(auto) kernel(bartlett) robust
+save_autobiw_results, prefix(ts_hac) suffix(auto_bartlett_justid) outdir(`outdir')
+
+
+/*---------------------------------------------------------------------------
+  Auto-bandwidth fixture: gappy data
+---------------------------------------------------------------------------*/
+use "`outdir'/_ts_hac_temp.dta", clear
+drop if t == 50 | t == 100 | t == 150
+tsset t
+ivreg2 y w (x = z1 z2), bw(auto) kernel(bartlett) robust
+save_autobiw_results, prefix(ts_gap_hac) suffix(auto_bartlett) outdir(`outdir')
+
+
+/*---------------------------------------------------------------------------
   Clean up temp files
 ---------------------------------------------------------------------------*/
 capture erase "`outdir'/_ts_hac_temp.dta"

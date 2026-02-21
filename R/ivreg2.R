@@ -88,7 +88,10 @@
 #'   `"tent"`. When specified without an explicit `vcov` change, `vcov`
 #'   is automatically set: `"iid"` becomes `"AC"`, `"HC0"`/`"HC1"` become
 #'   `"HAC"`. Requires `bw` and `tvar`.
-#' @param bw Numeric: bandwidth for kernel estimation. Must be positive.
+#' @param bw Numeric or `"auto"`: bandwidth for kernel estimation. Must be
+#'   positive numeric, or `"auto"` for automatic selection via Newey-West
+#'   (1994). Auto selection is available for Bartlett, Parzen, and Quadratic
+#'   Spectral kernels only, and is not supported for panel data (`ivar`).
 #'   Required when `kernel` is specified.
 #' @param tvar Character: name of the time variable in `data`. Required
 #'   for HAC/AC estimation.
@@ -486,11 +489,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
               " gap(s) in relevant range.", call. = FALSE)
     }
 
-    # Check bandwidth span (Stata ivreg2.ado:423)
-    max_bw <- (time_index$T_span - 1) / time_index$tdelta
-    if (bw > max_bw) {
-      stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
-           call. = FALSE)
+    # Check bandwidth span (Stata ivreg2.ado:423) — skip for "auto" (resolved
+    # after estimation, when residuals are available)
+    if (is.numeric(bw)) {
+      max_bw <- (time_index$T_span - 1) / time_index$tdelta
+      if (bw > max_bw) {
+        stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
+             call. = FALSE)
+      }
     }
 
     # Sort all matrices by time-index sort order
@@ -522,6 +528,30 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   } else {
     .fit_ols(parsed, small = small, dofminus = dofminus,
              sdofminus = sdofminus)
+  }
+
+  # --- 4b. Resolve bw = "auto" (Newey-West 1994) ---
+  # Must happen AFTER estimation (need residuals) but BEFORE VCV computation.
+  # Stata dispatches auto-bw at ivreg2.ado:970-980, after first-step estimation.
+  if (is.character(bw) && tolower(bw) == "auto") {
+    if (!is.null(ivar)) {
+      stop("Automatic bandwidth selection not available for panel data.",
+           call. = FALSE)
+    }
+    bw <- .auto_bandwidth(
+      resid = fit$residuals,
+      Z = parsed$Z,
+      time_index = time_index,
+      kernel = kernel,
+      has_intercept = parsed$has_intercept,
+      N = parsed$N
+    )
+    # Apply bandwidth span check on resolved value
+    max_bw <- (time_index$T_span - 1) / time_index$tdelta
+    if (bw > max_bw) {
+      stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
+           call. = FALSE)
+    }
   }
 
   # --- 5. VCV ---

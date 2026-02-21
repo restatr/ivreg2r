@@ -234,3 +234,111 @@
     stop("unknown kernel: '", kernel, "'", call. = FALSE)
   )
 }
+
+
+# --------------------------------------------------------------------------
+# .auto_bandwidth
+# --------------------------------------------------------------------------
+#' Automatic bandwidth selection via Newey-West (1994)
+#'
+#' Implements the Newey-West (1994, REStud 61(4):631-653) plug-in bandwidth
+#' selector, matching Stata's `s_abw()` (ivreg2.ado:4796-4911). Supported
+#' for Bartlett, Parzen, and Quadratic Spectral kernels only.
+#'
+#' @param resid N-vector of residuals (sorted by time).
+#' @param Z N x L instrument matrix (sorted by time), including exogenous
+#'   regressors and (if present) the intercept column.
+#' @param time_index List from `.build_time_index()`.
+#' @param kernel Canonical kernel name (already validated as auto-compatible).
+#' @param has_intercept Logical: whether the last column of Z is an intercept.
+#'   If TRUE, the intercept column is excluded from the score process
+#'   (Stata zeros it out via the `h` vector).
+#' @param N Integer: number of observations (used as autocovariance
+#'   denominator, matching Stata's `nobs`).
+#' @return Numeric scalar: selected bandwidth (>= 1). Integer for
+#'   Bartlett/Parzen, possibly fractional for Quadratic Spectral.
+#' @keywords internal
+.auto_bandwidth <- function(resid, Z, time_index, kernel, has_intercept, N) {
+
+  # --- Kernel-specific constants (Newey-West 1994, Table II) ---
+  # cgamma for Bartlett corrected per Alistair Hall (see Stata source)
+  params <- switch(kernel,
+    "Bartlett"           = list(expo = 2 / 9,  q = 1L, cgamma = 1.1447),
+    "Parzen"             = list(expo = 4 / 25, q = 2L, cgamma = 2.6614),
+    "Quadratic Spectral" = list(expo = 2 / 25, q = 2L, cgamma = 1.3221),
+    stop("kernel '", kernel, "' not compatible with bw(auto)", call. = FALSE)
+  )
+  expo   <- params$expo
+  q      <- params$q
+  cgamma <- params$cgamma
+
+  # --- tobs: time span in index units (Stata's tobs = T_span / tdelta) ---
+  tobs <- time_index$T_span / time_index$tdelta
+
+  # --- mstar: pilot lag count ---
+  mstar <- trunc(20 * (tobs / 100)^expo)
+  if (mstar == 0L) {
+    warning("Time span too short for automatic bandwidth selection; ",
+            "returning bw = 1.", call. = FALSE)
+    return(1)
+  }
+
+  # --- Build score process f = rowSums(u * Z_no_intercept) ---
+  # Stata: h = J(nrows1,1,1) \ J(nrows2,1,0) — zeros out intercept column
+  # Then f = (u :* Z) * h
+  # In R, the intercept is typically column 1 ("(Intercept)"), not the last.
+  if (has_intercept) {
+    intercept_col <- which(colnames(Z) == "(Intercept)")
+    Z_score <- Z[, -intercept_col, drop = FALSE]
+  } else {
+    Z_score <- Z
+  }
+  # f = (resid * Z_score) %*% 1 — collapse to scalar per obs
+  f <- drop((resid * Z_score) %*% rep(1, ncol(Z_score)))
+
+  nobs <- N
+
+  # --- Autocovariances via .lag_pairs() ---
+  sigmahat <- numeric(mstar + 1L)
+
+  # j = 0: variance
+  sigmahat[1L] <- sum(f * f) / nobs
+
+  # j = 1..mstar
+  for (j in seq_len(mstar)) {
+    pairs <- .lag_pairs(time_index, j)
+    if (nrow(pairs) == 0L) next
+    sigmahat[j + 1L] <- sum(f[pairs[, 1L]] * f[pairs[, 2L]]) / nobs
+  }
+
+  # --- Weighted sums: shat_q and shat_0 ---
+  shat_0 <- sigmahat[1L]
+  shat_q <- 0
+  for (j in seq_len(mstar)) {
+    shat_q <- shat_q + 2 * sigmahat[j + 1L] * j^q
+    shat_0 <- shat_0 + 2 * sigmahat[j + 1L]
+  }
+
+  # Guard: no autocorrelation detected
+  if (abs(shat_0) < .Machine$double.eps) {
+    warning("No autocorrelation detected in score process; ",
+            "returning bw = 1.", call. = FALSE)
+    return(1)
+  }
+
+  # --- Optimal bandwidth ---
+  expon <- 1 / (2 * q + 1)
+  gammahat <- cgamma * ((shat_q / shat_0)^2)^expon
+  m <- gammahat * tobs^expon
+
+  # Bartlett/Parzen: truncate to integer; QS: keep fractional
+  if (kernel %in% c("Bartlett", "Parzen")) {
+    optlag <- min(trunc(m), mstar)
+  } else {
+    # Quadratic Spectral
+    optlag <- min(m, mstar)
+  }
+
+  # Return bw = optlag + 1 (Stata convention: bw = max_lag + 1)
+  optlag + 1
+}

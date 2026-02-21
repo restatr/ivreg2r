@@ -132,7 +132,10 @@ One of \code{"bartlett"}, \code{"parzen"}, \code{"truncated"}, \code{"tukey-hann
 is automatically set: \code{"iid"} becomes \code{"AC"}, \code{"HC0"}/\code{"HC1"} become
 \code{"HAC"}. Requires \code{bw} and \code{tvar}.}
 
-\item{bw}{Numeric: bandwidth for kernel estimation. Must be positive.
+\item{bw}{Numeric or \code{"auto"}: bandwidth for kernel estimation. Must be
+positive numeric, or \code{"auto"} for automatic selection via Newey-West
+(1994). Auto selection is available for Bartlett, Parzen, and Quadratic
+Spectral kernels only, and is not supported for panel data (\code{ivar}).
 Required when \code{kernel} is specified.}
 
 \item{tvar}{Character: name of the time variable in \code{data}. Required
