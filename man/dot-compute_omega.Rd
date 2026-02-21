@@ -4,7 +4,15 @@
 \alias{.compute_omega}
 \title{Compute L x L moment covariance matrix Omega}
 \usage{
-.compute_omega(Z, residuals, weights, cluster_vec, N, dofminus = 0L)
+.compute_omega(
+  Z,
+  residuals,
+  weights,
+  cluster_vec,
+  N,
+  dofminus = 0L,
+  weight_type = "aweight"
+)
 }
 \arguments{
 \item{Z}{N x L instrument matrix.}

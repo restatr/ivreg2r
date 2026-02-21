@@ -20,7 +20,8 @@
   M,
   bread_2sls,
   dofminus = 0L,
-  sdofminus = 0L
+  sdofminus = 0L,
+  weight_type = "aweight"
 )
 }
 \arguments{

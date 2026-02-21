@@ -4,7 +4,16 @@
 \alias{.kp_omega}
 \title{Kronecker score covariance for Kleibergen-Paap test}
 \usage{
-.kp_omega(Z1_perp, V_hat, weights, cluster_vec, N, K1, L1)
+.kp_omega(
+  Z1_perp,
+  V_hat,
+  weights,
+  cluster_vec,
+  N,
+  K1,
+  L1,
+  weight_type = "aweight"
+)
 }
 \arguments{
 \item{Z1_perp}{N x L1 partialled excluded instruments.}

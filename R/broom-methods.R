@@ -117,6 +117,7 @@ glance.ivreg2 <- function(x, ...) {
     df.residual        = x$df.residual,
     nobs               = as.integer(x$nobs),
     vcov_type          = x$vcov_type,
+    weight_type        = x$weight_type %||% "aweight",
     method             = x$method %||% NA_character_,
     lambda             = x$lambda %||% NA_real_,
     kclass_value       = x$kclass_value %||% NA_real_,

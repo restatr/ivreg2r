@@ -31,7 +31,8 @@
 #' @keywords internal
 .compute_orthog_test <- function(Z, X, y, residuals, rss, weights,
                                   cluster_vec, vcov_type, N, K, L,
-                                  orthog_vars, dofminus = 0L) {
+                                  orthog_vars, dofminus = 0L,
+                                  weight_type = "aweight") {
   q <- length(orthog_vars)
 
   # --- Build restricted instrument matrix (remove tested columns) ---
@@ -58,7 +59,7 @@
     Omega_full <- sigma_sq * ZwZ / N
   } else {
     Omega_full <- .compute_omega(Z, residuals, weights, cluster_vec, N,
-                                  dofminus = dofminus)
+                                  dofminus = dofminus, weight_type = weight_type)
   }
 
   # --- J_full: J statistic of full model ---

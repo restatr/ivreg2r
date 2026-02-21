@@ -36,7 +36,8 @@
 .compute_anderson_rubin <- function(Z, X, y, weights, cluster_vec,
                                      vcov_type, N, K, L, K1, L1, M,
                                      endo_names, excluded_names,
-                                     dofminus = 0L, sdofminus = 0L) {
+                                     dofminus = 0L, sdofminus = 0L,
+                                     weight_type = "aweight") {
 
   # --- A. Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -60,7 +61,6 @@
   ZtWZ_inv <- ZtWZ_inv[piv_order, piv_order, drop = FALSE]
 
   # --- D. RVR computation ---
-  sqrt_w <- if (!is.null(weights)) sqrt(weights) else NULL
   Rb <- rf_coefs[excl_idx]
 
   if (vcov_type == "iid") {
@@ -73,17 +73,12 @@
     sigma2_y <- rss_y / (N - dofminus)
     RVR <- sigma2_y * ZtWZ_inv[excl_idx, excl_idx, drop = FALSE]
   } else {
-    # Robust sandwich (HC0/HC1/CL): Z * e_y scores, clustered if CL
-    if (is.null(weights)) {
-      scores <- Z * rf_resid
-    } else {
-      scores <- (sqrt_w * Z) * (sqrt_w * rf_resid)
-    }
-
+    # Robust sandwich (HC0/HC1/CL)
     if (!is.null(cluster_vec)) {
+      scores <- .cl_scores(Z, rf_resid, weights)
       meat <- .cluster_meat(scores, cluster_vec)
     } else {
-      meat <- crossprod(scores)
+      meat <- .hc_meat(Z, rf_resid, weights, weight_type)
     }
     sandwich_full <- ZtWZ_inv %*% meat %*% ZtWZ_inv
 
@@ -94,6 +89,10 @@
 
   # --- E. Wald statistic ---
   wald <- tryCatch({
+    # Guard against numerically singular RVR (e.g., very few clusters make
+    # the cluster meat rank-deficient; chol may succeed but give garbage).
+    if (ncol(RVR) > 1L && rcond(RVR) < sqrt(.Machine$double.eps))
+      stop("nearly singular")
     R_chol <- chol(RVR)
     z <- forwardsolve(t(R_chol), Rb)
     drop(crossprod(z))

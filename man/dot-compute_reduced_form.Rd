@@ -22,7 +22,8 @@
   excluded_names,
   depvar_name,
   dofminus = 0L,
-  sdofminus = 0L
+  sdofminus = 0L,
+  weight_type = "aweight"
 )
 }
 \arguments{

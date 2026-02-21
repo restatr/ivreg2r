@@ -45,6 +45,17 @@
 #'   OLS models. Equivalent to Stata's `orthog()` option.
 #' @param small Logical: if `TRUE`, use small-sample corrections
 #'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
+#' @param weight_type Character: type of weights. One of `"aweight"`
+#'   (analytic weights, default), `"fweight"` (frequency weights), or
+#'   `"pweight"` (probability/sampling weights).
+#'
+#'   **aweight**: Normalized to sum to N. Standard for WLS.
+#'
+#'   **fweight**: Integer-valued; N is redefined as `sum(weights)`.
+#'   HC meat uses `w * e^2` (linear, not quadratic).
+#'
+#'   **pweight**: Normalized to sum to N. Forces robust VCE
+#'   (overrides `vcov = "iid"` to `"HC0"`).
 #' @param dofminus Non-negative integer: large-sample degrees-of-freedom
 #'   adjustment. Subtracted from N in large-sample variance formulas
 #'   (e.g., sigma = rss/(N-dofminus)). Useful when fixed effects have been
@@ -98,6 +109,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    coviv = FALSE,
                    small = FALSE,
                    dofminus = 0L, sdofminus = 0L,
+                   weight_type = "aweight",
                    reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
 
@@ -148,6 +160,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
   dofminus <- as.integer(dofminus)
   sdofminus <- as.integer(sdofminus)
+
+  valid_wt <- c("aweight", "fweight", "pweight")
+  if (!is.character(weight_type) || length(weight_type) != 1L ||
+      !weight_type %in% valid_wt) {
+    stop('`weight_type` must be one of "aweight", "fweight", or "pweight".',
+         call. = FALSE)
+  }
 
   if (!is.logical(coviv) || length(coviv) != 1L || is.na(coviv)) {
     stop("`coviv` must be TRUE or FALSE.", call. = FALSE)
@@ -251,11 +270,55 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("Weights must be finite and non-missing.", call. = FALSE)
   if (!is.null(w_raw) && any(w_raw <= 0))
     stop("All weights must be strictly positive.", call. = FALSE)
-  # Normalize weights to sum to N (Stata aweight convention).
-  # Makes sigma scale-invariant; the factor cancels in VCV so SEs are unchanged.
+  if (weight_type == "fweight" && !is.null(w_raw)) {
+    if (any(abs(w_raw - round(w_raw)) > sqrt(.Machine$double.eps)))
+      stop('Frequency weights (`weight_type = "fweight"`) must be integers.',
+           call. = FALSE)
+  }
+
+  # Weight normalization dispatch.
   # Raw (user-supplied) weights are stored in the return object.
+  n_physical <- parsed$N
   if (!is.null(w_raw)) {
-    parsed$weights <- w_raw * (parsed$N / sum(w_raw))
+    if (weight_type == "fweight") {
+      # fweight: no normalization; N = sum(w)
+      parsed$weights <- w_raw
+      N_eff <- sum(w_raw)
+      if (N_eff > .Machine$integer.max)
+        stop("Sum of frequency weights exceeds integer limit.", call. = FALSE)
+      parsed$N <- as.integer(round(N_eff))
+    } else {
+      # aweight/pweight: normalize to sum = N (Stata convention)
+      parsed$weights <- w_raw * (parsed$N / sum(w_raw))
+    }
+  }
+
+  # pweight forces robust VCE
+  # Stata: [pw=weight] → robust (= HC0); [pw=weight], small → robust with
+  # small-sample correction (= HC1).
+  if (weight_type == "pweight" && vcov == "iid" && is.null(clusters)) {
+    new_vcov <- if (small) "HC1" else "HC0"
+    message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "',
+            new_vcov, '".')
+    vcov <- new_vcov
+  }
+
+  # Re-validate dofminus against (possibly updated) N for fweight
+  if (weight_type == "fweight" && !is.null(w_raw)) {
+    if (dofminus >= parsed$N) {
+      stop("`dofminus` (", dofminus, ") must be less than N (", parsed$N, ").",
+           call. = FALSE)
+    }
+    if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
+      stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
+           parsed$N - parsed$K - dofminus - sdofminus,
+           " (must be > 0).", call. = FALSE)
+    }
+    if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
+      stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
+           parsed$N - parsed$L - dofminus - sdofminus,
+           " (must be > 0).", call. = FALSE)
+    }
   }
 
   # --- 3b. Parse clusters ---
@@ -352,29 +415,26 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
   }
 
-  # For HC/CL VCV with weights: transform X_hat and residuals by sqrt(w)
-  # at the call site so VCV functions remain weight-agnostic.
-  # scores = sqrt(w)*X_hat * sqrt(w)*e = w*X_hat*e (correct weighted sandwich)
+  # For HC/CL VCV: pass weights and weight_type to VCV functions.
+  # The helper functions .hc_meat() / .cl_scores() handle weight-type dispatch.
   if (!is.null(cluster_vec) || vcov %in% c("HC0", "HC1")) {
     X_hat_vcov <- if (parsed$is_iv) fit$X_hat else parsed$X
     resid_vcov <- fit$residuals
-    if (!is.null(w_raw)) {
-      sqrt_w <- sqrt(parsed$weights)  # normalized weights
-      X_hat_vcov <- sqrt_w * X_hat_vcov
-      resid_vcov <- sqrt_w * resid_vcov
-    }
   }
 
   if (!is.null(cluster_vec)) {
     fit$vcov <- .compute_cl_vcov(bread_vcov, X_hat_vcov, resid_vcov,
                                   cluster_vec, parsed$N, parsed$K, M, small,
-                                  dofminus = dofminus, sdofminus = sdofminus)
+                                  dofminus = dofminus, sdofminus = sdofminus,
+                                  weights = parsed$weights)
     fit$df.residual <- as.integer(M - 1L)
   } else if (vcov %in% c("HC0", "HC1")) {
     fit$vcov <- .compute_hc_vcov(bread_vcov, X_hat_vcov, resid_vcov,
                                   parsed$N, parsed$K, vcov,
                                   small = small, dofminus = dofminus,
-                                  sdofminus = sdofminus)
+                                  sdofminus = sdofminus,
+                                  weights = parsed$weights,
+                                  weight_type = weight_type)
   }
 
   # --- 5b. Diagnostics ---
@@ -391,7 +451,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       weights = parsed$weights, cluster_vec = cluster_vec,
       vcov_type = effective_vcov_type, is_iv = parsed$is_iv,
       N = parsed$N, K = parsed$K, L = parsed$L,
-      overid_df = parsed$overid_df, dofminus = dofminus
+      overid_df = parsed$overid_df, dofminus = dofminus,
+      weight_type = weight_type
     )
 
     # AR LIML overidentification (H3) — only for LIML/Fuller + IID
@@ -412,7 +473,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       endo_names = parsed$endo_names,
       excluded_names = parsed$excluded_names,
       has_intercept = parsed$has_intercept,
-      dofminus = dofminus, sdofminus = sdofminus
+      dofminus = dofminus, sdofminus = sdofminus,
+      weight_type = weight_type
     )
     diagnostics$underid        <- id_tests$underid
     diagnostics$weak_id        <- id_tests$weak_id
@@ -433,7 +495,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
       bread_2sls = fit$bread,
-      dofminus = dofminus, sdofminus = sdofminus
+      dofminus = dofminus, sdofminus = sdofminus,
+      weight_type = weight_type
     )
 
     # Anderson-Rubin test (E3)
@@ -445,7 +508,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
       endo_names = parsed$endo_names,
       excluded_names = parsed$excluded_names,
-      dofminus = dofminus, sdofminus = sdofminus
+      dofminus = dofminus, sdofminus = sdofminus,
+      weight_type = weight_type
     )
 
     # Stock-Wright S statistic (J2)
@@ -454,7 +518,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       weights = parsed$weights, cluster_vec = cluster_vec,
       vcov_type = effective_vcov_type,
       N = parsed$N, K1 = parsed$K1, L1 = parsed$L1,
-      endo_names = parsed$endo_names, dofminus = dofminus
+      endo_names = parsed$endo_names, dofminus = dofminus,
+      weight_type = weight_type
     )
 
     # Endogeneity test / C-statistic (E4)
@@ -472,7 +537,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       vcov_type = effective_vcov_type,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, endo_names = parsed$endo_names,
-      endog_vars = endog, dofminus = dofminus
+      endog_vars = endog, dofminus = dofminus,
+      weight_type = weight_type
     )
 
     # Orthogonality test / instrument-subset C-statistic (J1)
@@ -496,7 +562,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         weights = parsed$weights, cluster_vec = cluster_vec,
         vcov_type = effective_vcov_type,
         N = parsed$N, K = parsed$K, L = parsed$L,
-        orthog_vars = orthog, dofminus = dofminus
+        orthog_vars = orthog, dofminus = dofminus,
+        weight_type = weight_type
       )
     }
   }
@@ -524,7 +591,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       excluded_names = parsed$excluded_names,
       depvar_name    = rf_depvar,
       dofminus       = dofminus,
-      sdofminus      = sdofminus
+      sdofminus      = sdofminus,
+      weight_type    = weight_type
     )
   }
 
@@ -587,6 +655,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     n_clusters2   = M2,
     na.action     = parsed$na.action,
     weights       = w_raw,
+    weight_type   = weight_type,
+    n_physical    = if (weight_type == "fweight") n_physical else NULL,
     endogenous    = parsed$endo_names,
     instruments   = parsed$excluded_names,
     dropped_regressors      = parsed$dropped_regressors,

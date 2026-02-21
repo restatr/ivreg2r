@@ -21,6 +21,7 @@ ivreg2(
   small = FALSE,
   dofminus = 0L,
   sdofminus = 0L,
+  weight_type = "aweight",
   reduced_form = "none",
   model = TRUE,
   x = FALSE,
@@ -107,6 +108,18 @@ partialled out. Equivalent to Stata's \code{dofminus()} option.}
 adjustment. Subtracted from the residual degrees of freedom alongside K
 (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
 partialling out regressors. Equivalent to Stata's \code{sdofminus()} option.}
+
+\item{weight_type}{Character: type of weights. One of \code{"aweight"}
+(analytic weights, default), \code{"fweight"} (frequency weights), or
+\code{"pweight"} (probability/sampling weights).
+
+\strong{aweight}: Normalized to sum to N. Standard for WLS.
+
+\strong{fweight}: Integer-valued; N is redefined as \code{sum(weights)}.
+HC meat uses \code{w * e^2} (linear, not quadratic).
+
+\strong{pweight}: Normalized to sum to N. Forces robust VCE
+(overrides \code{vcov = "iid"} to \code{"HC0"}).}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression

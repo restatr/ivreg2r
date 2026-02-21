@@ -20,7 +20,8 @@
   endo_names,
   excluded_names,
   dofminus = 0L,
-  sdofminus = 0L
+  sdofminus = 0L,
+  weight_type = "aweight"
 )
 }
 \arguments{

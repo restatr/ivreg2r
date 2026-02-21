@@ -44,7 +44,8 @@
                                   vcov_type, endo_names, excluded_names,
                                   N, K, L, K1, L1, M,
                                   bread_2sls,
-                                  dofminus = 0L, sdofminus = 0L) {
+                                  dofminus = 0L, sdofminus = 0L,
+                                  weight_type = "aweight") {
 
   # --- A4: Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -126,21 +127,18 @@
       wald_j <- wald_classical_j
     } else {
       # Raw HC0 sandwich (no finite-sample corrections)
-      if (is.null(weights)) {
-        scores <- Z * resid_j
-      } else {
-        scores <- (sqrt_w * Z) * (sqrt_w * resid_j)
-      }
-
       if (!is.null(cluster_vec)) {
+        scores <- .cl_scores(Z, resid_j, weights)
         meat <- .cluster_meat(scores, cluster_vec)
       } else {
-        meat <- crossprod(scores)
+        meat <- .hc_meat(Z, resid_j, weights, weight_type)
       }
       robust_vcov <- ZtWZ_inv %*% meat %*% ZtWZ_inv
       RVR_robust <- robust_vcov[excl_idx, excl_idx, drop = FALSE]
 
       wald_j <- tryCatch({
+        if (ncol(RVR_robust) > 1L && rcond(RVR_robust) < sqrt(.Machine$double.eps))
+          stop("nearly singular")
         R_chol <- chol(RVR_robust)
         z <- forwardsolve(t(R_chol), Rb_j)
         drop(crossprod(z))
@@ -322,21 +320,19 @@
         if (vcov_type == "iid") {
           wald_sw <- wald_cl
         } else {
-          if (is.null(sqrt_w)) {
-            scores <- Z * resid_aux
-          } else {
-            scores <- (sqrt_w * Z) * (sqrt_w * resid_aux)
-          }
           if (!is.null(cluster_vec)) {
+            scores <- .cl_scores(Z, resid_aux, weights)
             meat <- .cluster_meat(scores, cluster_vec)
           } else {
-            meat <- crossprod(scores)
+            meat <- .hc_meat(Z, resid_aux, weights, weight_type)
           }
           robust_vcov <- ZtWZ_inv %*% meat %*% ZtWZ_inv
           robust_vcov <- (robust_vcov + t(robust_vcov)) / 2
           RVR_robust <- robust_vcov[excl_idx, excl_idx, drop = FALSE]
 
           wald_sw <- tryCatch({
+            if (ncol(RVR_robust) > 1L && rcond(RVR_robust) < sqrt(.Machine$double.eps))
+              stop("nearly singular")
             R_chol <- chol(RVR_robust)
             z <- forwardsolve(t(R_chol), Rb)
             drop(crossprod(z))

@@ -19,7 +19,8 @@
   K1,
   endo_names,
   endog_vars,
-  dofminus = 0L
+  dofminus = 0L,
+  weight_type = "aweight"
 )
 }
 \arguments{

@@ -77,6 +77,7 @@ NULL
                          cluster_var = NULL, n_clusters = NULL,
                          n_clusters1 = NULL, n_clusters2 = NULL,
                          na.action = NULL, weights = NULL,
+                         weight_type = "aweight", n_physical = NULL,
                          endogenous = character(0),
                          instruments = character(0),
                          dropped_regressors = character(0),
@@ -125,6 +126,8 @@ NULL
       n_clusters2    = n_clusters2,
       na.action      = na.action,
       weights        = weights,
+      weight_type    = weight_type,
+      n_physical     = n_physical,
       endogenous     = endogenous,
       instruments    = instruments,
       dropped_regressors      = dropped_regressors,
@@ -397,6 +400,9 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
       cat("Clusters:    ", format(x$n_clusters, big.mark = ","),
           " (", x$cluster_var, ")\n", sep = "")
     }
+  }
+  if (!is.null(x$weight_type) && x$weight_type != "aweight") {
+    cat("Weight type:  ", x$weight_type, "\n")
   }
   if (!is.null(x$dofminus) && x$dofminus > 0L) {
     cat("dofminus:    ", x$dofminus, "\n")

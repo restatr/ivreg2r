@@ -39,6 +39,8 @@
   n_clusters2 = NULL,
   na.action = NULL,
   weights = NULL,
+  weight_type = "aweight",
+  n_physical = NULL,
   endogenous = character(0),
   instruments = character(0),
   dropped_regressors = character(0),

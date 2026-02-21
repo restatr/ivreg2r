@@ -39,24 +39,14 @@
 #' @return L x L symmetric matrix Omega.
 #' @keywords internal
 .compute_omega <- function(Z, residuals, weights, cluster_vec, N,
-                            dofminus = 0L) {
+                            dofminus = 0L, weight_type = "aweight") {
   if (!is.null(cluster_vec)) {
     # Cluster path — divisor is N (no dofminus)
-    if (!is.null(weights)) {
-      sqrt_w <- sqrt(weights)
-      scores <- (sqrt_w * Z) * (sqrt_w * residuals)
-    } else {
-      scores <- Z * residuals
-    }
+    scores <- .cl_scores(Z, residuals, weights)
     Omega <- .cluster_meat(scores, cluster_vec) / N
   } else {
     # HC path — divisor is N - dofminus (Stata livreg2.do line 326)
-    if (!is.null(weights)) {
-      wv <- weights^2 * residuals^2
-    } else {
-      wv <- residuals^2
-    }
-    Omega <- crossprod(Z, wv * Z) / (N - dofminus)
+    Omega <- .hc_meat(Z, residuals, weights, weight_type) / (N - dofminus)
   }
   # Force symmetry
   (Omega + t(Omega)) / 2
@@ -191,9 +181,10 @@
 #' @return Named list with `stat`, `p`, `df`, `test_name`.
 #' @keywords internal
 .hansen_j_test <- function(Z, X, y, residuals, weights, cluster_vec,
-                           N, K, L, overid_df, dofminus = 0L) {
+                           N, K, L, overid_df, dofminus = 0L,
+                           weight_type = "aweight") {
   Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N,
-                           dofminus = dofminus)
+                           dofminus = dofminus, weight_type = weight_type)
   J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
 
   if (is.na(J)) {
@@ -237,7 +228,8 @@
 #' @keywords internal
 .compute_stock_wright <- function(Z, X, y, weights, cluster_vec,
                                    vcov_type, N, K1, L1,
-                                   endo_names, dofminus = 0L) {
+                                   endo_names, dofminus = 0L,
+                                   weight_type = "aweight") {
   # 1. Extract X2 (included exogenous regressors)
   endo_idx <- match(endo_names, colnames(X))
   exog_idx <- setdiff(seq_len(ncol(X)), endo_idx)
@@ -279,7 +271,7 @@
   } else {
     # HC/CL: heteroskedasticity-robust omega
     Omega <- .compute_omega(Z, e, weights, cluster_vec, N,
-                             dofminus = dofminus)
+                             dofminus = dofminus, weight_type = weight_type)
   }
 
   # 5. S = N * gbar' * Omega^{-1} * gbar
@@ -332,7 +324,8 @@
 #' @keywords internal
 .compute_overid_test <- function(Z, X, y, residuals, rss, weights,
                                  cluster_vec, vcov_type, is_iv,
-                                 N, K, L, overid_df, dofminus = 0L) {
+                                 N, K, L, overid_df, dofminus = 0L,
+                                 weight_type = "aweight") {
   if (!is_iv) return(NULL)
 
   if (overid_df == 0L) {
@@ -345,7 +338,8 @@
                   dofminus = dofminus)
   } else {
     .hansen_j_test(Z, X, y, residuals, weights, cluster_vec,
-                   N, K, L, overid_df, dofminus = dofminus)
+                   N, K, L, overid_df, dofminus = dofminus,
+                   weight_type = weight_type)
   }
 }
 

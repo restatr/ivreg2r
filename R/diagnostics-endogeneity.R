@@ -39,7 +39,8 @@
 .compute_endogeneity_test <- function(Z, X, y, residuals, rss, weights,
                                       cluster_vec, vcov_type, N, K, L,
                                       K1, endo_names, endog_vars,
-                                      dofminus = 0L) {
+                                      dofminus = 0L,
+                                      weight_type = "aweight") {
   # Default: test all endogenous regressors
   if (is.null(endog_vars)) endog_vars <- endo_names
   q <- length(endog_vars)
@@ -90,7 +91,7 @@
     Omega_r <- sigma_r_sq * ZwZ_r / N
   } else {
     Omega_r <- .compute_omega(Z_r, e_r, weights, cluster_vec, N,
-                               dofminus = dofminus)
+                               dofminus = dofminus, weight_type = weight_type)
   }
 
   # --- J_r: J statistic of restricted model ---

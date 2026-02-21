@@ -22,7 +22,8 @@
   excluded_names,
   has_intercept,
   dofminus = 0L,
-  sdofminus = 0L
+  sdofminus = 0L,
+  weight_type = "aweight"
 )
 }
 \arguments{

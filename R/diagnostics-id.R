@@ -202,7 +202,8 @@
 #' @param L1 Number of excluded instruments.
 #' @return `(K1*L1) x (K1*L1)` symmetric matrix.
 #' @keywords internal
-.kp_omega <- function(Z1_perp, V_hat, weights, cluster_vec, N, K1, L1) {
+.kp_omega <- function(Z1_perp, V_hat, weights, cluster_vec, N, K1, L1,
+                       weight_type = "aweight") {
   # Build N x (K1*L1) score matrix: row i = kron(V_hat[i,], Z1_perp[i,])
   # For K1=1: reduces to V_hat * Z1_perp (scalar broadcast)
   if (K1 == 1L) {
@@ -215,16 +216,18 @@
     }
   }
 
-  # Apply weights to scores
-  if (!is.null(weights)) {
-    scores <- sqrt(weights) * scores
-  }
-
-  # Cluster or HC aggregation
+  # Cluster or HC aggregation with weight-type dispatch
   if (!is.null(cluster_vec)) {
+    if (!is.null(weights)) scores <- weights * scores
     shat0 <- .cluster_meat(scores, cluster_vec) / N
   } else {
-    shat0 <- crossprod(scores) / N
+    if (is.null(weights)) {
+      shat0 <- crossprod(scores) / N
+    } else if (weight_type == "fweight") {
+      shat0 <- crossprod(sqrt(weights) * scores) / N
+    } else {
+      shat0 <- crossprod(weights * scores) / N
+    }
   }
   (shat0 + t(shat0)) / 2  # force symmetry
 }
@@ -346,7 +349,8 @@
 .compute_id_tests <- function(X, Z, y, residuals, weights, cluster_vec,
                               vcov_type, N, K, L, K1, L1, M = NULL,
                               endo_names, excluded_names, has_intercept,
-                              dofminus = 0L, sdofminus = 0L) {
+                              dofminus = 0L, sdofminus = 0L,
+                              weight_type = "aweight") {
 
   # Top-level guard: catch unexpected errors
   result <- tryCatch({
@@ -411,7 +415,8 @@
     V_wald <- X1_perp - Z1_perp %*% cc_result$pihat
 
     # KP rk LM
-    shat0_lm <- .kp_omega(Z1_perp, V_lm, weights, cluster_vec, N, K1, L1)
+    shat0_lm <- .kp_omega(Z1_perp, V_lm, weights, cluster_vec, N, K1, L1,
+                            weight_type = weight_type)
     kp_lm <- .kp_rk_stat(cc_result, shat0_lm, N, K1, L1)
 
     # Underid: KP rk LM chi-squared
@@ -428,7 +433,8 @@
                     test_name = "Kleibergen-Paap rk LM statistic")
 
     # KP rk Wald
-    shat0_wald <- .kp_omega(Z1_perp, V_wald, weights, cluster_vec, N, K1, L1)
+    shat0_wald <- .kp_omega(Z1_perp, V_wald, weights, cluster_vec, N, K1, L1,
+                              weight_type = weight_type)
     kp_wald <- .kp_rk_stat(cc_result, shat0_wald, N, K1, L1)
 
     # Convert KP Wald chi-sq to F:

@@ -1,4 +1,48 @@
 # --------------------------------------------------------------------------
+# .hc_meat
+# --------------------------------------------------------------------------
+#' Compute HC meat matrix with weight-type dispatch
+#'
+#' For aweight/pweight: meat = (w * X * e)' (w * X * e) = X' diag(w^2 e^2) X.
+#' For fweight: meat = X' diag(w * e^2) X (linear in weights, not quadratic).
+#' For unweighted: meat = X' diag(e^2) X.
+#'
+#' @param basis N x K matrix (X_hat for IV, X for OLS).
+#' @param resid N-vector of residuals.
+#' @param weights Normalized weights or NULL.
+#' @param weight_type Character: `"aweight"`, `"fweight"`, or `"pweight"`.
+#' @return K x K symmetric meat matrix.
+#' @keywords internal
+.hc_meat <- function(basis, resid, weights = NULL, weight_type = "aweight") {
+  if (is.null(weights)) return(crossprod(basis * resid))
+  if (weight_type == "fweight") {
+    crossprod(basis, weights * resid^2 * basis)
+  } else {
+    crossprod(weights * basis * resid)
+  }
+}
+
+
+# --------------------------------------------------------------------------
+# .cl_scores
+# --------------------------------------------------------------------------
+#' Compute cluster scores (weight-type-agnostic)
+#'
+#' Cluster scores are `weights * basis * resid` for all weight types.
+#' The definition of `weights` (normalized for aweight/pweight, raw for fweight)
+#' makes this expression correct for all types.
+#'
+#' @param basis N x K matrix.
+#' @param resid N-vector of residuals.
+#' @param weights Normalized weights or NULL.
+#' @return N x K score matrix.
+#' @keywords internal
+.cl_scores <- function(basis, resid, weights = NULL) {
+  if (is.null(weights)) basis * resid else weights * basis * resid
+}
+
+
+# --------------------------------------------------------------------------
 # .compute_hc_vcov
 # --------------------------------------------------------------------------
 #' Compute HC0 or HC1 heteroskedasticity-consistent VCV
@@ -21,9 +65,9 @@
 #' @return K x K variance-covariance matrix.
 #' @keywords internal
 .compute_hc_vcov <- function(bread, X_hat, resid, N, K, vcov_type,
-                              small = FALSE, dofminus = 0L, sdofminus = 0L) {
-  scores <- X_hat * resid              # N x K
-  omega <- crossprod(scores)           # K x K meat
+                              small = FALSE, dofminus = 0L, sdofminus = 0L,
+                              weights = NULL, weight_type = "aweight") {
+  omega <- .hc_meat(X_hat, resid, weights, weight_type)  # K x K meat
   V <- bread %*% omega %*% bread      # K x K sandwich
   V <- (V + t(V)) / 2                 # enforce symmetry
 
@@ -97,8 +141,9 @@
 #' @return K x K variance-covariance matrix.
 #' @keywords internal
 .compute_cl_vcov <- function(bread, X_hat, resid, cluster_vec, N, K, M, small,
-                              dofminus = 0L, sdofminus = 0L) {
-  scores <- X_hat * resid                       # N x K
+                              dofminus = 0L, sdofminus = 0L,
+                              weights = NULL) {
+  scores <- .cl_scores(X_hat, resid, weights)    # N x K
   omega <- .cluster_meat(scores, cluster_vec)    # K x K (unscaled)
   V <- bread %*% omega %*% bread                # sandwich
   V <- (V + t(V)) / 2                           # enforce symmetry

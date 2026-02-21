@@ -13,7 +13,9 @@
   vcov_type,
   small = FALSE,
   dofminus = 0L,
-  sdofminus = 0L
+  sdofminus = 0L,
+  weights = NULL,
+  weight_type = "aweight"
 )
 }
 \arguments{

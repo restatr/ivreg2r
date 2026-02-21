@@ -15,7 +15,8 @@
   K,
   L,
   overid_df,
-  dofminus = 0L
+  dofminus = 0L,
+  weight_type = "aweight"
 )
 }
 \arguments{
