@@ -16,7 +16,10 @@
   L1,
   endo_names,
   dofminus = 0L,
-  weight_type = "aweight"
+  weight_type = "aweight",
+  kernel = NULL,
+  bw = NULL,
+  time_index = NULL
 )
 }
 \arguments{

@@ -32,7 +32,9 @@
 .compute_orthog_test <- function(Z, X, y, residuals, rss, weights,
                                   cluster_vec, vcov_type, N, K, L,
                                   orthog_vars, dofminus = 0L,
-                                  weight_type = "aweight") {
+                                  weight_type = "aweight",
+                                  kernel = NULL, bw = NULL,
+                                  time_index = NULL) {
   q <- length(orthog_vars)
 
   # --- Build restricted instrument matrix (remove tested columns) ---
@@ -49,17 +51,24 @@
   }
 
   # --- Compute Omega_full from full model's residuals ---
-  if (vcov_type == "iid") {
+  if (vcov_type %in% c("iid", "AC")) {
     sigma_sq <- rss / (N - dofminus)
     if (is.null(weights)) {
       ZwZ <- crossprod(Z)
     } else {
       ZwZ <- crossprod(Z, weights * Z)
     }
-    Omega_full <- sigma_sq * ZwZ / N
+    if (vcov_type == "AC" && !is.null(kernel)) {
+      Omega_full <- .ac_meat(Z, residuals, time_index, kernel, bw,
+                              N, dofminus, weights, weight_type, ZwZ)
+    } else {
+      Omega_full <- sigma_sq * ZwZ / N
+    }
   } else {
     Omega_full <- .compute_omega(Z, residuals, weights, cluster_vec, N,
-                                  dofminus = dofminus, weight_type = weight_type)
+                                  dofminus = dofminus, weight_type = weight_type,
+                                  kernel = kernel, bw = bw,
+                                  time_index = time_index)
   }
 
   # --- J_full: J statistic of full model ---

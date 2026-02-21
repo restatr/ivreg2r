@@ -52,6 +52,10 @@
   kclass_value = NA_real_,
   fuller_parameter = 0,
   coviv = FALSE,
+  kernel = NULL,
+  bw = NULL,
+  tvar = NULL,
+  ivar = NULL,
   contrasts = NULL,
   xlevels = NULL,
   model = NULL,
@@ -154,6 +158,14 @@ or \code{"kclass"}).}
 \item{fuller_parameter}{Numeric: Fuller modification parameter (0 if none).}
 
 \item{coviv}{Logical: whether COVIV (2SLS bread) was used for VCV.}
+
+\item{kernel}{Canonical kernel name (character) or NULL if no HAC/AC.}
+
+\item{bw}{Numeric bandwidth or NULL if no HAC/AC.}
+
+\item{tvar}{Character: name of time variable, or NULL.}
+
+\item{ivar}{Character: name of panel variable, or NULL.}
 
 \item{contrasts}{List of contrasts used for factor variables (or NULL).}
 

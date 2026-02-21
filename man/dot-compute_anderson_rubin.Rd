@@ -21,7 +21,10 @@
   excluded_names,
   dofminus = 0L,
   sdofminus = 0L,
-  weight_type = "aweight"
+  weight_type = "aweight",
+  kernel = NULL,
+  bw = NULL,
+  time_index = NULL
 )
 }
 \arguments{

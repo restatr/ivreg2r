@@ -11,7 +11,10 @@
   cluster_vec,
   N,
   dofminus = 0L,
-  weight_type = "aweight"
+  weight_type = "aweight",
+  kernel = NULL,
+  bw = NULL,
+  time_index = NULL
 )
 }
 \arguments{
@@ -28,6 +31,12 @@
 \item{dofminus}{Integer: large-sample DoF adjustment (default 0).
 HC path divides by \code{N - dofminus} (Stata livreg2.do line 326);
 cluster path divides by \code{N} (line 545, no dofminus adjustment).}
+
+\item{kernel}{Canonical kernel name, or NULL for non-HAC.}
+
+\item{bw}{Numeric bandwidth, or NULL.}
+
+\item{time_index}{List from \code{.build_time_index()}, or NULL.}
 }
 \value{
 L x L symmetric matrix Omega.

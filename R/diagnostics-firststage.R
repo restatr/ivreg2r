@@ -45,7 +45,9 @@
                                   N, K, L, K1, L1, M,
                                   bread_2sls,
                                   dofminus = 0L, sdofminus = 0L,
-                                  weight_type = "aweight") {
+                                  weight_type = "aweight",
+                                  kernel = NULL, bw = NULL,
+                                  time_index = NULL) {
 
   # --- A4: Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -122,14 +124,17 @@
       wald_scaled / (1 + wald_scaled)
     }
 
-    # B5: Robust Wald (only when VCE is not IID)
-    if (vcov_type == "iid") {
+    # B5: Robust Wald (only when VCE is not IID/AC)
+    if (vcov_type %in% c("iid", "AC")) {
       wald_j <- wald_classical_j
     } else {
-      # Raw HC0 sandwich (no finite-sample corrections)
+      # Raw robust sandwich (no finite-sample corrections)
       if (!is.null(cluster_vec)) {
         scores <- .cl_scores(Z, resid_j, weights)
         meat <- .cluster_meat(scores, cluster_vec)
+      } else if (!is.null(kernel)) {
+        meat <- .hac_meat(Z, resid_j, time_index, kernel, bw,
+                          weights, weight_type)
       } else {
         meat <- .hc_meat(Z, resid_j, weights, weight_type)
       }
@@ -316,13 +321,16 @@
           wald_cl_scaled / (1 + wald_cl_scaled)
         }
 
-        # Robust Wald (if VCE is not IID)
-        if (vcov_type == "iid") {
+        # Robust Wald (if VCE is not IID/AC)
+        if (vcov_type %in% c("iid", "AC")) {
           wald_sw <- wald_cl
         } else {
           if (!is.null(cluster_vec)) {
             scores <- .cl_scores(Z, resid_aux, weights)
             meat <- .cluster_meat(scores, cluster_vec)
+          } else if (!is.null(kernel)) {
+            meat <- .hac_meat(Z, resid_aux, time_index, kernel, bw,
+                              weights, weight_type)
           } else {
             meat <- .hc_meat(Z, resid_aux, weights, weight_type)
           }

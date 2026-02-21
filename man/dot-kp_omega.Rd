@@ -12,7 +12,10 @@
   N,
   K1,
   L1,
-  weight_type = "aweight"
+  weight_type = "aweight",
+  kernel = NULL,
+  bw = NULL,
+  time_index = NULL
 )
 }
 \arguments{

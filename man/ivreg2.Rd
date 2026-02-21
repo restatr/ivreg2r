@@ -22,6 +22,10 @@ ivreg2(
   dofminus = 0L,
   sdofminus = 0L,
   weight_type = "aweight",
+  kernel = NULL,
+  bw = NULL,
+  tvar = NULL,
+  ivar = NULL,
   reduced_form = "none",
   model = TRUE,
   x = FALSE,
@@ -120,6 +124,22 @@ HC meat uses \code{w * e^2} (linear, not quadratic).
 
 \strong{pweight}: Normalized to sum to N. Forces robust VCE
 (overrides \code{vcov = "iid"} to \code{"HC0"}).}
+
+\item{kernel}{Character: kernel function for HAC/AC standard errors.
+One of \code{"bartlett"}, \code{"parzen"}, \code{"truncated"}, \code{"tukey-hanning"},
+\code{"tukey-hamming"}, \code{"qs"} (quadratic spectral), \code{"daniell"}, or
+\code{"tent"}. When specified without an explicit \code{vcov} change, \code{vcov}
+is automatically set: \code{"iid"} becomes \code{"AC"}, \code{"HC0"}/\code{"HC1"} become
+\code{"HAC"}. Requires \code{bw} and \code{tvar}.}
+
+\item{bw}{Numeric: bandwidth for kernel estimation. Must be positive.
+Required when \code{kernel} is specified.}
+
+\item{tvar}{Character: name of the time variable in \code{data}. Required
+for HAC/AC estimation.}
+
+\item{ivar}{Character: name of the panel identifier variable in \code{data}.
+Optional; only needed for panel data with HAC/AC estimation.}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression

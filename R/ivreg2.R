@@ -82,6 +82,18 @@
 #'   estimation. This gives the "COVIV" (covariance at the IV estimates)
 #'   VCV that is robust to misspecification of the LIML model. Silently
 #'   ignored for OLS and 2SLS. Default `FALSE`.
+#' @param kernel Character: kernel function for HAC/AC standard errors.
+#'   One of `"bartlett"`, `"parzen"`, `"truncated"`, `"tukey-hanning"`,
+#'   `"tukey-hamming"`, `"qs"` (quadratic spectral), `"daniell"`, or
+#'   `"tent"`. When specified without an explicit `vcov` change, `vcov`
+#'   is automatically set: `"iid"` becomes `"AC"`, `"HC0"`/`"HC1"` become
+#'   `"HAC"`. Requires `bw` and `tvar`.
+#' @param bw Numeric: bandwidth for kernel estimation. Must be positive.
+#'   Required when `kernel` is specified.
+#' @param tvar Character: name of the time variable in `data`. Required
+#'   for HAC/AC estimation.
+#' @param ivar Character: name of the panel identifier variable in `data`.
+#'   Optional; only needed for panel data with HAC/AC estimation.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -110,6 +122,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    small = FALSE,
                    dofminus = 0L, sdofminus = 0L,
                    weight_type = "aweight",
+                   kernel = NULL, bw = NULL, tvar = NULL, ivar = NULL,
                    reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
 
@@ -120,7 +133,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (!is.character(vcov) || length(vcov) != 1L) {
     stop("`vcov` must be a single character string.", call. = FALSE)
   }
-  valid_vcov <- c("iid", "HC0", "HC1")
+  valid_vcov <- c("iid", "HC0", "HC1", "HAC", "AC")
   if (!vcov %in% valid_vcov) {
     stop('vcov = "', vcov, '" is not yet implemented. ',
          'Supported values: ', paste0('"', valid_vcov, '"', collapse = ", "),
@@ -177,6 +190,46 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       !reduced_form %in% valid_rf) {
     stop('`reduced_form` must be one of "none", "rf", or "system".',
          call. = FALSE)
+  }
+
+  # --- 2c. Validate kernel / bw / tvar / ivar ---
+  if (!is.null(kernel)) {
+    kernel <- .validate_kernel(kernel)
+  }
+  if (!is.null(bw) && is.null(kernel)) {
+    # bw specified without kernel: default to Bartlett
+    kernel <- "Bartlett"
+  }
+  if (!is.null(kernel)) {
+    if (is.null(bw)) {
+      stop("bandwidth `bw` is required when `kernel` is specified.",
+           call. = FALSE)
+    }
+    .validate_bandwidth(bw, kernel)
+
+    # VCE inference: kernel + iid → AC; kernel + HC → HAC
+    if (vcov == "iid") {
+      vcov <- "AC"
+    } else if (vcov %in% c("HC0", "HC1")) {
+      vcov <- "HAC"
+    }
+  }
+  # HAC/AC without kernel is an error
+  if (vcov %in% c("HAC", "AC") && is.null(kernel)) {
+    stop('vcov = "', vcov, '" requires `kernel` to be specified.',
+         call. = FALSE)
+  }
+  # tvar required for HAC/AC
+  if (vcov %in% c("HAC", "AC") && is.null(tvar)) {
+    stop('Time variable `tvar` is required for vcov = "', vcov, '".',
+         call. = FALSE)
+  }
+  # tvar/ivar must be character
+  if (!is.null(tvar) && (!is.character(tvar) || length(tvar) != 1L)) {
+    stop("`tvar` must be a single character string.", call. = FALSE)
+  }
+  if (!is.null(ivar) && (!is.character(ivar) || length(ivar) != 1L)) {
+    stop("`ivar` must be a single character string.", call. = FALSE)
   }
 
   # --- 2b. Validate method / kclass / fuller ---
@@ -274,6 +327,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     if (any(abs(w_raw - round(w_raw)) > sqrt(.Machine$double.eps)))
       stop('Frequency weights (`weight_type = "fweight"`) must be integers.',
            call. = FALSE)
+  }
+  # fweight + kernel incompatible (Stata ivreg2.ado:335)
+  if (weight_type == "fweight" && !is.null(kernel)) {
+    stop("fweights not allowed with kernel-based VCE.", call. = FALSE)
   }
 
   # Weight normalization dispatch.
@@ -388,6 +445,68 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
   }
 
+  # --- 3d. Time-index construction (for HAC/AC) ---
+  time_index <- NULL
+  unsort_order <- NULL
+  if (!is.null(kernel)) {
+    # Extract tvar and ivar from data, aligned to model frame rows
+    mf_rows_ti <- match(rownames(parsed$model_frame), rownames(data))
+    if (!tvar %in% names(data)) {
+      stop("Time variable '", tvar, "' not found in data.", call. = FALSE)
+    }
+    tvar_vec <- data[[tvar]][mf_rows_ti]
+    if (anyNA(tvar_vec)) {
+      stop("Time variable '", tvar, "' contains NA values.", call. = FALSE)
+    }
+    if (!is.numeric(tvar_vec)) {
+      stop("Time variable '", tvar, "' must be numeric.", call. = FALSE)
+    }
+
+    ivar_vec <- NULL
+    if (!is.null(ivar)) {
+      if (!ivar %in% names(data)) {
+        stop("Panel variable '", ivar, "' not found in data.", call. = FALSE)
+      }
+      ivar_vec <- data[[ivar]][mf_rows_ti]
+      if (anyNA(ivar_vec)) {
+        stop("Panel variable '", ivar, "' contains NA values.", call. = FALSE)
+      }
+    }
+
+    time_index <- .build_time_index(tvar_vec, ivar_vec)
+
+    # Warn about gaps (Stata ivreg2.ado:415)
+    if (time_index$n_gaps > 0L) {
+      warning("Time variable '", tvar, "' has ", time_index$n_gaps,
+              " gap(s) in relevant range.", call. = FALSE)
+    }
+
+    # Check bandwidth span (Stata ivreg2.ado:423)
+    max_bw <- (time_index$T_span - 1) / time_index$tdelta
+    if (bw > max_bw) {
+      stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
+           call. = FALSE)
+    }
+
+    # Sort all matrices by time-index sort order
+    so <- time_index$sort_order
+    unsort_order <- order(so)
+    parsed$X <- parsed$X[so, , drop = FALSE]
+    parsed$Z <- parsed$Z[so, , drop = FALSE]
+    parsed$y <- parsed$y[so]
+    if (!is.null(parsed$weights)) {
+      parsed$weights <- parsed$weights[so]
+    }
+    if (!is.null(cluster_vec)) {
+      if (is.list(cluster_vec)) {
+        cluster_vec[[1L]] <- cluster_vec[[1L]][so]
+        cluster_vec[[2L]] <- cluster_vec[[2L]][so]
+      } else {
+        cluster_vec <- cluster_vec[so]
+      }
+    }
+  }
+
   # --- 4. Dispatch ---
   fit <- if (method %in% c("liml", "kclass")) {
     .fit_kclass(parsed, method = method, kclass = kclass, fuller = fuller,
@@ -415,14 +534,28 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
   }
 
-  # For HC/CL VCV: pass weights and weight_type to VCV functions.
+  # For HC/CL/HAC/AC VCV: pass weights and weight_type to VCV functions.
   # The helper functions .hc_meat() / .cl_scores() handle weight-type dispatch.
-  if (!is.null(cluster_vec) || vcov %in% c("HC0", "HC1")) {
+  if (!is.null(cluster_vec) || vcov %in% c("HC0", "HC1", "HAC", "AC")) {
     X_hat_vcov <- if (parsed$is_iv) fit$X_hat else parsed$X
     resid_vcov <- fit$residuals
   }
 
-  if (!is.null(cluster_vec)) {
+  if (vcov == "HAC") {
+    fit$vcov <- .compute_hac_vcov(bread_vcov, X_hat_vcov, resid_vcov,
+                                   time_index, kernel, bw,
+                                   parsed$N, parsed$K,
+                                   dofminus = dofminus, sdofminus = sdofminus,
+                                   weights = parsed$weights,
+                                   weight_type = weight_type)
+  } else if (vcov == "AC") {
+    fit$vcov <- .compute_ac_vcov(bread_vcov, X_hat_vcov, resid_vcov,
+                                  time_index, kernel, bw,
+                                  parsed$N, parsed$K,
+                                  dofminus = dofminus, sdofminus = sdofminus,
+                                  weights = parsed$weights,
+                                  weight_type = weight_type)
+  } else if (!is.null(cluster_vec)) {
     fit$vcov <- .compute_cl_vcov(bread_vcov, X_hat_vcov, resid_vcov,
                                   cluster_vec, parsed$N, parsed$K, M, small,
                                   dofminus = dofminus, sdofminus = sdofminus,
@@ -438,7 +571,17 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 5b. Diagnostics ---
-  effective_vcov_type <- if (!is.null(cluster_vec)) "CL" else vcov
+  # HAC → robust diagnostics path (Hansen J, KP rk)
+  # AC → iid-like diagnostics path (Sargan, Anderson LM, CD F)
+  effective_vcov_type <- if (!is.null(cluster_vec)) {
+    "CL"
+  } else if (vcov == "HAC") {
+    "HAC"
+  } else if (vcov == "AC") {
+    "AC"
+  } else {
+    vcov
+  }
 
   diagnostics <- list()
   first_stage <- NULL
@@ -452,7 +595,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       vcov_type = effective_vcov_type, is_iv = parsed$is_iv,
       N = parsed$N, K = parsed$K, L = parsed$L,
       overid_df = parsed$overid_df, dofminus = dofminus,
-      weight_type = weight_type
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index
     )
 
     # AR LIML overidentification (H3) — only for LIML/Fuller + IID
@@ -474,7 +618,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       excluded_names = parsed$excluded_colnames,
       has_intercept = parsed$has_intercept,
       dofminus = dofminus, sdofminus = sdofminus,
-      weight_type = weight_type
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index
     )
     diagnostics$underid        <- id_tests$underid
     diagnostics$weak_id        <- id_tests$weak_id
@@ -496,7 +641,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
       bread_2sls = fit$bread,
       dofminus = dofminus, sdofminus = sdofminus,
-      weight_type = weight_type
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index
     )
 
     # Anderson-Rubin test (E3)
@@ -509,7 +655,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       endo_names = parsed$endo_colnames,
       excluded_names = parsed$excluded_colnames,
       dofminus = dofminus, sdofminus = sdofminus,
-      weight_type = weight_type
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index
     )
 
     # Stock-Wright S statistic (J2)
@@ -519,7 +666,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       vcov_type = effective_vcov_type,
       N = parsed$N, K1 = parsed$K1, L1 = parsed$L1,
       endo_names = parsed$endo_colnames, dofminus = dofminus,
-      weight_type = weight_type
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index
     )
 
     # Endogeneity test / C-statistic (E4)
@@ -543,7 +691,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, endo_names = parsed$endo_colnames,
       endog_vars = endog_cols, dofminus = dofminus,
-      weight_type = weight_type
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index
     )
 
     # Orthogonality test / instrument-subset C-statistic (J1)
@@ -568,7 +717,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         vcov_type = effective_vcov_type,
         N = parsed$N, K = parsed$K, L = parsed$L,
         orthog_vars = orthog, dofminus = dofminus,
-        weight_type = weight_type
+        weight_type = weight_type,
+        kernel = kernel, bw = bw, time_index = time_index
       )
     }
   }
@@ -597,7 +747,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       depvar_name    = rf_depvar,
       dofminus       = dofminus,
       sdofminus      = sdofminus,
-      weight_type    = weight_type
+      weight_type    = weight_type,
+      kernel         = kernel,
+      bw             = bw,
+      time_index     = time_index
     )
   }
 
@@ -614,6 +767,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     dofminus      = dofminus,
     sdofminus     = sdofminus
   )
+
+  # --- 5d. Unsort residuals/fitted values ---
+  # If data was sorted for HAC/AC, restore original row order for user-facing
+  # vectors (residuals, fitted values).
+  if (!is.null(unsort_order)) {
+    fit$residuals <- fit$residuals[unsort_order]
+    fit$fitted.values <- fit$fitted.values[unsort_order]
+  }
 
   # --- 6. Assemble return object ---
   # Determine effective method for the return object
@@ -650,7 +811,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     formula       = parsed$formula,
     terms         = parsed$terms,
     nobs          = parsed$N,
-    vcov_type     = if (!is.null(cluster_vec)) "CL" else vcov,
+    vcov_type     = effective_vcov_type,
     small         = small,
     dofminus      = dofminus,
     sdofminus     = sdofminus,
@@ -675,6 +836,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     kclass_value      = fit$kclass_value %||% NA_real_,
     fuller_parameter  = fit$fuller_param %||% 0,
     coviv             = coviv,
+    kernel            = kernel,
+    bw                = bw,
+    tvar              = tvar,
+    ivar              = ivar,
     model         = if (model) parsed$model_frame else NULL,
     x             = if (x) list(X = parsed$X, Z = parsed$Z) else NULL,
     y             = if (y) parsed$y else NULL

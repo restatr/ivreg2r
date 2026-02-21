@@ -123,6 +123,8 @@ glance.ivreg2 <- function(x, ...) {
     kclass_value       = x$kclass_value %||% NA_real_,
     fuller_parameter   = x$fuller_parameter %||% NA_real_,
     coviv              = isTRUE(x$coviv),
+    kernel             = x$kernel %||% NA_character_,
+    bw                 = x$bw %||% NA_real_,
     n_clusters1        = x$n_clusters1 %||% NA_integer_,
     n_clusters2        = x$n_clusters2 %||% NA_integer_,
     weak_id_stat       = .safe_diag(diag, "weak_id", "stat"),

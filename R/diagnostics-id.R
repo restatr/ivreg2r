@@ -203,7 +203,8 @@
 #' @return `(K1*L1) x (K1*L1)` symmetric matrix.
 #' @keywords internal
 .kp_omega <- function(Z1_perp, V_hat, weights, cluster_vec, N, K1, L1,
-                       weight_type = "aweight") {
+                       weight_type = "aweight",
+                       kernel = NULL, bw = NULL, time_index = NULL) {
   # Build N x (K1*L1) score matrix: row i = kron(V_hat[i,], Z1_perp[i,])
   # For K1=1: reduces to V_hat * Z1_perp (scalar broadcast)
   if (K1 == 1L) {
@@ -216,10 +217,14 @@
     }
   }
 
-  # Cluster or HC aggregation with weight-type dispatch
+  # Cluster, HAC, or HC aggregation with weight-type dispatch
   if (!is.null(cluster_vec)) {
     if (!is.null(weights)) scores <- weights * scores
     shat0 <- .cluster_meat(scores, cluster_vec) / N
+  } else if (!is.null(kernel)) {
+    # HAC path: use pre-formed scores with lag-loop autocovariances
+    if (!is.null(weights)) scores <- weights * scores
+    shat0 <- .hac_scores_meat(scores, time_index, kernel, bw) / N
   } else {
     if (is.null(weights)) {
       shat0 <- crossprod(scores) / N
@@ -350,7 +355,9 @@
                               vcov_type, N, K, L, K1, L1, M = NULL,
                               endo_names, excluded_names, has_intercept,
                               dofminus = 0L, sdofminus = 0L,
-                              weight_type = "aweight") {
+                              weight_type = "aweight",
+                              kernel = NULL, bw = NULL,
+                              time_index = NULL) {
 
   # Top-level guard: catch unexpected errors
   result <- tryCatch({
@@ -397,8 +404,11 @@
     weak_id <- .cragg_donald_f(cc_result, N, L, L1,
                                 dofminus = dofminus, sdofminus = sdofminus)
 
-    # --- IID path ---
-    if (vcov_type == "iid") {
+    # --- IID path (no kernel) ---
+    # AC with kernel falls through to the robust/HAC path below because
+    # Stata's ivreg2 passes bwopt to ranktest (which triggers the non-IID
+    # path in ranktest), so KP stats are computed even for AC.
+    if (vcov_type == "iid" && is.null(kernel)) {
       underid <- .anderson_lm_test(cc_result, N, L1, K1,
                                     dofminus = dofminus)
       return(list(
@@ -408,15 +418,47 @@
       ))
     }
 
-    # --- Robust / cluster path ---
+    # --- Robust / cluster / HAC path ---
     # Reduced-form residuals for Wald variant:
     # V_wald = X1_perp - Z1_perp %*% pihat
     V_lm <- X1_perp
     V_wald <- X1_perp - Z1_perp %*% cc_result$pihat
 
+    # Stata's ivreg2 has a bug where `kernopt` (the kernel option passed to
+    # ranktest) is never captured from the vkernel subroutine — only `kernel`
+    # (for VCV) and `bwopt` (for bandwidth) are captured. So ranktest always
+    # defaults to Bartlett kernel regardless of the user-specified kernel.
+    # We match this behavior for Stata parity: KP tests always use Bartlett.
+    kp_kernel <- if (!is.null(kernel)) "Bartlett" else NULL
+
+    # AC vs HAC/HC: different omega computation for KP test.
+    # For AC (vcov_type=="AC"), Stata's ranktest enters the homoskedastic
+    # block of m_omega (robust="" but kernel is set), using the Kronecker
+    # structure sigma_tau # ZZ_tau. For HAC/HC, it uses score cross-products.
+    if (vcov_type == "AC") {
+      # AC omega via Kronecker structure (K1=1 case)
+      ZwZ_perp <- if (is.null(weights)) {
+        crossprod(Z1_perp)
+      } else {
+        crossprod(Z1_perp, weights * Z1_perp)
+      }
+      shat0_lm <- .ac_meat(Z1_perp, drop(V_lm), time_index, kp_kernel, bw,
+                            N, dofminus, weights, weight_type, ZwZ_perp)
+      shat0_wald <- .ac_meat(Z1_perp, drop(V_wald), time_index, kp_kernel, bw,
+                              N, dofminus, weights, weight_type, ZwZ_perp)
+    } else {
+      # HAC / HC / cluster path: use score cross-products
+      shat0_lm <- .kp_omega(Z1_perp, V_lm, weights, cluster_vec, N, K1, L1,
+                              weight_type = weight_type,
+                              kernel = kp_kernel, bw = bw,
+                              time_index = time_index)
+      shat0_wald <- .kp_omega(Z1_perp, V_wald, weights, cluster_vec, N, K1, L1,
+                                weight_type = weight_type,
+                                kernel = kp_kernel, bw = bw,
+                                time_index = time_index)
+    }
+
     # KP rk LM
-    shat0_lm <- .kp_omega(Z1_perp, V_lm, weights, cluster_vec, N, K1, L1,
-                            weight_type = weight_type)
     kp_lm <- .kp_rk_stat(cc_result, shat0_lm, N, K1, L1)
 
     # Underid: KP rk LM chi-squared
@@ -433,8 +475,6 @@
                     test_name = "Kleibergen-Paap rk LM statistic")
 
     # KP rk Wald
-    shat0_wald <- .kp_omega(Z1_perp, V_wald, weights, cluster_vec, N, K1, L1,
-                              weight_type = weight_type)
     kp_wald <- .kp_rk_stat(cc_result, shat0_wald, N, K1, L1)
 
     # Convert KP Wald chi-sq to F:

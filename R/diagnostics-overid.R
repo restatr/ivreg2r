@@ -36,14 +36,23 @@
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #'   HC path divides by `N - dofminus` (Stata livreg2.do line 326);
 #'   cluster path divides by `N` (line 545, no dofminus adjustment).
+#' @param kernel Canonical kernel name, or NULL for non-HAC.
+#' @param bw Numeric bandwidth, or NULL.
+#' @param time_index List from `.build_time_index()`, or NULL.
 #' @return L x L symmetric matrix Omega.
 #' @keywords internal
 .compute_omega <- function(Z, residuals, weights, cluster_vec, N,
-                            dofminus = 0L, weight_type = "aweight") {
+                            dofminus = 0L, weight_type = "aweight",
+                            kernel = NULL, bw = NULL, time_index = NULL) {
   if (!is.null(cluster_vec)) {
     # Cluster path — divisor is N (no dofminus)
     scores <- .cl_scores(Z, residuals, weights)
     Omega <- .cluster_meat(scores, cluster_vec) / N
+  } else if (!is.null(kernel)) {
+    # HAC path — same structure as HC but with autocovariance lags
+    meat <- .hac_meat(Z, residuals, time_index, kernel, bw,
+                      weights, weight_type)
+    Omega <- meat / (N - dofminus)
   } else {
     # HC path — divisor is N - dofminus (Stata livreg2.do line 326)
     Omega <- .hc_meat(Z, residuals, weights, weight_type) / (N - dofminus)
@@ -182,9 +191,11 @@
 #' @keywords internal
 .hansen_j_test <- function(Z, X, y, residuals, weights, cluster_vec,
                            N, K, L, overid_df, dofminus = 0L,
-                           weight_type = "aweight") {
+                           weight_type = "aweight",
+                           kernel = NULL, bw = NULL, time_index = NULL) {
   Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N,
-                           dofminus = dofminus, weight_type = weight_type)
+                           dofminus = dofminus, weight_type = weight_type,
+                           kernel = kernel, bw = bw, time_index = time_index)
   J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
 
   if (is.na(J)) {
@@ -229,7 +240,9 @@
 .compute_stock_wright <- function(Z, X, y, weights, cluster_vec,
                                    vcov_type, N, K1, L1,
                                    endo_names, dofminus = 0L,
-                                   weight_type = "aweight") {
+                                   weight_type = "aweight",
+                                   kernel = NULL, bw = NULL,
+                                   time_index = NULL) {
   # 1. Extract X2 (included exogenous regressors)
   endo_idx <- match(endo_names, colnames(X))
   exog_idx <- setdiff(seq_len(ncol(X)), endo_idx)
@@ -256,8 +269,8 @@
   }
 
   # 4. Compute omega (VCE-dependent, matching Stata m_omega)
-  if (vcov_type == "iid") {
-    # Homoskedastic: omega = sigma^2_0 * Z'WZ / N
+  if (vcov_type %in% c("iid", "AC")) {
+    # Homoskedastic / AC: omega = sigma^2_0 * Z'WZ / N
     # (Stata livreg2.do lines 194-235)
     if (!is.null(weights)) {
       rss_0 <- sum(weights * e^2)
@@ -267,11 +280,19 @@
       ZWZ <- crossprod(Z)
     }
     sigma2_0 <- rss_0 / (N - dofminus)
-    Omega <- sigma2_0 * ZWZ / N
+    if (vcov_type == "AC" && !is.null(kernel)) {
+      # AC: use AC meat (Kronecker structure with autocovariances)
+      Omega <- .ac_meat(Z, e, time_index, kernel, bw,
+                         N, dofminus, weights, weight_type, ZWZ)
+    } else {
+      Omega <- sigma2_0 * ZWZ / N
+    }
   } else {
-    # HC/CL: heteroskedasticity-robust omega
+    # HC/CL/HAC: heteroskedasticity-robust omega
     Omega <- .compute_omega(Z, e, weights, cluster_vec, N,
-                             dofminus = dofminus, weight_type = weight_type)
+                             dofminus = dofminus, weight_type = weight_type,
+                             kernel = kernel, bw = bw,
+                             time_index = time_index)
   }
 
   # 5. S = N * gbar' * Omega^{-1} * gbar
@@ -325,21 +346,45 @@
 .compute_overid_test <- function(Z, X, y, residuals, rss, weights,
                                  cluster_vec, vcov_type, is_iv,
                                  N, K, L, overid_df, dofminus = 0L,
-                                 weight_type = "aweight") {
+                                 weight_type = "aweight",
+                                 kernel = NULL, bw = NULL,
+                                 time_index = NULL) {
   if (!is_iv) return(NULL)
 
   if (overid_df == 0L) {
-    test_name <- if (vcov_type == "iid") "Sargan" else "Hansen J"
+    test_name <- if (vcov_type %in% c("iid", "AC")) "Sargan" else "Hansen J"
     return(list(stat = 0, p = NA_real_, df = 0L, test_name = test_name))
   }
 
   if (vcov_type == "iid") {
+    # Plain IID: standard Sargan
     .sargan_test(Z, residuals, rss, N, overid_df, weights,
                   dofminus = dofminus)
+  } else if (vcov_type == "AC") {
+    # AC: J-test with AC omega (Stata uses kernel-weighted omega even for
+    # the "Sargan" test when a kernel is specified)
+    if (!is.null(weights)) {
+      ZWZ <- crossprod(Z, weights * Z)
+    } else {
+      ZWZ <- crossprod(Z)
+    }
+    Omega <- .ac_meat(Z, residuals, time_index, kernel, bw,
+                       N, dofminus, weights, weight_type, ZWZ)
+    J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
+    if (is.na(J)) {
+      warning("AC omega is rank-deficient; Sargan statistic not computed.",
+              call. = FALSE)
+      return(list(stat = NA_real_, p = NA_real_, df = overid_df,
+                  test_name = "Sargan"))
+    }
+    p <- stats::pchisq(J, df = overid_df, lower.tail = FALSE)
+    list(stat = J, p = p, df = overid_df, test_name = "Sargan")
   } else {
+    # HC/CL/HAC: Hansen J with robust omega
     .hansen_j_test(Z, X, y, residuals, weights, cluster_vec,
                    N, K, L, overid_df, dofminus = dofminus,
-                   weight_type = weight_type)
+                   weight_type = weight_type,
+                   kernel = kernel, bw = bw, time_index = time_index)
   }
 }
 

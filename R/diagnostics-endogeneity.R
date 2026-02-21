@@ -40,7 +40,9 @@
                                       cluster_vec, vcov_type, N, K, L,
                                       K1, endo_names, endog_vars,
                                       dofminus = 0L,
-                                      weight_type = "aweight") {
+                                      weight_type = "aweight",
+                                      kernel = NULL, bw = NULL,
+                                      time_index = NULL) {
   # Default: test all endogenous regressors
   if (is.null(endog_vars)) endog_vars <- endo_names
   q <- length(endog_vars)
@@ -81,17 +83,24 @@
   rss_r <- if (is.null(weights)) sum(e_r^2) else sum(weights * e_r^2)
 
   # --- Compute Omega_r (from restricted model) ---
-  if (vcov_type == "iid") {
+  if (vcov_type %in% c("iid", "AC")) {
     sigma_r_sq <- rss_r / (N - dofminus)
     if (is.null(weights)) {
       ZwZ_r <- crossprod(Z_r)
     } else {
       ZwZ_r <- crossprod(Z_r, weights * Z_r)
     }
-    Omega_r <- sigma_r_sq * ZwZ_r / N
+    if (vcov_type == "AC" && !is.null(kernel)) {
+      Omega_r <- .ac_meat(Z_r, e_r, time_index, kernel, bw,
+                           N, dofminus, weights, weight_type, ZwZ_r)
+    } else {
+      Omega_r <- sigma_r_sq * ZwZ_r / N
+    }
   } else {
     Omega_r <- .compute_omega(Z_r, e_r, weights, cluster_vec, N,
-                               dofminus = dofminus, weight_type = weight_type)
+                               dofminus = dofminus, weight_type = weight_type,
+                               kernel = kernel, bw = bw,
+                               time_index = time_index)
   }
 
   # --- J_r: J statistic of restricted model ---

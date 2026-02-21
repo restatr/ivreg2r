@@ -37,7 +37,9 @@
                                      vcov_type, N, K, L, K1, L1, M,
                                      endo_names, excluded_names,
                                      dofminus = 0L, sdofminus = 0L,
-                                     weight_type = "aweight") {
+                                     weight_type = "aweight",
+                                     kernel = NULL, bw = NULL,
+                                     time_index = NULL) {
 
   # --- A. Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -73,10 +75,13 @@
     sigma2_y <- rss_y / (N - dofminus)
     RVR <- sigma2_y * ZtWZ_inv[excl_idx, excl_idx, drop = FALSE]
   } else {
-    # Robust sandwich (HC0/HC1/CL)
+    # Robust sandwich (HC0/HC1/CL/HAC)
     if (!is.null(cluster_vec)) {
       scores <- .cl_scores(Z, rf_resid, weights)
       meat <- .cluster_meat(scores, cluster_vec)
+    } else if (!is.null(kernel)) {
+      meat <- .hac_meat(Z, rf_resid, time_index, kernel, bw,
+                        weights, weight_type)
     } else {
       meat <- .hc_meat(Z, rf_resid, weights, weight_type)
     }

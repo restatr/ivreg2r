@@ -19,7 +19,10 @@
   L,
   overid_df,
   dofminus = 0L,
-  weight_type = "aweight"
+  weight_type = "aweight",
+  kernel = NULL,
+  bw = NULL,
+  time_index = NULL
 )
 }
 \arguments{
