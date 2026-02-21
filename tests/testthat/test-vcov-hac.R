@@ -165,6 +165,28 @@ test_that(".build_time_index works with panel data", {
   expect_length(ti$panel_info, 2L)
 })
 
+test_that(".build_time_index errors on duplicate time values", {
+  expect_error(
+    ivreg2r:::.build_time_index(c(1, 2, 2, 3)),
+    "duplicate"
+  )
+})
+
+test_that(".build_time_index errors on duplicate panel-time pairs", {
+  expect_error(
+    ivreg2r:::.build_time_index(c(1, 2, 2, 1, 2, 3),
+                                c("a", "a", "a", "b", "b", "b")),
+    "Duplicate"
+  )
+})
+
+test_that(".build_time_index allows same time across different panels", {
+  tvar <- c(1, 2, 1, 2)
+  ivar <- c("a", "a", "b", "b")
+  ti <- ivreg2r:::.build_time_index(tvar, ivar)
+  expect_equal(ti$T_span, 2L)
+})
+
 
 # ============================================================================
 # Unit tests: .lag_pairs()
@@ -248,6 +270,39 @@ test_that("bandwidth span check: bw too large is an error", {
            vcov = "HAC", kernel = "bartlett", bw = 500, tvar = "t"),
     "bandwidth"
   )
+})
+
+test_that("kernel + clusters is an error (HAC-CL not implemented)", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  ts_data$cl <- rep(1:10, length.out = nrow(ts_data))
+  expect_error(
+    ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+           vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t",
+           clusters = ~cl),
+    "HAC-CL"
+  )
+})
+
+test_that("duplicate time values are an error", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  dup_data <- ts_data
+  dup_data$t[2] <- dup_data$t[1]  # introduce duplicate
+  expect_error(
+    ivreg2(y ~ w | x | z1 + z2, data = dup_data,
+           vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t"),
+    "duplicate"
+  )
+})
+
+test_that("HAC fit y slot is in original row order", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t")
+  # y should equal fitted + resid (both in original order)
+  expect_equal(unname(fit$y), unname(fit$fitted.values + fit$residuals),
+               tolerance = 1e-14)
+  # y should match the original data column
+  expect_equal(unname(fit$y), ts_data$y)
 })
 
 

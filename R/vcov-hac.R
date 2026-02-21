@@ -35,6 +35,20 @@
 .build_time_index <- function(tvar_vec, ivar_vec = NULL) {
   N <- length(tvar_vec)
 
+  # Validate unique time keys (Stata enforces this via tsset)
+  if (is.null(ivar_vec)) {
+    if (anyDuplicated(tvar_vec)) {
+      stop("Time variable contains duplicate values. ",
+           "HAC/AC estimation requires unique time values.",
+           call. = FALSE)
+    }
+  } else {
+    if (anyDuplicated(data.frame(ivar_vec, tvar_vec))) {
+      stop("Duplicate (panel, time) combinations found. ",
+           "HAC/AC estimation requires unique time values within each panel.",
+           call. = FALSE)
+    }
+  }
 
   # Sort by (ivar, tvar)
   if (!is.null(ivar_vec)) {

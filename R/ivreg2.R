@@ -446,6 +446,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 3d. Time-index construction (for HAC/AC) ---
+  # kernel + cluster (HAC-CL / dkraay) not yet implemented
+  if (!is.null(kernel) && !is.null(cluster_vec)) {
+    stop("kernel + clusters (HAC-CL) is not yet implemented.", call. = FALSE)
+  }
+
   time_index <- NULL
   unsort_order <- NULL
   if (!is.null(kernel)) {
@@ -768,12 +773,15 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     sdofminus     = sdofminus
   )
 
-  # --- 5d. Unsort residuals/fitted values ---
+  # --- 5d. Unsort for user-facing output ---
   # If data was sorted for HAC/AC, restore original row order for user-facing
-  # vectors (residuals, fitted values).
+  # vectors and matrices (residuals, fitted values, y, X, Z).
   if (!is.null(unsort_order)) {
     fit$residuals <- fit$residuals[unsort_order]
     fit$fitted.values <- fit$fitted.values[unsort_order]
+    parsed$y <- parsed$y[unsort_order]
+    parsed$X <- parsed$X[unsort_order, , drop = FALSE]
+    parsed$Z <- parsed$Z[unsort_order, , drop = FALSE]
   }
 
   # --- 6. Assemble return object ---
