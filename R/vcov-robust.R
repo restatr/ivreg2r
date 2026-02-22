@@ -35,11 +35,12 @@
     return(crossprod(g_c))
   }
   if (weight_type == "fweight") {
-    gbar <- colSums(weights * g) / N     # Stata: wv = wvar (linear)
+    N_eff <- sum(weights)                 # effective N = sum(w) for fweight
+    gbar <- colSums(weights * g) / N_eff  # Stata: wv = wvar (linear)
     g_c <- sweep(g, 2L, gbar)
     return(crossprod(g_c, weights * g_c)) # sum w_i (g_c)(g_c)'
   }
-  # aweight/pweight: Stata uses wv = (w*wf)^2
+  # aweight/pweight: Stata uses wv = (w*wf)^2; N = nrow (weights sum to N)
   gbar <- colSums(weights^2 * g) / N
   g_c <- sweep(g, 2L, gbar)
   crossprod(weights * g_c)               # sum w_i^2 (g_c)(g_c)'
@@ -70,10 +71,12 @@
                        center = FALSE, weight_type = "aweight") {
   scores <- if (is.null(weights)) basis * resid else weights * basis * resid
   if (center) {
-    N <- nrow(scores)
-    if (is.null(weights) || weight_type == "fweight") {
+    if (is.null(weights)) {
       gbar <- colMeans(scores)
+    } else if (weight_type == "fweight") {
+      gbar <- colSums(scores) / sum(weights)  # effective N = sum(w) for fweight
     } else {
+      N <- nrow(scores)
       gbar <- colSums(weights * scores) / N   # sum(w^2 * g) / N
     }
     scores <- sweep(scores, 2L, gbar)
