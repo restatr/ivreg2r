@@ -180,3 +180,187 @@
     method        = "gmm2s"
   )
 }
+
+
+# --------------------------------------------------------------------------
+# .wmatrix_first_step_resid
+# --------------------------------------------------------------------------
+#' Compute residuals from W-weighted GMM first step
+#'
+#' Uses a user-supplied weighting matrix W to estimate beta via GMM, then
+#' returns the residuals. Used in Path 3 (wmatrix + gmm2s) to feed the
+#' omega_fn closure with W-step residuals for the efficient second step.
+#'
+#' @param parsed A `parsed_formula` object from `.parse_formula()`.
+#' @param W L x L user-supplied weighting matrix.
+#' @return Numeric vector of residuals from the W-weighted first step.
+#' @keywords internal
+.wmatrix_first_step_resid <- function(parsed, W) {
+  X <- parsed$X; Z <- parsed$Z; y <- parsed$y
+  N <- parsed$N; K <- parsed$K; w <- parsed$weights
+
+  if (!is.null(w)) {
+    QXZ <- crossprod(X, w * Z) / N
+    QZy <- crossprod(Z, w * y) / N
+  } else {
+    QXZ <- crossprod(X, Z) / N
+    QZy <- crossprod(Z, y) / N
+  }
+
+  H <- QXZ %*% W %*% t(QXZ)
+  H <- (H + t(H)) / 2
+  rhs <- QXZ %*% W %*% QZy
+
+  R_H <- tryCatch(chol(H), error = function(e) NULL)
+  if (is.null(R_H)) {
+    if (qr(H)$rank < K)
+      stop("GMM Hessian is singular; model not identified.", call. = FALSE)
+    beta <- drop(qr.solve(H, rhs))
+  } else {
+    beta <- drop(backsolve(R_H, forwardsolve(t(R_H), rhs)))
+  }
+
+  y - drop(X %*% beta)
+}
+
+
+# --------------------------------------------------------------------------
+# .fit_gmm_wmatrix
+# --------------------------------------------------------------------------
+#' Fit GMM with user-supplied weighting matrix (inefficient GMM)
+#'
+#' Computes GMM estimates using user W as the weighting matrix. The VCV is
+#' the full sandwich form (not the collapsed efficient form), and the J
+#' statistic is computed via efficient 2-step re-estimation using the
+#' estimated Omega (not the wmatrix-weighted residuals).
+#'
+#' Mirrors Stata's `s_iegmm()` (ivreg2.ado:5495-5563).
+#'
+#' @param parsed A `parsed_formula` object from `.parse_formula()`.
+#' @param small Logical: if `TRUE`, use `N-K` denominator for sigma.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
+#' @param W L x L user-supplied weighting matrix.
+#' @param omega_fn Function: closure that takes a residual vector and returns
+#'   the L x L moment covariance matrix Omega.
+#' @return A named list with the same fields as `.fit_gmm2s()` plus `method =
+#'   "gmmw"`.
+#' @keywords internal
+.fit_gmm_wmatrix <- function(parsed, small = FALSE, dofminus = 0L,
+                              sdofminus = 0L, W, omega_fn) {
+  y <- parsed$y; X <- parsed$X; Z <- parsed$Z
+  N <- parsed$N; K <- parsed$K; L <- parsed$L
+  w <- parsed$weights; overid_df <- parsed$overid_df
+  has_intercept <- parsed$has_intercept
+
+  # Get 2SLS bread and X_hat for diagnostics
+  fit_2sls <- .fit_2sls(parsed, small = FALSE, dofminus = dofminus,
+                         sdofminus = sdofminus)
+
+  # --- Step 1: GMM estimation with user W ---
+  if (!is.null(w)) {
+    QXZ <- crossprod(X, w * Z) / N
+    QZy <- crossprod(Z, w * y) / N
+  } else {
+    QXZ <- crossprod(X, Z) / N
+    QZy <- crossprod(Z, y) / N
+  }
+
+  H <- QXZ %*% W %*% t(QXZ)
+  H <- (H + t(H)) / 2   # force symmetry
+  rhs <- QXZ %*% W %*% QZy
+
+  # Rank check with Chol/QR fallback
+  R_H <- tryCatch(chol(H), error = function(e) NULL)
+  if (is.null(R_H)) {
+    if (qr(H)$rank < K)
+      stop("GMM Hessian is singular; model not identified.", call. = FALSE)
+    beta <- drop(qr.solve(H, rhs))
+    H_inv <- qr.solve(H)
+  } else {
+    beta <- drop(backsolve(R_H, forwardsolve(t(R_H), rhs)))
+    H_inv <- chol2inv(R_H)
+  }
+  names(beta) <- colnames(X)
+
+  # --- Step 2: Residuals ---
+  fitted <- drop(X %*% beta)
+  names(fitted) <- names(y)
+  resid <- y - fitted
+  rss <- if (is.null(w)) drop(crossprod(resid)) else sum(w * resid^2)
+
+  # --- Step 3: Omega from residuals ---
+  Omega <- omega_fn(resid)
+
+  # --- Step 4: Inefficient GMM VCV (Stata s_iegmm lines 5556-5557) ---
+  # V = (1/N) * H^{-1} * QXZ * W * Omega * W * QXZ' * H^{-1}
+  aux5 <- H_inv %*% QXZ %*% W    # K x L
+  V <- (1 / N) * aux5 %*% Omega %*% t(aux5)
+  V <- (V + t(V)) / 2
+  colnames(V) <- rownames(V) <- colnames(X)
+
+  # bread_gmm for VCV corrections (analogous to M_hess_inv / N in gmm2s)
+  bread_gmm <- H_inv / N
+  colnames(bread_gmm) <- rownames(bread_gmm) <- colnames(X)
+
+  # --- Step 5: J statistic via efficient 2-step re-estimation ---
+  if (overid_df > 0L) {
+    j_stat <- .compute_j_with_omega(Z, X, y, Omega, w, N)
+    if (is.na(j_stat)) {
+      j_p <- NA_real_
+    } else {
+      j_p <- stats::pchisq(j_stat, df = overid_df, lower.tail = FALSE)
+    }
+  } else {
+    j_stat <- 0
+    j_p <- NA_real_
+  }
+
+  # --- Step 6: sigma, R-squared, etc. (same as .fit_gmm2s) ---
+  denom <- if (small) N - K - dofminus - sdofminus else N - dofminus
+  sigma <- sqrt(rss / denom)
+
+  if (is.null(w)) {
+    tss_c <- sum((y - mean(y))^2)
+    tss_u <- sum(y^2)
+  } else {
+    wmean <- sum(w * y) / sum(w)
+    tss_c <- sum(w * (y - wmean)^2)
+    tss_u <- sum(w * y^2)
+  }
+  r2c <- 1 - rss / tss_c
+  r2u <- 1 - rss / tss_u
+  r2  <- if (has_intercept) r2c else r2u
+  tss <- if (has_intercept) tss_c else tss_u
+  mss <- tss - rss
+
+  adj_r2 <- if (has_intercept) {
+    1 - (1 - r2) * (N - 1) / (N - K - dofminus - sdofminus)
+  } else {
+    1 - (1 - r2) * N / (N - K - dofminus - sdofminus)
+  }
+
+  list(
+    coefficients  = beta,
+    residuals     = resid,
+    fitted.values = fitted,
+    vcov          = V,
+    sigma         = sigma,
+    df.residual   = as.integer(N - K - dofminus - sdofminus),
+    rank          = as.integer(K),
+    r.squared     = r2,
+    adj.r.squared = adj_r2,
+    rss           = rss,
+    r2u           = r2u,
+    r2c           = r2c,
+    mss           = mss,
+    bread         = fit_2sls$bread,      # 2SLS bread for first-stage diagnostics
+    bread_gmm     = bread_gmm,           # inefficient GMM bread
+    X_hat         = fit_2sls$X_hat,
+    j_stat        = j_stat,
+    j_df          = as.integer(overid_df),
+    j_p           = j_p,
+    omega         = Omega,
+    method        = "gmmw"
+  )
+}

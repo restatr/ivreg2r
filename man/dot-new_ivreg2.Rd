@@ -52,6 +52,8 @@
   kclass_value = NA_real_,
   fuller_parameter = 0,
   coviv = FALSE,
+  wmatrix = NULL,
+  smatrix = NULL,
   kernel = NULL,
   bw = NULL,
   tvar = NULL,
@@ -160,6 +162,10 @@ or \code{"kclass"}).}
 \item{fuller_parameter}{Numeric: Fuller modification parameter (0 if none).}
 
 \item{coviv}{Logical: whether COVIV (2SLS bread) was used for VCV.}
+
+\item{wmatrix}{User-supplied weighting matrix (or NULL).}
+
+\item{smatrix}{User-supplied moment covariance matrix (or NULL).}
 
 \item{kernel}{Canonical kernel name (character) or NULL if no HAC/AC.}
 

@@ -28,6 +28,8 @@ ivreg2(
   ivar = NULL,
   kiefer = FALSE,
   dkraay = NULL,
+  wmatrix = NULL,
+  smatrix = NULL,
   reduced_form = "none",
   model = TRUE,
   x = FALSE,
@@ -161,6 +163,23 @@ smoothing across time lags, producing standard errors robust to
 cross-sectional dependence. Requires panel data (\code{tvar} + \code{ivar}).
 Incompatible with explicit \code{bw}. If \code{kernel} is not specified, defaults
 to Bartlett. Equivalent to Stata's \verb{ivreg2 ..., dkraay(3)}.}
+
+\item{wmatrix}{Numeric matrix: user-supplied L x L weighting matrix for
+GMM estimation, where L is the number of instruments (including exogenous
+regressors). When supplied without \code{method = "gmm2s"}, produces
+inefficient GMM with full sandwich VCV (\code{method} becomes \code{"gmmw"}).
+When combined with \code{method = "gmm2s"}, used as the first-step weighting
+matrix (second step uses the optimal weighting matrix). Must be symmetric.
+Incompatible with \code{method = "liml"}, \code{kclass}, and \code{fuller}.
+Ignored without robust VCE, clustering, or HAC (with a warning).
+Equivalent to Stata's \code{wmatrix()} option.}
+
+\item{smatrix}{Numeric matrix: user-supplied L x L moment covariance matrix
+for GMM estimation. When supplied, the GMM estimation uses this matrix
+instead of computing Omega from residuals. Implies efficient GMM
+(\code{method} is promoted to \code{"gmm2s"} if \code{"2sls"}). Must be symmetric.
+Incompatible with \code{method = "liml"}, \code{kclass}, and \code{fuller}.
+Equivalent to Stata's \code{smatrix()} option.}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression

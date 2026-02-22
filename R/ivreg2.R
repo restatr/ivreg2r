@@ -111,6 +111,21 @@
 #'   cross-sectional dependence. Requires panel data (`tvar` + `ivar`).
 #'   Incompatible with explicit `bw`. If `kernel` is not specified, defaults
 #'   to Bartlett. Equivalent to Stata's `ivreg2 ..., dkraay(3)`.
+#' @param wmatrix Numeric matrix: user-supplied L x L weighting matrix for
+#'   GMM estimation, where L is the number of instruments (including exogenous
+#'   regressors). When supplied without `method = "gmm2s"`, produces
+#'   inefficient GMM with full sandwich VCV (`method` becomes `"gmmw"`).
+#'   When combined with `method = "gmm2s"`, used as the first-step weighting
+#'   matrix (second step uses the optimal weighting matrix). Must be symmetric.
+#'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
+#'   Ignored without robust VCE, clustering, or HAC (with a warning).
+#'   Equivalent to Stata's `wmatrix()` option.
+#' @param smatrix Numeric matrix: user-supplied L x L moment covariance matrix
+#'   for GMM estimation. When supplied, the GMM estimation uses this matrix
+#'   instead of computing Omega from residuals. Implies efficient GMM
+#'   (`method` is promoted to `"gmm2s"` if `"2sls"`). Must be symmetric.
+#'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
+#'   Equivalent to Stata's `smatrix()` option.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -141,6 +156,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    weight_type = "aweight",
                    kernel = NULL, bw = NULL, tvar = NULL, ivar = NULL,
                    kiefer = FALSE, dkraay = NULL,
+                   wmatrix = NULL, smatrix = NULL,
                    reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
 
@@ -302,7 +318,28 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("`ivar` must be a single character string.", call. = FALSE)
   }
 
-  # --- 2b. Validate method / kclass / fuller ---
+  # --- 2b. Validate wmatrix / smatrix (type checks) ---
+  # Must come BEFORE method/kclass/fuller promotion so parameter-specific
+  # error messages fire before method has been changed.
+  if (!is.null(wmatrix)) {
+    if (!is.matrix(wmatrix) || !is.numeric(wmatrix))
+      stop("`wmatrix` must be a numeric matrix.", call. = FALSE)
+  }
+  if (!is.null(smatrix)) {
+    if (!is.matrix(smatrix) || !is.numeric(smatrix))
+      stop("`smatrix` must be a numeric matrix.", call. = FALSE)
+  }
+  # Mutual exclusion with kclass/fuller (check raw params, not promoted method)
+  if (!is.null(wmatrix) && !is.null(kclass))
+    stop("Cannot specify `wmatrix` with `kclass`.", call. = FALSE)
+  if (!is.null(smatrix) && !is.null(kclass))
+    stop("Cannot specify `smatrix` with `kclass`.", call. = FALSE)
+  if (!is.null(wmatrix) && fuller > 0)
+    stop("Cannot specify `wmatrix` with `fuller`.", call. = FALSE)
+  if (!is.null(smatrix) && fuller > 0)
+    stop("Cannot specify `smatrix` with `fuller`.", call. = FALSE)
+
+  # --- 2c. Validate method / kclass / fuller ---
   if (!is.character(method) || length(method) != 1L) {
     stop("`method` must be a single character string.", call. = FALSE)
   }
@@ -337,6 +374,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (method == "gmm2s" && !is.null(kclass)) {
     stop("Cannot specify `kclass` with `method = \"gmm2s\"`.", call. = FALSE)
   }
+  # wmatrix/smatrix mutual exclusion with liml (check after method validation)
+  if (!is.null(wmatrix) && method %in% c("liml", "kclass"))
+    stop("Cannot specify `wmatrix` with method = \"", method, "\".",
+         call. = FALSE)
+  if (!is.null(smatrix) && method %in% c("liml", "kclass"))
+    stop("Cannot specify `smatrix` with method = \"", method, "\".",
+         call. = FALSE)
   # fuller implies liml (but not for gmm2s — already guarded above)
   if (fuller > 0 && method != "liml" && method != "gmm2s") {
     method <- "liml"
@@ -398,6 +442,31 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("`fuller` (", fuller, ") must be less than N - L (",
          parsed$N - parsed$L, ").", call. = FALSE)
   }
+
+  # --- 3b2. Validate wmatrix/smatrix dimensions (need parsed$L) ---
+  if (!is.null(wmatrix)) {
+    if (nrow(wmatrix) != parsed$L || ncol(wmatrix) != parsed$L)
+      stop("`wmatrix` dimensions (", nrow(wmatrix), "x", ncol(wmatrix),
+           ") do not match the number of instruments (", parsed$L, ").",
+           call. = FALSE)
+    if (!isSymmetric(unname(wmatrix), tol = sqrt(.Machine$double.eps)))
+      stop("`wmatrix` is not symmetric.", call. = FALSE)
+    if (!parsed$is_iv)
+      stop("`wmatrix` requires an IV model (endogenous variables).",
+           call. = FALSE)
+  }
+  if (!is.null(smatrix)) {
+    if (nrow(smatrix) != parsed$L || ncol(smatrix) != parsed$L)
+      stop("`smatrix` dimensions (", nrow(smatrix), "x", ncol(smatrix),
+           ") do not match the number of instruments (", parsed$L, ").",
+           call. = FALSE)
+    if (!isSymmetric(unname(smatrix), tol = sqrt(.Machine$double.eps)))
+      stop("`smatrix` is not symmetric.", call. = FALSE)
+    if (!parsed$is_iv)
+      stop("`smatrix` requires an IV model (endogenous variables).",
+           call. = FALSE)
+  }
+
   # --- 3c. Validate and normalize weights ---
   w_raw <- parsed$weights
   if (!is.null(w_raw) && any(!is.finite(w_raw)))
@@ -654,12 +723,33 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   # --- 4. Dispatch ---
 
-  # --- 4a. Build omega_fn closure for GMM2S ---
-  # The closure captures all VCE parameters so .fit_gmm2s() can compute Omega
+  # --- 4a. Determine effective estimation path for wmatrix/smatrix ---
+  use_wmatrix <- !is.null(wmatrix)
+  use_smatrix <- !is.null(smatrix)
+
+  # wmatrix without robust/cluster/kernel/gmm2s → warn & ignore (Stata behavior)
+  if (use_wmatrix && is.null(cluster_vec) && vcov == "iid" &&
+      is.null(kernel) && method != "gmm2s") {
+    warning("`wmatrix` is ignored without robust VCE, clustering, or HAC; ",
+            "using standard IV estimation.", call. = FALSE)
+    use_wmatrix <- FALSE
+    wmatrix <- NULL
+  }
+
+  # smatrix alone implies efficient GMM if method is default.
+  # With wmatrix, smatrix only provides S for VCV/J — coefficients come from W.
+  if (use_smatrix && !use_wmatrix && method == "2sls") {
+    method <- "gmm2s"
+  }
+
+  # --- 4b. Build omega_fn closure ---
+  # The closure captures all VCE parameters so GMM functions can compute Omega
   # from any residual vector. For auto-bw, we resolve bw before building the
   # closure (using step-1 2SLS residuals).
   omega_fn <- NULL
-  if (method == "gmm2s") {
+  needs_omega_fn <- method == "gmm2s" || (use_wmatrix && !use_smatrix)
+
+  if (needs_omega_fn) {
     # Resolve auto-bw using step-1 residuals (Stata ivreg2.ado:970-980)
     if (is.character(bw) && tolower(bw) == "auto") {
       if (!is.null(ivar)) {
@@ -721,25 +811,59 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
   }
 
-  fit <- if (method == "gmm2s") {
-    .fit_gmm2s(parsed, small = small, dofminus = dofminus,
-               sdofminus = sdofminus, omega_fn = omega_fn)
+  # --- 4c. Estimation dispatch ---
+  if (use_smatrix && !use_wmatrix) {
+    # Path 1: smatrix alone — efficient GMM with user S
+    omega_fn <- function(resid) smatrix
+    fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
+                      sdofminus = sdofminus, omega_fn = omega_fn)
+
+  } else if (use_wmatrix && method == "gmm2s") {
+    # Path 3 (or Path 4 with gmm2s): wmatrix as first step, then efficient GMM
+    wstep_resid <- .wmatrix_first_step_resid(parsed, wmatrix)
+    if (use_smatrix) {
+      # Path 4 with gmm2s: user S for second step
+      omega_fn <- function(resid) smatrix
+    } else {
+      # Build omega_fn that uses W-step residuals (captured in closure)
+      omega_fn_base <- omega_fn
+      omega_fn <- function(resid) omega_fn_base(wstep_resid)
+    }
+    fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
+                      sdofminus = sdofminus, omega_fn = omega_fn)
+
+  } else if (use_wmatrix) {
+    # Path 2 (or Path 4 without gmm2s): wmatrix alone — inefficient GMM
+    if (use_smatrix) {
+      omega_fn <- function(resid) smatrix
+    }
+    fit <- .fit_gmm_wmatrix(parsed, small = small, dofminus = dofminus,
+                             sdofminus = sdofminus,
+                             W = wmatrix, omega_fn = omega_fn)
+    method <- "gmmw"
+
+  } else if (method == "gmm2s") {
+    # Existing N1 path: standard two-step efficient GMM
+    fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
+                      sdofminus = sdofminus, omega_fn = omega_fn)
+
   } else if (method %in% c("liml", "kclass")) {
-    .fit_kclass(parsed, method = method, kclass = kclass, fuller = fuller,
+    fit <- .fit_kclass(parsed, method = method, kclass = kclass, fuller = fuller,
                 small = small, dofminus = dofminus, sdofminus = sdofminus)
   } else if (parsed$is_iv) {
-    .fit_2sls(parsed, small = small, dofminus = dofminus,
+    fit <- .fit_2sls(parsed, small = small, dofminus = dofminus,
               sdofminus = sdofminus)
   } else {
-    .fit_ols(parsed, small = small, dofminus = dofminus,
+    fit <- .fit_ols(parsed, small = small, dofminus = dofminus,
              sdofminus = sdofminus)
   }
 
-  # --- 4b. Resolve bw = "auto" (Newey-West 1994) ---
+  # --- 4d. Resolve bw = "auto" (Newey-West 1994) ---
   # Must happen AFTER estimation (need residuals) but BEFORE VCV computation.
-  # For GMM2S, auto-bw is already resolved above (before omega_fn construction).
-  # Stata dispatches auto-bw at ivreg2.ado:970-980, after first-step estimation.
-  if (method != "gmm2s" && is.character(bw) && tolower(bw) == "auto") {
+  # For GMM2S/gmmw, auto-bw is already resolved above (before omega_fn
+  # construction). Stata dispatches auto-bw at ivreg2.ado:970-980, after
+  # first-step estimation.
+  if (!method %in% c("gmm2s", "gmmw") && is.character(bw) && tolower(bw) == "auto") {
     if (!is.null(ivar)) {
       stop("Automatic bandwidth selection not available for panel data.",
            call. = FALSE)
@@ -764,11 +888,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 5. VCV ---
-  # For GMM2S: VCV is already computed by .fit_gmm2s() (efficient GMM sandwich
-  # collapses). Apply HC1 or small-sample corrections here.
+  # For GMM2S/gmmw: VCV is already computed by the GMM functions. Apply HC1
+  # or small-sample corrections here.
   # HC1 implies the same N/(N-K) correction as small for VCV, matching the
   # non-GMM path at vcov-robust.R:74-79 where HC1 applies unconditionally.
-  if (method == "gmm2s") {
+  if (method %in% c("gmm2s", "gmmw")) {
     bread_vcov <- fit$bread_gmm
     needs_vcov_correction <- small || vcov == "HC1"
     if (needs_vcov_correction) {
@@ -876,9 +1000,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (parsed$is_iv) {
 
     # Overidentification test (D1)
-    # For GMM2S, J is computed as part of estimation — skip .compute_overid_test()
-    if (method == "gmm2s") {
-      overid_test_name <- if (effective_vcov_type %in% c("iid", "AC")) {
+    # For GMM2S/gmmw, J is computed as part of estimation — skip .compute_overid_test()
+    if (method %in% c("gmm2s", "gmmw")) {
+      overid_test_name <- if (method == "gmmw") {
+        "Hansen J"
+      } else if (effective_vcov_type %in% c("iid", "AC")) {
         "Sargan"
       } else {
         "Hansen J"
@@ -932,8 +1058,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     diagnostics$weak_id_robust <- id_tests$weak_id_robust
 
     # Stock-Yogo critical values (D3)
-    # GMM2S uses IV tables (matching Stata's Disp_cdsy routing for gmm2s)
-    sy_method <- if (method == "gmm2s") "2sls" else method
+    # GMM2S/gmmw use IV tables (matching Stata's Disp_cdsy routing for gmm2s)
+    sy_method <- if (method %in% c("gmm2s", "gmmw")) "2sls" else method
     diagnostics$weak_id_sy <- .stock_yogo_lookup(
       parsed$K1, parsed$L1, method = sy_method, fuller = fuller
     )
@@ -1089,7 +1215,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   # --- 6. Assemble return object ---
   # Determine effective method for the return object
-  est_method <- if (method %in% c("liml", "kclass", "gmm2s")) {
+  est_method <- if (method == "gmmw") {
+    "gmmw"
+  } else if (method %in% c("liml", "kclass", "gmm2s")) {
     method
   } else if (parsed$is_iv) {
     "2sls"
@@ -1147,6 +1275,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     kclass_value      = fit$kclass_value %||% NA_real_,
     fuller_parameter  = fit$fuller_param %||% 0,
     coviv             = coviv,
+    wmatrix           = wmatrix,
+    smatrix           = smatrix,
     kernel            = kernel,
     bw                = bw,
     tvar              = tvar,

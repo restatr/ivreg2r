@@ -58,6 +58,8 @@ NULL
 #' @param kclass_value Numeric: the k value actually used (NA for OLS/2SLS).
 #' @param fuller_parameter Numeric: Fuller modification parameter (0 if none).
 #' @param coviv Logical: whether COVIV (2SLS bread) was used for VCV.
+#' @param wmatrix User-supplied weighting matrix (or NULL).
+#' @param smatrix User-supplied moment covariance matrix (or NULL).
 #' @param kernel Canonical kernel name (character) or NULL if no HAC/AC.
 #' @param bw Numeric bandwidth or NULL if no HAC/AC.
 #' @param tvar Character: name of time variable, or NULL.
@@ -95,6 +97,7 @@ NULL
                          kclass_value = NA_real_,
                          fuller_parameter = 0,
                          coviv = FALSE,
+                         wmatrix = NULL, smatrix = NULL,
                          kernel = NULL, bw = NULL,
                          tvar = NULL,
                          kiefer = FALSE, dkraay = NULL,
@@ -150,6 +153,8 @@ NULL
       kclass_value   = kclass_value,
       fuller_parameter = fuller_parameter,
       coviv          = coviv,
+      wmatrix        = wmatrix,
+      smatrix        = smatrix,
       kernel         = kernel,
       bw             = bw,
       tvar           = tvar,
@@ -413,8 +418,8 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   cat("VCV type:    ", .vcov_description(x$vcov_type, x$small,
                                          x$kernel, x$bw,
                                          x$kiefer, x$dkraay), "\n")
-  # GMM2S efficiency subtitle (Stata lines 2203-2204)
-  if (!is.null(x$method) && x$method == "gmm2s") {
+  # GMM2S/gmmw efficiency subtitle (Stata lines 2203-2204)
+  if (!is.null(x$method) && x$method %in% c("gmm2s", "gmmw")) {
     eff_desc <- if (x$vcov_type == "CL") {
       "clustering"
     } else if (x$vcov_type %in% c("HAC", "AC")) {
@@ -535,7 +540,14 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
                  "LIML Estimation"
                },
     "kclass" = "k-class Estimation",
-    "gmm2s"  = "2-Step GMM Estimation",
+    "gmm2s"  = if (!is.null(x$wmatrix)) {
+                 "2-Step GMM Estimation (user-supplied first step)"
+               } else if (!is.null(x$smatrix)) {
+                 "GMM Estimation (user-supplied S)"
+               } else {
+                 "2-Step GMM Estimation"
+               },
+    "gmmw"   = "GMM Estimation (user-supplied W)",
     paste0(toupper(m), " Estimation")
   )
 }
