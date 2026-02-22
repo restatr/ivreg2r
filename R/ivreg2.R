@@ -565,12 +565,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
   }
 
-  # --- 3b2. Validate wmatrix/smatrix dimensions (need parsed$L) ---
+  # --- 3b2. Validate wmatrix/smatrix (symmetry + IV-only; dimensions
+  #          checked after partialling, which may reduce L) ---
   if (!is.null(wmatrix)) {
-    if (nrow(wmatrix) != parsed$L || ncol(wmatrix) != parsed$L)
-      stop("`wmatrix` dimensions (", nrow(wmatrix), "x", ncol(wmatrix),
-           ") do not match the number of instruments (", parsed$L, ").",
-           call. = FALSE)
     if (!isSymmetric(unname(wmatrix), tol = sqrt(.Machine$double.eps)))
       stop("`wmatrix` is not symmetric.", call. = FALSE)
     if (!parsed$is_iv)
@@ -578,10 +575,6 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
            call. = FALSE)
   }
   if (!is.null(smatrix)) {
-    if (nrow(smatrix) != parsed$L || ncol(smatrix) != parsed$L)
-      stop("`smatrix` dimensions (", nrow(smatrix), "x", ncol(smatrix),
-           ") do not match the number of instruments (", parsed$L, ").",
-           call. = FALSE)
     if (!isSymmetric(unname(smatrix), tol = sqrt(.Machine$double.eps)))
       stop("`smatrix` is not symmetric.", call. = FALSE)
     if (!parsed$is_iv)
@@ -762,6 +755,20 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
            parsed$N - parsed$L - dofminus - sdofminus,
            " (must be > 0).", call. = FALSE)
     }
+  }
+
+  # --- 3d2. Validate wmatrix/smatrix dimensions (after partialling) ---
+  if (!is.null(wmatrix)) {
+    if (nrow(wmatrix) != parsed$L || ncol(wmatrix) != parsed$L)
+      stop("`wmatrix` dimensions (", nrow(wmatrix), "x", ncol(wmatrix),
+           ") do not match the number of instruments (", parsed$L, ").",
+           call. = FALSE)
+  }
+  if (!is.null(smatrix)) {
+    if (nrow(smatrix) != parsed$L || ncol(smatrix) != parsed$L)
+      stop("`smatrix` dimensions (", nrow(smatrix), "x", ncol(smatrix),
+           ") do not match the number of instruments (", parsed$L, ").",
+           call. = FALSE)
   }
 
   # --- 3b. Parse clusters ---

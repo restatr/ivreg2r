@@ -434,7 +434,7 @@ test_that("predict() returns fitted values with message for partial models", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc2 + nearc4,
                 data = card, partial = c("black", "south", "smsa"))
-  expect_message(predict(fit), "partial model")
+  expect_message(predict(fit), "non-partialled regressors")
 })
 
 test_that("predict(newdata) errors for partial models", {

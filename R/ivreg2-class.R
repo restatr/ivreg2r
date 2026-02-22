@@ -357,8 +357,8 @@ predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
       stop("Cannot predict on new data after partialling: coefficients on ",
            "partialled variables are unknown.", call. = FALSE)
     }
-    message("Note: fitted values are from the partial model, not the full model. ",
-            "Residuals are from the full model.")
+    message("Note: fitted values reflect only non-partialled regressors. ",
+            "Residuals equal full-model residuals (FWL theorem).")
     return(object$fitted.values)
   }
   if (missing(newdata)) {
