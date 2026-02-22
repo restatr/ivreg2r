@@ -81,9 +81,12 @@ If \code{NULL} (default), no orthogonality test is computed. Ignored for
 OLS models. Equivalent to Stata's \code{orthog()} option.}
 
 \item{method}{Character: estimation method. One of \code{"2sls"} (default),
-\code{"liml"}, or \code{"kclass"}. For OLS models (1-part formula), this is
-ignored. When \code{fuller > 0} is specified, method is automatically
-promoted to \code{"liml"}.}
+\code{"liml"}, \code{"kclass"}, or \code{"gmm2s"} (two-step efficient GMM).
+For OLS models (1-part formula), this is ignored. When \code{fuller > 0}
+is specified, method is automatically promoted to \code{"liml"}.
+\code{"gmm2s"} uses the inverse of the moment covariance matrix as the
+optimal weighting matrix, yielding efficient estimates under the
+specified error structure. Incompatible with \code{fuller} and \code{kclass}.}
 
 \item{kclass}{Numeric scalar: user-supplied k value for k-class
 estimation. When supplied, \code{method} is automatically set to \code{"kclass"}.

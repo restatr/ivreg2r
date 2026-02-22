@@ -413,6 +413,20 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   cat("VCV type:    ", .vcov_description(x$vcov_type, x$small,
                                          x$kernel, x$bw,
                                          x$kiefer, x$dkraay), "\n")
+  # GMM2S efficiency subtitle (Stata lines 2203-2204)
+  if (!is.null(x$method) && x$method == "gmm2s") {
+    eff_desc <- if (x$vcov_type == "CL") {
+      "clustering"
+    } else if (x$vcov_type %in% c("HAC", "AC")) {
+      "autocorrelation"
+    } else if (x$vcov_type %in% c("HC0", "HC1")) {
+      "heteroskedasticity"
+    } else {
+      "homoskedasticity"
+    }
+    cat("              Estimates efficient for arbitrary ", eff_desc, "\n",
+        sep = "")
+  }
   if (!is.null(x$n_clusters)) {
     if (!is.null(x$n_clusters1)) {
       # Two-way clustering
@@ -521,6 +535,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
                  "LIML Estimation"
                },
     "kclass" = "k-class Estimation",
+    "gmm2s"  = "2-Step GMM Estimation",
     paste0(toupper(m), " Estimation")
   )
 }

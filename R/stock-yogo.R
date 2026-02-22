@@ -44,7 +44,7 @@
     }
   }
 
-  if (method %in% c("ols", "2sls")) {
+  if (method %in% c("ols", "2sls", "gmm2s")) {
     # IV relative bias tables (K1 <= 3)
     .add_rows(list(
       "5%"  = sy_ivbias5,  "10%" = sy_ivbias10,

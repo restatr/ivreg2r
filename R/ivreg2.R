@@ -65,9 +65,12 @@
 #'   (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
 #'   partialling out regressors. Equivalent to Stata's `sdofminus()` option.
 #' @param method Character: estimation method. One of `"2sls"` (default),
-#'   `"liml"`, or `"kclass"`. For OLS models (1-part formula), this is
-#'   ignored. When `fuller > 0` is specified, method is automatically
-#'   promoted to `"liml"`.
+#'   `"liml"`, `"kclass"`, or `"gmm2s"` (two-step efficient GMM).
+#'   For OLS models (1-part formula), this is ignored. When `fuller > 0`
+#'   is specified, method is automatically promoted to `"liml"`.
+#'   `"gmm2s"` uses the inverse of the moment covariance matrix as the
+#'   optimal weighting matrix, yielding efficient estimates under the
+#'   specified error structure. Incompatible with `fuller` and `kclass`.
 #' @param kclass Numeric scalar: user-supplied k value for k-class
 #'   estimation. When supplied, `method` is automatically set to `"kclass"`.
 #'   Must be non-negative. Cannot be combined with `method = "liml"` or
@@ -304,9 +307,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("`method` must be a single character string.", call. = FALSE)
   }
   method <- tolower(method)
-  valid_methods <- c("2sls", "liml", "kclass")
+  valid_methods <- c("2sls", "liml", "kclass", "gmm2s")
   if (!method %in% valid_methods) {
-    stop('`method` must be one of "2sls", "liml", or "kclass".',
+    stop('`method` must be one of "2sls", "liml", "kclass", or "gmm2s".',
          call. = FALSE)
   }
   if (!is.numeric(fuller) || length(fuller) != 1L || !is.finite(fuller)) {
@@ -327,12 +330,19 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (fuller > 0 && !is.null(kclass)) {
     stop("Cannot specify both `fuller` and `kclass`.", call. = FALSE)
   }
-  # fuller implies liml
-  if (fuller > 0 && method != "liml") {
+  # GMM2S is incompatible with fuller and kclass
+  if (method == "gmm2s" && fuller > 0) {
+    stop("Cannot specify `fuller` with `method = \"gmm2s\"`.", call. = FALSE)
+  }
+  if (method == "gmm2s" && !is.null(kclass)) {
+    stop("Cannot specify `kclass` with `method = \"gmm2s\"`.", call. = FALSE)
+  }
+  # fuller implies liml (but not for gmm2s — already guarded above)
+  if (fuller > 0 && method != "liml" && method != "gmm2s") {
     method <- "liml"
   }
-  # kclass supplied implies method = "kclass"
-  if (!is.null(kclass) && method != "kclass") {
+  # kclass supplied implies method = "kclass" (but not for gmm2s — already guarded)
+  if (!is.null(kclass) && method != "kclass" && method != "gmm2s") {
     if (method == "liml") {
       stop('Cannot specify `kclass` with `method = "liml"`.', call. = FALSE)
     }
@@ -345,6 +355,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
   # coviv is only meaningful for LIML/kclass — silently ignored otherwise
   if (coviv && !method %in% c("liml", "kclass")) {
+    coviv <- FALSE
+  }
+  # GMM2S is incompatible with coviv
+  if (coviv && method == "gmm2s") {
     coviv <- FALSE
   }
 
@@ -376,7 +390,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 3b. Validate method against parsed model ---
-  if (method %in% c("liml", "kclass") && !parsed$is_iv) {
+  if (method %in% c("liml", "kclass", "gmm2s") && !parsed$is_iv) {
     stop('`method = "', method, '"` requires an IV model (3-part formula).',
          call. = FALSE)
   }
@@ -639,7 +653,78 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 4. Dispatch ---
-  fit <- if (method %in% c("liml", "kclass")) {
+
+  # --- 4a. Build omega_fn closure for GMM2S ---
+  # The closure captures all VCE parameters so .fit_gmm2s() can compute Omega
+  # from any residual vector. For auto-bw, we resolve bw before building the
+  # closure (using step-1 2SLS residuals).
+  omega_fn <- NULL
+  if (method == "gmm2s") {
+    # Resolve auto-bw using step-1 residuals (Stata ivreg2.ado:970-980)
+    if (is.character(bw) && tolower(bw) == "auto") {
+      if (!is.null(ivar)) {
+        stop("Automatic bandwidth selection not available for panel data.",
+             call. = FALSE)
+      }
+      fit_step1 <- .fit_2sls(parsed, small = FALSE, dofminus = dofminus,
+                             sdofminus = sdofminus)
+      bw <- .auto_bandwidth(
+        resid = fit_step1$residuals,
+        Z = parsed$Z,
+        time_index = time_index,
+        kernel = kernel,
+        has_intercept = parsed$has_intercept,
+        N = parsed$N
+      )
+      max_bw <- (time_index$T_span - 1) / time_index$tdelta
+      if (bw > max_bw) {
+        warning("Automatic bandwidth (", formatC(bw, format = "g"),
+                ") exceeds time-span limit (", formatC(max_bw, format = "g"),
+                "); capping at ", formatC(max_bw, format = "g"), ".",
+                call. = FALSE)
+        bw <- max_bw
+      }
+    }
+
+    # Capture VCE parameters in closure
+    gmm_Z <- parsed$Z
+    gmm_w <- parsed$weights
+    gmm_N <- parsed$N
+    gmm_cv <- cluster_vec
+    gmm_dm <- dofminus
+    gmm_wt <- weight_type
+    gmm_k  <- kernel
+    gmm_bw <- bw
+    gmm_ti <- time_index
+    # IID path: omega = sigma^2 * Z'WZ / N (Stata livreg2.do m_omega lines 194-236)
+    # HC/CL/HAC/AC: use .compute_omega() which computes the heteroskedastic-robust
+    # or cluster-robust moment covariance
+    gmm_is_iid <- is.null(cluster_vec) && vcov == "iid" && is.null(kernel)
+    omega_fn <- function(resid) {
+      if (gmm_is_iid) {
+        # Homoskedastic omega: sigma^2 * Z'WZ / N
+        if (!is.null(gmm_w)) {
+          rss_step <- sum(gmm_w * resid^2)
+          ZWZ <- crossprod(gmm_Z, gmm_w * gmm_Z)
+        } else {
+          rss_step <- sum(resid^2)
+          ZWZ <- crossprod(gmm_Z)
+        }
+        sigma2 <- rss_step / (gmm_N - gmm_dm)
+        Omega <- sigma2 * ZWZ / gmm_N
+        (Omega + t(Omega)) / 2
+      } else {
+        .compute_omega(gmm_Z, resid, gmm_w, gmm_cv, gmm_N,
+                       dofminus = gmm_dm, weight_type = gmm_wt,
+                       kernel = gmm_k, bw = gmm_bw, time_index = gmm_ti)
+      }
+    }
+  }
+
+  fit <- if (method == "gmm2s") {
+    .fit_gmm2s(parsed, small = small, dofminus = dofminus,
+               sdofminus = sdofminus, omega_fn = omega_fn)
+  } else if (method %in% c("liml", "kclass")) {
     .fit_kclass(parsed, method = method, kclass = kclass, fuller = fuller,
                 small = small, dofminus = dofminus, sdofminus = sdofminus)
   } else if (parsed$is_iv) {
@@ -652,8 +737,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   # --- 4b. Resolve bw = "auto" (Newey-West 1994) ---
   # Must happen AFTER estimation (need residuals) but BEFORE VCV computation.
+  # For GMM2S, auto-bw is already resolved above (before omega_fn construction).
   # Stata dispatches auto-bw at ivreg2.ado:970-980, after first-step estimation.
-  if (is.character(bw) && tolower(bw) == "auto") {
+  if (method != "gmm2s" && is.character(bw) && tolower(bw) == "auto") {
     if (!is.null(ivar)) {
       stop("Automatic bandwidth selection not available for panel data.",
            call. = FALSE)
@@ -678,6 +764,29 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 5. VCV ---
+  # For GMM2S: VCV is already computed by .fit_gmm2s() (efficient GMM sandwich
+  # collapses). Only apply small-sample corrections here.
+  if (method == "gmm2s") {
+    bread_vcov <- fit$bread_gmm
+    if (small) {
+      if (!is.null(cluster_vec)) {
+        fit$vcov <- fit$vcov * ((parsed$N - 1) / (parsed$N - parsed$K - sdofminus)) *
+          (M / (M - 1))
+        fit$df.residual <- as.integer(M - 1L)
+      } else {
+        fit$vcov <- fit$vcov * ((parsed$N - dofminus) /
+                                  (parsed$N - parsed$K - dofminus - sdofminus))
+      }
+    } else if (!is.null(cluster_vec)) {
+      fit$df.residual <- as.integer(M - 1L)
+    }
+    # Recompute sigma for small (Stata line 1190)
+    if (small) {
+      fit$sigma <- sqrt(fit$rss / (parsed$N - parsed$K - dofminus - sdofminus))
+    }
+    colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
+  } else {
+
   # For LIML/kclass, select bread: k-class bread by default, 2SLS bread if coviv
   bread_vcov <- if (method %in% c("liml", "kclass") && !coviv) {
     fit$bread_kclass
@@ -744,6 +853,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                                   weight_type = weight_type)
   }
 
+  }  # end of non-GMM2S VCV block
+
   # --- 5b. Diagnostics ---
   # HAC → robust diagnostics path (Hansen J, KP rk)
   # AC → iid-like diagnostics path (Sargan, Anderson LM, CD F)
@@ -762,6 +873,18 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (parsed$is_iv) {
 
     # Overidentification test (D1)
+    # For GMM2S, J is computed as part of estimation — skip .compute_overid_test()
+    if (method == "gmm2s") {
+      overid_test_name <- if (effective_vcov_type %in% c("iid", "AC")) {
+        "Sargan"
+      } else {
+        "Hansen J"
+      }
+      diagnostics$overid <- list(
+        stat = fit$j_stat, p = fit$j_p,
+        df = fit$j_df, test_name = overid_test_name
+      )
+    } else {
     diagnostics$overid <- .compute_overid_test(
       Z = parsed$Z, X = parsed$X, y = parsed$y,
       residuals = fit$residuals, rss = fit$rss,
@@ -772,6 +895,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index
     )
+    }
 
     # AR LIML overidentification (H3) — only for LIML/Fuller + IID
     if (method == "liml" && effective_vcov_type == "iid") {
@@ -805,8 +929,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     diagnostics$weak_id_robust <- id_tests$weak_id_robust
 
     # Stock-Yogo critical values (D3)
+    # GMM2S uses IV tables (matching Stata's Disp_cdsy routing for gmm2s)
+    sy_method <- if (method == "gmm2s") "2sls" else method
     diagnostics$weak_id_sy <- .stock_yogo_lookup(
-      parsed$K1, parsed$L1, method = method, fuller = fuller
+      parsed$K1, parsed$L1, method = sy_method, fuller = fuller
     )
 
     # First-stage diagnostics (E1)
@@ -960,7 +1086,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   # --- 6. Assemble return object ---
   # Determine effective method for the return object
-  est_method <- if (method %in% c("liml", "kclass")) {
+  est_method <- if (method %in% c("liml", "kclass", "gmm2s")) {
     method
   } else if (parsed$is_iv) {
     "2sls"
