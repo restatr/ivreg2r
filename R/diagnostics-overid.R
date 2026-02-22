@@ -133,7 +133,8 @@
 #' @param Omega L x L symmetric score covariance matrix.
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param N Number of observations.
-#' @return Scalar J statistic, or `NA_real_` if Omega is rank-deficient.
+#' @return Scalar J statistic, or `NA_real_` if Omega is rank-deficient
+#'   or the GMM Hessian is singular.
 #' @keywords internal
 .compute_j_with_omega <- function(Z, X, y, Omega, weights, N) {
   L <- ncol(Z)
@@ -173,11 +174,13 @@
 
   # M (GMM Hessian) can be singular even when Omega is full-rank
   # (e.g., cluster+kernel with few time periods). Return NA gracefully.
-  beta_2s <- tryCatch(
-    .chol_solve(M, QXZ %*% aux2),
-    error = function(e) NULL
-  )
-  if (is.null(beta_2s)) return(NA_real_)
+  R_M <- tryCatch(chol(M), error = function(e) NULL)
+  if (is.null(R_M)) {
+    if (qr(M)$rank < ncol(M)) return(NA_real_)
+    beta_2s <- qr.solve(M, QXZ %*% aux2)
+  } else {
+    beta_2s <- backsolve(R_M, forwardsolve(t(R_M), QXZ %*% aux2))
+  }
 
   # J statistic from 2-step residuals
   e_2s <- y - X %*% beta_2s
@@ -223,7 +226,8 @@
   J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
 
   if (is.na(J)) {
-    warning("Omega is rank-deficient; Hansen J statistic not computed.",
+    warning("Hansen J statistic not computed; ",
+            "singular moment covariance or Hessian matrix.",
             call. = FALSE)
     return(list(stat = NA_real_, p = NA_real_, df = overid_df,
                 test_name = "Hansen J"))
@@ -396,7 +400,8 @@
                        N, dofminus, weights, weight_type, ZWZ)
     J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
     if (is.na(J)) {
-      warning("AC omega is rank-deficient; Sargan statistic not computed.",
+      warning("Sargan statistic not computed; ",
+              "singular moment covariance or Hessian matrix.",
               call. = FALSE)
       return(list(stat = NA_real_, p = NA_real_, df = overid_df,
                   test_name = "Sargan"))
