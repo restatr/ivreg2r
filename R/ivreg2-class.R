@@ -818,6 +818,20 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
       cat("  Tested: ", paste(orth$tested_vars, collapse = ", "), "\n", sep = "")
     }
   }
+
+  # --- Redundancy ---
+  if (!is.null(diag$redundancy)) {
+    red <- diag$redundancy
+    cat("\nRedundancy test (LM):", sep = "")
+    if (is.na(red$stat)) {
+      cat("  not computed\n")
+    } else {
+      cat("\n  Chi-sq(", red$df, ") = ",
+          formatC(red$stat, digits = 2, format = "f"),
+          " (p ", .format_pval(red$p), ")\n", sep = "")
+      cat("  Tested: ", paste(red$tested_vars, collapse = ", "), "\n", sep = "")
+    }
+  }
 }
 
 #' Print first-stage diagnostics table

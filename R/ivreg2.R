@@ -43,6 +43,12 @@
 #'   or excluded instruments (not endogenous regressors or the intercept).
 #'   If `NULL` (default), no orthogonality test is computed. Ignored for
 #'   OLS models. Equivalent to Stata's `orthog()` option.
+#' @param redundant Character vector of excluded instrument names to test
+#'   for redundancy (zero first-stage explanatory power). The test is a
+#'   KP rk LM test of H0: rank=0 on the first-stage coefficient matrix
+#'   for the tested instruments, conditional on maintained instruments.
+#'   If `NULL` (default), no redundancy test is computed. Ignored for OLS
+#'   models. Equivalent to Stata's `redundant()` option.
 #' @param small Logical: if `TRUE`, use small-sample corrections
 #'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
 #' @param weight_type Character: type of weights. One of `"aweight"`
@@ -189,6 +195,7 @@
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
                    orthog = NULL,
+                   redundant = NULL,
                    method = "2sls", kclass = NULL, fuller = 0,
                    coviv = FALSE,
                    small = FALSE,
@@ -237,6 +244,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (!is.null(orthog) && anyDuplicated(orthog)) {
     orthog <- unique(orthog)
     warning("`orthog` contained duplicate entries; duplicates removed.",
+            call. = FALSE)
+  }
+  if (!is.null(redundant) && !is.character(redundant)) {
+    stop("`redundant` must be a character vector or NULL.", call. = FALSE)
+  }
+  if (!is.null(redundant) && anyDuplicated(redundant)) {
+    redundant <- unique(redundant)
+    warning("`redundant` contained duplicate entries; duplicates removed.",
             call. = FALSE)
   }
   if (!is.numeric(dofminus) || length(dofminus) != 1L || is.na(dofminus) ||
@@ -1428,6 +1443,27 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         orthog_vars = orthog, dofminus = dofminus,
         weight_type = weight_type,
         kernel = kernel, bw = bw, time_index = time_index
+      )
+    }
+
+    # Redundancy test / instrument redundancy LM (P1)
+    if (!is.null(redundant) && length(redundant) > 0L) {
+      bad <- setdiff(redundant, parsed$excluded_colnames)
+      if (length(bad) > 0L) {
+        stop("`redundant` contains variables not in the excluded instrument list: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      diagnostics$redundancy <- .compute_redundancy_test(
+        X = parsed$X, Z = parsed$Z,
+        weights = parsed$weights, cluster_vec = cluster_vec,
+        vcov_type = effective_vcov_type,
+        N = parsed$N, K1 = parsed$K1,
+        endo_colnames = parsed$endo_colnames,
+        excluded_colnames = parsed$excluded_colnames,
+        redundant_vars = redundant, dofminus = dofminus,
+        weight_type = weight_type,
+        kernel = kernel, bw = bw, time_index = time_index,
+        center = center
       )
     }
 

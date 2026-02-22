@@ -148,6 +148,8 @@ glance.ivreg2 <- function(x, ...) {
     stock_wright_df    = .safe_diag(diag, "stock_wright", "df"),
     orthog_stat        = .safe_diag(diag, "orthog", "stat"),
     orthog_p           = .safe_diag(diag, "orthog", "p"),
+    redundancy_stat    = .safe_diag(diag, "redundancy", "stat"),
+    redundancy_p       = .safe_diag(diag, "redundancy", "p"),
     rf_f_stat          = if (!is.null(x$reduced_form) &&
                               x$reduced_form$mode == "rf") {
                            x$reduced_form$f_stat %||% NA_real_

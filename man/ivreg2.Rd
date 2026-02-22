@@ -14,6 +14,7 @@ ivreg2(
   clusters = NULL,
   endog = NULL,
   orthog = NULL,
+  redundant = NULL,
   method = "2sls",
   kclass = NULL,
   fuller = 0,
@@ -85,6 +86,13 @@ orthogonality (instrument-subset C-statistic). Names must be included
 or excluded instruments (not endogenous regressors or the intercept).
 If \code{NULL} (default), no orthogonality test is computed. Ignored for
 OLS models. Equivalent to Stata's \code{orthog()} option.}
+
+\item{redundant}{Character vector of excluded instrument names to test
+for redundancy (zero first-stage explanatory power). The test is a
+KP rk LM test of H0: rank=0 on the first-stage coefficient matrix
+for the tested instruments, conditional on maintained instruments.
+If \code{NULL} (default), no redundancy test is computed. Ignored for OLS
+models. Equivalent to Stata's \code{redundant()} option.}
 
 \item{method}{Character: estimation method. One of \code{"2sls"} (default),
 \code{"liml"}, \code{"kclass"}, \code{"gmm2s"} (two-step efficient GMM), or \code{"cue"}
