@@ -118,7 +118,8 @@
 #'   When combined with `method = "gmm2s"`, used as the first-step weighting
 #'   matrix (second step uses the optimal weighting matrix). Must be symmetric.
 #'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
-#'   Ignored without robust VCE, clustering, or HAC (with a warning).
+#'   When `method` is not `"gmm2s"`, ignored without robust VCE, clustering,
+#'   or HAC (with a warning).
 #'   Equivalent to Stata's `wmatrix()` option.
 #' @param smatrix Numeric matrix: user-supplied L x L moment covariance matrix
 #'   for GMM estimation. When supplied, the GMM estimation uses this matrix

@@ -418,8 +418,9 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   cat("VCV type:    ", .vcov_description(x$vcov_type, x$small,
                                          x$kernel, x$bw,
                                          x$kiefer, x$dkraay), "\n")
-  # GMM2S/gmmw efficiency subtitle (Stata lines 2203-2204)
-  if (!is.null(x$method) && x$method %in% c("gmm2s", "gmmw")) {
+  # GMM2S efficiency subtitle (Stata lines 2203-2204)
+  # gmmw uses different subtitle (Stata line 2206)
+  if (!is.null(x$method) && x$method == "gmm2s") {
     eff_desc <- if (x$vcov_type == "CL") {
       "clustering"
     } else if (x$vcov_type %in% c("HAC", "AC")) {
@@ -431,6 +432,8 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     }
     cat("              Estimates efficient for arbitrary ", eff_desc, "\n",
         sep = "")
+  } else if (!is.null(x$method) && x$method == "gmmw") {
+    cat("              Efficiency of estimates dependent on weighting matrix\n")
   }
   if (!is.null(x$n_clusters)) {
     if (!is.null(x$n_clusters1)) {

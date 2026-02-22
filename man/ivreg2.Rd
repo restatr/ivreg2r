@@ -171,7 +171,8 @@ inefficient GMM with full sandwich VCV (\code{method} becomes \code{"gmmw"}).
 When combined with \code{method = "gmm2s"}, used as the first-step weighting
 matrix (second step uses the optimal weighting matrix). Must be symmetric.
 Incompatible with \code{method = "liml"}, \code{kclass}, and \code{fuller}.
-Ignored without robust VCE, clustering, or HAC (with a warning).
+When \code{method} is not \code{"gmm2s"}, ignored without robust VCE, clustering,
+or HAC (with a warning).
 Equivalent to Stata's \code{wmatrix()} option.}
 
 \item{smatrix}{Numeric matrix: user-supplied L x L moment covariance matrix
