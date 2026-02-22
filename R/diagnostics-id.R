@@ -204,7 +204,8 @@
 #' @keywords internal
 .kp_omega <- function(Z1_perp, V_hat, weights, cluster_vec, N, K1, L1,
                        weight_type = "aweight",
-                       kernel = NULL, bw = NULL, time_index = NULL) {
+                       kernel = NULL, bw = NULL, time_index = NULL,
+                       center = FALSE) {
   # Build N x (K1*L1) score matrix: row i = kron(V_hat[i,], Z1_perp[i,])
   # For K1=1: reduces to V_hat * Z1_perp (scalar broadcast)
   if (K1 == 1L) {
@@ -215,6 +216,18 @@
       cols <- ((j - 1L) * L1 + 1L):(j * L1)
       scores[, cols] <- V_hat[, j] * Z1_perp
     }
+  }
+
+  # Center scores if requested (before aggregation)
+  if (center) {
+    if (is.null(weights)) {
+      gbar <- colMeans(scores)
+    } else if (weight_type == "fweight") {
+      gbar <- colSums(weights * scores) / N
+    } else {
+      gbar <- colSums(weights^2 * scores) / N
+    }
+    scores <- sweep(scores, 2L, gbar)
   }
 
   # Cluster+kernel, cluster, HAC, or HC aggregation with weight-type dispatch
@@ -372,7 +385,8 @@
                               dofminus = 0L, sdofminus = 0L,
                               weight_type = "aweight",
                               kernel = NULL, bw = NULL,
-                              time_index = NULL) {
+                              time_index = NULL,
+                              center = FALSE) {
 
   # Top-level guard: catch unexpected errors
   result <- tryCatch({
@@ -466,11 +480,13 @@
       shat0_lm <- .kp_omega(Z1_perp, V_lm, weights, cluster_vec, N, K1, L1,
                               weight_type = weight_type,
                               kernel = kp_kernel, bw = bw,
-                              time_index = time_index)
+                              time_index = time_index,
+                              center = center)
       shat0_wald <- .kp_omega(Z1_perp, V_wald, weights, cluster_vec, N, K1, L1,
                                 weight_type = weight_type,
                                 kernel = kp_kernel, bw = bw,
-                                time_index = time_index)
+                                time_index = time_index,
+                                center = center)
     }
 
     # KP rk LM

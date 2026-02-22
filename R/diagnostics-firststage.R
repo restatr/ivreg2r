@@ -47,7 +47,8 @@
                                   dofminus = 0L, sdofminus = 0L,
                                   weight_type = "aweight",
                                   kernel = NULL, bw = NULL,
-                                  time_index = NULL) {
+                                  time_index = NULL,
+                                  center = FALSE) {
 
   # --- A4: Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -131,25 +132,27 @@
       # Raw robust sandwich (no finite-sample corrections)
       if (!is.null(cluster_vec) && !is.null(kernel)) {
         if (is.list(cluster_vec)) {
-          scores <- .cl_scores(Z, resid_j, weights)
+          scores <- .cl_scores(Z, resid_j, weights,
+                               center = center, weight_type = weight_type)
           shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
           shat1 <- (shat1 + t(shat1)) / 2
           shat2 <- .cluster_kernel_meat(Z, resid_j, time_index, kernel, bw,
-                                         weights, weight_type)
+                                         weights, weight_type, center = center)
           shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
           meat <- shat1 + shat2 - shat3
         } else {
           meat <- .cluster_kernel_meat(Z, resid_j, time_index, kernel, bw,
-                                       weights, weight_type)
+                                       weights, weight_type, center = center)
         }
       } else if (!is.null(cluster_vec)) {
-        scores <- .cl_scores(Z, resid_j, weights)
+        scores <- .cl_scores(Z, resid_j, weights,
+                             center = center, weight_type = weight_type)
         meat <- .cluster_meat(scores, cluster_vec)
       } else if (!is.null(kernel)) {
         meat <- .hac_meat(Z, resid_j, time_index, kernel, bw,
-                          weights, weight_type)
+                          weights, weight_type, center = center)
       } else {
-        meat <- .hc_meat(Z, resid_j, weights, weight_type)
+        meat <- .hc_meat(Z, resid_j, weights, weight_type, center = center)
       }
       robust_vcov <- ZtWZ_inv %*% meat %*% ZtWZ_inv
       RVR_robust <- robust_vcov[excl_idx, excl_idx, drop = FALSE]
@@ -340,25 +343,30 @@
         } else {
           if (!is.null(cluster_vec) && !is.null(kernel)) {
             if (is.list(cluster_vec)) {
-              scores <- .cl_scores(Z, resid_aux, weights)
+              scores <- .cl_scores(Z, resid_aux, weights,
+                                   center = center, weight_type = weight_type)
               shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
               shat1 <- (shat1 + t(shat1)) / 2
               shat2 <- .cluster_kernel_meat(Z, resid_aux, time_index, kernel, bw,
-                                             weights, weight_type)
+                                             weights, weight_type,
+                                             center = center)
               shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
               meat <- shat1 + shat2 - shat3
             } else {
               meat <- .cluster_kernel_meat(Z, resid_aux, time_index, kernel, bw,
-                                           weights, weight_type)
+                                           weights, weight_type,
+                                           center = center)
             }
           } else if (!is.null(cluster_vec)) {
-            scores <- .cl_scores(Z, resid_aux, weights)
+            scores <- .cl_scores(Z, resid_aux, weights,
+                                 center = center, weight_type = weight_type)
             meat <- .cluster_meat(scores, cluster_vec)
           } else if (!is.null(kernel)) {
             meat <- .hac_meat(Z, resid_aux, time_index, kernel, bw,
-                              weights, weight_type)
+                              weights, weight_type, center = center)
           } else {
-            meat <- .hc_meat(Z, resid_aux, weights, weight_type)
+            meat <- .hc_meat(Z, resid_aux, weights, weight_type,
+                             center = center)
           }
           robust_vcov <- ZtWZ_inv %*% meat %*% ZtWZ_inv
           robust_vcov <- (robust_vcov + t(robust_vcov)) / 2

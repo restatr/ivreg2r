@@ -142,6 +142,10 @@
 #'   as-is in model matrix column order.
 #'   Incompatible with `method = "gmm2s"`, `"liml"`, `kclass`, `fuller`,
 #'   and `wmatrix`.
+#' @param center Logical: if `TRUE`, subtract the mean of moment conditions
+#'   (scores) before computing the S matrix (meat of the sandwich VCE).
+#'   Default `FALSE`. Centering only affects non-homoskedastic VCE types
+#'   (HC, cluster, HAC); a warning is issued if used with IID or AC VCE.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -174,6 +178,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    kiefer = FALSE, dkraay = NULL,
                    wmatrix = NULL, smatrix = NULL,
                    b0 = NULL,
+                   center = FALSE,
                    reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
 
@@ -234,6 +239,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   if (!is.logical(coviv) || length(coviv) != 1L || is.na(coviv)) {
     stop("`coviv` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (!is.logical(center) || length(center) != 1L || is.na(center)) {
+    stop("`center` must be TRUE or FALSE.", call. = FALSE)
   }
 
   valid_rf <- c("none", "rf", "system")
@@ -872,6 +881,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     # HC/CL/HAC/AC: use .compute_omega() which computes the heteroskedastic-robust
     # or cluster-robust moment covariance
     gmm_is_iid <- is.null(cluster_vec) && vcov == "iid" && is.null(kernel)
+    gmm_center <- center
     omega_fn <- function(resid) {
       if (gmm_is_iid) {
         # Homoskedastic omega: sigma^2 * Z'WZ / N
@@ -888,7 +898,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       } else {
         .compute_omega(gmm_Z, resid, gmm_w, gmm_cv, gmm_N,
                        dofminus = gmm_dm, weight_type = gmm_wt,
-                       kernel = gmm_k, bw = gmm_bw, time_index = gmm_ti)
+                       kernel = gmm_k, bw = gmm_bw, time_index = gmm_ti,
+                       center = gmm_center)
       }
     }
   }
@@ -1033,7 +1044,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       N = parsed$N, K = parsed$K, M = M, small = small,
       dofminus = dofminus, sdofminus = sdofminus,
       weights = parsed$weights, weight_type = weight_type,
-      is_twoway = is_twoway
+      is_twoway = is_twoway,
+      center = center
     )
     fit$df.residual <- as.integer(M - 1L)
   } else if (vcov == "HAC") {
@@ -1042,7 +1054,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                                    parsed$N, parsed$K,
                                    dofminus = dofminus, sdofminus = sdofminus,
                                    weights = parsed$weights,
-                                   weight_type = weight_type)
+                                   weight_type = weight_type,
+                                   center = center)
   } else if (vcov == "AC") {
     fit$vcov <- .compute_ac_vcov(bread_vcov, X_hat_vcov, resid_vcov,
                                   time_index, kernel, bw,
@@ -1055,7 +1068,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     fit$vcov <- .compute_cl_vcov(bread_vcov, X_hat_vcov, resid_vcov,
                                   cluster_vec, parsed$N, parsed$K, M, small,
                                   dofminus = dofminus, sdofminus = sdofminus,
-                                  weights = parsed$weights)
+                                  weights = parsed$weights,
+                                  weight_type = weight_type,
+                                  center = center)
     fit$df.residual <- as.integer(M - 1L)
   } else if (vcov %in% c("HC0", "HC1")) {
     fit$vcov <- .compute_hc_vcov(bread_vcov, X_hat_vcov, resid_vcov,
@@ -1063,7 +1078,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                                   small = small, dofminus = dofminus,
                                   sdofminus = sdofminus,
                                   weights = parsed$weights,
-                                  weight_type = weight_type)
+                                  weight_type = weight_type,
+                                  center = center)
   }
 
   }  # end of non-GMM2S VCV block
@@ -1079,6 +1095,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     "AC"
   } else {
     vcov
+  }
+
+  # Warn and reset center if it has no effect
+  if (center && effective_vcov_type %in% c("iid", "AC")) {
+    warning("`center = TRUE` has no effect with ", effective_vcov_type,
+            " VCE (centering only applies to robust/cluster/HAC).",
+            call. = FALSE)
+    center <- FALSE
   }
 
   diagnostics <- list()
@@ -1108,7 +1132,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       N = parsed$N, K = parsed$K, L = parsed$L,
       overid_df = parsed$overid_df, dofminus = dofminus,
       weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center
     )
     }
 
@@ -1171,7 +1196,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       bread_2sls = fit$bread,
       dofminus = dofminus, sdofminus = sdofminus,
       weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center
     )
 
     # Anderson-Rubin test (E3)
@@ -1185,7 +1211,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       excluded_names = parsed$excluded_colnames,
       dofminus = dofminus, sdofminus = sdofminus,
       weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center
     )
 
     # Stock-Wright S statistic (J2)
@@ -1196,7 +1223,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       N = parsed$N, K1 = parsed$K1, L1 = parsed$L1,
       endo_names = parsed$endo_colnames, dofminus = dofminus,
       weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center
     )
 
     # Endogeneity test / C-statistic (E4)
@@ -1281,7 +1309,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       weight_type    = weight_type,
       kernel         = kernel,
       bw             = bw,
-      time_index     = time_index
+      time_index     = time_index,
+      center         = center
     )
   }
 
@@ -1383,6 +1412,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     kiefer            = kiefer,
     dkraay            = dkraay,
     ivar              = ivar,
+    center            = center,
     model         = if (model) parsed$model_frame else NULL,
     x             = if (x) list(X = parsed$X, Z = parsed$Z) else NULL,
     y             = if (y) parsed$y else NULL

@@ -11,34 +11,74 @@
 #' @param resid N-vector of residuals.
 #' @param weights Normalized weights or NULL.
 #' @param weight_type Character: `"aweight"`, `"fweight"`, or `"pweight"`.
+#' @param center Logical: if `TRUE`, subtract the mean of moment conditions
+#'   before computing the outer product. The mean computation depends on
+#'   weight type, matching Stata's `m_omega()` (livreg2.do lines 179-188).
 #' @return K x K symmetric meat matrix.
 #' @keywords internal
-.hc_meat <- function(basis, resid, weights = NULL, weight_type = "aweight") {
-  if (is.null(weights)) return(crossprod(basis * resid))
-  if (weight_type == "fweight") {
-    crossprod(basis, weights * resid^2 * basis)
-  } else {
-    crossprod(weights * basis * resid)
+.hc_meat <- function(basis, resid, weights = NULL, weight_type = "aweight",
+                     center = FALSE) {
+  if (!center) {
+    # Uncentered paths (unchanged)
+    if (is.null(weights)) return(crossprod(basis * resid))
+    if (weight_type == "fweight") {
+      return(crossprod(basis, weights * resid^2 * basis))
+    }
+    return(crossprod(weights * basis * resid))
   }
+  # Centered path: form unweighted scores, compute weighted mean, center
+  g <- basis * resid          # N x P unweighted scores
+  N <- nrow(g)
+  if (is.null(weights)) {
+    gbar <- colMeans(g)
+    g_c <- sweep(g, 2L, gbar)
+    return(crossprod(g_c))
+  }
+  if (weight_type == "fweight") {
+    gbar <- colSums(weights * g) / N     # Stata: wv = wvar (linear)
+    g_c <- sweep(g, 2L, gbar)
+    return(crossprod(g_c, weights * g_c)) # sum w_i (g_c)(g_c)'
+  }
+  # aweight/pweight: Stata uses wv = (w*wf)^2
+  gbar <- colSums(weights^2 * g) / N
+  g_c <- sweep(g, 2L, gbar)
+  crossprod(weights * g_c)               # sum w_i^2 (g_c)(g_c)'
 }
 
 
 # --------------------------------------------------------------------------
 # .cl_scores
 # --------------------------------------------------------------------------
-#' Compute cluster scores (weight-type-agnostic)
+#' Compute cluster scores (weight-type-agnostic), optionally centered
 #'
 #' Cluster scores are `weights * basis * resid` for all weight types.
 #' The definition of `weights` (normalized for aweight/pweight, raw for fweight)
 #' makes this expression correct for all types.
 #'
+#' When `center = TRUE`, subtracts the (weighted) mean of scores before
+#' returning, so all downstream cluster/kernel aggregation operates on
+#' already-centered scores.
+#'
 #' @param basis N x K matrix.
 #' @param resid N-vector of residuals.
 #' @param weights Normalized weights or NULL.
+#' @param center Logical: if `TRUE`, center scores by subtracting their mean.
+#' @param weight_type Character: `"aweight"`, `"fweight"`, or `"pweight"`.
 #' @return N x K score matrix.
 #' @keywords internal
-.cl_scores <- function(basis, resid, weights = NULL) {
-  if (is.null(weights)) basis * resid else weights * basis * resid
+.cl_scores <- function(basis, resid, weights = NULL,
+                       center = FALSE, weight_type = "aweight") {
+  scores <- if (is.null(weights)) basis * resid else weights * basis * resid
+  if (center) {
+    N <- nrow(scores)
+    if (is.null(weights) || weight_type == "fweight") {
+      gbar <- colMeans(scores)
+    } else {
+      gbar <- colSums(weights * scores) / N   # sum(w^2 * g) / N
+    }
+    scores <- sweep(scores, 2L, gbar)
+  }
+  scores
 }
 
 
@@ -66,8 +106,9 @@
 #' @keywords internal
 .compute_hc_vcov <- function(bread, X_hat, resid, N, K, vcov_type,
                               small = FALSE, dofminus = 0L, sdofminus = 0L,
-                              weights = NULL, weight_type = "aweight") {
-  omega <- .hc_meat(X_hat, resid, weights, weight_type)  # K x K meat
+                              weights = NULL, weight_type = "aweight",
+                              center = FALSE) {
+  omega <- .hc_meat(X_hat, resid, weights, weight_type, center = center)
   V <- bread %*% omega %*% bread      # K x K sandwich
   V <- (V + t(V)) / 2                 # enforce symmetry
 
@@ -142,8 +183,10 @@
 #' @keywords internal
 .compute_cl_vcov <- function(bread, X_hat, resid, cluster_vec, N, K, M, small,
                               dofminus = 0L, sdofminus = 0L,
-                              weights = NULL) {
-  scores <- .cl_scores(X_hat, resid, weights)    # N x K
+                              weights = NULL,
+                              center = FALSE, weight_type = "aweight") {
+  scores <- .cl_scores(X_hat, resid, weights,
+                       center = center, weight_type = weight_type)
   omega <- .cluster_meat(scores, cluster_vec)    # K x K (unscaled)
   V <- bread %*% omega %*% bread                # sandwich
   V <- (V + t(V)) / 2                           # enforce symmetry

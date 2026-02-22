@@ -123,6 +123,7 @@ glance.ivreg2 <- function(x, ...) {
     kclass_value       = x$kclass_value %||% NA_real_,
     fuller_parameter   = x$fuller_parameter %||% NA_real_,
     coviv              = isTRUE(x$coviv),
+    center             = isTRUE(x$center),
     kernel             = x$kernel %||% NA_character_,
     bw                 = x$bw %||% NA_real_,
     kiefer             = isTRUE(x$kiefer),

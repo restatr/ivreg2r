@@ -15,7 +15,9 @@
   small,
   dofminus = 0L,
   sdofminus = 0L,
-  weights = NULL
+  weights = NULL,
+  center = FALSE,
+  weight_type = "aweight"
 )
 }
 \arguments{

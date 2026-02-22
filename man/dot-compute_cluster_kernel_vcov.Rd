@@ -20,7 +20,8 @@
   sdofminus = 0L,
   weights = NULL,
   weight_type = "aweight",
-  is_twoway = FALSE
+  is_twoway = FALSE,
+  center = FALSE
 )
 }
 \arguments{

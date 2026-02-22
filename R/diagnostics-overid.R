@@ -43,37 +43,41 @@
 #' @keywords internal
 .compute_omega <- function(Z, residuals, weights, cluster_vec, N,
                             dofminus = 0L, weight_type = "aweight",
-                            kernel = NULL, bw = NULL, time_index = NULL) {
+                            kernel = NULL, bw = NULL, time_index = NULL,
+                            center = FALSE) {
   if (!is.null(cluster_vec) && !is.null(kernel)) {
     # Cluster + kernel (DK or Thompson)
     if (is.list(cluster_vec)) {
       # Thompson: CGM decomposition with kernel-smoothed time dimension
       # Third term is HAC meat (not just HC), matching Stata livreg2.do line 336.
-      scores <- .cl_scores(Z, residuals, weights)
+      scores <- .cl_scores(Z, residuals, weights,
+                           center = center, weight_type = weight_type)
       shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
       shat1 <- (shat1 + t(shat1)) / 2
       shat2 <- .cluster_kernel_meat(Z, residuals, time_index, kernel, bw,
-                                     weights, weight_type)
+                                     weights, weight_type, center = center)
       shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
       Omega <- (shat1 + shat2 - shat3) / N
     } else {
       # DK: one-way cluster+kernel on tvar
       meat <- .cluster_kernel_meat(Z, residuals, time_index, kernel, bw,
-                                   weights, weight_type)
+                                   weights, weight_type, center = center)
       Omega <- meat / N
     }
   } else if (!is.null(cluster_vec)) {
     # Cluster path — divisor is N (no dofminus)
-    scores <- .cl_scores(Z, residuals, weights)
+    scores <- .cl_scores(Z, residuals, weights,
+                         center = center, weight_type = weight_type)
     Omega <- .cluster_meat(scores, cluster_vec) / N
   } else if (!is.null(kernel)) {
     # HAC path — same structure as HC but with autocovariance lags
     meat <- .hac_meat(Z, residuals, time_index, kernel, bw,
-                      weights, weight_type)
+                      weights, weight_type, center = center)
     Omega <- meat / (N - dofminus)
   } else {
     # HC path — divisor is N - dofminus (Stata livreg2.do line 326)
-    Omega <- .hc_meat(Z, residuals, weights, weight_type) / (N - dofminus)
+    Omega <- .hc_meat(Z, residuals, weights, weight_type,
+                      center = center) / (N - dofminus)
   }
   # Force symmetry
   (Omega + t(Omega)) / 2
@@ -219,10 +223,12 @@
 .hansen_j_test <- function(Z, X, y, residuals, weights, cluster_vec,
                            N, K, L, overid_df, dofminus = 0L,
                            weight_type = "aweight",
-                           kernel = NULL, bw = NULL, time_index = NULL) {
+                           kernel = NULL, bw = NULL, time_index = NULL,
+                           center = FALSE) {
   Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N,
                            dofminus = dofminus, weight_type = weight_type,
-                           kernel = kernel, bw = bw, time_index = time_index)
+                           kernel = kernel, bw = bw, time_index = time_index,
+                           center = center)
   J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
 
   if (is.na(J)) {
@@ -270,7 +276,8 @@
                                    endo_names, dofminus = 0L,
                                    weight_type = "aweight",
                                    kernel = NULL, bw = NULL,
-                                   time_index = NULL) {
+                                   time_index = NULL,
+                                   center = FALSE) {
   # 1. Extract X2 (included exogenous regressors)
   endo_idx <- match(endo_names, colnames(X))
   exog_idx <- setdiff(seq_len(ncol(X)), endo_idx)
@@ -320,7 +327,8 @@
     Omega <- .compute_omega(Z, e, weights, cluster_vec, N,
                              dofminus = dofminus, weight_type = weight_type,
                              kernel = kernel, bw = bw,
-                             time_index = time_index)
+                             time_index = time_index,
+                             center = center)
   }
 
   # 5. S = N * gbar' * Omega^{-1} * gbar
@@ -376,7 +384,8 @@
                                  N, K, L, overid_df, dofminus = 0L,
                                  weight_type = "aweight",
                                  kernel = NULL, bw = NULL,
-                                 time_index = NULL) {
+                                 time_index = NULL,
+                                 center = FALSE) {
   if (!is_iv) return(NULL)
 
   if (overid_df == 0L) {
@@ -413,7 +422,8 @@
     .hansen_j_test(Z, X, y, residuals, weights, cluster_vec,
                    N, K, L, overid_df, dofminus = dofminus,
                    weight_type = weight_type,
-                   kernel = kernel, bw = bw, time_index = time_index)
+                   kernel = kernel, bw = bw, time_index = time_index,
+                   center = center)
   }
 }
 

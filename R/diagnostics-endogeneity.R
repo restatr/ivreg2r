@@ -42,7 +42,8 @@
                                       dofminus = 0L,
                                       weight_type = "aweight",
                                       kernel = NULL, bw = NULL,
-                                      time_index = NULL) {
+                                      time_index = NULL,
+                                      center = FALSE) {
   # Default: test all endogenous regressors
   if (is.null(endog_vars)) endog_vars <- endo_names
   q <- length(endog_vars)
@@ -100,7 +101,8 @@
     Omega_r <- .compute_omega(Z_r, e_r, weights, cluster_vec, N,
                                dofminus = dofminus, weight_type = weight_type,
                                kernel = kernel, bw = bw,
-                               time_index = time_index)
+                               time_index = time_index,
+                               center = center)
   }
 
   # --- J_r: J statistic of restricted model ---

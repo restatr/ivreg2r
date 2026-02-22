@@ -63,6 +63,7 @@
   kiefer = FALSE,
   dkraay = NULL,
   ivar = NULL,
+  center = FALSE,
   contrasts = NULL,
   xlevels = NULL,
   model = NULL,

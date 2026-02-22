@@ -19,7 +19,8 @@
   weight_type = "aweight",
   kernel = NULL,
   bw = NULL,
-  time_index = NULL
+  time_index = NULL,
+  center = FALSE
 )
 }
 \arguments{

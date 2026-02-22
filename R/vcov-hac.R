@@ -196,11 +196,12 @@
 #' @return P x P symmetric meat matrix (unscaled).
 #' @keywords internal
 .hac_meat <- function(basis, resid, time_index, kernel, bw,
-                      weights = NULL, weight_type = "aweight") {
+                      weights = NULL, weight_type = "aweight",
+                      center = FALSE) {
   P <- ncol(basis)
 
   # Diagonal (tau = 0): reuse existing HC meat
-  shat <- .hc_meat(basis, resid, weights, weight_type)
+  shat <- .hc_meat(basis, resid, weights, weight_type, center = center)
 
   # Determine max lag TAU
   ktype <- .kernel_type(kernel)
@@ -211,6 +212,20 @@
   }
 
   if (TAU < 1L) return(shat)
+
+  # When centering, precompute centered unweighted scores for the off-diagonal
+  # cross-products (Stata m_omega center option)
+  if (center) {
+    g <- basis * resid   # unweighted scores
+    N <- nrow(g)
+    if (is.null(weights)) {
+      gbar <- colMeans(g)
+    } else {
+      # aweight/pweight only (fweight blocked for HAC)
+      gbar <- colSums(weights^2 * g) / N
+    }
+    g_c <- sweep(g, 2L, gbar)
+  }
 
   # Off-diagonal loop (tau = 1..TAU)
   for (tau in seq_len(TAU)) {
@@ -228,18 +243,25 @@
     i_now <- pairs[, 1L]
     i_lag <- pairs[, 2L]
 
-    # Compute cross-product: sum of (w_t * e_t) * (w_{t-tau} * e_{t-tau}) * Z_t' Z_{t-tau}
-    if (is.null(weights)) {
-      wv <- resid[i_now] * resid[i_lag]
+    if (center) {
+      # Centered path: use centered scores for cross-products
+      if (is.null(weights)) {
+        ghat <- crossprod(g_c[i_now, , drop = FALSE],
+                          g_c[i_lag, , drop = FALSE])
+      } else {
+        ghat <- crossprod(weights[i_now] * g_c[i_now, , drop = FALSE],
+                          weights[i_lag] * g_c[i_lag, , drop = FALSE])
+      }
     } else {
-      # aweight/pweight: quadratic weight product w_t * w_{t-tau}
-      # Stata: wv = wvar[tmatrix[.,1]] :* wvar[tmatrix[.,2]] * (wf^2)
-      # Our weights are already normalized (wf absorbed), so product is w_t * w_{t-tau}
-      wv <- weights[i_now] * weights[i_lag] * resid[i_now] * resid[i_lag]
+      # Uncentered path (original)
+      if (is.null(weights)) {
+        wv <- resid[i_now] * resid[i_lag]
+      } else {
+        wv <- weights[i_now] * weights[i_lag] * resid[i_now] * resid[i_lag]
+      }
+      ghat <- crossprod(basis[i_now, , drop = FALSE],
+                        wv * basis[i_lag, , drop = FALSE])
     }
-
-    ghat <- crossprod(basis[i_now, , drop = FALSE],
-                      wv * basis[i_lag, , drop = FALSE])
 
     shat <- shat + kw * (ghat + t(ghat))
   }
@@ -418,9 +440,10 @@
 #' @keywords internal
 .compute_hac_vcov <- function(bread, X_hat, resid, time_index, kernel, bw,
                               N, K, dofminus = 0L, sdofminus = 0L,
-                              weights = NULL, weight_type = "aweight") {
+                              weights = NULL, weight_type = "aweight",
+                              center = FALSE) {
   meat <- .hac_meat(X_hat, resid, time_index, kernel, bw,
-                    weights, weight_type)
+                    weights, weight_type, center = center)
   V <- bread %*% meat %*% bread
   V <- (V + t(V)) / 2
   V <- V * (N / (N - dofminus))
@@ -504,9 +527,11 @@
 #' @return P x P symmetric meat matrix (unscaled).
 #' @keywords internal
 .cluster_kernel_meat <- function(basis, resid, time_index, kernel, bw,
-                                  weights = NULL, weight_type = "aweight") {
-  # 1. Observation-level scores
-  scores <- .cl_scores(basis, resid, weights)
+                                  weights = NULL, weight_type = "aweight",
+                                  center = FALSE) {
+  # 1. Observation-level scores (centered if requested)
+  scores <- .cl_scores(basis, resid, weights,
+                       center = center, weight_type = weight_type)
 
   # 2. Aggregate scores by time period
   tvar_sorted <- time_index$tvar_sorted
@@ -643,8 +668,10 @@
                                           dofminus = 0L, sdofminus = 0L,
                                           weights = NULL,
                                           weight_type = "aweight",
-                                          is_twoway = FALSE) {
-  scores <- .cl_scores(X_hat, resid, weights)
+                                          is_twoway = FALSE,
+                                          center = FALSE) {
+  scores <- .cl_scores(X_hat, resid, weights,
+                       center = center, weight_type = weight_type)
 
   if (is_twoway) {
     # Thompson: CGM decomposition with kernel-smoothed time dimension
@@ -655,13 +682,13 @@
     meat_ivar <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
     meat_ivar <- (meat_ivar + t(meat_ivar)) / 2
     meat_tvar <- .cluster_kernel_meat(X_hat, resid, time_index, kernel, bw,
-                                      weights, weight_type)
+                                      weights, weight_type, center = center)
     meat_hac <- .hac_scores_meat(scores, time_index, kernel, bw)
     meat <- meat_ivar + meat_tvar - meat_hac
   } else {
     # DK: one-way cluster+kernel on tvar
     meat <- .cluster_kernel_meat(X_hat, resid, time_index, kernel, bw,
-                                 weights, weight_type)
+                                 weights, weight_type, center = center)
   }
 
   V <- bread %*% meat %*% bread

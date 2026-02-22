@@ -34,7 +34,8 @@
                                   orthog_vars, dofminus = 0L,
                                   weight_type = "aweight",
                                   kernel = NULL, bw = NULL,
-                                  time_index = NULL) {
+                                  time_index = NULL,
+                                  center = FALSE) {
   q <- length(orthog_vars)
 
   # --- Build restricted instrument matrix (remove tested columns) ---
@@ -68,7 +69,8 @@
     Omega_full <- .compute_omega(Z, residuals, weights, cluster_vec, N,
                                   dofminus = dofminus, weight_type = weight_type,
                                   kernel = kernel, bw = bw,
-                                  time_index = time_index)
+                                  time_index = time_index,
+                                  center = center)
   }
 
   # --- J_full: J statistic of full model ---

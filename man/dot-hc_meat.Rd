@@ -4,7 +4,7 @@
 \alias{.hc_meat}
 \title{Compute HC meat matrix with weight-type dispatch}
 \usage{
-.hc_meat(basis, resid, weights = NULL, weight_type = "aweight")
+.hc_meat(basis, resid, weights = NULL, weight_type = "aweight", center = FALSE)
 }
 \arguments{
 \item{basis}{N x K matrix (X_hat for IV, X for OLS).}
@@ -14,6 +14,10 @@
 \item{weights}{Normalized weights or NULL.}
 
 \item{weight_type}{Character: \code{"aweight"}, \code{"fweight"}, or \code{"pweight"}.}
+
+\item{center}{Logical: if \code{TRUE}, subtract the mean of moment conditions
+before computing the outer product. The mean computation depends on
+weight type, matching Stata's \code{m_omega()} (livreg2.do lines 179-188).}
 }
 \value{
 K x K symmetric meat matrix.

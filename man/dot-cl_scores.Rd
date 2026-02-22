@@ -2,9 +2,15 @@
 % Please edit documentation in R/vcov-robust.R
 \name{.cl_scores}
 \alias{.cl_scores}
-\title{Compute cluster scores (weight-type-agnostic)}
+\title{Compute cluster scores (weight-type-agnostic), optionally centered}
 \usage{
-.cl_scores(basis, resid, weights = NULL)
+.cl_scores(
+  basis,
+  resid,
+  weights = NULL,
+  center = FALSE,
+  weight_type = "aweight"
+)
 }
 \arguments{
 \item{basis}{N x K matrix.}
@@ -12,6 +18,10 @@
 \item{resid}{N-vector of residuals.}
 
 \item{weights}{Normalized weights or NULL.}
+
+\item{center}{Logical: if \code{TRUE}, center scores by subtracting their mean.}
+
+\item{weight_type}{Character: \code{"aweight"}, \code{"fweight"}, or \code{"pweight"}.}
 }
 \value{
 N x K score matrix.
@@ -20,5 +30,10 @@ N x K score matrix.
 Cluster scores are \code{weights * basis * resid} for all weight types.
 The definition of \code{weights} (normalized for aweight/pweight, raw for fweight)
 makes this expression correct for all types.
+}
+\details{
+When \code{center = TRUE}, subtracts the (weighted) mean of scores before
+returning, so all downstream cluster/kernel aggregation operates on
+already-centered scores.
 }
 \keyword{internal}

@@ -43,7 +43,8 @@
                                    dofminus = 0L, sdofminus = 0L,
                                    weight_type = "aweight",
                                    kernel = NULL, bw = NULL,
-                                   time_index = NULL) {
+                                   time_index = NULL,
+                                   center = FALSE) {
 
   # --- A. Common setup ---
   excl_idx <- match(excluded_names, colnames(Z))
@@ -98,7 +99,8 @@
       N = N, L = L, M = M, dofminus = dofminus, sdofminus = sdofminus,
       excl_idx = excl_idx, L1 = L1,
       weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center
     )
     colnames(vcov_rf$vcov) <- rownames(vcov_rf$vcov) <- colnames(Z)
 
@@ -158,7 +160,9 @@
       if (!is.null(cluster_vec)) {
         scores_list <- vector("list", n_eq)
         for (j in seq_len(n_eq)) {
-          scores_list[[j]] <- .cl_scores(Z, rf_resid[, j], weights)
+          scores_list[[j]] <- .cl_scores(Z, rf_resid[, j], weights,
+                                         center = center,
+                                         weight_type = weight_type)
         }
         scores_stacked <- do.call(cbind, scores_list)
         meat <- .cluster_meat(scores_stacked, cluster_vec)
@@ -178,25 +182,59 @@
           }
         }
         scores_stacked <- do.call(cbind, scores_list)
+        if (center) {
+          gbar <- if (is.null(weights)) {
+            colMeans(scores_stacked)
+          } else {
+            colSums(weights * scores_stacked) / N
+          }
+          scores_stacked <- sweep(scores_stacked, 2L, gbar)
+        }
         meat <- .hac_scores_meat(scores_stacked, time_index, kernel, bw)
       } else {
         # HC path: meat blocks are Z' diag(wv_ij) Z where
         # wv_ij depends on weight type (see .hc_meat)
         # Build the stacked meat directly from per-equation blocks
+        if (center) {
+          # Pre-center per-equation scores
+          g_list <- vector("list", n_eq)
+          for (jj in seq_len(n_eq)) {
+            g_j <- Z * rf_resid[, jj]  # unweighted scores
+            if (is.null(weights)) {
+              gbar <- colMeans(g_j)
+            } else if (weight_type == "fweight") {
+              gbar <- colSums(weights * g_j) / N
+            } else {
+              gbar <- colSums(weights^2 * g_j) / N
+            }
+            g_list[[jj]] <- sweep(g_j, 2L, gbar)
+          }
+        }
         meat <- matrix(0, n_eq * L, n_eq * L)
         for (i in seq_len(n_eq)) {
           ri <- ((i - 1L) * L + 1L):(i * L)
           for (j in seq(i, n_eq)) {
             rj <- ((j - 1L) * L + 1L):(j * L)
-            # Cross-equation HC meat: Z' diag(wv * e_i * e_j) Z
-            if (is.null(weights)) {
-              block <- crossprod(Z * rf_resid[, i], Z * rf_resid[, j])
-            } else if (weight_type == "fweight") {
-              block <- crossprod(Z, weights * rf_resid[, i] * rf_resid[, j] * Z)
+            if (center) {
+              if (is.null(weights)) {
+                block <- crossprod(g_list[[i]], g_list[[j]])
+              } else if (weight_type == "fweight") {
+                block <- crossprod(g_list[[i]], weights * g_list[[j]])
+              } else {
+                block <- crossprod(weights * g_list[[i]],
+                                   weights * g_list[[j]])
+              }
             } else {
-              # aweight/pweight: w^2 * e_i * e_j
-              block <- crossprod(weights * Z * rf_resid[, i],
-                                 weights * Z * rf_resid[, j])
+              # Cross-equation HC meat: Z' diag(wv * e_i * e_j) Z
+              if (is.null(weights)) {
+                block <- crossprod(Z * rf_resid[, i], Z * rf_resid[, j])
+              } else if (weight_type == "fweight") {
+                block <- crossprod(Z, weights * rf_resid[, i] * rf_resid[, j] * Z)
+              } else {
+                # aweight/pweight: w^2 * e_i * e_j
+                block <- crossprod(weights * Z * rf_resid[, i],
+                                   weights * Z * rf_resid[, j])
+              }
             }
             meat[ri, rj] <- block
             if (i != j) meat[rj, ri] <- t(block)
@@ -299,7 +337,8 @@
                                 excl_idx, L1,
                                 weight_type = "aweight",
                                 kernel = NULL, bw = NULL,
-                                time_index = NULL) {
+                                time_index = NULL,
+                                center = FALSE) {
   if (vcov_type == "iid") {
     # Classical: sigma2 * (Z'WZ)^{-1}
     rss <- if (is.null(weights)) {
@@ -312,13 +351,14 @@
   } else {
     # Robust sandwich
     if (!is.null(cluster_vec)) {
-      scores <- .cl_scores(Z, resid, weights)
+      scores <- .cl_scores(Z, resid, weights,
+                           center = center, weight_type = weight_type)
       meat <- .cluster_meat(scores, cluster_vec)
     } else if (!is.null(kernel)) {
       meat <- .hac_meat(Z, resid, time_index, kernel, bw,
-                        weights, weight_type)
+                        weights, weight_type, center = center)
     } else {
-      meat <- .hc_meat(Z, resid, weights, weight_type)
+      meat <- .hc_meat(Z, resid, weights, weight_type, center = center)
     }
     vcov_raw <- ZtWZ_inv %*% meat %*% ZtWZ_inv
   }

@@ -11,7 +11,8 @@
   kernel,
   bw,
   weights = NULL,
-  weight_type = "aweight"
+  weight_type = "aweight",
+  center = FALSE
 )
 }
 \arguments{

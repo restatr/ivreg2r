@@ -31,6 +31,7 @@ ivreg2(
   wmatrix = NULL,
   smatrix = NULL,
   b0 = NULL,
+  center = FALSE,
   reduced_form = "none",
   model = TRUE,
   x = FALSE,
@@ -198,6 +199,11 @@ reordered to match model matrix columns; unnamed vectors are used
 as-is in model matrix column order.
 Incompatible with \code{method = "gmm2s"}, \code{"liml"}, \code{kclass}, \code{fuller},
 and \code{wmatrix}.}
+
+\item{center}{Logical: if \code{TRUE}, subtract the mean of moment conditions
+(scores) before computing the S matrix (meat of the sandwich VCE).
+Default \code{FALSE}. Centering only affects non-homoskedastic VCE types
+(HC, cluster, HAC); a warning is issued if used with IID or AC VCE.}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression

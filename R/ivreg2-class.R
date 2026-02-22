@@ -107,6 +107,7 @@ NULL
                          tvar = NULL,
                          kiefer = FALSE, dkraay = NULL,
                          ivar = NULL,
+                         center = FALSE,
                          contrasts = NULL, xlevels = NULL,
                          model = NULL, x = NULL, y = NULL) {
   structure(
@@ -169,6 +170,7 @@ NULL
       kiefer         = kiefer,
       dkraay         = dkraay,
       ivar           = ivar,
+      center         = center,
       contrasts      = contrasts,
       xlevels        = xlevels,
       model          = model,
@@ -477,6 +479,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     }
     if (isTRUE(x$coviv)) cat("coviv:        TRUE\n")
   }
+  if (isTRUE(x$center)) cat("center:       TRUE\n")
 
   # --- Coefficient table ---
   cat("\nCoefficients:\n")

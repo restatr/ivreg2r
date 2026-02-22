@@ -39,7 +39,8 @@
                                      dofminus = 0L, sdofminus = 0L,
                                      weight_type = "aweight",
                                      kernel = NULL, bw = NULL,
-                                     time_index = NULL) {
+                                     time_index = NULL,
+                                     center = FALSE) {
 
   # --- A. Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -79,25 +80,27 @@
     if (!is.null(cluster_vec) && !is.null(kernel)) {
       # Cluster + kernel (DK or Thompson)
       if (is.list(cluster_vec)) {
-        scores <- .cl_scores(Z, rf_resid, weights)
+        scores <- .cl_scores(Z, rf_resid, weights,
+                             center = center, weight_type = weight_type)
         shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
         shat1 <- (shat1 + t(shat1)) / 2
         shat2 <- .cluster_kernel_meat(Z, rf_resid, time_index, kernel, bw,
-                                       weights, weight_type)
+                                       weights, weight_type, center = center)
         shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
         meat <- shat1 + shat2 - shat3
       } else {
         meat <- .cluster_kernel_meat(Z, rf_resid, time_index, kernel, bw,
-                                     weights, weight_type)
+                                     weights, weight_type, center = center)
       }
     } else if (!is.null(cluster_vec)) {
-      scores <- .cl_scores(Z, rf_resid, weights)
+      scores <- .cl_scores(Z, rf_resid, weights,
+                           center = center, weight_type = weight_type)
       meat <- .cluster_meat(scores, cluster_vec)
     } else if (!is.null(kernel)) {
       meat <- .hac_meat(Z, rf_resid, time_index, kernel, bw,
-                        weights, weight_type)
+                        weights, weight_type, center = center)
     } else {
-      meat <- .hc_meat(Z, rf_resid, weights, weight_type)
+      meat <- .hc_meat(Z, rf_resid, weights, weight_type, center = center)
     }
     sandwich_full <- ZtWZ_inv %*% meat %*% ZtWZ_inv
 
