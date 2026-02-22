@@ -142,6 +142,26 @@
 #'   as-is in model matrix column order.
 #'   Incompatible with `method = "gmm2s"`, `"liml"`, `kclass`, `fuller`,
 #'   and `wmatrix`.
+#' @param partial Character vector: exogenous regressors to partial out
+#'   via Frisch-Waugh-Lovell projection before estimation. Coefficients on
+#'   partialled variables are not recoverable and are not reported.
+#'   Special values:
+#'   - `"_cons"` or `"(Intercept)"`: partial only the constant (demean).
+#'   - `"_all"`: partial all included exogenous regressors.
+#'   - `NULL` (default): no partialling.
+#'
+#'   By default, `sdofminus` is automatically incremented by the number of
+#'   partialled variables (including the constant). Use `nopartialsmall = TRUE`
+#'   to suppress this adjustment.
+#'
+#'   After partialling, `predict()` is restricted to residuals only (no
+#'   `newdata`). Summary output notes that total SS, model F, and R-squared
+#'   are partial-model values.
+#'
+#'   Equivalent to Stata's `partial()` option.
+#' @param nopartialsmall Logical: if `TRUE`, suppress the automatic
+#'   `sdofminus` adjustment from partialling. Default `FALSE`.
+#'   Equivalent to Stata's `nopartialsmall` option.
 #' @param center Logical: if `TRUE`, subtract the mean of moment conditions
 #'   (scores) before computing the S matrix (meat of the sandwich VCE).
 #'   Default `FALSE`. Centering only affects non-homoskedastic VCE types
@@ -178,6 +198,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    kiefer = FALSE, dkraay = NULL,
                    wmatrix = NULL, smatrix = NULL,
                    b0 = NULL,
+                   partial = NULL,
+                   nopartialsmall = FALSE,
                    center = FALSE,
                    reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
@@ -243,6 +265,15 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   if (!is.logical(center) || length(center) != 1L || is.na(center)) {
     stop("`center` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  # --- 2f. Validate partial / nopartialsmall (type checks only) ---
+  if (!is.null(partial) && !is.character(partial)) {
+    stop("`partial` must be a character vector or NULL.", call. = FALSE)
+  }
+  if (!is.logical(nopartialsmall) || length(nopartialsmall) != 1L ||
+      is.na(nopartialsmall)) {
+    stop("`nopartialsmall` must be TRUE or FALSE.", call. = FALSE)
   }
 
   valid_rf <- c("none", "rf", "system")
@@ -614,6 +645,120 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
     if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
       stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
+           parsed$N - parsed$L - dofminus - sdofminus,
+           " (must be > 0).", call. = FALSE)
+    }
+  }
+
+  # --- 3d. Partial out exogenous regressors (FWL projection) ---
+  partial_ct <- 0L
+  partial_names <- character(0L)
+  partialcons <- FALSE
+
+  if (!is.null(partial)) {
+    # Resolve special strings
+    if (length(partial) == 1L && partial == "_all") {
+      # Partial all exogenous regressors
+      partial <- parsed$exog_names
+    }
+
+    # Handle _cons / (Intercept)
+    cons_strings <- c("_cons", "(Intercept)")
+    has_cons_request <- any(partial %in% cons_strings)
+    if (has_cons_request) {
+      if (!parsed$has_intercept) {
+        stop('Cannot partial `"_cons"` from a model without an intercept.',
+             call. = FALSE)
+      }
+      partialcons <- TRUE
+      partial <- setdiff(partial, cons_strings)
+    }
+
+    # Validate remaining names against exogenous term labels
+    if (length(partial) > 0L) {
+      bad <- setdiff(partial, parsed$exog_names)
+      if (length(bad) > 0L) {
+        stop("`partial` contains variables not in the exogenous regressor list: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      partial_names <- partial
+
+      # When partialling variables, constant is always included (Stata behavior)
+      if (parsed$has_intercept) {
+        partialcons <- TRUE
+      }
+    }
+
+    # Nothing to do if no vars and no cons
+    if (length(partial_names) == 0L && !partialcons) {
+      partial <- NULL
+    }
+  }
+
+  if (!is.null(partial) || partialcons) {
+    # Expand term labels to column names
+    # Exogenous regressors are in part 1 of the formula; their term labels
+    # and column names come from the model matrix.  Use the exog term labels
+    # from the parsed object.
+    exog_mt <- stats::terms(parsed$formula, data = data, rhs = 1L)
+    exog_term_labels <- attr(exog_mt, "term.labels")
+    exog_colnames <- setdiff(colnames(parsed$X),
+                              c("(Intercept)", parsed$endo_colnames))
+    # Build assign vector for exogenous columns (excluding intercept and endo)
+    x_all_names <- colnames(parsed$X)
+    exog_col_mask <- x_all_names %in% exog_colnames
+    # Simple case: numeric vars have 1:1 term-to-colname mapping
+    # For factor vars, use the existing .expand_terms_to_colnames utility
+    # Build a custom assign for exogenous part of X
+    exog_full_mm <- stats::model.matrix(exog_mt, parsed$model_frame)
+    exog_full_assign <- attr(exog_full_mm, "assign")
+    # Remove intercept entry
+    icept_pos <- which(colnames(exog_full_mm) == "(Intercept)")
+    if (length(icept_pos) > 0L) {
+      exog_full_colnames <- colnames(exog_full_mm)[-icept_pos]
+      exog_full_assign <- exog_full_assign[-icept_pos]
+    } else {
+      exog_full_colnames <- colnames(exog_full_mm)
+    }
+    # Filter to surviving columns
+    surv_idx <- match(exog_colnames, exog_full_colnames)
+    surv_idx <- surv_idx[!is.na(surv_idx)]
+    exog_assign <- exog_full_assign[surv_idx]
+
+    if (length(partial_names) > 0L) {
+      partial_colnames <- .expand_terms_to_colnames(
+        partial_names, exog_term_labels, exog_full_colnames, exog_full_assign
+      )
+      # Filter to surviving columns only
+      partial_colnames <- intersect(partial_colnames, exog_colnames)
+    } else {
+      partial_colnames <- character(0L)
+    }
+
+    # Add intercept if partialcons
+    if (partialcons && "(Intercept)" %in% colnames(parsed$X)) {
+      partial_colnames <- c("(Intercept)", partial_colnames)
+    }
+
+    # Count partialled variables
+    partial_ct <- length(partial_colnames)
+
+    # Perform FWL projection
+    parsed <- .partial_out(parsed, partial_colnames, partialcons)
+
+    # Increment sdofminus (unless nopartialsmall)
+    if (!nopartialsmall) {
+      sdofminus <- sdofminus + as.integer(partial_ct)
+    }
+
+    # Re-validate dimensions after partialling
+    if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
+      stop("After partialling: N - K - dofminus - sdofminus = ",
+           parsed$N - parsed$K - dofminus - sdofminus,
+           " (must be > 0).", call. = FALSE)
+    }
+    if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
+      stop("After partialling: N - L - dofminus - sdofminus = ",
            parsed$N - parsed$L - dofminus - sdofminus,
            " (must be > 0).", call. = FALSE)
     }
@@ -1413,6 +1558,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     dkraay            = dkraay,
     ivar              = ivar,
     center            = center,
+    partial_ct        = partial_ct,
+    partial_names     = partial_names,
+    partialcons       = partialcons,
     model         = if (model) parsed$model_frame else NULL,
     x             = if (x) list(X = parsed$X, Z = parsed$Z) else NULL,
     y             = if (y) parsed$y else NULL

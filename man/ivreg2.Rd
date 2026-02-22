@@ -31,6 +31,8 @@ ivreg2(
   wmatrix = NULL,
   smatrix = NULL,
   b0 = NULL,
+  partial = NULL,
+  nopartialsmall = FALSE,
   center = FALSE,
   reduced_form = "none",
   model = TRUE,
@@ -199,6 +201,30 @@ reordered to match model matrix columns; unnamed vectors are used
 as-is in model matrix column order.
 Incompatible with \code{method = "gmm2s"}, \code{"liml"}, \code{kclass}, \code{fuller},
 and \code{wmatrix}.}
+
+\item{partial}{Character vector: exogenous regressors to partial out
+via Frisch-Waugh-Lovell projection before estimation. Coefficients on
+partialled variables are not recoverable and are not reported.
+Special values:
+\itemize{
+\item \code{"_cons"} or \code{"(Intercept)"}: partial only the constant (demean).
+\item \code{"_all"}: partial all included exogenous regressors.
+\item \code{NULL} (default): no partialling.
+}
+
+By default, \code{sdofminus} is automatically incremented by the number of
+partialled variables (including the constant). Use \code{nopartialsmall = TRUE}
+to suppress this adjustment.
+
+After partialling, \code{predict()} is restricted to residuals only (no
+\code{newdata}). Summary output notes that total SS, model F, and R-squared
+are partial-model values.
+
+Equivalent to Stata's \code{partial()} option.}
+
+\item{nopartialsmall}{Logical: if \code{TRUE}, suppress the automatic
+\code{sdofminus} adjustment from partialling. Default \code{FALSE}.
+Equivalent to Stata's \code{nopartialsmall} option.}
 
 \item{center}{Logical: if \code{TRUE}, subtract the mean of moment conditions
 (scores) before computing the S matrix (meat of the sandwich VCE).

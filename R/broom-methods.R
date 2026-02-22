@@ -156,7 +156,8 @@ glance.ivreg2 <- function(x, ...) {
                               x$reduced_form$mode == "rf") {
                            x$reduced_form$f_p %||% NA_real_
                          } else NA_real_,
-    cue_convergence    = x$cue_convergence %||% NA_integer_
+    cue_convergence    = x$cue_convergence %||% NA_integer_,
+    partial_ct         = x$partial_ct %||% 0L
   )
 }
 

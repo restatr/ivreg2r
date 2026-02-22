@@ -108,6 +108,9 @@ NULL
                          kiefer = FALSE, dkraay = NULL,
                          ivar = NULL,
                          center = FALSE,
+                         partial_ct = 0L,
+                         partial_names = character(0),
+                         partialcons = FALSE,
                          contrasts = NULL, xlevels = NULL,
                          model = NULL, x = NULL, y = NULL) {
   structure(
@@ -171,6 +174,9 @@ NULL
       dkraay         = dkraay,
       ivar           = ivar,
       center         = center,
+      partial_ct     = partial_ct,
+      partial_names  = partial_names,
+      partialcons    = partialcons,
       contrasts      = contrasts,
       xlevels        = xlevels,
       model          = model,
@@ -346,6 +352,15 @@ confint.ivreg2 <- function(object, parm, level = 0.95, ...) {
 #' @return Numeric vector of predicted values.
 #' @export
 predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
+  if (!is.null(object$partial_ct) && object$partial_ct > 0L) {
+    if (!missing(newdata)) {
+      stop("Cannot predict on new data after partialling: coefficients on ",
+           "partialled variables are unknown.", call. = FALSE)
+    }
+    message("Note: fitted values are from the partial model, not the full model. ",
+            "Residuals are from the full model.")
+    return(object$fitted.values)
+  }
   if (missing(newdata)) {
     return(object$fitted.values)
   }
@@ -535,6 +550,16 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
       cat("Included instruments: ", paste(incl, collapse = ", "), "\n")
     }
     cat("Excluded instruments: ", paste(x$instruments, collapse = ", "), "\n")
+  }
+
+  # --- Partial footer ---
+  if (!is.null(x$partial_ct) && x$partial_ct > 0L) {
+    partial_display <- x$partial_names
+    if (isTRUE(x$partialcons)) {
+      partial_display <- c(partial_display, "_cons")
+    }
+    cat("Partialled out:       ", paste(partial_display, collapse = ", "), "\n")
+    cat("NB: total SS, model F, and R-sq are partial-model values.\n")
   }
 
   cat("\n")
