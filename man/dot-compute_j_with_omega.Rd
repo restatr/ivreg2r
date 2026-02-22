@@ -20,7 +20,8 @@
 \item{N}{Number of observations.}
 }
 \value{
-Scalar J statistic, or \code{NA_real_} if Omega is rank-deficient.
+Scalar J statistic, or \code{NA_real_} if Omega is rank-deficient
+or the GMM Hessian is singular.
 }
 \description{
 Performs closed-form 2-step efficient GMM re-estimation using a provided
