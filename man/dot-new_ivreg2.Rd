@@ -54,6 +54,9 @@
   coviv = FALSE,
   wmatrix = NULL,
   smatrix = NULL,
+  b0 = NULL,
+  cue_convergence = NULL,
+  cue_message = NULL,
   kernel = NULL,
   bw = NULL,
   tvar = NULL,
@@ -166,6 +169,12 @@ or \code{"kclass"}).}
 \item{wmatrix}{User-supplied weighting matrix (or NULL).}
 
 \item{smatrix}{User-supplied moment covariance matrix (or NULL).}
+
+\item{b0}{User-supplied parameter vector for CUE evaluation (or NULL).}
+
+\item{cue_convergence}{Integer: CUE optimizer convergence code (or NULL).}
+
+\item{cue_message}{Character: CUE optimizer message (or NULL).}
 
 \item{kernel}{Canonical kernel name (character) or NULL if no HAC/AC.}
 

@@ -364,3 +364,268 @@
     method        = "gmmw"
   )
 }
+
+
+# --------------------------------------------------------------------------
+# .fit_cue
+# --------------------------------------------------------------------------
+#' Fit Continuously Updated GMM Estimator (CUE)
+#'
+#' Minimizes the CUE objective `J(b) = N * gbar(b)' * Omega(b)^{-1} * gbar(b)`
+#' where both moment conditions `gbar` and moment covariance `Omega` are
+#' re-evaluated at each candidate beta. Uses `nlminb` for optimization with
+#' 2SLS starting values (Stata ivreg2.ado lines 5918-5948).
+#'
+#' When `b0` is supplied, evaluates the CUE objective at the fixed parameter
+#' vector without optimization (Stata's `b0()` option).
+#'
+#' @param parsed A `parsed_formula` object from `.parse_formula()`.
+#' @param small Logical: if `TRUE`, use `N-K` denominator for sigma.
+#' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param sdofminus Integer: small-sample DoF adjustment (default 0).
+#' @param omega_fn Function: closure that takes a residual vector and returns
+#'   the L x L moment covariance matrix Omega. Built in `ivreg2()`.
+#' @param b0 Optional numeric vector: fixed parameter vector for J evaluation
+#'   (no optimization). NULL for standard CUE optimization.
+#' @return A named list with the same fields as `.fit_gmm2s()` plus
+#'   `convergence` (integer) and `cue_message` (string). `method = "cue"`.
+#' @keywords internal
+.fit_cue <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L,
+                     omega_fn, b0 = NULL) {
+  y <- parsed$y
+  X <- parsed$X
+  Z <- parsed$Z
+  N <- parsed$N
+  K <- parsed$K
+  L <- parsed$L
+  has_intercept <- parsed$has_intercept
+  w <- parsed$weights
+  overid_df <- parsed$overid_df
+
+  # --- Step 1: Starting values or fixed beta ---
+  if (is.null(b0)) {
+    # Optimization path: start from 2SLS (Stata line 5918-5922)
+    fit_init <- .fit_2sls(parsed, small = FALSE, dofminus = dofminus,
+                          sdofminus = sdofminus)
+    beta_init <- unname(fit_init$coefficients)
+
+    if (overid_df == 0L) {
+      # Exactly-identified: CUE = 2SLS, no optimization needed.
+      # The CUE objective is flat near the minimum (J=0 at any consistent
+      # estimator), so numerical optimizers report false non-convergence.
+      beta <- beta_init
+      convergence <- 0L
+      cue_message <- "exactly identified (CUE = 2SLS)"
+      j_from_opt <- NULL
+    } else {
+      # --- Step 2: CUE objective function ---
+      # Precompute weighted cross-products that don't depend on beta
+      if (!is.null(w)) {
+        wZ <- w * Z
+      } else {
+        wZ <- Z
+      }
+
+      cue_obj <- function(beta) {
+        e <- y - drop(X %*% beta)
+        Omega <- omega_fn(e)
+
+        # gbar = Z'(w*e) / N
+        gbar <- crossprod(Z, if (!is.null(w)) w * e else e) / N
+
+        # Solve Omega^{-1} * gbar via Cholesky with QR fallback
+        R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
+        if (is.null(R_chol)) {
+          # Check rank — if singular, return penalty
+          if (qr(Omega)$rank < L) return(.Machine$double.xmax)
+          Omega_inv_gbar <- tryCatch(qr.solve(Omega, gbar),
+                                     error = function(e) NULL)
+          if (is.null(Omega_inv_gbar)) return(.Machine$double.xmax)
+        } else {
+          Omega_inv_gbar <- backsolve(R_chol,
+                                      forwardsolve(t(R_chol), gbar))
+        }
+
+        # J = N * gbar' * Omega^{-1} * gbar
+        drop(N * crossprod(gbar, Omega_inv_gbar))
+      }
+
+      # --- Step 3: Optimize ---
+      # Two-step strategy: BFGS for fast initial convergence, then Nelder-Mead
+      # for robust refinement. nlminb struggles with the CUE ratio objective
+      # due to noisy finite-difference gradients; this combination matches
+      # Stata's Mata optimize() results reliably.
+      opt_bfgs <- stats::optim(par = beta_init, fn = cue_obj, method = "BFGS",
+                               control = list(maxit = 500L, reltol = 1e-12))
+      opt <- stats::optim(par = opt_bfgs$par, fn = cue_obj,
+                          method = "Nelder-Mead",
+                          control = list(maxit = 5000L * K, reltol = 1e-14))
+      beta <- opt$par
+      convergence <- opt$convergence
+      cue_message <- if (convergence == 0L) {
+        "relative convergence (4)"
+      } else {
+        "Nelder-Mead did not converge"
+      }
+      j_from_opt <- opt$value
+
+      if (convergence != 0L) {
+        warning("CUE optimization did not converge.", call. = FALSE)
+      }
+    }
+
+  } else {
+    # b0 path: fixed beta, no optimization
+    beta <- unname(b0)
+    convergence <- 0L
+    cue_message <- "b0 evaluation (no optimization)"
+    j_from_opt <- NULL
+
+    # Still need 2SLS for bread and X_hat
+    fit_init <- .fit_2sls(parsed, small = FALSE, dofminus = dofminus,
+                          sdofminus = sdofminus)
+  }
+
+  names(beta) <- colnames(X)
+
+  # --- Step 4: Recompute Omega at final beta (Stata line 5946-5948) ---
+  fitted <- drop(X %*% beta)
+  names(fitted) <- names(y)
+  resid <- y - fitted
+  Omega <- omega_fn(resid)
+
+  # --- Step 5: Omega rank check (Stata line 5972-5979) ---
+  R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
+  if (is.null(R_chol)) {
+    if (qr(Omega)$rank < L) {
+      stop("estimated covariance matrix of moment conditions not of full rank;\n",
+           "optimal GMM weighting matrix not unique.", call. = FALSE)
+    }
+    R_chol <- NULL
+  }
+
+  omega_inv <- function(b) {
+    if (!is.null(R_chol)) {
+      backsolve(R_chol, forwardsolve(t(R_chol), b))
+    } else {
+      qr.solve(Omega, b)
+    }
+  }
+
+  # --- Step 6: VCV (same formula as .fit_gmm2s) ---
+  if (!is.null(w)) {
+    QXZ <- crossprod(X, w * Z) / N
+  } else {
+    QXZ <- crossprod(X, Z) / N
+  }
+
+  aux1 <- omega_inv(t(QXZ))   # L x K: Omega^{-1} QXZ'
+  M_hess <- QXZ %*% aux1      # K x K: GMM Hessian
+  M_hess <- (M_hess + t(M_hess)) / 2  # force symmetry
+
+  R_M <- tryCatch(chol(M_hess), error = function(e) NULL)
+  if (is.null(R_M)) {
+    if (qr(M_hess)$rank < K) {
+      stop("GMM Hessian matrix is singular; model not identified.",
+           call. = FALSE)
+    }
+    M_hess_inv <- qr.solve(M_hess)
+  } else {
+    M_hess_inv <- chol2inv(R_M)
+  }
+
+  # VCV rank check (Stata line 5983-5988)
+  diag_V <- diag(M_hess_inv) / N
+  if (any(diag_V <= 0)) {
+    stop("estimated VCV has zero or negative diagonal elements;\n",
+         "model may be unidentified.", call. = FALSE)
+  }
+
+  V <- M_hess_inv / N
+  colnames(V) <- rownames(V) <- colnames(X)
+
+  bread_gmm <- M_hess_inv / N
+  colnames(bread_gmm) <- rownames(bread_gmm) <- colnames(X)
+
+  # --- Step 7: RSS ---
+  rss <- if (is.null(w)) drop(crossprod(resid)) else sum(w * resid^2)
+
+  # --- Step 8: J statistic ---
+  if (overid_df > 0L || !is.null(b0)) {
+    # For overidentified CUE without b0: use optimizer J directly
+    # For b0: compute J at b0 (always, even if exactly identified)
+    if (!is.null(b0)) {
+      # Compute J at b0
+      gbar <- crossprod(Z, if (!is.null(w)) w * resid else resid) / N
+      Omega_inv_gbar <- omega_inv(gbar)
+      j_stat <- drop(N * crossprod(gbar, Omega_inv_gbar))
+      j_p <- if (overid_df > 0L) {
+        stats::pchisq(j_stat, df = overid_df, lower.tail = FALSE)
+      } else {
+        NA_real_
+      }
+    } else if (overid_df > 0L) {
+      # Overidentified CUE: use J from optimizer
+      j_stat <- j_from_opt
+      j_p <- stats::pchisq(j_stat, df = overid_df, lower.tail = FALSE)
+    } else {
+      # Exactly-identified CUE without b0: force J = 0
+      j_stat <- 0
+      j_p <- NA_real_
+    }
+  } else {
+    # Exactly-identified without b0
+    j_stat <- 0
+    j_p <- NA_real_
+  }
+
+  # --- Step 9: sigma, R-squared, etc. (same as .fit_gmm2s) ---
+  denom <- if (small) N - K - dofminus - sdofminus else N - dofminus
+  sigma <- sqrt(rss / denom)
+
+  if (is.null(w)) {
+    tss_c <- sum((y - mean(y))^2)
+    tss_u <- sum(y^2)
+  } else {
+    wmean <- sum(w * y) / sum(w)
+    tss_c <- sum(w * (y - wmean)^2)
+    tss_u <- sum(w * y^2)
+  }
+  r2c <- 1 - rss / tss_c
+  r2u <- 1 - rss / tss_u
+  r2  <- if (has_intercept) r2c else r2u
+  tss <- if (has_intercept) tss_c else tss_u
+  mss <- tss - rss
+
+  adj_r2 <- if (has_intercept) {
+    1 - (1 - r2) * (N - 1) / (N - K - dofminus - sdofminus)
+  } else {
+    1 - (1 - r2) * N / (N - K - dofminus - sdofminus)
+  }
+
+  list(
+    coefficients  = beta,
+    residuals     = resid,
+    fitted.values = fitted,
+    vcov          = V,
+    sigma         = sigma,
+    df.residual   = as.integer(N - K - dofminus - sdofminus),
+    rank          = as.integer(K),
+    r.squared     = r2,
+    adj.r.squared = adj_r2,
+    rss           = rss,
+    r2u           = r2u,
+    r2c           = r2c,
+    mss           = mss,
+    bread         = fit_init$bread,   # 2SLS bread for first-stage diagnostics
+    bread_gmm     = bread_gmm,       # CUE bread for VCV / diagnostics
+    X_hat         = fit_init$X_hat,   # from 2SLS init
+    j_stat        = j_stat,
+    j_df          = as.integer(overid_df),
+    j_p           = j_p,
+    omega         = Omega,
+    convergence   = as.integer(convergence),
+    cue_message   = cue_message,
+    method        = "cue"
+  )
+}

@@ -65,12 +65,17 @@
 #'   (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
 #'   partialling out regressors. Equivalent to Stata's `sdofminus()` option.
 #' @param method Character: estimation method. One of `"2sls"` (default),
-#'   `"liml"`, `"kclass"`, or `"gmm2s"` (two-step efficient GMM).
+#'   `"liml"`, `"kclass"`, `"gmm2s"` (two-step efficient GMM), or `"cue"`
+#'   (continuously updated GMM estimator).
 #'   For OLS models (1-part formula), this is ignored. When `fuller > 0`
 #'   is specified, method is automatically promoted to `"liml"`.
 #'   `"gmm2s"` uses the inverse of the moment covariance matrix as the
 #'   optimal weighting matrix, yielding efficient estimates under the
 #'   specified error structure. Incompatible with `fuller` and `kclass`.
+#'   `"cue"` continuously updates both moment conditions and moment
+#'   covariance at each candidate beta during optimization. CUE is
+#'   asymptotically equivalent to LIML under weak instruments.
+#'   Incompatible with `fuller`, `kclass`, `wmatrix`, and `smatrix`.
 #' @param kclass Numeric scalar: user-supplied k value for k-class
 #'   estimation. When supplied, `method` is automatically set to `"kclass"`.
 #'   Must be non-negative. Cannot be combined with `method = "liml"` or
@@ -127,6 +132,16 @@
 #'   (`method` is promoted to `"gmm2s"` if `"2sls"`). Must be symmetric.
 #'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
 #'   Equivalent to Stata's `smatrix()` option.
+#' @param b0 Numeric vector: evaluate the CUE objective at this fixed
+#'   parameter vector without optimization. When supplied, `method` is
+#'   promoted to `"cue"` and the J(b0) statistic is computed and stored.
+#'   Identification diagnostics (underid, weak-id, first-stage, AR, SW,
+#'   endogeneity, orthog) are suppressed (matching Stata's `b0()` option).
+#'   Length must equal the number of regressors K. Named vectors are
+#'   reordered to match model matrix columns; unnamed vectors are used
+#'   as-is in model matrix column order.
+#'   Incompatible with `method = "gmm2s"`, `"liml"`, `kclass`, `fuller`,
+#'   and `wmatrix`.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -158,6 +173,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    kernel = NULL, bw = NULL, tvar = NULL, ivar = NULL,
                    kiefer = FALSE, dkraay = NULL,
                    wmatrix = NULL, smatrix = NULL,
+                   b0 = NULL,
                    reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
 
@@ -330,6 +346,29 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     if (!is.matrix(smatrix) || !is.numeric(smatrix))
       stop("`smatrix` must be a numeric matrix.", call. = FALSE)
   }
+  # --- 2b2. Validate b0 (type checks) ---
+  if (!is.null(b0)) {
+    if (!is.numeric(b0) || !is.null(dim(b0)))
+      stop("`b0` must be a numeric vector.", call. = FALSE)
+    if (any(!is.finite(b0)))
+      stop("`b0` must contain only finite values.", call. = FALSE)
+    # b0 implies method = "cue" if method is default
+    if (method == "2sls") method <- "cue"
+    # b0 is incompatible with gmm2s, liml, kclass, wmatrix, fuller
+    if (method == "gmm2s")
+      stop("Cannot specify `b0` with `method = \"gmm2s\"`.", call. = FALSE)
+    if (method == "liml")
+      stop("Cannot specify `b0` with `method = \"liml\"`.", call. = FALSE)
+    if (method %in% c("kclass"))
+      stop("Cannot specify `b0` with `method = \"kclass\"`.", call. = FALSE)
+    if (!is.null(kclass))
+      stop("Cannot specify `b0` with `kclass`.", call. = FALSE)
+    if (fuller > 0)
+      stop("Cannot specify `b0` with `fuller`.", call. = FALSE)
+    if (!is.null(wmatrix))
+      stop("Cannot specify `b0` with `wmatrix`.", call. = FALSE)
+  }
+
   # Mutual exclusion with kclass/fuller (check raw params, not promoted method)
   if (!is.null(wmatrix) && !is.null(kclass))
     stop("Cannot specify `wmatrix` with `kclass`.", call. = FALSE)
@@ -345,9 +384,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("`method` must be a single character string.", call. = FALSE)
   }
   method <- tolower(method)
-  valid_methods <- c("2sls", "liml", "kclass", "gmm2s")
+  valid_methods <- c("2sls", "liml", "kclass", "gmm2s", "cue")
   if (!method %in% valid_methods) {
-    stop('`method` must be one of "2sls", "liml", "kclass", or "gmm2s".',
+    stop('`method` must be one of "2sls", "liml", "kclass", "gmm2s", or "cue".',
          call. = FALSE)
   }
   if (!is.numeric(fuller) || length(fuller) != 1L || !is.finite(fuller)) {
@@ -374,6 +413,19 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
   if (method == "gmm2s" && !is.null(kclass)) {
     stop("Cannot specify `kclass` with `method = \"gmm2s\"`.", call. = FALSE)
+  }
+  # CUE is incompatible with fuller, kclass, wmatrix, smatrix
+  if (method == "cue" && fuller > 0) {
+    stop("Cannot specify `fuller` with `method = \"cue\"`.", call. = FALSE)
+  }
+  if (method == "cue" && !is.null(kclass)) {
+    stop("Cannot specify `kclass` with `method = \"cue\"`.", call. = FALSE)
+  }
+  if (method == "cue" && !is.null(wmatrix)) {
+    stop("Cannot specify `wmatrix` with `method = \"cue\"`.", call. = FALSE)
+  }
+  if (method == "cue" && !is.null(smatrix)) {
+    stop("Cannot specify `smatrix` with `method = \"cue\"`.", call. = FALSE)
   }
   # wmatrix/smatrix mutual exclusion with liml (check after method validation)
   if (!is.null(wmatrix) && method %in% c("liml", "kclass"))
@@ -435,13 +487,40 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 3b. Validate method against parsed model ---
-  if (method %in% c("liml", "kclass", "gmm2s") && !parsed$is_iv) {
+  if (method %in% c("liml", "kclass", "gmm2s", "cue") && !parsed$is_iv) {
     stop('`method = "', method, '"` requires an IV model (3-part formula).',
          call. = FALSE)
   }
   if (fuller > 0 && parsed$is_iv && fuller >= (parsed$N - parsed$L)) {
     stop("`fuller` (", fuller, ") must be less than N - L (",
          parsed$N - parsed$L, ").", call. = FALSE)
+  }
+
+  # --- 3b1. Validate b0 dimensions and reorder (need parsed$K) ---
+  if (!is.null(b0)) {
+    if (length(b0) != parsed$K) {
+      stop("`b0` length (", length(b0), ") must equal the number of ",
+           "regressors K (", parsed$K, ").", call. = FALSE)
+    }
+    if (!is.null(names(b0))) {
+      # Named: reorder to match X column order
+      xnames <- colnames(parsed$X)
+      bad <- setdiff(names(b0), xnames)
+      if (length(bad) > 0L) {
+        stop("`b0` has names not matching model columns: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      missing_names <- setdiff(xnames, names(b0))
+      if (length(missing_names) > 0L) {
+        stop("`b0` is missing names for model columns: ",
+             paste0("'", missing_names, "'", collapse = ", "), ".",
+             call. = FALSE)
+      }
+      b0 <- b0[xnames]
+    } else {
+      # Unnamed: assign X column names
+      names(b0) <- colnames(parsed$X)
+    }
   }
 
   # --- 3b2. Validate wmatrix/smatrix dimensions (need parsed$L) ---
@@ -748,7 +827,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   # from any residual vector. For auto-bw, we resolve bw before building the
   # closure (using step-1 2SLS residuals).
   omega_fn <- NULL
-  needs_omega_fn <- method == "gmm2s" || (use_wmatrix && !use_smatrix)
+  needs_omega_fn <- method %in% c("gmm2s", "cue") || (use_wmatrix && !use_smatrix)
 
   if (needs_omega_fn) {
     # Resolve auto-bw using step-1 residuals (Stata ivreg2.ado:970-980)
@@ -843,6 +922,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                              W = wmatrix, omega_fn = omega_fn)
     method <- "gmmw"
 
+  } else if (method == "cue") {
+    fit <- .fit_cue(parsed, small = small, dofminus = dofminus,
+                    sdofminus = sdofminus, omega_fn = omega_fn, b0 = b0)
+
   } else if (method == "gmm2s") {
     # Existing N1 path: standard two-step efficient GMM
     fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
@@ -864,7 +947,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   # For GMM2S/gmmw, auto-bw is already resolved above (before omega_fn
   # construction). Stata dispatches auto-bw at ivreg2.ado:970-980, after
   # first-step estimation.
-  if (!method %in% c("gmm2s", "gmmw") && is.character(bw) && tolower(bw) == "auto") {
+  if (!method %in% c("gmm2s", "gmmw", "cue") && is.character(bw) && tolower(bw) == "auto") {
     if (!is.null(ivar)) {
       stop("Automatic bandwidth selection not available for panel data.",
            call. = FALSE)
@@ -893,7 +976,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   # or small-sample corrections here.
   # HC1 implies the same N/(N-K) correction as small for VCV, matching the
   # non-GMM path at vcov-robust.R:74-79 where HC1 applies unconditionally.
-  if (method %in% c("gmm2s", "gmmw")) {
+  if (method %in% c("gmm2s", "gmmw", "cue")) {
     bread_vcov <- fit$bread_gmm
     needs_vcov_correction <- small || vcov == "HC1"
     if (needs_vcov_correction) {
@@ -1001,9 +1084,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (parsed$is_iv) {
 
     # Overidentification test (D1)
-    # For GMM2S/gmmw, J is computed as part of estimation — skip .compute_overid_test()
-    if (method %in% c("gmm2s", "gmmw")) {
-      overid_test_name <- if (method == "gmmw") {
+    # For GMM2S/gmmw/CUE, J is computed as part of estimation — skip .compute_overid_test()
+    if (method %in% c("gmm2s", "gmmw", "cue")) {
+      overid_test_name <- if (method %in% c("gmmw", "cue")) {
         "Hansen J"
       } else if (effective_vcov_type %in% c("iid", "AC")) {
         "Sargan"
@@ -1026,6 +1109,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       kernel = kernel, bw = bw, time_index = time_index
     )
     }
+
+    # b0 suppresses all identification diagnostics (Stata line 3819)
+    if (is.null(b0)) {
 
     # AR LIML overidentification (H3) — only for LIML/Fuller + IID
     if (method == "liml" && effective_vcov_type == "iid") {
@@ -1059,8 +1145,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     diagnostics$weak_id_robust <- id_tests$weak_id_robust
 
     # Stock-Yogo critical values (D3)
-    # GMM2S/gmmw use IV tables (matching Stata's Disp_cdsy routing for gmm2s)
-    sy_method <- if (method %in% c("gmm2s", "gmmw")) "2sls" else method
+    # GMM2S/gmmw use IV tables; CUE uses LIML size tables (Stata line 3363)
+    sy_method <- if (method %in% c("gmm2s", "gmmw")) {
+      "2sls"
+    } else if (method == "cue") {
+      "liml"
+    } else {
+      method
+    }
     diagnostics$weak_id_sy <- .stock_yogo_lookup(
       parsed$K1, parsed$L1, method = sy_method, fuller = fuller
     )
@@ -1156,6 +1248,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         kernel = kernel, bw = bw, time_index = time_index
       )
     }
+
+    }  # end of if (is.null(b0)) — identification diagnostics block
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
 
@@ -1218,7 +1312,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   # Determine effective method for the return object
   est_method <- if (method == "gmmw") {
     "gmmw"
-  } else if (method %in% c("liml", "kclass", "gmm2s")) {
+  } else if (method %in% c("liml", "kclass", "gmm2s", "cue")) {
     method
   } else if (parsed$is_iv) {
     "2sls"
@@ -1278,6 +1372,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     coviv             = coviv,
     wmatrix           = wmatrix,
     smatrix           = smatrix,
+    b0                = b0,
+    cue_convergence   = fit$convergence,   # NULL for non-CUE
+    cue_message       = fit$cue_message,   # NULL for non-CUE
     kernel            = kernel,
     bw                = bw,
     tvar              = tvar,

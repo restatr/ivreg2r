@@ -60,6 +60,9 @@ NULL
 #' @param coviv Logical: whether COVIV (2SLS bread) was used for VCV.
 #' @param wmatrix User-supplied weighting matrix (or NULL).
 #' @param smatrix User-supplied moment covariance matrix (or NULL).
+#' @param b0 User-supplied parameter vector for CUE evaluation (or NULL).
+#' @param cue_convergence Integer: CUE optimizer convergence code (or NULL).
+#' @param cue_message Character: CUE optimizer message (or NULL).
 #' @param kernel Canonical kernel name (character) or NULL if no HAC/AC.
 #' @param bw Numeric bandwidth or NULL if no HAC/AC.
 #' @param tvar Character: name of time variable, or NULL.
@@ -98,6 +101,8 @@ NULL
                          fuller_parameter = 0,
                          coviv = FALSE,
                          wmatrix = NULL, smatrix = NULL,
+                         b0 = NULL,
+                         cue_convergence = NULL, cue_message = NULL,
                          kernel = NULL, bw = NULL,
                          tvar = NULL,
                          kiefer = FALSE, dkraay = NULL,
@@ -155,6 +160,9 @@ NULL
       coviv          = coviv,
       wmatrix        = wmatrix,
       smatrix        = smatrix,
+      b0             = b0,
+      cue_convergence = cue_convergence,
+      cue_message    = cue_message,
       kernel         = kernel,
       bw             = bw,
       tvar           = tvar,
@@ -420,7 +428,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
                                          x$kiefer, x$dkraay), "\n")
   # GMM2S efficiency subtitle (Stata lines 2203-2204)
   # gmmw uses different subtitle (Stata line 2206)
-  if (!is.null(x$method) && x$method == "gmm2s") {
+  if (!is.null(x$method) && x$method %in% c("gmm2s", "cue")) {
     eff_desc <- if (x$vcov_type == "CL") {
       "clustering"
     } else if (x$vcov_type %in% c("HAC", "AC")) {
@@ -493,6 +501,12 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   }
   cat("Root MSE:      ", formatC(x$sigma, digits = 4, format = "f"), "\n")
 
+  # CUE convergence warning
+  if (!is.null(x$cue_convergence) && x$cue_convergence != 0L) {
+    cat("WARNING: CUE optimization did not converge (code ",
+        x$cue_convergence, ")\n", sep = "")
+  }
+
   # --- Diagnostics (IV only) ---
   if (is_iv && !is.null(x$diagnostics)) {
     cat("\n")
@@ -551,6 +565,11 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
                  "2-Step GMM Estimation"
                },
     "gmmw"   = "GMM Estimation (user-supplied W)",
+    "cue"    = if (!is.null(x$b0)) {
+                 "CUE Evaluated at User-supplied Parameter Vector"
+               } else {
+                 "CUE Estimation"
+               },
     paste0(toupper(m), " Estimation")
   )
 }

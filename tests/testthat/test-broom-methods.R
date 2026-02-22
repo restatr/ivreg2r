@@ -97,7 +97,7 @@ test_that("glance OLS returns 1-row tibble with 17 columns", {
   gl <- glance(fit)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 41L)
+  expect_equal(ncol(gl), 42L)
 })
 
 test_that("glance OLS has correct column names", {
@@ -120,7 +120,8 @@ test_that("glance OLS has correct column names", {
                       "stock_wright_stat", "stock_wright_p",
                       "stock_wright_df",
                       "orthog_stat", "orthog_p",
-                      "rf_f_stat", "rf_f_p")
+                      "rf_f_stat", "rf_f_p",
+                      "cue_convergence")
   expect_named(gl, expected_names)
 })
 

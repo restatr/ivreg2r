@@ -30,6 +30,7 @@ ivreg2(
   dkraay = NULL,
   wmatrix = NULL,
   smatrix = NULL,
+  b0 = NULL,
   reduced_form = "none",
   model = TRUE,
   x = FALSE,
@@ -83,12 +84,17 @@ If \code{NULL} (default), no orthogonality test is computed. Ignored for
 OLS models. Equivalent to Stata's \code{orthog()} option.}
 
 \item{method}{Character: estimation method. One of \code{"2sls"} (default),
-\code{"liml"}, \code{"kclass"}, or \code{"gmm2s"} (two-step efficient GMM).
+\code{"liml"}, \code{"kclass"}, \code{"gmm2s"} (two-step efficient GMM), or \code{"cue"}
+(continuously updated GMM estimator).
 For OLS models (1-part formula), this is ignored. When \code{fuller > 0}
 is specified, method is automatically promoted to \code{"liml"}.
 \code{"gmm2s"} uses the inverse of the moment covariance matrix as the
 optimal weighting matrix, yielding efficient estimates under the
-specified error structure. Incompatible with \code{fuller} and \code{kclass}.}
+specified error structure. Incompatible with \code{fuller} and \code{kclass}.
+\code{"cue"} continuously updates both moment conditions and moment
+covariance at each candidate beta during optimization. CUE is
+asymptotically equivalent to LIML under weak instruments.
+Incompatible with \code{fuller}, \code{kclass}, \code{wmatrix}, and \code{smatrix}.}
 
 \item{kclass}{Numeric scalar: user-supplied k value for k-class
 estimation. When supplied, \code{method} is automatically set to \code{"kclass"}.
@@ -181,6 +187,17 @@ instead of computing Omega from residuals. Implies efficient GMM
 (\code{method} is promoted to \code{"gmm2s"} if \code{"2sls"}). Must be symmetric.
 Incompatible with \code{method = "liml"}, \code{kclass}, and \code{fuller}.
 Equivalent to Stata's \code{smatrix()} option.}
+
+\item{b0}{Numeric vector: evaluate the CUE objective at this fixed
+parameter vector without optimization. When supplied, \code{method} is
+promoted to \code{"cue"} and the J(b0) statistic is computed and stored.
+Identification diagnostics (underid, weak-id, first-stage, AR, SW,
+endogeneity, orthog) are suppressed (matching Stata's \code{b0()} option).
+Length must equal the number of regressors K. Named vectors are
+reordered to match model matrix columns; unnamed vectors are used
+as-is in model matrix column order.
+Incompatible with \code{method = "gmm2s"}, \code{"liml"}, \code{kclass}, \code{fuller},
+and \code{wmatrix}.}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression
