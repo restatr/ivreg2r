@@ -75,8 +75,22 @@
     sigma2_y <- rss_y / (N - dofminus)
     RVR <- sigma2_y * ZtWZ_inv[excl_idx, excl_idx, drop = FALSE]
   } else {
-    # Robust sandwich (HC0/HC1/CL/HAC)
-    if (!is.null(cluster_vec)) {
+    # Robust sandwich (HC0/HC1/CL/HAC/cluster+kernel)
+    if (!is.null(cluster_vec) && !is.null(kernel)) {
+      # Cluster + kernel (DK or Thompson)
+      if (is.list(cluster_vec)) {
+        scores <- .cl_scores(Z, rf_resid, weights)
+        shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
+        shat1 <- (shat1 + t(shat1)) / 2
+        shat2 <- .cluster_kernel_meat(Z, rf_resid, time_index, kernel, bw,
+                                       weights, weight_type)
+        shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
+        meat <- shat1 + shat2 - shat3
+      } else {
+        meat <- .cluster_kernel_meat(Z, rf_resid, time_index, kernel, bw,
+                                     weights, weight_type)
+      }
+    } else if (!is.null(cluster_vec)) {
       scores <- .cl_scores(Z, rf_resid, weights)
       meat <- .cluster_meat(scores, cluster_vec)
     } else if (!is.null(kernel)) {

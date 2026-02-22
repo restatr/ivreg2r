@@ -272,14 +272,14 @@ test_that("bandwidth span check: bw too large is an error", {
   )
 })
 
-test_that("kernel + clusters is an error (HAC-CL not implemented)", {
+test_that("kernel + non-tvar cluster is an error", {
   skip_if(!file.exists(hac_data_path), "HAC data not found")
   ts_data$cl <- rep(1:10, length.out = nrow(ts_data))
   expect_error(
     ivreg2(y ~ w | x | z1 + z2, data = ts_data,
            vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t",
            clusters = ~cl),
-    "HAC-CL"
+    "clustering on the time variable"
   )
 })
 

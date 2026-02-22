@@ -217,8 +217,23 @@
     }
   }
 
-  # Cluster, HAC, or HC aggregation with weight-type dispatch
-  if (!is.null(cluster_vec)) {
+  # Cluster+kernel, cluster, HAC, or HC aggregation with weight-type dispatch
+  if (!is.null(cluster_vec) && !is.null(kernel)) {
+    # Cluster + kernel (DK or Thompson)
+    if (!is.null(weights)) scores <- weights * scores
+    if (is.list(cluster_vec)) {
+      # Thompson: CGM decomposition — third term is HAC (not HC),
+      # matching Stata livreg2.do line 336.
+      shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
+      shat1 <- (shat1 + t(shat1)) / 2
+      shat2 <- .cluster_kernel_scores_meat(scores, time_index, kernel, bw)
+      shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
+      shat0 <- (shat1 + shat2 - shat3) / N
+    } else {
+      # DK: one-way cluster+kernel on tvar
+      shat0 <- .cluster_kernel_scores_meat(scores, time_index, kernel, bw) / N
+    }
+  } else if (!is.null(cluster_vec)) {
     if (!is.null(weights)) scores <- weights * scores
     shat0 <- .cluster_meat(scores, cluster_vec) / N
   } else if (!is.null(kernel)) {

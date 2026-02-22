@@ -61,6 +61,8 @@ NULL
 #' @param kernel Canonical kernel name (character) or NULL if no HAC/AC.
 #' @param bw Numeric bandwidth or NULL if no HAC/AC.
 #' @param tvar Character: name of time variable, or NULL.
+#' @param kiefer Logical: whether Kiefer VCE was used.
+#' @param dkraay Numeric Driscoll-Kraay bandwidth, or NULL.
 #' @param ivar Character: name of panel variable, or NULL.
 #' @param contrasts List of contrasts used for factor variables (or NULL).
 #' @param xlevels List of factor levels (or NULL).
@@ -94,7 +96,9 @@ NULL
                          fuller_parameter = 0,
                          coviv = FALSE,
                          kernel = NULL, bw = NULL,
-                         tvar = NULL, ivar = NULL,
+                         tvar = NULL,
+                         kiefer = FALSE, dkraay = NULL,
+                         ivar = NULL,
                          contrasts = NULL, xlevels = NULL,
                          model = NULL, x = NULL, y = NULL) {
   structure(
@@ -149,6 +153,8 @@ NULL
       kernel         = kernel,
       bw             = bw,
       tvar           = tvar,
+      kiefer         = kiefer,
+      dkraay         = dkraay,
       ivar           = ivar,
       contrasts      = contrasts,
       xlevels        = xlevels,
@@ -405,7 +411,8 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   # --- Meta ---
   cat("\nObservations:", format(x$nobs, big.mark = ","), "\n")
   cat("VCV type:    ", .vcov_description(x$vcov_type, x$small,
-                                         x$kernel, x$bw), "\n")
+                                         x$kernel, x$bw,
+                                         x$kiefer, x$dkraay), "\n")
   if (!is.null(x$n_clusters)) {
     if (!is.null(x$n_clusters1)) {
       # Two-way clustering
@@ -521,7 +528,8 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
 #' Format a VCV type description
 #' @keywords internal
 #' @noRd
-.vcov_description <- function(vcov_type, small, kernel = NULL, bw = NULL) {
+.vcov_description <- function(vcov_type, small, kernel = NULL, bw = NULL,
+                               kiefer = FALSE, dkraay = NULL) {
   base <- switch(vcov_type,
     "iid" = "Classical (iid)",
     "HC0" = "Robust (HC0)",
@@ -531,11 +539,20 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     "AC"  = "AC",
     vcov_type
   )
-  if (!is.null(kernel) && vcov_type %in% c("HAC", "AC")) {
+  if (isTRUE(kiefer)) {
+    base <- "Autocorrelation-consistent (Kiefer)"
+  } else if (!is.null(dkraay)) {
+    base <- paste0("Driscoll-Kraay (kernel=", kernel, "; bandwidth=",
+                   formatC(bw, format = "g"), ")")
+  } else if (!is.null(kernel) && vcov_type == "CL") {
+    # Thompson (two-way cluster + kernel)
+    base <- paste0("Two-way cluster + kernel (Thompson; kernel=", kernel,
+                   "; bandwidth=", formatC(bw, format = "g"), ")")
+  } else if (!is.null(kernel) && vcov_type %in% c("HAC", "AC")) {
     base <- paste0(base, " (kernel=", kernel, "; bandwidth=",
                    formatC(bw, format = "g"), ")")
   }
-  if (small && !vcov_type %in% c("iid", "AC")) {
+  if (small && !vcov_type %in% c("iid", "AC") && !isTRUE(kiefer)) {
     paste0(base, ", small-sample corrected")
   } else {
     base

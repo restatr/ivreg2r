@@ -55,6 +55,8 @@
   kernel = NULL,
   bw = NULL,
   tvar = NULL,
+  kiefer = FALSE,
+  dkraay = NULL,
   ivar = NULL,
   contrasts = NULL,
   xlevels = NULL,
@@ -164,6 +166,10 @@ or \code{"kclass"}).}
 \item{bw}{Numeric bandwidth or NULL if no HAC/AC.}
 
 \item{tvar}{Character: name of time variable, or NULL.}
+
+\item{kiefer}{Logical: whether Kiefer VCE was used.}
+
+\item{dkraay}{Numeric Driscoll-Kraay bandwidth, or NULL.}
 
 \item{ivar}{Character: name of panel variable, or NULL.}
 

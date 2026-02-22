@@ -456,6 +456,7 @@
 #' @keywords internal
 .compute_ac_vcov <- function(bread, X_hat, resid, time_index, kernel, bw,
                              N, K, dofminus = 0L, sdofminus = 0L,
+                             small = FALSE,
                              weights = NULL, weight_type = "aweight") {
   # Precompute Z'WZ (using X_hat as "basis" for the VCV computation)
   if (!is.null(weights)) {
@@ -470,6 +471,206 @@
   V <- bread %*% omega %*% bread
   V <- (V + t(V)) / 2
   V <- V * N
+  # Small-sample correction (Stata ivreg2.ado line 1184):
+  # V *= (N - dofminus) / (N - K - dofminus - sdofminus)
+  if (small) {
+    V <- V * (N - dofminus) / (N - K - dofminus - sdofminus)
+  }
+  colnames(V) <- rownames(V) <- colnames(bread)
+  V
+}
+
+
+# --------------------------------------------------------------------------
+# .cluster_kernel_meat
+# --------------------------------------------------------------------------
+#' Compute cluster+kernel meat matrix (Driscoll-Kraay / Thompson time dimension)
+#'
+#' Aggregates observation-level scores by time period, then accumulates
+#' kernel-weighted cross-lag products of time-clustered scores.
+#' This is the time-dimension component used by both Driscoll-Kraay (DK)
+#' and Thompson (two-way cluster+kernel) VCE.
+#'
+#' Algorithm matches livreg2.do lines 444–535.
+#'
+#' @param basis N x P matrix (X_hat for VCV, Z for diagnostics). Must be
+#'   in sorted time order (matching `time_index`).
+#' @param resid N-vector of residuals, in sorted time order.
+#' @param time_index List from `.build_time_index()`.
+#' @param kernel Canonical kernel name.
+#' @param bw Numeric bandwidth.
+#' @param weights Normalized weights (sorted) or NULL.
+#' @param weight_type Character: `"aweight"` or `"pweight"`.
+#' @return P x P symmetric meat matrix (unscaled).
+#' @keywords internal
+.cluster_kernel_meat <- function(basis, resid, time_index, kernel, bw,
+                                  weights = NULL, weight_type = "aweight") {
+  # 1. Observation-level scores
+  scores <- .cl_scores(basis, resid, weights)
+
+  # 2. Aggregate scores by time period
+  tvar_sorted <- time_index$tvar_sorted
+  time_scores <- rowsum(scores, tvar_sorted, reorder = FALSE)
+
+  # 3. Diagonal (tau = 0): crossprod of time-clustered scores
+  shat <- crossprod(time_scores)
+
+  # 4. Determine max lag TAU
+  ktype <- .kernel_type(kernel)
+  if (ktype == "spectral") {
+    TAU <- as.integer(time_index$T_span / time_index$tdelta - 1)
+  } else {
+    TAU <- as.integer(floor(bw))
+  }
+
+  if (TAU < 1L) return((shat + t(shat)) / 2)
+
+  # 5. Off-diagonal loop (tau = 1..TAU)
+  # Get unique sorted time values (in the order rowsum used)
+  unique_times <- as.numeric(rownames(time_scores))
+  tdelta <- time_index$tdelta
+  n_times <- length(unique_times)
+
+  for (tau in seq_len(TAU)) {
+    kw <- .kernel_weights(tau, bw, kernel)
+    if (kw == 0) next
+
+    lag_gap <- tau * tdelta
+
+    # Find time periods that have both t and t - lag_gap present
+    target_times <- unique_times - lag_gap
+    lag_idx <- match(target_times, unique_times)
+    valid <- which(!is.na(lag_idx))
+
+    if (length(valid) == 0L) next
+
+    # Cross-product of time-clustered scores at lags
+    ghat <- crossprod(time_scores[valid, , drop = FALSE],
+                      time_scores[lag_idx[valid], , drop = FALSE])
+
+    shat <- shat + kw * (ghat + t(ghat))
+  }
+
+  (shat + t(shat)) / 2
+}
+
+
+# --------------------------------------------------------------------------
+# .cluster_kernel_scores_meat
+# --------------------------------------------------------------------------
+#' Compute cluster+kernel meat from pre-formed score vectors
+#'
+#' Like `.cluster_kernel_meat()` but takes pre-formed N x P scores directly.
+#' Used by the Kleibergen-Paap path where scores are Kronecker products.
+#'
+#' @param scores N x P score matrix, in sorted time order.
+#' @param time_index List from `.build_time_index()`.
+#' @param kernel Canonical kernel name.
+#' @param bw Numeric bandwidth.
+#' @return P x P symmetric meat matrix (unscaled).
+#' @keywords internal
+.cluster_kernel_scores_meat <- function(scores, time_index, kernel, bw) {
+  tvar_sorted <- time_index$tvar_sorted
+  time_scores <- rowsum(scores, tvar_sorted, reorder = FALSE)
+
+  shat <- crossprod(time_scores)
+
+  ktype <- .kernel_type(kernel)
+  if (ktype == "spectral") {
+    TAU <- as.integer(time_index$T_span / time_index$tdelta - 1)
+  } else {
+    TAU <- as.integer(floor(bw))
+  }
+
+  if (TAU < 1L) return((shat + t(shat)) / 2)
+
+  unique_times <- as.numeric(rownames(time_scores))
+  tdelta <- time_index$tdelta
+
+  for (tau in seq_len(TAU)) {
+    kw <- .kernel_weights(tau, bw, kernel)
+    if (kw == 0) next
+
+    lag_gap <- tau * tdelta
+    target_times <- unique_times - lag_gap
+    lag_idx <- match(target_times, unique_times)
+    valid <- which(!is.na(lag_idx))
+
+    if (length(valid) == 0L) next
+
+    ghat <- crossprod(time_scores[valid, , drop = FALSE],
+                      time_scores[lag_idx[valid], , drop = FALSE])
+
+    shat <- shat + kw * (ghat + t(ghat))
+  }
+
+  (shat + t(shat)) / 2
+}
+
+
+# --------------------------------------------------------------------------
+# .compute_cluster_kernel_vcov
+# --------------------------------------------------------------------------
+#' Compute cluster+kernel VCV (Driscoll-Kraay or Thompson)
+#'
+#' Sandwich estimator with three internal paths:
+#' - DK (one-way cluster+kernel on tvar): meat = cluster_kernel_meat
+#' - Thompson (two-way): meat = cluster_meat(ivar) + cluster_kernel_meat(tvar) - hc_meat
+#' Small-sample correction: `(N-1)/(N-K-sdofminus) * M/(M-1)` when `small=TRUE`.
+#'
+#' @param bread K x K bread matrix.
+#' @param X_hat N x K projected regressor matrix (sorted by time).
+#' @param resid N-vector of residuals (sorted by time).
+#' @param cluster_vec Cluster vector (DK: tvar vector; Thompson: list of 2).
+#' @param time_index List from `.build_time_index()`.
+#' @param kernel Canonical kernel name.
+#' @param bw Numeric bandwidth.
+#' @param N Integer: number of observations.
+#' @param K Integer: number of regressors.
+#' @param M Integer: effective cluster count (min(M1, M2) for Thompson).
+#' @param small Logical: apply small-sample correction.
+#' @param dofminus Integer: large-sample DoF adjustment.
+#' @param sdofminus Integer: small-sample DoF adjustment.
+#' @param weights Normalized weights (sorted) or NULL.
+#' @param weight_type Character: weight type.
+#' @param is_twoway Logical: TRUE for Thompson, FALSE for DK.
+#' @return K x K variance-covariance matrix.
+#' @keywords internal
+.compute_cluster_kernel_vcov <- function(bread, X_hat, resid,
+                                          cluster_vec, time_index,
+                                          kernel, bw,
+                                          N, K, M, small,
+                                          dofminus = 0L, sdofminus = 0L,
+                                          weights = NULL,
+                                          weight_type = "aweight",
+                                          is_twoway = FALSE) {
+  scores <- .cl_scores(X_hat, resid, weights)
+
+  if (is_twoway) {
+    # Thompson: CGM decomposition with kernel-smoothed time dimension
+    # meat = cluster_meat(ivar) + cluster_kernel_meat(tvar) - hac_meat
+    # The third term is the HAC meat (observation-level with kernel lags),
+    # NOT just HC meat. This matches Stata livreg2.do line 336 where
+    # shat3 = shat * (N-dofminus) — the full HAC meat from the robust block.
+    meat_ivar <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
+    meat_ivar <- (meat_ivar + t(meat_ivar)) / 2
+    meat_tvar <- .cluster_kernel_meat(X_hat, resid, time_index, kernel, bw,
+                                      weights, weight_type)
+    meat_hac <- .hac_scores_meat(scores, time_index, kernel, bw)
+    meat <- meat_ivar + meat_tvar - meat_hac
+  } else {
+    # DK: one-way cluster+kernel on tvar
+    meat <- .cluster_kernel_meat(X_hat, resid, time_index, kernel, bw,
+                                 weights, weight_type)
+  }
+
+  V <- bread %*% meat %*% bread
+  V <- (V + t(V)) / 2
+
+  if (small) {
+    V <- V * ((N - 1) / (N - K - sdofminus)) * (M / (M - 1))
+  }
+
   colnames(V) <- rownames(V) <- colnames(bread)
   V
 }

@@ -44,7 +44,25 @@
 .compute_omega <- function(Z, residuals, weights, cluster_vec, N,
                             dofminus = 0L, weight_type = "aweight",
                             kernel = NULL, bw = NULL, time_index = NULL) {
-  if (!is.null(cluster_vec)) {
+  if (!is.null(cluster_vec) && !is.null(kernel)) {
+    # Cluster + kernel (DK or Thompson)
+    if (is.list(cluster_vec)) {
+      # Thompson: CGM decomposition with kernel-smoothed time dimension
+      # Third term is HAC meat (not just HC), matching Stata livreg2.do line 336.
+      scores <- .cl_scores(Z, residuals, weights)
+      shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
+      shat1 <- (shat1 + t(shat1)) / 2
+      shat2 <- .cluster_kernel_meat(Z, residuals, time_index, kernel, bw,
+                                     weights, weight_type)
+      shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
+      Omega <- (shat1 + shat2 - shat3) / N
+    } else {
+      # DK: one-way cluster+kernel on tvar
+      meat <- .cluster_kernel_meat(Z, residuals, time_index, kernel, bw,
+                                   weights, weight_type)
+      Omega <- meat / N
+    }
+  } else if (!is.null(cluster_vec)) {
     # Cluster path — divisor is N (no dofminus)
     scores <- .cl_scores(Z, residuals, weights)
     Omega <- .cluster_meat(scores, cluster_vec) / N
@@ -196,7 +214,10 @@
   Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N,
                            dofminus = dofminus, weight_type = weight_type,
                            kernel = kernel, bw = bw, time_index = time_index)
-  J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
+  J <- tryCatch(
+    .compute_j_with_omega(Z, X, y, Omega, weights, N),
+    error = function(e) NA_real_
+  )
 
   if (is.na(J)) {
     warning("Omega is rank-deficient; Hansen J statistic not computed.",

@@ -129,7 +129,20 @@
       wald_j <- wald_classical_j
     } else {
       # Raw robust sandwich (no finite-sample corrections)
-      if (!is.null(cluster_vec)) {
+      if (!is.null(cluster_vec) && !is.null(kernel)) {
+        if (is.list(cluster_vec)) {
+          scores <- .cl_scores(Z, resid_j, weights)
+          shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
+          shat1 <- (shat1 + t(shat1)) / 2
+          shat2 <- .cluster_kernel_meat(Z, resid_j, time_index, kernel, bw,
+                                         weights, weight_type)
+          shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
+          meat <- shat1 + shat2 - shat3
+        } else {
+          meat <- .cluster_kernel_meat(Z, resid_j, time_index, kernel, bw,
+                                       weights, weight_type)
+        }
+      } else if (!is.null(cluster_vec)) {
         scores <- .cl_scores(Z, resid_j, weights)
         meat <- .cluster_meat(scores, cluster_vec)
       } else if (!is.null(kernel)) {
@@ -325,7 +338,20 @@
         if (vcov_type %in% c("iid", "AC")) {
           wald_sw <- wald_cl
         } else {
-          if (!is.null(cluster_vec)) {
+          if (!is.null(cluster_vec) && !is.null(kernel)) {
+            if (is.list(cluster_vec)) {
+              scores <- .cl_scores(Z, resid_aux, weights)
+              shat1 <- crossprod(rowsum(scores, cluster_vec[[1L]], reorder = FALSE))
+              shat1 <- (shat1 + t(shat1)) / 2
+              shat2 <- .cluster_kernel_meat(Z, resid_aux, time_index, kernel, bw,
+                                             weights, weight_type)
+              shat3 <- .hac_scores_meat(scores, time_index, kernel, bw)
+              meat <- shat1 + shat2 - shat3
+            } else {
+              meat <- .cluster_kernel_meat(Z, resid_aux, time_index, kernel, bw,
+                                           weights, weight_type)
+            }
+          } else if (!is.null(cluster_vec)) {
             scores <- .cl_scores(Z, resid_aux, weights)
             meat <- .cluster_meat(scores, cluster_vec)
           } else if (!is.null(kernel)) {

@@ -93,6 +93,7 @@
   #      F = chi2/df1 * (M-1)/M * (N-K-sdofminus)/(N-1)
 
   is_corrected <- (vcov_type == "iid" && small) ||
+                  (vcov_type == "AC" && small) ||
                   (vcov_type == "HC1") ||
                   (vcov_type == "CL" && small)
 
@@ -149,14 +150,16 @@
   pivoted <- logical(n)
 
   for (step in seq_len(n)) {
-    # Partial pivoting: largest *current* diagonal among remaining indices
+    # Partial pivoting: largest *positive* current diagonal among remaining.
+    # Only positive diagonals are valid pivots — a negative diagonal after
+    # elimination indicates a non-PSD direction. Stata's syminv() treats
+    # negative diagonals as rank-deficient and skips them.
     remaining <- which(!pivoted)
     if (length(remaining) == 0L) break
-    diag_vals <- abs(AI[remaining, remaining, drop = FALSE])
-    diag_vals <- diag(diag_vals)
+    diag_vals <- diag(AI[remaining, remaining, drop = FALSE])
     best <- remaining[which.max(diag_vals)]
 
-    if (abs(AI[best, best]) <= tol) break
+    if (AI[best, best] <= tol) break
 
     # Scale pivot row
     AI[best, ] <- AI[best, ] / AI[best, best]

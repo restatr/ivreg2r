@@ -26,6 +26,8 @@ ivreg2(
   bw = NULL,
   tvar = NULL,
   ivar = NULL,
+  kiefer = FALSE,
+  dkraay = NULL,
   reduced_form = "none",
   model = TRUE,
   x = FALSE,
@@ -143,6 +145,19 @@ for HAC/AC estimation.}
 
 \item{ivar}{Character: name of the panel identifier variable in \code{data}.
 Optional; only needed for panel data with HAC/AC estimation.}
+
+\item{kiefer}{Logical: if \code{TRUE}, use the Kiefer (1980) VCE —
+autocorrelation-consistent with kernel = Truncated and bandwidth = T
+(the full time span). Requires panel data (\code{tvar} + \code{ivar}).
+Incompatible with robust VCE, clustering, explicit kernel or bandwidth.
+Equivalent to Stata's \verb{ivreg2 ..., kiefer}.}
+
+\item{dkraay}{Positive numeric scalar: bandwidth for Driscoll-Kraay (1998)
+VCE. When specified, clusters on the time variable and applies kernel
+smoothing across time lags, producing standard errors robust to
+cross-sectional dependence. Requires panel data (\code{tvar} + \code{ivar}).
+Incompatible with explicit \code{bw}. If \code{kernel} is not specified, defaults
+to Bartlett. Equivalent to Stata's \verb{ivreg2 ..., dkraay(3)}.}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression

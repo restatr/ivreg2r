@@ -97,6 +97,17 @@
 #'   for HAC/AC estimation.
 #' @param ivar Character: name of the panel identifier variable in `data`.
 #'   Optional; only needed for panel data with HAC/AC estimation.
+#' @param kiefer Logical: if `TRUE`, use the Kiefer (1980) VCE —
+#'   autocorrelation-consistent with kernel = Truncated and bandwidth = T
+#'   (the full time span). Requires panel data (`tvar` + `ivar`).
+#'   Incompatible with robust VCE, clustering, explicit kernel or bandwidth.
+#'   Equivalent to Stata's `ivreg2 ..., kiefer`.
+#' @param dkraay Positive numeric scalar: bandwidth for Driscoll-Kraay (1998)
+#'   VCE. When specified, clusters on the time variable and applies kernel
+#'   smoothing across time lags, producing standard errors robust to
+#'   cross-sectional dependence. Requires panel data (`tvar` + `ivar`).
+#'   Incompatible with explicit `bw`. If `kernel` is not specified, defaults
+#'   to Bartlett. Equivalent to Stata's `ivreg2 ..., dkraay(3)`.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -126,6 +137,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    dofminus = 0L, sdofminus = 0L,
                    weight_type = "aweight",
                    kernel = NULL, bw = NULL, tvar = NULL, ivar = NULL,
+                   kiefer = FALSE, dkraay = NULL,
                    reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
 
@@ -195,20 +207,65 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
          call. = FALSE)
   }
 
-  # --- 2c. Validate kernel / bw / tvar / ivar ---
+  # --- 2c. Normalize kernel name early (before kiefer/dkraay checks) ---
   if (!is.null(kernel)) {
     kernel <- .validate_kernel(kernel)
   }
+
+  # --- 2d. Validate kiefer ---
+  if (!is.logical(kiefer) || length(kiefer) != 1L || is.na(kiefer)) {
+    stop("`kiefer` must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (isTRUE(kiefer)) {
+    if (is.null(tvar) || is.null(ivar)) {
+      stop("kiefer requires panel data (both `tvar` and `ivar`).",
+           call. = FALSE)
+    }
+    if (vcov %in% c("HC0", "HC1") || !is.null(clusters)) {
+      stop("kiefer is incompatible with robust VCE or clustering.",
+           call. = FALSE)
+    }
+    if (!is.null(kernel) && kernel != "Truncated") {
+      stop("kiefer is incompatible with kernel='", kernel, "'.",
+           call. = FALSE)
+    }
+    if (!is.null(bw)) {
+      stop("kiefer is incompatible with explicit `bw`.", call. = FALSE)
+    }
+    # Set kernel and vcov; bw deferred until after time_index is built
+    kernel <- "Truncated"
+    vcov <- "AC"
+  }
+
+  # --- 2e. Validate dkraay ---
+  if (!is.null(dkraay)) {
+    if (!is.numeric(dkraay) || length(dkraay) != 1L || !is.finite(dkraay) ||
+        dkraay <= 0) {
+      stop("`dkraay` must be a positive numeric scalar.", call. = FALSE)
+    }
+    if (is.null(tvar) || is.null(ivar)) {
+      stop("dkraay requires panel data (both `tvar` and `ivar`).",
+           call. = FALSE)
+    }
+    if (!is.null(bw)) {
+      stop("cannot specify both `dkraay` and `bw`.", call. = FALSE)
+    }
+    bw <- dkraay
+    if (is.null(kernel)) kernel <- "Bartlett"
+    # DK clustering on tvar is handled after cluster construction
+  }
+
+  # --- 2c (cont). Validate bw / tvar / ivar ---
   if (!is.null(bw) && is.null(kernel)) {
     # bw specified without kernel: default to Bartlett
     kernel <- "Bartlett"
   }
   if (!is.null(kernel)) {
-    if (is.null(bw)) {
+    if (is.null(bw) && !isTRUE(kiefer)) {
       stop("bandwidth `bw` is required when `kernel` is specified.",
            call. = FALSE)
     }
-    .validate_bandwidth(bw, kernel)
+    if (!is.null(bw)) .validate_bandwidth(bw, kernel)
 
     # VCE inference: kernel + iid → AC; kernel + HC → HAC
     if (vcov == "iid") {
@@ -448,10 +505,54 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
   }
 
-  # --- 3d. Time-index construction (for HAC/AC) ---
-  # kernel + cluster (HAC-CL / dkraay) not yet implemented
+  # --- 3d. DK auto-clustering on tvar ---
+  if (!is.null(dkraay) && is.null(cluster_vec)) {
+    mf_rows_dk <- match(rownames(parsed$model_frame), rownames(data))
+    cluster_var_name <- tvar
+    cluster_vec <- data[[tvar]][mf_rows_dk]
+    M <- length(unique(cluster_vec))
+    if (M < 2L) {
+      stop("At least 2 time periods required for dkraay; found ", M, ".",
+           call. = FALSE)
+    }
+  }
+
+  # --- 3e. Validate cluster+kernel combinations ---
   if (!is.null(kernel) && !is.null(cluster_vec)) {
-    stop("kernel + clusters (HAC-CL) is not yet implemented.", call. = FALSE)
+    if (is.list(cluster_vec)) {
+      # Two-way cluster + kernel → Thompson
+      # Cluster vars must be {ivar, tvar} in either order
+      if (is.null(tvar) || is.null(ivar)) {
+        stop("cluster+kernel requires both `tvar` and `ivar`.", call. = FALSE)
+      }
+      # Validate that cluster vars match ivar and tvar
+      cv_names <- cluster_var_name  # length-2 character vector
+      cv_set <- sort(cv_names)
+      iv_set <- sort(c(ivar, tvar))
+      if (!identical(cv_set, iv_set)) {
+        stop("cluster+kernel requires cluster variables to match ivar and tvar.",
+             call. = FALSE)
+      }
+      # Normalize so cluster_vec[[1]] = ivar, cluster_vec[[2]] = tvar
+      if (cv_names[1L] != ivar) {
+        cluster_vec <- list(cluster_vec[[2L]], cluster_vec[[1L]])
+        cluster_var_name <- c(ivar, tvar)
+        # Recompute M1/M2 for correct ordering
+        M1_old <- M1; M2_old <- M2
+        M1 <- M2_old
+        M2 <- M1_old
+      }
+    } else {
+      # One-way cluster + kernel → DK path
+      # Cluster var must equal tvar
+      if (is.null(tvar)) {
+        stop("cluster+kernel requires `tvar`.", call. = FALSE)
+      }
+      if (!identical(cluster_var_name, tvar)) {
+        stop("cluster+kernel requires clustering on the time variable.",
+             call. = FALSE)
+      }
+    }
   }
 
   time_index <- NULL
@@ -483,6 +584,17 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
     time_index <- .build_time_index(tvar_vec, ivar_vec)
 
+    # Kiefer bw: Stata sets bw = T where T = max(tvar) - min(tvar) + 1 = T_span.
+    # This can exceed max_bw (= (T_span-1)/tdelta), which is fine because
+    # Stata sets kiefer bw AFTER the max_bw check (ivreg2.ado lines 429-432).
+    # For Truncated kernel: TAU = floor(bw) = T_span, but lags beyond T-1 have
+    # no valid pairs and are skipped. The KP identification test uses Bartlett
+    # kernel (Stata bug), where bw = T_span gives kw(T-1) = 1-(T-1)/T_span > 0,
+    # matching Stata's behavior.
+    if (isTRUE(kiefer)) {
+      bw <- time_index$T_span
+    }
+
     # Warn about gaps (Stata ivreg2.ado:415)
     if (time_index$n_gaps > 0L) {
       warning("Time variable '", tvar, "' has ", time_index$n_gaps,
@@ -490,8 +602,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
 
     # Check bandwidth span (Stata ivreg2.ado:423) — skip for "auto" (resolved
-    # after estimation, when residuals are available)
-    if (is.numeric(bw)) {
+    # after estimation, when residuals are available) and for kiefer (bw = T_span
+    # is set after this check in Stata, so it bypasses the limit)
+    if (is.numeric(bw) && !isTRUE(kiefer)) {
       max_bw <- (time_index$T_span - 1) / time_index$tdelta
       if (bw > max_bw) {
         stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
@@ -579,7 +692,22 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     resid_vcov <- fit$residuals
   }
 
-  if (vcov == "HAC") {
+  if (!is.null(cluster_vec) && !is.null(kernel)) {
+    # Cluster + kernel (DK or Thompson) — must check before HAC/AC since
+    # kernel sets vcov = "AC" via VCE inference, but cluster+kernel has its
+    # own distinct computation path
+    is_twoway <- is.list(cluster_vec)
+    fit$vcov <- .compute_cluster_kernel_vcov(
+      bread = bread_vcov, X_hat = X_hat_vcov, resid = resid_vcov,
+      cluster_vec = cluster_vec, time_index = time_index,
+      kernel = kernel, bw = bw,
+      N = parsed$N, K = parsed$K, M = M, small = small,
+      dofminus = dofminus, sdofminus = sdofminus,
+      weights = parsed$weights, weight_type = weight_type,
+      is_twoway = is_twoway
+    )
+    fit$df.residual <- as.integer(M - 1L)
+  } else if (vcov == "HAC") {
     fit$vcov <- .compute_hac_vcov(bread_vcov, X_hat_vcov, resid_vcov,
                                    time_index, kernel, bw,
                                    parsed$N, parsed$K,
@@ -591,6 +719,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                                   time_index, kernel, bw,
                                   parsed$N, parsed$K,
                                   dofminus = dofminus, sdofminus = sdofminus,
+                                  small = small,
                                   weights = parsed$weights,
                                   weight_type = weight_type)
   } else if (!is.null(cluster_vec)) {
@@ -646,10 +775,15 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
 
     # Identification tests (D2)
+    # Kiefer: use IID path for identification tests.  Stata's ivreg2 sets
+    # bwopt/kernopt in vkernel BEFORE kiefer overrides bw=T, so ranktest
+    # never receives kernel/bw → enters IID path (Anderson LM, CD F).
+    id_vcov_type <- if (isTRUE(kiefer)) "iid" else effective_vcov_type
+    id_kernel    <- if (isTRUE(kiefer)) NULL else kernel
     id_tests <- .compute_id_tests(
       X = parsed$X, Z = parsed$Z, y = parsed$y,
       residuals = fit$residuals, weights = parsed$weights,
-      cluster_vec = cluster_vec, vcov_type = effective_vcov_type,
+      cluster_vec = cluster_vec, vcov_type = id_vcov_type,
       N = parsed$N, K = parsed$K, L = parsed$L,
       K1 = parsed$K1, L1 = parsed$L1, M = M,
       endo_names = parsed$endo_colnames,
@@ -657,7 +791,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       has_intercept = parsed$has_intercept,
       dofminus = dofminus, sdofminus = sdofminus,
       weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index
+      kernel = id_kernel, bw = bw, time_index = time_index
     )
     diagnostics$underid        <- id_tests$underid
     diagnostics$weak_id        <- id_tests$weak_id
@@ -880,6 +1014,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     kernel            = kernel,
     bw                = bw,
     tvar              = tvar,
+    kiefer            = kiefer,
+    dkraay            = dkraay,
     ivar              = ivar,
     model         = if (model) parsed$model_frame else NULL,
     x             = if (x) list(X = parsed$X, Z = parsed$Z) else NULL,
