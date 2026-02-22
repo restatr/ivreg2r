@@ -765,10 +765,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   # --- 5. VCV ---
   # For GMM2S: VCV is already computed by .fit_gmm2s() (efficient GMM sandwich
-  # collapses). Only apply small-sample corrections here.
+  # collapses). Apply HC1 or small-sample corrections here.
+  # HC1 implies the same N/(N-K) correction as small for VCV, matching the
+  # non-GMM path at vcov-robust.R:74-79 where HC1 applies unconditionally.
   if (method == "gmm2s") {
     bread_vcov <- fit$bread_gmm
-    if (small) {
+    needs_vcov_correction <- small || vcov == "HC1"
+    if (needs_vcov_correction) {
       if (!is.null(cluster_vec)) {
         fit$vcov <- fit$vcov * ((parsed$N - 1) / (parsed$N - parsed$K - sdofminus)) *
           (M / (M - 1))
@@ -780,7 +783,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     } else if (!is.null(cluster_vec)) {
       fit$df.residual <- as.integer(M - 1L)
     }
-    # Recompute sigma for small (Stata line 1190)
+    # Recompute sigma for small (HC1 without small does not change sigma)
     if (small) {
       fit$sigma <- sqrt(fit$rss / (parsed$N - parsed$K - dofminus - sdofminus))
     }
