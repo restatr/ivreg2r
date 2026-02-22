@@ -1447,12 +1447,17 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
 
     # Redundancy test / instrument redundancy LM (P1)
+    # Validate against term labels, then expand to column names (factor-safe)
     if (!is.null(redundant) && length(redundant) > 0L) {
-      bad <- setdiff(redundant, parsed$excluded_colnames)
+      bad <- setdiff(redundant, parsed$excluded_names)
       if (length(bad) > 0L) {
         stop("`redundant` contains variables not in the excluded instrument list: ",
              paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
       }
+      redundant_cols <- .expand_terms_to_colnames(
+        redundant, parsed$excluded_names, parsed$excluded_colnames,
+        parsed$excluded_assign
+      )
       diagnostics$redundancy <- .compute_redundancy_test(
         X = parsed$X, Z = parsed$Z,
         weights = parsed$weights, cluster_vec = cluster_vec,
@@ -1460,7 +1465,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         N = parsed$N, K1 = parsed$K1,
         endo_colnames = parsed$endo_colnames,
         excluded_colnames = parsed$excluded_colnames,
-        redundant_vars = redundant, dofminus = dofminus,
+        redundant_vars = redundant_cols, dofminus = dofminus,
         weight_type = weight_type,
         kernel = kernel, bw = bw, time_index = time_index,
         center = center
