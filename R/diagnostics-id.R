@@ -205,7 +205,7 @@
 .kp_omega <- function(Z1_perp, V_hat, weights, cluster_vec, N, K1, L1,
                        weight_type = "aweight",
                        kernel = NULL, bw = NULL, time_index = NULL,
-                       center = FALSE) {
+                       center = FALSE, psd = NULL) {
   # Build N x (K1*L1) score matrix: row i = kron(V_hat[i,], Z1_perp[i,])
   # For K1=1: reduces to V_hat * Z1_perp (scalar broadcast)
   if (K1 == 1L) {
@@ -262,6 +262,8 @@
       shat0 <- crossprod(weights * scores) / N
     }
   }
+  # PSD correction (before symmetry enforcement)
+  shat0 <- .psd_correct(shat0, psd)
   (shat0 + t(shat0)) / 2  # force symmetry
 }
 
@@ -386,7 +388,7 @@
                               weight_type = "aweight",
                               kernel = NULL, bw = NULL,
                               time_index = NULL,
-                              center = FALSE) {
+                              center = FALSE, psd = NULL) {
 
   # Top-level guard: catch unexpected errors
   result <- tryCatch({
@@ -481,12 +483,12 @@
                               weight_type = weight_type,
                               kernel = kp_kernel, bw = bw,
                               time_index = time_index,
-                              center = center)
+                              center = center, psd = psd)
       shat0_wald <- .kp_omega(Z1_perp, V_wald, weights, cluster_vec, N, K1, L1,
                                 weight_type = weight_type,
                                 kernel = kp_kernel, bw = bw,
                                 time_index = time_index,
-                                center = center)
+                                center = center, psd = psd)
     }
 
     # KP rk LM

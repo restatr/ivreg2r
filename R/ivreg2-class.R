@@ -108,6 +108,7 @@ NULL
                          kiefer = FALSE, dkraay = NULL,
                          ivar = NULL,
                          center = FALSE,
+                         psd = NULL,
                          partial_ct = 0L,
                          partial_names = character(0),
                          partialcons = FALSE,
@@ -174,6 +175,7 @@ NULL
       dkraay         = dkraay,
       ivar           = ivar,
       center         = center,
+      psd            = psd,
       partial_ct     = partial_ct,
       partial_names  = partial_names,
       partialcons    = partialcons,
@@ -442,7 +444,8 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   cat("\nObservations:", format(x$nobs, big.mark = ","), "\n")
   cat("VCV type:    ", .vcov_description(x$vcov_type, x$small,
                                          x$kernel, x$bw,
-                                         x$kiefer, x$dkraay), "\n")
+                                         x$kiefer, x$dkraay,
+                                         x$psd), "\n")
   # GMM2S efficiency subtitle (Stata lines 2203-2204)
   # gmmw uses different subtitle (Stata line 2206)
   if (!is.null(x$method) && x$method %in% c("gmm2s", "cue")) {
@@ -606,7 +609,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
 #' @keywords internal
 #' @noRd
 .vcov_description <- function(vcov_type, small, kernel = NULL, bw = NULL,
-                               kiefer = FALSE, dkraay = NULL) {
+                               kiefer = FALSE, dkraay = NULL, psd = NULL) {
   base <- switch(vcov_type,
     "iid" = "Classical (iid)",
     "HC0" = "Robust (HC0)",
@@ -630,10 +633,12 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
                    formatC(bw, format = "g"), ")")
   }
   if (small && !vcov_type %in% c("iid", "AC") && !isTRUE(kiefer)) {
-    paste0(base, ", small-sample corrected")
-  } else {
-    base
+    base <- paste0(base, ", small-sample corrected")
   }
+  if (!is.null(psd)) {
+    base <- paste0(base, " (", psd, ")")
+  }
+  base
 }
 
 #' Format a p-value for display

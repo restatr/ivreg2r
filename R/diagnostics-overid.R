@@ -44,7 +44,7 @@
 .compute_omega <- function(Z, residuals, weights, cluster_vec, N,
                             dofminus = 0L, weight_type = "aweight",
                             kernel = NULL, bw = NULL, time_index = NULL,
-                            center = FALSE) {
+                            center = FALSE, psd = NULL) {
   if (!is.null(cluster_vec) && !is.null(kernel)) {
     # Cluster + kernel (DK or Thompson)
     if (is.list(cluster_vec)) {
@@ -79,6 +79,8 @@
     Omega <- .hc_meat(Z, residuals, weights, weight_type,
                       center = center) / (N - dofminus)
   }
+  # PSD correction (before symmetry enforcement)
+  Omega <- .psd_correct(Omega, psd)
   # Force symmetry
   (Omega + t(Omega)) / 2
 }
@@ -224,11 +226,11 @@
                            N, K, L, overid_df, dofminus = 0L,
                            weight_type = "aweight",
                            kernel = NULL, bw = NULL, time_index = NULL,
-                           center = FALSE) {
+                           center = FALSE, psd = NULL) {
   Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N,
                            dofminus = dofminus, weight_type = weight_type,
                            kernel = kernel, bw = bw, time_index = time_index,
-                           center = center)
+                           center = center, psd = psd)
   J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
 
   if (is.na(J)) {
@@ -277,7 +279,7 @@
                                    weight_type = "aweight",
                                    kernel = NULL, bw = NULL,
                                    time_index = NULL,
-                                   center = FALSE) {
+                                   center = FALSE, psd = NULL) {
   # 1. Extract X2 (included exogenous regressors)
   endo_idx <- match(endo_names, colnames(X))
   exog_idx <- setdiff(seq_len(ncol(X)), endo_idx)
@@ -328,7 +330,7 @@
                              dofminus = dofminus, weight_type = weight_type,
                              kernel = kernel, bw = bw,
                              time_index = time_index,
-                             center = center)
+                             center = center, psd = psd)
   }
 
   # 5. S = N * gbar' * Omega^{-1} * gbar
@@ -385,7 +387,7 @@
                                  weight_type = "aweight",
                                  kernel = NULL, bw = NULL,
                                  time_index = NULL,
-                                 center = FALSE) {
+                                 center = FALSE, psd = NULL) {
   if (!is_iv) return(NULL)
 
   if (overid_df == 0L) {
@@ -423,7 +425,7 @@
                    N, K, L, overid_df, dofminus = dofminus,
                    weight_type = weight_type,
                    kernel = kernel, bw = bw, time_index = time_index,
-                   center = center)
+                   center = center, psd = psd)
   }
 }
 

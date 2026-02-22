@@ -1,4 +1,43 @@
 # --------------------------------------------------------------------------
+# .psd_correct
+# --------------------------------------------------------------------------
+#' Apply PSD correction to a symmetric matrix
+#'
+#' Performs eigenvalue-based correction to ensure a matrix is positive
+#' semi-definite.  Two modes are available:
+#' \itemize{
+#'   \item `"psd0"`: set negative eigenvalues to zero (Politis 2007).
+#'   \item `"psda"`: replace negative eigenvalues with their absolute values
+#'     (Stock & Watson 2008, Remark 8).
+#' }
+#'
+#' When correction is applied, a warning is emitted indicating how many
+#' eigenvalues were corrected and which mode was used.
+#'
+#' @param mat Symmetric matrix to correct.
+#' @param psd Character: `"psd0"` or `"psda"`, or `NULL` (no correction).
+#' @return Corrected symmetric matrix (or `mat` unchanged if `psd` is `NULL`
+#'   or no negative eigenvalues are found).
+#' @keywords internal
+.psd_correct <- function(mat, psd) {
+  if (is.null(psd)) return(mat)
+  eig <- eigen(mat, symmetric = TRUE)
+  neg_idx <- eig$values < 0
+  if (!any(neg_idx)) return(mat)
+  n_neg <- sum(neg_idx)
+  warning("Non-positive-semidefinite matrix: ", n_neg, " negative eigenvalue",
+          if (n_neg > 1L) "s", " corrected via ", psd, ".", call. = FALSE)
+  if (psd == "psd0") {
+    eig$values <- pmax(eig$values, 0)
+  } else {
+    eig$values <- abs(eig$values)
+  }
+  mat_corrected <- eig$vectors %*% (eig$values * t(eig$vectors))
+  (mat_corrected + t(mat_corrected)) / 2
+}
+
+
+# --------------------------------------------------------------------------
 # .hc_meat
 # --------------------------------------------------------------------------
 #' Compute HC meat matrix with weight-type dispatch

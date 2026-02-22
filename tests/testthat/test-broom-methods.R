@@ -97,7 +97,7 @@ test_that("glance OLS returns 1-row tibble with 17 columns", {
   gl <- glance(fit)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 46L)
+  expect_equal(ncol(gl), 47L)
 })
 
 test_that("glance OLS has correct column names", {
@@ -107,7 +107,7 @@ test_that("glance OLS has correct column names", {
                       "p.value", "df", "df.residual", "nobs", "vcov_type",
                       "weight_type",
                       "method", "lambda", "kclass_value", "fuller_parameter",
-                      "coviv", "center", "kernel", "bw",
+                      "coviv", "center", "psd", "kernel", "bw",
                       "kiefer", "dkraay",
                       "n_clusters1", "n_clusters2",
                       "weak_id_stat", "weak_id_robust_stat",

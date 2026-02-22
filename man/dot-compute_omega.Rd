@@ -15,7 +15,8 @@
   kernel = NULL,
   bw = NULL,
   time_index = NULL,
-  center = FALSE
+  center = FALSE,
+  psd = NULL
 )
 }
 \arguments{

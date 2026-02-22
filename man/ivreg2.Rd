@@ -35,6 +35,7 @@ ivreg2(
   partial = NULL,
   nopartialsmall = FALSE,
   center = FALSE,
+  psd = NULL,
   reduced_form = "none",
   model = TRUE,
   x = FALSE,
@@ -238,6 +239,13 @@ Equivalent to Stata's \code{nopartialsmall} option.}
 (scores) before computing the S matrix (meat of the sandwich VCE).
 Default \code{FALSE}. Centering only affects non-homoskedastic VCE types
 (HC, cluster, HAC); a warning is issued if used with IID or AC VCE.}
+
+\item{psd}{Character or NULL: PSD correction for the meat matrix.
+\code{NULL} (default) applies no correction. \code{"psd0"} zeroes negative
+eigenvalues (Politis 2007). \code{"psda"} replaces negative eigenvalues
+with their absolute values (Stock & Watson 2008). A warning is emitted
+when negative eigenvalues are detected and corrected.
+Equivalent to Stata's \code{psd0} and \code{psda} options.}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression

@@ -172,6 +172,12 @@
 #'   (scores) before computing the S matrix (meat of the sandwich VCE).
 #'   Default `FALSE`. Centering only affects non-homoskedastic VCE types
 #'   (HC, cluster, HAC); a warning is issued if used with IID or AC VCE.
+#' @param psd Character or NULL: PSD correction for the meat matrix.
+#'   `NULL` (default) applies no correction. `"psd0"` zeroes negative
+#'   eigenvalues (Politis 2007). `"psda"` replaces negative eigenvalues
+#'   with their absolute values (Stock & Watson 2008). A warning is emitted
+#'   when negative eigenvalues are detected and corrected.
+#'   Equivalent to Stata's `psd0` and `psda` options.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -208,6 +214,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    partial = NULL,
                    nopartialsmall = FALSE,
                    center = FALSE,
+                   psd = NULL,
                    reduced_form = "none",
                    model = TRUE, x = FALSE, y = TRUE) {
 
@@ -280,6 +287,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   if (!is.logical(center) || length(center) != 1L || is.na(center)) {
     stop("`center` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  # --- 2g. Validate psd ---
+  if (!is.null(psd)) {
+    psd <- match.arg(psd, c("psd0", "psda"))
   }
 
   # --- 2f. Validate partial / nopartialsmall (type checks only) ---
@@ -1049,6 +1061,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     # or cluster-robust moment covariance
     gmm_is_iid <- is.null(cluster_vec) && vcov == "iid" && is.null(kernel)
     gmm_center <- center
+    gmm_psd <- psd
     omega_fn <- function(resid) {
       if (gmm_is_iid) {
         # Homoskedastic omega: sigma^2 * Z'WZ / N
@@ -1061,12 +1074,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         }
         sigma2 <- rss_step / (gmm_N - gmm_dm)
         Omega <- sigma2 * ZWZ / gmm_N
+        Omega <- .psd_correct(Omega, gmm_psd)
         (Omega + t(Omega)) / 2
       } else {
         .compute_omega(gmm_Z, resid, gmm_w, gmm_cv, gmm_N,
                        dofminus = gmm_dm, weight_type = gmm_wt,
                        kernel = gmm_k, bw = gmm_bw, time_index = gmm_ti,
-                       center = gmm_center)
+                       center = gmm_center, psd = gmm_psd)
       }
     }
   }
@@ -1251,6 +1265,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   }  # end of non-GMM2S VCV block
 
+  # --- 5a. PSD correction on final VCV ---
+  fit$vcov <- .psd_correct(fit$vcov, psd)
+
   # --- 5b. Diagnostics ---
   # HAC → robust diagnostics path (Hansen J, KP rk)
   # AC → iid-like diagnostics path (Sargan, Anderson LM, CD F)
@@ -1300,7 +1317,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       overid_df = parsed$overid_df, dofminus = dofminus,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
-      center = center
+      center = center, psd = psd
     )
     }
 
@@ -1332,7 +1349,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       has_intercept = parsed$has_intercept,
       dofminus = dofminus, sdofminus = sdofminus,
       weight_type = weight_type,
-      kernel = id_kernel, bw = bw, time_index = time_index
+      kernel = id_kernel, bw = bw, time_index = time_index,
+      psd = psd
     )
     diagnostics$underid        <- id_tests$underid
     diagnostics$weak_id        <- id_tests$weak_id
@@ -1391,7 +1409,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       endo_names = parsed$endo_colnames, dofminus = dofminus,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
-      center = center
+      center = center, psd = psd
     )
 
     # Endogeneity test / C-statistic (E4)
@@ -1416,7 +1434,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       K1 = parsed$K1, endo_names = parsed$endo_colnames,
       endog_vars = endog_cols, dofminus = dofminus,
       weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index
+      kernel = kernel, bw = bw, time_index = time_index,
+      psd = psd
     )
 
     # Orthogonality test / instrument-subset C-statistic (J1)
@@ -1442,7 +1461,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         N = parsed$N, K = parsed$K, L = parsed$L,
         orthog_vars = orthog, dofminus = dofminus,
         weight_type = weight_type,
-        kernel = kernel, bw = bw, time_index = time_index
+        kernel = kernel, bw = bw, time_index = time_index,
+        psd = psd
       )
     }
 
@@ -1468,7 +1488,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         redundant_vars = redundant_cols, dofminus = dofminus,
         weight_type = weight_type,
         kernel = kernel, bw = bw, time_index = time_index,
-        center = center
+        center = center, psd = psd
       )
     }
 
@@ -1606,6 +1626,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     dkraay            = dkraay,
     ivar              = ivar,
     center            = center,
+    psd               = psd,
     partial_ct        = partial_ct,
     partial_names     = partial_names,
     partialcons       = partialcons,

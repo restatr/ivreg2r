@@ -43,7 +43,7 @@
                                       weight_type = "aweight",
                                       kernel = NULL, bw = NULL,
                                       time_index = NULL,
-                                      center = FALSE) {
+                                      center = FALSE, psd = NULL) {
   # Default: test all endogenous regressors
   if (is.null(endog_vars)) endog_vars <- endo_names
   q <- length(endog_vars)
@@ -102,7 +102,7 @@
                                dofminus = dofminus, weight_type = weight_type,
                                kernel = kernel, bw = bw,
                                time_index = time_index,
-                               center = center)
+                               center = center, psd = psd)
   }
 
   # --- J_r: J statistic of restricted model ---

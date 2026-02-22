@@ -64,6 +64,7 @@
   dkraay = NULL,
   ivar = NULL,
   center = FALSE,
+  psd = NULL,
   partial_ct = 0L,
   partial_names = character(0),
   partialcons = FALSE,
