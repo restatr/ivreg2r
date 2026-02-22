@@ -217,6 +217,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("`kiefer` must be TRUE or FALSE.", call. = FALSE)
   }
   if (isTRUE(kiefer)) {
+    if (!is.null(dkraay)) {
+      stop("incompatible options: `kiefer` and `dkraay`.", call. = FALSE)
+    }
     if (is.null(tvar) || is.null(ivar)) {
       stop("kiefer requires panel data (both `tvar` and `ivar`).",
            call. = FALSE)
@@ -249,6 +252,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
     if (!is.null(bw)) {
       stop("cannot specify both `dkraay` and `bw`.", call. = FALSE)
+    }
+    if (!is.null(clusters)) {
+      stop("cannot specify both `dkraay` and explicit `clusters`.",
+           call. = FALSE)
     }
     bw <- dkraay
     if (is.null(kernel)) kernel <- "Bartlett"

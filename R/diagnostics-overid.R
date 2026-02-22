@@ -171,7 +171,13 @@
   M <- QXZ %*% aux1           # K x K
   M <- (M + t(M)) / 2         # force symmetry
 
-  beta_2s <- .chol_solve(M, QXZ %*% aux2)  # K x 1
+  # M (GMM Hessian) can be singular even when Omega is full-rank
+  # (e.g., cluster+kernel with few time periods). Return NA gracefully.
+  beta_2s <- tryCatch(
+    .chol_solve(M, QXZ %*% aux2),
+    error = function(e) NULL
+  )
+  if (is.null(beta_2s)) return(NA_real_)
 
   # J statistic from 2-step residuals
   e_2s <- y - X %*% beta_2s
@@ -214,10 +220,7 @@
   Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N,
                            dofminus = dofminus, weight_type = weight_type,
                            kernel = kernel, bw = bw, time_index = time_index)
-  J <- tryCatch(
-    .compute_j_with_omega(Z, X, y, Omega, weights, N),
-    error = function(e) NA_real_
-  )
+  J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
 
   if (is.na(J)) {
     warning("Omega is rank-deficient; Hansen J statistic not computed.",
