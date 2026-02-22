@@ -346,7 +346,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     if (!is.matrix(smatrix) || !is.numeric(smatrix))
       stop("`smatrix` must be a numeric matrix.", call. = FALSE)
   }
-  # --- 2b2. Validate b0 (type checks) ---
+  # --- 2b2. Normalize method early (needed for b0 checks below) ---
+  if (!is.character(method) || length(method) != 1L) {
+    stop("`method` must be a single character string.", call. = FALSE)
+  }
+  method <- tolower(method)
+
+  # --- 2b3. Validate b0 (type checks) ---
   if (!is.null(b0)) {
     if (!is.numeric(b0) || !is.null(dim(b0)))
       stop("`b0` must be a numeric vector.", call. = FALSE)
@@ -380,10 +386,6 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("Cannot specify `smatrix` with `fuller`.", call. = FALSE)
 
   # --- 2c. Validate method / kclass / fuller ---
-  if (!is.character(method) || length(method) != 1L) {
-    stop("`method` must be a single character string.", call. = FALSE)
-  }
-  method <- tolower(method)
   valid_methods <- c("2sls", "liml", "kclass", "gmm2s", "cue")
   if (!method %in% valid_methods) {
     stop('`method` must be one of "2sls", "liml", "kclass", "gmm2s", or "cue".',

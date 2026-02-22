@@ -844,6 +844,32 @@ test_that("b0 named vector with wrong names errors", {
   )
 })
 
+test_that("b0 + uppercase method errors correctly (case-insensitive)", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  # Regression test: uppercase method must still trigger incompatibility errors
+  expect_error(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "LIML", b0 = rep(0, 6)),
+    "Cannot specify `b0` with `method = \"liml\"`"
+  )
+  expect_error(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "GMM2S", b0 = rep(0, 6)),
+    "Cannot specify `b0` with `method = \"gmm2s\"`"
+  )
+})
+
+test_that("b0 + uppercase '2SLS' auto-promotes to CUE", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                     data = card, vcov = "HC0")
+  b0_vec <- coef(fit_2sls)
+  # method = "2SLS" (uppercase) should still auto-promote to CUE
+  fit_b0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                   data = card, vcov = "HC0", method = "2SLS", b0 = b0_vec)
+  expect_equal(fit_b0$method, "cue")
+})
+
 # ============================================================================
 # 17. Convergence
 # ============================================================================
