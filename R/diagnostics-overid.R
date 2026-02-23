@@ -321,6 +321,7 @@
       # AC: use AC meat (Kronecker structure with autocovariances)
       Omega <- .ac_meat(Z, e, time_index, kernel, bw,
                          N, dofminus, weights, weight_type, ZWZ)
+      Omega <- .psd_correct(Omega, psd)
     } else {
       Omega <- sigma2_0 * ZWZ / N
     }
@@ -409,6 +410,7 @@
     }
     Omega <- .ac_meat(Z, residuals, time_index, kernel, bw,
                        N, dofminus, weights, weight_type, ZWZ)
+    Omega <- .psd_correct(Omega, psd)
     J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
     if (is.na(J)) {
       warning("Sargan statistic not computed; ",

@@ -116,6 +116,20 @@ test_that(".psd_correct emits no warning when no correction needed", {
   expect_no_warning(.psd_correct(mat, "psda"))
 })
 
+test_that(".psd_correct ignores floating-point noise near zero", {
+  # Construct a PSD matrix, then perturb one eigenvalue to be
+ # very slightly negative (floating-point noise level)
+  V <- matrix(c(1, 1, 1, -1) / sqrt(2), 2, 2)
+  D <- diag(c(3, 1e-15))  # nearly zero but positive
+  mat <- V %*% D %*% t(V)
+  # Manually flip the tiny eigenvalue to a tiny negative
+  D_neg <- diag(c(3, -1e-15))
+  mat_neg <- V %*% D_neg %*% t(V)
+  # Should NOT warn — the negative eigenvalue is floating-point noise
+  expect_no_warning(.psd_correct(mat_neg, "psd0"))
+  expect_no_warning(.psd_correct(mat_neg, "psda"))
+})
+
 
 # ============================================================================
 # Integration tests with ivreg2()

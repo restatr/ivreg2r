@@ -475,8 +475,10 @@
       }
       shat0_lm <- .ac_meat(Z1_perp, drop(V_lm), time_index, kp_kernel, bw,
                             N, dofminus, weights, weight_type, ZwZ_perp)
+      shat0_lm <- .psd_correct(shat0_lm, psd)
       shat0_wald <- .ac_meat(Z1_perp, drop(V_wald), time_index, kp_kernel, bw,
                               N, dofminus, weights, weight_type, ZwZ_perp)
+      shat0_wald <- .psd_correct(shat0_wald, psd)
     } else {
       # HAC / HC / cluster path: use score cross-products
       shat0_lm <- .kp_omega(Z1_perp, V_lm, weights, cluster_vec, N, K1, L1,

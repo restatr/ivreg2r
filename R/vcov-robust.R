@@ -22,7 +22,9 @@
 .psd_correct <- function(mat, psd) {
   if (is.null(psd)) return(mat)
   eig <- eigen(mat, symmetric = TRUE)
-  neg_idx <- eig$values < 0
+  # Use a relative tolerance to avoid triggering on floating-point noise
+  tol <- .Machine$double.eps^0.5 * max(abs(eig$values))
+  neg_idx <- eig$values < -tol
   if (!any(neg_idx)) return(mat)
   n_neg <- sum(neg_idx)
   warning("Non-positive-semidefinite matrix: ", n_neg, " negative eigenvalue",

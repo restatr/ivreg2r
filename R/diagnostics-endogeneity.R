@@ -94,6 +94,7 @@
     if (vcov_type == "AC" && !is.null(kernel)) {
       Omega_r <- .ac_meat(Z_r, e_r, time_index, kernel, bw,
                            N, dofminus, weights, weight_type, ZwZ_r)
+      Omega_r <- .psd_correct(Omega_r, psd)
     } else {
       Omega_r <- sigma_r_sq * ZwZ_r / N
     }
