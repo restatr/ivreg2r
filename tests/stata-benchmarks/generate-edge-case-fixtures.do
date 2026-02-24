@@ -10,17 +10,17 @@
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
-  Usage (from the stata-benchmarks/ directory):
-    cd /path/to/ivreg2r/pkg/tests/stata-benchmarks
-    /Applications/StataNow/StataSE.app/Contents/MacOS/stata-se -b generate-edge-case-fixtures.do
+  Usage (CWD must be the package root, i.e. pkg/):
+    cd /path/to/ivreg2r/pkg
+    do tests/stata-benchmarks/generate-edge-case-fixtures.do
 ===========================================================================*/
 
 clear all
 set more off
 version 14
 
-// Output directory (relative to CWD = stata-benchmarks/)
-local outdir "fixtures"
+// Output directory
+local outdir "tests/stata-benchmarks/fixtures"
 capture mkdir "`outdir'"
 
 
