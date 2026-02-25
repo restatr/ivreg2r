@@ -438,14 +438,20 @@ model.matrix.ivreg2 <- function(object,
     X <- stats::model.matrix(object$terms$regressors, object$model,
                              contrasts.arg = object$contrasts)
     if (!is.null(object$terms$instruments)) {
-      # Build Z = cbind(exog columns, excluded IV columns)
-      exog_terms <- stats::terms(object$formula, rhs = 1L)
-      exog_mm <- stats::model.matrix(exog_terms, object$model,
-                                     contrasts.arg = object$contrasts)
+      # Build Z = cbind(exog columns from X, excluded IV columns)
+      # Use X (already correct post-collinearity) to extract the exog part,
+      # rather than the original formula rhs=1 which doesn't reflect drops
+      # or endogenous-to-exogenous reclassification.
+      endo_cols <- object$endo_colnames
+      exog_mm <- X[, !colnames(X) %in% endo_cols, drop = FALSE]
       excl_mm <- stats::model.matrix(object$terms$instruments, object$model,
                                      contrasts.arg = object$contrasts)
-      # Strip intercept from excluded IVs (already in exog part)
       excl_mm <- .strip_intercept(excl_mm)
+      # Drop excluded instruments removed by collinearity detection
+      if (length(object$dropped_instruments) > 0L) {
+        keep <- !colnames(excl_mm) %in% object$dropped_instruments
+        excl_mm <- excl_mm[, keep, drop = FALSE]
+      }
       Z <- cbind(exog_mm, excl_mm)
     } else {
       Z <- NULL

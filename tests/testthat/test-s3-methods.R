@@ -422,6 +422,35 @@ test_that("model.matrix errors with x = FALSE, model = FALSE", {
   expect_error(model.matrix(fit), "not enough information")
 })
 
+test_that("model.matrix reconstruction matches stored after collinearity", {
+  # Create data with a collinear excluded instrument (z2 = z1)
+  set.seed(42)
+  n <- 200
+  z1 <- rnorm(n)
+  z2 <- z1  # perfectly collinear
+  x <- z1 + rnorm(n)
+  y <- x + rnorm(n)
+  dat <- data.frame(y = y, x = x, z1 = z1, z2 = z2)
+
+  # z2 should be dropped for collinearity
+  fit_x <- suppressWarnings(suppressMessages(
+    ivreg2(y ~ 1 | x | z1 + z2, data = dat, x = TRUE, model = TRUE)
+  ))
+  fit_m <- suppressWarnings(suppressMessages(
+    ivreg2(y ~ 1 | x | z1 + z2, data = dat, x = FALSE, model = TRUE)
+  ))
+
+  # Verify z2 was dropped
+  expect_true(length(fit_x$dropped_instruments) > 0L)
+
+  # Reconstructed Z should match stored Z
+  Z_from_x <- model.matrix(fit_x, component = "instruments")
+  Z_from_m <- model.matrix(fit_m, component = "instruments")
+  expect_equal(colnames(Z_from_m), colnames(Z_from_x))
+  expect_equal(ncol(Z_from_m), ncol(Z_from_x))
+  expect_equal(as.numeric(Z_from_m), as.numeric(Z_from_x))
+})
+
 test_that("model.matrix with factor variables", {
   dat <- mtcars
   dat$cyl_f <- factor(dat$cyl)
