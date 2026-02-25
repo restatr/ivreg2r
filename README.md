@@ -163,38 +163,37 @@ See `?ivreg2` for full argument documentation.
 `ivreg2r` is designed as a Stata `ivreg2` translation. All outputs match
 Stata within tight numerical tolerances (coefficients/SEs to 1e-6 relative,
 test statistics to 1e-4 relative) across all VCE types. Verified against
-569 Stata fixture files and 5782 automated tests.
+892 Stata fixture files and 8529 automated tests.
 
 ### Parity matrix (current release)
 
 | Category | Outputs |
 |----------|---------|
-| **Estimation** | 2SLS, LIML, Fuller, k-class coefficients, SEs, VCV, residuals, fitted values |
+| **Estimation** | 2SLS, LIML, Fuller, k-class, GMM2S, CUE coefficients, SEs, VCV, residuals, fitted values |
+| **GMM/CUE** | Two-step efficient GMM, CUE optimization, user-supplied W/S matrices, `b0` evaluation, `center` option |
 | **Model statistics** | R-squared, adjusted R-squared, RMSE, model F |
 | **Robust VCE** | Classical (iid), HC0, HC1, one-way cluster, two-way cluster |
+| **HAC/AC VCE** | 8 kernels (Bartlett, Parzen, QS, Truncated, Tukey-Hanning/Hamming, Daniell, Tent), auto-bandwidth |
+| **Kiefer/DK/CK** | Kiefer VCE, Driscoll-Kraay VCE, Thompson (2009) cluster+kernel VCE |
 | **Small-sample** | t/F vs z/chi-sq, N-K denominator, cluster corrections |
 | **LIML/k-class** | Lambda, kclass_value, Fuller parameter; COVIV (2SLS bread) option |
-| **Overidentification** | Sargan (iid), Hansen J (robust/cluster), AR LIML overid (LR + linearized) |
+| **Overidentification** | Sargan (iid), Hansen J (robust/cluster/HAC), AR LIML overid (LR + linearized) |
 | **Identification** | Anderson LM, Cragg-Donald F, Kleibergen-Paap rk LM/F |
 | **Weak ID** | Stock-Yogo critical values: IV size/bias, LIML size, Fuller rel/max bias |
 | **Endogeneity** | C-statistic (all VCE types) |
 | **Anderson-Rubin** | AR F and chi-sq (all VCE types) |
 | **Stock-Wright** | S statistic (weak-instrument-robust LM, all VCE types) |
 | **Orthogonality** | Instrument-subset C-stat via `orthog` (all VCE types) |
+| **Redundancy** | KP rk LM test for instrument redundancy via `redundant` |
 | **Reduced-form** | RF coefficients, SEs, RMSE, F-stat; system mode with cross-equation VCV |
 | **First stage** | F-stat, partial R-sq, Shea partial R-sq, SW F/chi-sq, AP F/chi-sq |
+| **Partialling** | FWL projection via `partial` (single, multiple, `"_all"`, `"_cons"`); `nopartialsmall` |
+| **PSD corrections** | `psd0` (zero negative eigenvalues) and `psda` (absolute value) modes |
 | **Weights** | Analytic weights (aweight), frequency weights (fweight), probability weights (pweight) |
 | **DoF adjustments** | `dofminus`, `sdofminus` threaded through all computations |
 | **Factor variables** | Factor expansion for exog/endo/excluded; predict(newdata); collinear drops |
-| **S3 methods** | coef, vcov, residuals, fitted, nobs, formula, confint, predict, summary, print |
+| **S3 methods** | coef, vcov, residuals, fitted, nobs, formula, confint, predict, summary, print, model.matrix, terms, update |
 | **Broom** | tidy, glance, augment |
-
-### Future releases
-
-| Feature | Tier |
-|---------|------|
-| GMM / CUE | 3 |
-| HAC / AC kernels | 3 |
 
 ## Intentional differences from Stata
 
@@ -209,6 +208,12 @@ test statistics to 1e-4 relative) across all VCE types. Verified against
 | Reduced-form | `saverf` / `saverfprefix` | `reduced_form = "rf"` / `"system"` | R API convention |
 | Weight syntax | `[aw=var]` brackets | `weights=`, `weight_type=` args | R API convention |
 | dofminus | `dofminus()` option | `dofminus=` argument | Same behavior, R syntax |
+| CUE optimizer | Mata `optimize()` | R `optim()` (BFGS + Nelder-Mead) | Different optimizer, same objective |
+| Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |
+| Center | `center` option | `center = TRUE` argument | Same behavior, R syntax |
+| Partial | `partial()` option | `partial=` argument | Same behavior, R syntax |
+| Redundant | `redundant()` option | `redundant=` argument | Same behavior, R syntax |
+| wmatrix/smatrix | `wmatrix()` / `smatrix()` options | `wmatrix=` / `smatrix=` arguments | Same behavior, R syntax |
 
 ## License
 
