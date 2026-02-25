@@ -368,3 +368,12 @@ test_that("orthog accepts factor term labels and expands to columns", {
     "not in the instrument list"
   )
 })
+
+test_that("orthog + partial overlap produces an error, not silent degeneracy", {
+  skip_if(!file.exists(card_path), "card data not found")
+  expect_error(
+    ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
+           data = card, partial = "exper", orthog = "exper"),
+    "partialled out"
+  )
+})

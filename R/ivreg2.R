@@ -1461,6 +1461,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         .expand_terms_to_colnames(orthog_in_exog, parsed$exog_term_labels,
                                    parsed$exog_colnames, parsed$exog_assign)
       )
+      # Guard: columns partialled out no longer exist in Z
+      partialled_out <- setdiff(orthog_cols, colnames(parsed$Z))
+      if (length(partialled_out) > 0L) {
+        stop("Cannot test orthogonality of variables that were partialled out: ",
+             paste0("'", partialled_out, "'", collapse = ", "),
+             ". Remove these from `orthog` or `partial`.", call. = FALSE)
+      }
       diagnostics$orthog <- .compute_orthog_test(
         Z = parsed$Z, X = parsed$X, y = parsed$y,
         residuals = fit$residuals, rss = fit$rss,
