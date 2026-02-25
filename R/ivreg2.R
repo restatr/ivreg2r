@@ -678,8 +678,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (!is.null(partial)) {
     # Resolve special strings
     if (length(partial) == 1L && partial == "_all") {
-      # Partial all exogenous regressors
-      partial <- parsed$exog_names
+      # Partial all original exogenous regressors (not reclassified endogenous).
+      # Matches Stata, which expands _all before reclassification.
+      partial <- parsed$exog_term_labels
     }
 
     # Handle _cons / (Intercept)
@@ -1439,27 +1440,34 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     )
 
     # Orthogonality test / instrument-subset C-statistic (J1)
+    # Validate against term labels, then expand to column names (factor-safe).
+    # Matches the endog/redundant pattern.
     if (!is.null(orthog) && length(orthog) > 0L) {
-      # Validate against actual Z column names (not term labels, which can
-      # diverge for factor variables). Exclude intercept and endogenous
-      # regressor columns — only instrument columns are testable.
-      endo_cols <- if (parsed$K1 > 0L) parsed$endo_colnames else character(0L)
-      valid_orthog <- setdiff(colnames(parsed$Z),
-                              c("(Intercept)", endo_cols))
-      bad <- setdiff(orthog, valid_orthog)
+      valid_terms <- c(parsed$excluded_names, parsed$exog_term_labels)
+      bad <- setdiff(orthog, valid_terms)
       if (length(bad) > 0L) {
         stop("`orthog` contains variables not in the instrument list: ",
              paste0("'", bad, "'", collapse = ", "),
              ". Must be excluded or exogenous instruments (not endogenous ",
              "regressors or the intercept).", call. = FALSE)
       }
+      # Expand term labels to Z column names
+      orthog_in_excl <- intersect(orthog, parsed$excluded_names)
+      orthog_in_exog <- intersect(orthog, parsed$exog_term_labels)
+      orthog_cols <- c(
+        .expand_terms_to_colnames(orthog_in_excl, parsed$excluded_names,
+                                   parsed$excluded_colnames,
+                                   parsed$excluded_assign),
+        .expand_terms_to_colnames(orthog_in_exog, parsed$exog_term_labels,
+                                   parsed$exog_colnames, parsed$exog_assign)
+      )
       diagnostics$orthog <- .compute_orthog_test(
         Z = parsed$Z, X = parsed$X, y = parsed$y,
         residuals = fit$residuals, rss = fit$rss,
         weights = parsed$weights, cluster_vec = cluster_vec,
         vcov_type = effective_vcov_type,
         N = parsed$N, K = parsed$K, L = parsed$L,
-        orthog_vars = orthog, dofminus = dofminus,
+        orthog_vars = orthog_cols, dofminus = dofminus,
         weight_type = weight_type,
         kernel = kernel, bw = bw, time_index = time_index,
         psd = psd

@@ -64,6 +64,17 @@ NULL
   exog <- model.matrix(mt_exog, mf)
   exog_names <- .varnames_from_terms(mt_exog)
 
+  # Track exogenous column names and assign (for orthog/partial factor support)
+  exog_assign_full_raw <- attr(exog, "assign")
+  icept_pos_exog <- which(colnames(exog) == "(Intercept)")
+  if (length(icept_pos_exog) > 0L) {
+    orig_exog_colnames <- colnames(exog)[-icept_pos_exog]
+    exog_assign_raw <- exog_assign_full_raw[-icept_pos_exog]
+  } else {
+    orig_exog_colnames <- colnames(exog)
+    exog_assign_raw <- exog_assign_full_raw
+  }
+
   if (n_rhs == 1L) {
     # --- OLS path ---
     X <- exog
@@ -263,6 +274,23 @@ NULL
   surviving_reclassified <- intersect(reclassified_endogenous, colnames(X))
   exog_names <- c(exog_names, surviving_reclassified)
 
+  # Exogenous column names, assign, and term labels (original exog part only,
+  # excluding reclassified endogenous).  Parallels endo_colnames/endo_assign
+  # and excluded_colnames/excluded_assign.
+  surviving_orig_exog <- intersect(orig_exog_colnames, colnames(X))
+  if (length(surviving_orig_exog) > 0L) {
+    surv_idx_exog <- match(surviving_orig_exog, orig_exog_colnames)
+    exog_colnames <- surviving_orig_exog
+    surv_assign_exog <- exog_assign_raw[surv_idx_exog]
+    surviving_exog_terms <- unique(surv_assign_exog)
+    exog_term_labels <- attr(mt_exog, "term.labels")[surviving_exog_terms]
+    exog_assign <- match(surv_assign_exog, surviving_exog_terms)
+  } else {
+    exog_colnames <- character(0L)
+    exog_assign <- integer(0L)
+    exog_term_labels <- character(0L)
+  }
+
   # Reconcile has_intercept with what survived collinearity detection.
   # Unlike Stata (which passes the constant as a separate flag to its
   # collinearity checker), R's model.matrix() puts (Intercept) into X,
@@ -333,8 +361,11 @@ NULL
       excluded_names = excluded_names,
       endo_colnames  = endo_colnames,
       excluded_colnames = excluded_colnames,
+      exog_colnames  = exog_colnames,
       endo_assign    = endo_assign,
       excluded_assign = excluded_assign,
+      exog_assign    = exog_assign,
+      exog_term_labels = exog_term_labels,
       X_names        = colnames(X),
       Z_names        = if (!is.null(Z)) colnames(Z) else NULL,
       N              = N,

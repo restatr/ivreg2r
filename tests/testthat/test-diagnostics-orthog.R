@@ -325,3 +325,46 @@ for (vce_combo in list(
     check_orthog(fit, fixture_file, label)
   }
 }
+
+
+# ============================================================================
+# Factor variable support (term-label validation)
+# ============================================================================
+
+test_that("orthog accepts factor term labels and expands to columns", {
+  set.seed(42)
+  n <- 500
+  region <- factor(sample(1:4, n, replace = TRUE))
+  x1 <- rnorm(n)
+  z1 <- rnorm(n)
+  z2 <- rnorm(n)
+  z3 <- rnorm(n)
+  endo <- 0.5 * z1 + 0.3 * z2 + rnorm(n)
+  y <- 1 + 0.5 * x1 + 0.8 * endo + rnorm(n)
+  d <- data.frame(y, x1, endo, z1, z2, z3, region)
+
+  # Factor as excluded instrument — orthog by term label
+  fit <- ivreg2(y ~ x1 | endo | z1 + z2 + region,
+                data = d, orthog = "region")
+  expect_true(!is.null(fit$diagnostics$orthog))
+  expect_true(is.finite(fit$diagnostics$orthog$stat))
+  # df = number of columns tested (3 dummies for 4-level factor)
+  expect_equal(fit$diagnostics$orthog$df, 3L)
+
+  # Factor as exogenous instrument — orthog by term label
+  # Need enough excluded instruments so restricted model is still identified
+  z4 <- rnorm(n); z5 <- rnorm(n); z6 <- rnorm(n)
+  d2 <- cbind(d, z4 = z4, z5 = z5, z6 = z6)
+  fit2 <- ivreg2(y ~ x1 + region | endo | z1 + z2 + z3 + z4 + z5 + z6,
+                 data = d2, orthog = "region")
+  expect_true(!is.null(fit2$diagnostics$orthog))
+  expect_true(is.finite(fit2$diagnostics$orthog$stat))
+  expect_equal(fit2$diagnostics$orthog$df, 3L)
+
+  # Column names (not term labels) are rejected — use term labels instead
+  expect_error(
+    ivreg2(y ~ x1 + region | endo | z1 + z2 + z3,
+           data = d, orthog = c("region2", "region3")),
+    "not in the instrument list"
+  )
+})
