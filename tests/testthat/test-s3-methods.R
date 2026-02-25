@@ -293,3 +293,197 @@ test_that("summary OLS t-statistics match lm summary", {
   expect_equal(s$coef_table[, 3], lm_s$coefficients[, 3],
                tolerance = .Machine$double.eps^0.5)
 })
+
+
+# ============================================================================
+# terms
+# ============================================================================
+
+test_that("terms() returns regressors terms by default (OLS)", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars)
+  tt <- terms(fit)
+  expect_s3_class(tt, "terms")
+  expect_true(all(c("wt", "hp") %in% attr(tt, "term.labels")))
+})
+
+test_that("terms() returns all three components for IV model", {
+  skip_if_not(exists("card"))
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card)
+  # Regressors
+  tt_r <- terms(fit, component = "regressors")
+  expect_s3_class(tt_r, "terms")
+  expect_true("educ" %in% attr(tt_r, "term.labels"))
+
+  # Instruments (excluded)
+  tt_i <- terms(fit, component = "instruments")
+  expect_s3_class(tt_i, "terms")
+  expect_true("nearc4" %in% attr(tt_i, "term.labels"))
+
+  # Full
+  tt_f <- terms(fit, component = "full")
+  expect_s3_class(tt_f, "terms")
+})
+
+test_that("terms(, component = 'instruments') returns NULL for OLS", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars)
+  expect_null(terms(fit, component = "instruments"))
+})
+
+
+# ============================================================================
+# model.matrix
+# ============================================================================
+
+test_that("model.matrix regressors dimensions match (x = TRUE)", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, x = TRUE)
+  X <- model.matrix(fit, component = "regressors")
+  expect_equal(nrow(X), nobs(fit))
+  expect_equal(colnames(X), names(coef(fit)))
+})
+
+test_that("model.matrix regressors matches stored x$X", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, x = TRUE)
+  X <- model.matrix(fit, component = "regressors")
+  expect_identical(X, fit$x$X)
+})
+
+test_that("model.matrix instruments returns NULL for OLS", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, x = TRUE)
+  expect_null(model.matrix(fit, component = "instruments"))
+})
+
+test_that("model.matrix projected equals X for OLS", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, x = TRUE)
+  X <- model.matrix(fit, component = "regressors")
+  Xhat <- model.matrix(fit, component = "projected")
+  expect_equal(Xhat, X)
+})
+
+test_that("model.matrix IV dimensions (x = TRUE)", {
+  skip_if_not(exists("card"))
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, x = TRUE)
+  X <- model.matrix(fit, component = "regressors")
+  Z <- model.matrix(fit, component = "instruments")
+  Xhat <- model.matrix(fit, component = "projected")
+
+  # X has K columns (regressors including intercept)
+  expect_equal(nrow(X), nobs(fit))
+  expect_equal(ncol(X), length(coef(fit)))
+
+  # Z has L columns (exog + excluded IVs including intercept)
+  expect_equal(nrow(Z), nobs(fit))
+  expect_true(ncol(Z) >= ncol(X))  # overidentified or just-identified
+
+  # Projected has same dims as X
+  expect_equal(dim(Xhat), dim(X))
+})
+
+test_that("model.matrix projected differs from X for IV", {
+  skip_if_not(exists("card"))
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, x = TRUE)
+  X <- model.matrix(fit, component = "regressors")
+  Xhat <- model.matrix(fit, component = "projected")
+  # Projected endogenous regressors differ from raw
+  expect_false(isTRUE(all.equal(X[, "educ"], Xhat[, "educ"])))
+})
+
+test_that("model.matrix reconstructs from model frame (x = FALSE)", {
+  fit_x <- ivreg2(mpg ~ wt + hp, data = mtcars, x = TRUE, model = TRUE)
+  fit_m <- ivreg2(mpg ~ wt + hp, data = mtcars, x = FALSE, model = TRUE)
+  X_from_x <- model.matrix(fit_x, component = "regressors")
+  X_from_m <- model.matrix(fit_m, component = "regressors")
+  expect_equal(colnames(X_from_m), colnames(X_from_x))
+  expect_equal(as.numeric(X_from_m), as.numeric(X_from_x))
+})
+
+test_that("model.matrix IV reconstructs from model frame (x = FALSE)", {
+  skip_if_not(exists("card"))
+  fit_x <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                  data = card, x = TRUE, model = TRUE)
+  fit_m <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                  data = card, x = FALSE, model = TRUE)
+
+  X_from_x <- model.matrix(fit_x, component = "regressors")
+  X_from_m <- model.matrix(fit_m, component = "regressors")
+  expect_equal(colnames(X_from_m), colnames(X_from_x))
+  expect_equal(as.numeric(X_from_m), as.numeric(X_from_x))
+
+  Z_from_x <- model.matrix(fit_x, component = "instruments")
+  Z_from_m <- model.matrix(fit_m, component = "instruments")
+  expect_equal(colnames(Z_from_m), colnames(Z_from_x))
+  expect_equal(as.numeric(Z_from_m), as.numeric(Z_from_x))
+})
+
+test_that("model.matrix errors with x = FALSE, model = FALSE", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, x = FALSE, model = FALSE)
+  expect_error(model.matrix(fit), "not enough information")
+})
+
+test_that("model.matrix with factor variables", {
+  dat <- mtcars
+  dat$cyl_f <- factor(dat$cyl)
+  fit <- ivreg2(mpg ~ wt + cyl_f, data = dat, x = TRUE)
+  X <- model.matrix(fit, component = "regressors")
+  expect_true("cyl_f6" %in% colnames(X))
+  expect_true("cyl_f8" %in% colnames(X))
+})
+
+test_that("model.matrix weighted projected uses weights", {
+  skip_if_not(exists("card"))
+  fit_w <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                  data = card, weights = weight, x = TRUE)
+  fit_u <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                  data = card, x = TRUE)
+  Xhat_w <- model.matrix(fit_w, component = "projected")
+  Xhat_u <- model.matrix(fit_u, component = "projected")
+  # Weighted and unweighted projections should differ
+  expect_false(isTRUE(all.equal(Xhat_w, Xhat_u)))
+})
+
+
+# ============================================================================
+# update
+# ============================================================================
+
+test_that("update changes vcov type", {
+  fit_iid <- ivreg2(mpg ~ wt + hp, data = mtcars)
+  fit_hc1 <- update(fit_iid, vcov = "HC1")
+  expect_equal(fit_hc1$vcov_type, "HC1")
+  # Coefficients unchanged
+  expect_equal(coef(fit_iid), coef(fit_hc1))
+  # SEs differ
+  expect_false(isTRUE(all.equal(vcov(fit_iid), vcov(fit_hc1))))
+})
+
+test_that("update changes formula (drop regressor)", {
+  fit1 <- ivreg2(mpg ~ wt + hp, data = mtcars)
+  fit2 <- update(fit1, . ~ . - hp)
+  expect_equal(length(coef(fit2)), 2L)  # intercept + wt
+  expect_false("hp" %in% names(coef(fit2)))
+})
+
+test_that("update evaluate = FALSE returns unevaluated call", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars)
+  cl <- update(fit, vcov = "HC0", evaluate = FALSE)
+  expect_true(is.call(cl))
+  expect_equal(cl$vcov, "HC0")
+})
+
+test_that("update changes data", {
+  fit1 <- ivreg2(mpg ~ wt + hp, data = mtcars)
+  mtcars2 <- mtcars[1:20, ]
+  fit2 <- update(fit1, data = mtcars2)
+  expect_equal(nobs(fit2), 20L)
+})
+
+test_that("update IV model changes vcov", {
+  skip_if_not(exists("card"))
+  fit_iid <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                    data = card)
+  fit_hc1 <- update(fit_iid, vcov = "HC1")
+  expect_equal(fit_hc1$vcov_type, "HC1")
+  expect_equal(coef(fit_iid), coef(fit_hc1))
+})

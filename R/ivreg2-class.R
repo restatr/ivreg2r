@@ -1,5 +1,6 @@
 #' @importFrom stats coef vcov residuals fitted nobs formula
 #'   qt qnorm pt pnorm delete.response na.pass printCoefmat
+#'   model.matrix terms update
 NULL
 
 # --------------------------------------------------------------------------
@@ -377,6 +378,147 @@ predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
   # use only columns that have corresponding coefficients
   common <- intersect(colnames(X), names(cf))
   drop(X[, common, drop = FALSE] %*% cf[common])
+}
+
+
+# --------------------------------------------------------------------------
+# terms.ivreg2
+# --------------------------------------------------------------------------
+#' Extract terms object from an ivreg2 model
+#'
+#' @param x An object of class `"ivreg2"`.
+#' @param component Character: which terms object to return.
+#'   `"regressors"` (default) returns terms for all regressors (exogenous +
+#'   endogenous); `"instruments"` returns terms for excluded instruments
+#'   (`NULL` for OLS); `"full"` returns terms for the complete formula.
+#' @param ... Additional arguments (ignored).
+#' @return A [terms] object, or `NULL` if `component = "instruments"` for
+#'   an OLS model.
+#' @export
+terms.ivreg2 <- function(x, component = c("regressors", "instruments", "full"), ...) {
+  x$terms[[match.arg(component)]]
+}
+
+
+# --------------------------------------------------------------------------
+# model.matrix.ivreg2
+# --------------------------------------------------------------------------
+#' Extract design matrices from an ivreg2 model
+#'
+#' Returns the regressor matrix (X), instrument matrix (Z), or projected
+#' regressors (X_hat = P_Z X). Matrices are retrieved from the stored
+#' `x` component if available (when `ivreg2(..., x = TRUE)` was used),
+#' otherwise reconstructed from the model frame.
+#'
+#' For models estimated with `partial`, the stored matrices (when
+#' `x = TRUE`) are the post-partialling matrices. Reconstruction from the
+#' model frame returns pre-partialling matrices.
+#'
+#' @param object An object of class `"ivreg2"`.
+#' @param component Character: which matrix to return. `"regressors"`
+#'   (default) returns the regressor matrix X; `"instruments"` returns
+#'   the full instrument matrix Z (`NULL` for OLS); `"projected"` returns
+#'   the projected regressors X_hat (equals X for OLS).
+#' @param ... Additional arguments (ignored).
+#' @return A numeric matrix, or `NULL` if `component = "instruments"`
+#'   for an OLS model.
+#' @export
+model.matrix.ivreg2 <- function(object,
+                                 component = c("regressors", "projected",
+                                               "instruments"),
+                                 ...) {
+  component <- match.arg(component)
+
+  if (!is.null(object$x)) {
+    # --- Path 1: matrices stored on the object ---
+    X <- object$x$X
+    Z <- object$x$Z
+  } else if (!is.null(object$model)) {
+    # --- Path 2: reconstruct from model frame ---
+    X <- stats::model.matrix(object$terms$regressors, object$model,
+                             contrasts.arg = object$contrasts)
+    if (!is.null(object$terms$instruments)) {
+      # Build Z = cbind(exog columns, excluded IV columns)
+      exog_terms <- stats::terms(object$formula, rhs = 1L)
+      exog_mm <- stats::model.matrix(exog_terms, object$model,
+                                     contrasts.arg = object$contrasts)
+      excl_mm <- stats::model.matrix(object$terms$instruments, object$model,
+                                     contrasts.arg = object$contrasts)
+      # Strip intercept from excluded IVs (already in exog part)
+      excl_mm <- .strip_intercept(excl_mm)
+      Z <- cbind(exog_mm, excl_mm)
+    } else {
+      Z <- NULL
+    }
+  } else {
+    stop("not enough information in fitted model to return model.matrix;\n",
+         "refit with `model = TRUE` or `x = TRUE`", call. = FALSE)
+  }
+
+  switch(component,
+    "regressors" = X,
+    "instruments" = Z,
+    "projected" = {
+      if (is.null(Z)) {
+        # OLS: projected = X (no projection)
+        X
+      } else {
+        w <- object$weights
+        XZ <- if (is.null(w)) {
+          stats::lm.fit(Z, X)$fitted.values
+        } else {
+          stats::lm.wfit(Z, X, w)$fitted.values
+        }
+        # lm.fit returns a vector when X has 1 column; restore to matrix
+        if (is.null(dim(XZ))) {
+          XZ <- matrix(XZ, ncol = 1L,
+                       dimnames = list(names(XZ), colnames(X)))
+          attr(XZ, "assign") <- attr(X, "assign")
+        }
+        XZ
+      }
+    }
+  )
+}
+
+
+# --------------------------------------------------------------------------
+# update.ivreg2
+# --------------------------------------------------------------------------
+#' Update and re-fit an ivreg2 model
+#'
+#' Updates the formula and/or other arguments of an `ivreg2` call and
+#' (optionally) re-fits the model.
+#'
+#' @param object An object of class `"ivreg2"`.
+#' @param formula. A formula to update the model formula (see [update.formula]).
+#'   Multi-part formula updates are supported.
+#' @param ... Additional arguments to update in the call (e.g.,
+#'   `vcov = "HC1"`, `data = new_data`).
+#' @param evaluate Logical: if `TRUE` (default), evaluate the updated call;
+#'   if `FALSE`, return the unevaluated call.
+#' @return If `evaluate = TRUE`, a new `ivreg2` object. If `evaluate = FALSE`,
+#'   the unevaluated call.
+#' @export
+update.ivreg2 <- function(object, formula., ..., evaluate = TRUE) {
+  call <- stats::getCall(object)
+  if (is.null(call)) stop("need an object with call component", call. = FALSE)
+  extras <- match.call(expand.dots = FALSE)$...
+  if (!missing(formula.)) {
+    call$formula <- formula(update(
+      Formula::as.Formula(formula(object)), formula.
+    ))
+  }
+  if (length(extras)) {
+    existing <- !is.na(match(names(extras), names(call)))
+    for (a in names(extras)[existing]) call[[a]] <- extras[[a]]
+    if (any(!existing)) {
+      call <- c(as.list(call), extras[!existing])
+      call <- as.call(call)
+    }
+  }
+  if (evaluate) eval(call, parent.frame())
+  else call
 }
 
 
