@@ -1016,21 +1016,28 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   # --- 4b. Build omega_fn closure ---
   # The closure captures all VCE parameters so GMM functions can compute Omega
   # from any residual vector. For auto-bw, we resolve bw before building the
-  # closure (using step-1 2SLS residuals).
+  # closure (using W-step residuals when wmatrix is supplied, 2SLS otherwise).
   omega_fn <- NULL
   needs_omega_fn <- method %in% c("gmm2s", "cue") || (use_wmatrix && !use_smatrix)
 
   if (needs_omega_fn) {
-    # Resolve auto-bw using step-1 residuals (Stata ivreg2.ado:970-980)
+    # Resolve auto-bw using step-1 residuals (Stata ivreg2.ado:970-980).
+    # When wmatrix is supplied, Stata resolves auto-bw from W-step residuals
+    # (ivreg2.ado:970-980 runs after s_gmm1s at line 921 which uses W).
     if (is.character(bw) && tolower(bw) == "auto") {
       if (!is.null(ivar)) {
         stop("Automatic bandwidth selection not available for panel data.",
              call. = FALSE)
       }
-      fit_step1 <- .fit_2sls(parsed, small = FALSE, dofminus = dofminus,
-                             sdofminus = sdofminus)
+      if (use_wmatrix) {
+        abw_resid <- .wmatrix_first_step_resid(parsed, wmatrix)
+      } else {
+        fit_step1 <- .fit_2sls(parsed, small = FALSE, dofminus = dofminus,
+                               sdofminus = sdofminus)
+        abw_resid <- fit_step1$residuals
+      }
       bw <- .auto_bandwidth(
-        resid = fit_step1$residuals,
+        resid = abw_resid,
         Z = parsed$Z,
         time_index = time_index,
         kernel = kernel,
