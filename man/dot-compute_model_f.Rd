@@ -28,7 +28,7 @@
 
 \item{has_intercept}{Logical: does the model include an intercept?}
 
-\item{vcov_type}{Character: \code{"iid"}, \code{"HC0"}, \code{"HC1"}, or \code{"CL"}.}
+\item{vcov_type}{Character: \code{"iid"}, \code{"robust"}, \code{"HAC"}, \code{"AC"}, or \code{"CL"}.}
 
 \item{small}{Logical: whether small-sample corrections were applied.}
 

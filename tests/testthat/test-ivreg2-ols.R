@@ -263,7 +263,7 @@ test_that("print method shows OLS Estimation", {
 
 test_that("invalid vcov value errors", {
   expect_error(ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "HC2"),
-               "not yet implemented")
+               "is not supported")
 })
 
 test_that("non-formula clusters argument errors", {

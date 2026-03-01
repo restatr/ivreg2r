@@ -64,10 +64,12 @@ Coefficients, SEs, and the VCV matrix are identical to \code{lm()} for OLS.}
 \item{na.action}{Function for handling \code{NA}s (default \link{na.omit}).}
 
 \item{vcov}{Character: covariance type. One of \code{"iid"} (classical),
-\code{"HC0"} (White robust, no finite-sample correction), or \code{"HC1"}
-(White robust with N/(N-K) finite-sample correction). To match
-Stata's \verb{ivreg2, robust}: use \code{"HC0"}. To match
-Stata's \verb{ivreg2, robust small}: use \code{"HC1"} with \code{small = TRUE}.}
+\code{"robust"} (White heteroskedasticity-robust), \code{"HAC"}
+(heteroskedasticity and autocorrelation consistent), or \code{"AC"}
+(autocorrelation consistent). Use \code{small = TRUE} to apply
+finite-sample corrections. To match Stata's \verb{ivreg2, robust}:
+use \code{vcov = "robust"}. To match Stata's \verb{ivreg2, robust small}:
+use \verb{vcov = "robust", small = TRUE}.}
 
 \item{clusters}{One-sided formula specifying one or two cluster variables
 (e.g. \code{~ firmid} for one-way, \code{~ firmid + year} for two-way).
@@ -148,13 +150,13 @@ partialling out regressors. Equivalent to Stata's \code{sdofminus()} option.}
 HC meat uses \code{w * e^2} (linear, not quadratic).
 
 \strong{pweight}: Normalized to sum to N. Forces robust VCE
-(overrides \code{vcov = "iid"} to \code{"HC0"}).}
+(overrides \code{vcov = "iid"} to \code{"robust"}).}
 
 \item{kernel}{Character: kernel function for HAC/AC standard errors.
 One of \code{"bartlett"}, \code{"parzen"}, \code{"truncated"}, \code{"tukey-hanning"},
 \code{"tukey-hamming"}, \code{"qs"} (quadratic spectral), \code{"daniell"}, or
 \code{"tent"}. When specified without an explicit \code{vcov} change, \code{vcov}
-is automatically set: \code{"iid"} becomes \code{"AC"}, \code{"HC0"}/\code{"HC1"} become
+is automatically set: \code{"iid"} becomes \code{"AC"}, \code{"robust"} becomes
 \code{"HAC"}. Requires \code{bw} and \code{tvar}.}
 
 \item{bw}{Numeric or \code{"auto"}: bandwidth for kernel estimation. Must be

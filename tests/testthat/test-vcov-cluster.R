@@ -159,7 +159,7 @@ test_that("cluster VCV differs from HC1 VCV", {
   fit_cl <- ivreg2(y ~ x1 | endo1 | z1 + z2,
                    data = sim_cluster, clusters = ~cluster_id)
   fit_hc <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                   data = sim_cluster, vcov = "HC1")
+                   data = sim_cluster, vcov = "robust")
   expect_false(isTRUE(all.equal(fit_cl$vcov, fit_hc$vcov)))
 })
 
@@ -194,7 +194,7 @@ test_that("coefficients are identical for iid, HC1, and CL", {
   fit_iid <- ivreg2(y ~ x1 | endo1 | z1 + z2,
                     data = sim_cluster, vcov = "iid")
   fit_hc  <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                    data = sim_cluster, vcov = "HC1")
+                    data = sim_cluster, vcov = "robust")
   fit_cl  <- ivreg2(y ~ x1 | endo1 | z1 + z2,
                     data = sim_cluster, clusters = ~cluster_id)
   expect_equal(coef(fit_hc), coef(fit_iid),

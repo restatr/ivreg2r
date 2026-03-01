@@ -265,7 +265,7 @@
 #' @param y N x 1 response vector.
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param cluster_vec Cluster membership vector, or NULL.
-#' @param vcov_type Character: `"iid"`, `"HC0"`, `"HC1"`, or `"CL"`.
+#' @param vcov_type Character: `"iid"`, `"robust"`, `"HAC"`, `"AC"`, or `"CL"`.
 #' @param N Number of observations.
 #' @param K1 Number of endogenous regressors.
 #' @param L1 Number of excluded instruments.
@@ -370,7 +370,7 @@
 #' @param rss Residual sum of squares.
 #' @param weights Normalized weights or NULL.
 #' @param cluster_vec Cluster membership vector, or NULL.
-#' @param vcov_type Character: "iid", "HC0", "HC1", or "CL".
+#' @param vcov_type Character: "iid", "robust", "HAC", "AC", or "CL".
 #' @param is_iv Logical: TRUE if this is an IV model.
 #' @param N Number of observations.
 #' @param K Number of regressors.

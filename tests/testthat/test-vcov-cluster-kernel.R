@@ -152,7 +152,7 @@ test_that("kiefer is incompatible with robust VCE or clustering", {
   skip_if(!file.exists(wp_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq | hours | educ, data = wp,
-           kiefer = TRUE, vcov = "HC1", tvar = "year", ivar = "nr"),
+           kiefer = TRUE, vcov = "robust", tvar = "year", ivar = "nr"),
     "kiefer is incompatible with robust VCE or clustering"
   )
   expect_error(

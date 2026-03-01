@@ -217,13 +217,13 @@ endogenous variable:
 
 ### Heteroskedasticity-robust standard errors
 
-Use `vcov = "HC1"` for White (1980) heteroskedasticity-robust standard errors
-with a finite-sample correction (equivalent to Stata's `robust small`):
+Use `vcov = "robust"` for White (1980) heteroskedasticity-robust standard errors.
+Add `small = TRUE` for a finite-sample correction (equivalent to Stata's `robust small`):
 
 ```{r robust}
 fit_robust <- ivreg2(
   lwage ~ exper + expersq + black + south + smsa + married | educ | nearc4,
-  data = card, vcov = "HC1", small = TRUE
+  data = card, vcov = "robust", small = TRUE
 )
 summary(fit_robust)
 ```
@@ -259,9 +259,11 @@ For two-way clustering (e.g., by firm and year in a panel), use
 
 | `vcov` | `clusters` | `small` | Equivalent Stata command |
 |--------|-----------|---------|------------------------|
-| `"iid"` | — | — | `ivreg2 ... ` |
-| `"HC0"` | — | `FALSE` | `ivreg2 ..., robust` |
-| `"HC1"` | — | `TRUE` | `ivreg2 ..., robust small` |
+| `"iid"` | — | `FALSE` | `ivreg2 ...` |
+| `"iid"` | — | `TRUE` | `ivreg2 ..., small` |
+| `"robust"` | — | `FALSE` | `ivreg2 ..., robust` |
+| `"robust"` | — | `TRUE` | `ivreg2 ..., robust small` |
+| `"iid"` | `~ var` | `FALSE` | `ivreg2 ..., cluster(var)` |
 | `"iid"` | `~ var` | `TRUE` | `ivreg2 ..., cluster(var) small` |
 
 ## Weighted estimation
@@ -340,8 +342,8 @@ augment(fit_iv) |> head()
 | Task | Stata | R (`ivreg2r`) |
 |------|-------|---------------|
 | Basic IV | `ivreg2 y x (endo = z)` | `ivreg2(y ~ x | endo | z, data = d)` |
-| Robust SEs | `ivreg2 ..., robust` | `ivreg2(..., vcov = "HC0")` |
-| Robust + small | `ivreg2 ..., robust small` | `ivreg2(..., vcov = "HC1", small = TRUE)` |
+| Robust SEs | `ivreg2 ..., robust` | `ivreg2(..., vcov = "robust")` |
+| Robust + small | `ivreg2 ..., robust small` | `ivreg2(..., vcov = "robust", small = TRUE)` |
 | Cluster SEs | `ivreg2 ..., cluster(g)` | `ivreg2(..., clusters = ~ g)` |
 | Cluster + small | `ivreg2 ..., cluster(g) small` | `ivreg2(..., clusters = ~ g, small = TRUE)` |
 | Analytic weights | `ivreg2 ... [aw=w]` | `ivreg2(..., weights = w)` |

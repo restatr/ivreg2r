@@ -113,7 +113,7 @@ more robust to misspecification of the LIML model:
 
 ```{r coviv}
 fit_coviv <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
-                    data = mroz_work, method = "liml", vcov = "HC1",
+                    data = mroz_work, method = "liml", vcov = "robust",
                     small = TRUE, coviv = TRUE)
 ```
 
@@ -179,7 +179,7 @@ uses the Hansen J difference form:
 ```{r orthog-robust}
 fit_orthog_robust <- ivreg2(
   lwage ~ exper + expersq | educ | motheduc + fatheduc,
-  data = mroz_work, orthog = c("motheduc"), vcov = "HC1", small = TRUE
+  data = mroz_work, orthog = c("motheduc"), vcov = "robust", small = TRUE
 )
 glance(fit_orthog_robust)[, c("orthog_stat", "orthog_p")]
 ```
@@ -363,7 +363,7 @@ argument:
 ```{r pweight}
 fit_pw <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
                  data = mroz_work, weights = hours, weight_type = "pweight")
-fit_pw$vcov_type  # forced to HC0 or HC1
+fit_pw$vcov_type  # forced to "robust"
 ```
 
 ## Degrees-of-freedom adjustments

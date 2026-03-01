@@ -438,7 +438,7 @@ test_that("coefficients are identical across iid / HC1 / one-way CL / two-way CL
   fit_iid <- ivreg2(y ~ x1 | endo1 | z1 + z2,
                     data = sim_twoway, vcov = "iid")
   fit_hc  <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                    data = sim_twoway, vcov = "HC1")
+                    data = sim_twoway, vcov = "robust")
   fit_cl1 <- ivreg2(y ~ x1 | endo1 | z1 + z2,
                     data = sim_twoway, clusters = ~ firm_id)
   fit_cl2 <- ivreg2(y ~ x1 | endo1 | z1 + z2,

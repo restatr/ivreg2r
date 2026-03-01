@@ -160,7 +160,7 @@ test_that("weak_id_sy is VCE-invariant (same tables for iid vs robust)", {
   fit_iid <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                     data = card)
   fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                    data = card, vcov = "HC1")
+                    data = card, vcov = "robust")
 
   expect_equal(fit_iid$diagnostics$weak_id_sy, fit_hc1$diagnostics$weak_id_sy)
 })

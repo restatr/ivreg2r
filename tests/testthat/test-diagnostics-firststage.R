@@ -109,9 +109,9 @@ test_that("small does not change first-stage F-stat (IID)", {
 test_that("small does not change first-stage F-stat (HC1)", {
   skip_if(!file.exists(card_path), "card data not found")
   fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC1", small = FALSE)
+                 data = card, vcov = "robust", small = FALSE)
   fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC1", small = TRUE)
+                 data = card, vcov = "robust", small = TRUE)
   expect_equal(fit1$first_stage$educ$f_stat,
                fit2$first_stage$educ$f_stat)
 })
@@ -119,9 +119,9 @@ test_that("small does not change first-stage F-stat (HC1)", {
 test_that("HC0 and HC1 produce same first-stage F-stat", {
   skip_if(!file.exists(card_path), "card data not found")
   fit0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC0")
+                 data = card, vcov = "robust")
   fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC1")
+                 data = card, vcov = "robust")
   expect_equal(fit0$first_stage$educ$f_stat,
                fit1$first_stage$educ$f_stat)
 })
@@ -198,7 +198,7 @@ test_that("SW/AP partial R2 invariant to VCE type (multi-endo)", {
   fit_iid <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                     data = sim_multi, vcov = "iid")
   fit_hc1 <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                    data = sim_multi, vcov = "HC1")
+                    data = sim_multi, vcov = "robust")
   for (endo in c("endo1", "endo2")) {
     expect_equal(fit_iid$first_stage[[endo]]$sw_partial_r2,
                  fit_hc1$first_stage[[endo]]$sw_partial_r2)
@@ -339,8 +339,8 @@ check_firststage <- function(fit, fixture_path, endo_name, label) {
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -364,8 +364,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -389,8 +389,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -430,8 +430,8 @@ test_that("multi-endo: Shea partial R2 differs from partial R2", {
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -456,8 +456,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = NULL,          suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  clusters = NULL,          suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, clusters = NULL,          suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  clusters = NULL,          suffix = "hc1_small"),
+  list(vcov = "robust",  small = FALSE, clusters = NULL,          suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  clusters = NULL,          suffix = "hc1_small"),
   list(vcov = "iid",  small = FALSE, clusters = ~cluster_id,   suffix = "cl"),
   list(vcov = "iid",  small = TRUE,  clusters = ~cluster_id,   suffix = "cl_small")
 )) {
@@ -484,8 +484,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = NULL,       suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  clusters = NULL,       suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, clusters = NULL,       suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  clusters = NULL,       suffix = "hc1_small"),
+  list(vcov = "robust",  small = FALSE, clusters = NULL,       suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  clusters = NULL,       suffix = "hc1_small"),
   list(vcov = "iid",  small = FALSE, clusters = ~smsa66,    suffix = "cl"),
   list(vcov = "iid",  small = TRUE,  clusters = ~smsa66,    suffix = "cl_small")
 )) {

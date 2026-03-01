@@ -27,7 +27,7 @@
 #' @param Z N x L instrument matrix.
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param cluster_vec Cluster membership vector, or NULL.
-#' @param vcov_type Character: "iid", "HC0", "HC1", "CL", or "AC".
+#' @param vcov_type Character: "iid", "robust", "HAC", "AC", or "CL".
 #' @param N Number of observations.
 #' @param K1 Number of endogenous regressors.
 #' @param endo_colnames Character vector of endogenous regressor column names.

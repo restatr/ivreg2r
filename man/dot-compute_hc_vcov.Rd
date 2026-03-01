@@ -2,7 +2,7 @@
 % Please edit documentation in R/vcov-robust.R
 \name{.compute_hc_vcov}
 \alias{.compute_hc_vcov}
-\title{Compute HC0 or HC1 heteroskedasticity-consistent VCV}
+\title{Compute heteroskedasticity-consistent (robust) VCV}
 \usage{
 .compute_hc_vcov(
   bread,
@@ -10,7 +10,6 @@
   resid,
   N,
   K,
-  vcov_type,
   small = FALSE,
   dofminus = 0L,
   sdofminus = 0L,
@@ -31,10 +30,8 @@
 
 \item{K}{Integer: number of regressors.}
 
-\item{vcov_type}{Character: \code{"HC0"} or \code{"HC1"}. HC1 applies
-\code{N/(N-K-dofminus-sdofminus)}. HC0 applies \code{N/(N-dofminus)}.}
-
-\item{small}{Logical: whether small-sample corrections are applied.}
+\item{small}{Logical: if \code{TRUE}, apply the finite-sample correction
+\code{(N-dofminus)/(N-K-dofminus-sdofminus)}.}
 
 \item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
 
@@ -45,7 +42,9 @@ K x K variance-covariance matrix.
 }
 \description{
 Sandwich estimator using the score-based approach: meat = X' diag(e^2) X,
-where X is \code{X_hat} for IV or \code{X} for OLS. HC1 always applies the N/(N-K)
-finite-sample correction; HC0 never does.
+where X is \code{X_hat} for IV or \code{X} for OLS. The base normalization is
+\code{N/(N-dofminus)}. When \code{small = TRUE}, applies the additional
+finite-sample correction \code{(N-dofminus)/(N-K-dofminus-sdofminus)},
+giving a net scaling of \code{N/(N-K-dofminus-sdofminus)}.
 }
 \keyword{internal}

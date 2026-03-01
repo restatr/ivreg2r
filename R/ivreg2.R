@@ -23,10 +23,12 @@
 #' @param subset Optional subset expression (evaluated in `data`).
 #' @param na.action Function for handling `NA`s (default [na.omit]).
 #' @param vcov Character: covariance type. One of `"iid"` (classical),
-#'   `"HC0"` (White robust, no finite-sample correction), or `"HC1"`
-#'   (White robust with N/(N-K) finite-sample correction). To match
-#'   Stata's `ivreg2, robust`: use `"HC0"`. To match
-#'   Stata's `ivreg2, robust small`: use `"HC1"` with `small = TRUE`.
+#'   `"robust"` (White heteroskedasticity-robust), `"HAC"`
+#'   (heteroskedasticity and autocorrelation consistent), or `"AC"`
+#'   (autocorrelation consistent). Use `small = TRUE` to apply
+#'   finite-sample corrections. To match Stata's `ivreg2, robust`:
+#'   use `vcov = "robust"`. To match Stata's `ivreg2, robust small`:
+#'   use `vcov = "robust", small = TRUE`.
 #' @param clusters One-sided formula specifying one or two cluster variables
 #'   (e.g. `~ firmid` for one-way, `~ firmid + year` for two-way).
 #'   Two-way clustering uses the Cameron-Gelbach-Miller (2006) formula.
@@ -61,7 +63,7 @@
 #'   HC meat uses `w * e^2` (linear, not quadratic).
 #'
 #'   **pweight**: Normalized to sum to N. Forces robust VCE
-#'   (overrides `vcov = "iid"` to `"HC0"`).
+#'   (overrides `vcov = "iid"` to `"robust"`).
 #' @param dofminus Non-negative integer: large-sample degrees-of-freedom
 #'   adjustment. Subtracted from N in large-sample variance formulas
 #'   (e.g., sigma = rss/(N-dofminus)). Useful when fixed effects have been
@@ -100,7 +102,7 @@
 #'   One of `"bartlett"`, `"parzen"`, `"truncated"`, `"tukey-hanning"`,
 #'   `"tukey-hamming"`, `"qs"` (quadratic spectral), `"daniell"`, or
 #'   `"tent"`. When specified without an explicit `vcov` change, `vcov`
-#'   is automatically set: `"iid"` becomes `"AC"`, `"HC0"`/`"HC1"` become
+#'   is automatically set: `"iid"` becomes `"AC"`, `"robust"` becomes
 #'   `"HAC"`. Requires `bw` and `tvar`.
 #' @param bw Numeric or `"auto"`: bandwidth for kernel estimation. Must be
 #'   positive numeric, or `"auto"` for automatic selection via Newey-West
@@ -225,9 +227,17 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (!is.character(vcov) || length(vcov) != 1L) {
     stop("`vcov` must be a single character string.", call. = FALSE)
   }
-  valid_vcov <- c("iid", "HC0", "HC1", "HAC", "AC")
+  if (vcov %in% c("HC0", "HC1")) {
+    stop('vcov = "', vcov, '" is no longer supported. ',
+         'Use vcov = "robust" instead. ',
+         'The `small` argument controls the finite-sample correction: ',
+         'vcov = "robust" matches Stata `, robust`; ',
+         'vcov = "robust", small = TRUE matches Stata `, robust small`.',
+         call. = FALSE)
+  }
+  valid_vcov <- c("iid", "robust", "HAC", "AC")
   if (!vcov %in% valid_vcov) {
-    stop('vcov = "', vcov, '" is not yet implemented. ',
+    stop('vcov = "', vcov, '" is not supported. ',
          'Supported values: ', paste0('"', valid_vcov, '"', collapse = ", "),
          '.', call. = FALSE)
   }
@@ -327,7 +337,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       stop("kiefer requires panel data (both `tvar` and `ivar`).",
            call. = FALSE)
     }
-    if (vcov %in% c("HC0", "HC1") || !is.null(clusters)) {
+    if (vcov == "robust" || !is.null(clusters)) {
       stop("kiefer is incompatible with robust VCE or clustering.",
            call. = FALSE)
     }
@@ -377,10 +387,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
     if (!is.null(bw)) .validate_bandwidth(bw, kernel)
 
-    # VCE inference: kernel + iid → AC; kernel + HC → HAC
+    # VCE inference: kernel + iid → AC; kernel + robust → HAC
     if (vcov == "iid") {
       vcov <- "AC"
-    } else if (vcov %in% c("HC0", "HC1")) {
+    } else if (vcov == "robust") {
       vcov <- "HAC"
     }
   }
@@ -642,14 +652,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
   }
 
-  # pweight forces robust VCE
-  # Stata: [pw=weight] → robust (= HC0); [pw=weight], small → robust with
-  # small-sample correction (= HC1).
+  # pweight forces robust VCE (Stata: [pw=weight] → robust)
   if (weight_type == "pweight" && vcov == "iid" && is.null(clusters)) {
-    new_vcov <- if (small) "HC1" else "HC0"
-    message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "',
-            new_vcov, '".')
-    vcov <- new_vcov
+    message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".')
+    vcov <- "robust"
   }
 
   # Re-validate dofminus against (possibly updated) N for fweight
@@ -1174,13 +1180,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 5. VCV ---
-  # For GMM2S/gmmw: VCV is already computed by the GMM functions. Apply HC1
-  # or small-sample corrections here.
-  # HC1 implies the same N/(N-K) correction as small for VCV, matching the
-  # non-GMM path at vcov-robust.R:74-79 where HC1 applies unconditionally.
+  # For GMM2S/gmmw: VCV is already computed by the GMM functions. Apply
+  # small-sample corrections here when requested.
   if (method %in% c("gmm2s", "gmmw", "cue")) {
     bread_vcov <- fit$bread_gmm
-    needs_vcov_correction <- small || vcov == "HC1"
+    needs_vcov_correction <- small
     if (needs_vcov_correction) {
       if (!is.null(cluster_vec)) {
         fit$vcov <- fit$vcov * ((parsed$N - 1) / (parsed$N - parsed$K - sdofminus)) *
@@ -1193,7 +1197,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     } else if (!is.null(cluster_vec)) {
       fit$df.residual <- as.integer(M - 1L)
     }
-    # Recompute sigma for small (HC1 without small does not change sigma)
+    # Recompute sigma for small
     if (small) {
       fit$sigma <- sqrt(fit$rss / (parsed$N - parsed$K - dofminus - sdofminus))
     }
@@ -1216,7 +1220,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   # For HC/CL/HAC/AC VCV: pass weights and weight_type to VCV functions.
   # The helper functions .hc_meat() / .cl_scores() handle weight-type dispatch.
-  if (!is.null(cluster_vec) || vcov %in% c("HC0", "HC1", "HAC", "AC")) {
+  if (!is.null(cluster_vec) || vcov %in% c("robust", "HAC", "AC")) {
     X_hat_vcov <- if (parsed$is_iv) fit$X_hat else parsed$X
     resid_vcov <- fit$residuals
   }
@@ -1242,6 +1246,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                                    time_index, kernel, bw,
                                    parsed$N, parsed$K,
                                    dofminus = dofminus, sdofminus = sdofminus,
+                                   small = small,
                                    weights = parsed$weights,
                                    weight_type = weight_type,
                                    center = center)
@@ -1261,9 +1266,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                                   weight_type = weight_type,
                                   center = center)
     fit$df.residual <- as.integer(M - 1L)
-  } else if (vcov %in% c("HC0", "HC1")) {
+  } else if (vcov == "robust") {
     fit$vcov <- .compute_hc_vcov(bread_vcov, X_hat_vcov, resid_vcov,
-                                  parsed$N, parsed$K, vcov,
+                                  parsed$N, parsed$K,
                                   small = small, dofminus = dofminus,
                                   sdofminus = sdofminus,
                                   weights = parsed$weights,
@@ -1277,7 +1282,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   fit$vcov <- .psd_correct(fit$vcov, psd)
 
   # --- 5b. Diagnostics ---
-  # HAC → robust diagnostics path (Hansen J, KP rk)
+  # HAC/robust → robust diagnostics path (Hansen J, KP rk)
   # AC → iid-like diagnostics path (Sargan, Anderson LM, CD F)
   effective_vcov_type <- if (!is.null(cluster_vec)) {
     "CL"
@@ -1286,7 +1291,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   } else if (vcov == "AC") {
     "AC"
   } else {
-    vcov
+    vcov  # "iid" or "robust"
   }
 
   # Warn and reset center if it has no effect

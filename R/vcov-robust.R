@@ -129,11 +129,13 @@
 # --------------------------------------------------------------------------
 # .compute_hc_vcov
 # --------------------------------------------------------------------------
-#' Compute HC0 or HC1 heteroskedasticity-consistent VCV
+#' Compute heteroskedasticity-consistent (robust) VCV
 #'
 #' Sandwich estimator using the score-based approach: meat = X' diag(e^2) X,
-#' where X is `X_hat` for IV or `X` for OLS. HC1 always applies the N/(N-K)
-#' finite-sample correction; HC0 never does.
+#' where X is `X_hat` for IV or `X` for OLS. The base normalization is
+#' `N/(N-dofminus)`. When `small = TRUE`, applies the additional
+#' finite-sample correction `(N-dofminus)/(N-K-dofminus-sdofminus)`,
+#' giving a net scaling of `N/(N-K-dofminus-sdofminus)`.
 #'
 #' @param bread K x K bread matrix: \eqn{(X'P_Z X)^{-1}} for IV,
 #'   \eqn{(X'X)^{-1}} for OLS.
@@ -141,14 +143,13 @@
 #' @param resid Length-N residual vector.
 #' @param N Integer: number of observations.
 #' @param K Integer: number of regressors.
-#' @param vcov_type Character: `"HC0"` or `"HC1"`. HC1 applies
-#'   `N/(N-K-dofminus-sdofminus)`. HC0 applies `N/(N-dofminus)`.
-#' @param small Logical: whether small-sample corrections are applied.
+#' @param small Logical: if `TRUE`, apply the finite-sample correction
+#'   `(N-dofminus)/(N-K-dofminus-sdofminus)`.
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return K x K variance-covariance matrix.
 #' @keywords internal
-.compute_hc_vcov <- function(bread, X_hat, resid, N, K, vcov_type,
+.compute_hc_vcov <- function(bread, X_hat, resid, N, K,
                               small = FALSE, dofminus = 0L, sdofminus = 0L,
                               weights = NULL, weight_type = "aweight",
                               center = FALSE) {
@@ -156,11 +157,12 @@
   V <- bread %*% omega %*% bread      # K x K sandwich
   V <- (V + t(V)) / 2                 # enforce symmetry
 
-  if (vcov_type == "HC1") {
-    V <- V * (N / (N - K - dofminus - sdofminus))
-  } else {
-    # HC0: omega normalization adjustment (Stata divides meat by N-dofminus)
-    V <- V * (N / (N - dofminus))
+  # Base normalization (always applied)
+  V <- V * (N / (N - dofminus))
+
+  # Small-sample correction (Stata ivreg2.ado lines 1182-1189)
+  if (small) {
+    V <- V * ((N - dofminus) / (N - K - dofminus - sdofminus))
   }
 
   colnames(V) <- rownames(V) <- colnames(bread)

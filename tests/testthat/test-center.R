@@ -170,7 +170,7 @@ test_that("center = TRUE + IID gives warning", {
 
 test_that("center = TRUE + HC0 gives no warning", {
   expect_no_warning(
-    ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "HC0", center = TRUE)
+    ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "robust", center = TRUE)
   )
 })
 
@@ -190,11 +190,11 @@ test_that("center = FALSE gives identical results to default", {
 
   fit_default <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0"
+    data = card, vcov = "robust"
   )
   fit_false <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = FALSE
+    data = card, vcov = "robust", center = FALSE
   )
 
   expect_identical(coef(fit_default), coef(fit_false))
@@ -214,11 +214,11 @@ test_that("center does not change 2SLS coefficients", {
 
   fit_no <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = FALSE
+    data = card, vcov = "robust", center = FALSE
   )
   fit_yes <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = TRUE
+    data = card, vcov = "robust", center = TRUE
   )
 
   expect_identical(coef(fit_no), coef(fit_yes))
@@ -232,7 +232,7 @@ test_that("center does not change 2SLS coefficients", {
 # ============================================================================
 
 test_that("center is stored in fit object", {
-  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "HC0", center = TRUE)
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "robust", center = TRUE)
   expect_true(fit$center)
 
   fit2 <- ivreg2(mpg ~ wt + hp, data = mtcars)
@@ -240,7 +240,7 @@ test_that("center is stored in fit object", {
 })
 
 test_that("glance includes center column", {
-  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "HC0", center = TRUE)
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "robust", center = TRUE)
   gl <- glance(fit)
   expect_true("center" %in% names(gl))
   expect_true(gl$center)
@@ -258,7 +258,7 @@ test_that("HC0 + center: coefficients and SEs match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = TRUE
+    data = card, vcov = "robust", center = TRUE
   )
   check_coef_fixture(fit, fp)
 })
@@ -271,7 +271,7 @@ test_that("HC0 + center: VCV matches Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = TRUE
+    data = card, vcov = "robust", center = TRUE
   )
   check_vcov_fixture(fit, vp, cp)
 })
@@ -283,7 +283,7 @@ test_that("HC0 + center: diagnostics match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = TRUE
+    data = card, vcov = "robust", center = TRUE
   )
   check_diag_fixture(fit, dp)
 })
@@ -300,7 +300,7 @@ test_that("HC1 + small + center: coefs and SEs match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC1", small = TRUE, center = TRUE
+    data = card, vcov = "robust", small = TRUE, center = TRUE
   )
   check_coef_fixture(fit, fp)
 })
@@ -313,7 +313,7 @@ test_that("HC1 + small + center: VCV matches Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC1", small = TRUE, center = TRUE
+    data = card, vcov = "robust", small = TRUE, center = TRUE
   )
   check_vcov_fixture(fit, vp, cp)
 })
@@ -389,7 +389,7 @@ test_that("Just-identified HC0 + center: coefs and SEs match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc4,
-    data = card, vcov = "HC0", center = TRUE
+    data = card, vcov = "robust", center = TRUE
   )
   check_coef_fixture(fit, fp)
 })
@@ -406,7 +406,7 @@ test_that("GMM2S HC0 + center: coefs and SEs match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "gmm2s", vcov = "HC0", center = TRUE
+    data = card, method = "gmm2s", vcov = "robust", center = TRUE
   )
   check_coef_fixture(fit, fp)
 })
@@ -419,7 +419,7 @@ test_that("GMM2S HC0 + center: VCV matches Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "gmm2s", vcov = "HC0", center = TRUE
+    data = card, method = "gmm2s", vcov = "robust", center = TRUE
   )
   check_vcov_fixture(fit, vp, cp)
 })
@@ -431,7 +431,7 @@ test_that("GMM2S HC0 + center: diagnostics match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "gmm2s", vcov = "HC0", center = TRUE
+    data = card, method = "gmm2s", vcov = "robust", center = TRUE
   )
   check_diag_fixture(fit, dp)
 })
@@ -477,7 +477,7 @@ test_that("CUE HC0 + center: coefs and SEs match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "cue", vcov = "HC0", center = TRUE
+    data = card, method = "cue", vcov = "robust", center = TRUE
   )
   check_coef_fixture(fit, fp, tol = cue_tol)
 })
@@ -489,7 +489,7 @@ test_that("CUE HC0 + center: diagnostics match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "cue", vcov = "HC0", center = TRUE
+    data = card, method = "cue", vcov = "robust", center = TRUE
   )
   check_diag_fixture(fit, dp, tol = cue_tol)
 })
@@ -523,7 +523,7 @@ test_that("Endogeneity test + center: diagnostics match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = TRUE, endog = "educ"
+    data = card, vcov = "robust", center = TRUE, endog = "educ"
   )
   check_diag_fixture(fit, dp)
 })
@@ -542,7 +542,7 @@ test_that("Orthogonality test + center: diagnostics match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = TRUE, orthog = "nearc2"
+    data = card, vcov = "robust", center = TRUE, orthog = "nearc2"
   )
 
   # Orthogonality test is stored in diagnostics$orthog in the fixture
@@ -564,7 +564,7 @@ test_that("dofminus + center: coefs and SEs match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "HC0", center = TRUE, dofminus = 1L
+    data = card, vcov = "robust", center = TRUE, dofminus = 1L
   )
   check_coef_fixture(fit, fp)
 })

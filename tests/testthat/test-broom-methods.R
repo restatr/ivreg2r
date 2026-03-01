@@ -199,7 +199,7 @@ test_that("glance IV overidentified HC1: overid and robust stats present", {
   skip_if_not(file.exists(card_path), "Card data not available")
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
-    data = card, vcov = "HC1"
+    data = card, vcov = "robust"
   )
   gl <- glance(fit)
   expect_false(is.na(gl$overid_stat))

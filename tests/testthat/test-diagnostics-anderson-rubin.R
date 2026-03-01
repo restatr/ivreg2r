@@ -68,9 +68,9 @@ test_that("small=TRUE and small=FALSE produce identical AR stats (IID)", {
 test_that("small=TRUE and small=FALSE produce identical AR stats (HC1)", {
   skip_if(!file.exists(card_path), "card data not found")
   fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC1", small = FALSE)
+                 data = card, vcov = "robust", small = FALSE)
   fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC1", small = TRUE)
+                 data = card, vcov = "robust", small = TRUE)
   ar1 <- fit1$diagnostics$anderson_rubin
   ar2 <- fit2$diagnostics$anderson_rubin
   expect_equal(ar1$f_stat, ar2$f_stat)
@@ -83,9 +83,9 @@ test_that("small=TRUE and small=FALSE produce identical AR stats (HC1)", {
 test_that("HC0 and HC1 produce identical AR stats", {
   skip_if(!file.exists(card_path), "card data not found")
   fit0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC0")
+                 data = card, vcov = "robust")
   fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC1")
+                 data = card, vcov = "robust")
   ar0 <- fit0$diagnostics$anderson_rubin
   ar1 <- fit1$diagnostics$anderson_rubin
   expect_equal(ar0$f_stat, ar1$f_stat)
@@ -145,8 +145,8 @@ check_anderson_rubin <- function(fit, fixture_path, label) {
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -170,8 +170,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -195,8 +195,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = NULL,          suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  clusters = NULL,          suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, clusters = NULL,          suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  clusters = NULL,          suffix = "hc1_small"),
+  list(vcov = "robust",  small = FALSE, clusters = NULL,          suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  clusters = NULL,          suffix = "hc1_small"),
   list(vcov = "iid",  small = FALSE, clusters = ~cluster_id,   suffix = "cl"),
   list(vcov = "iid",  small = TRUE,  clusters = ~cluster_id,   suffix = "cl_small")
 )) {
@@ -223,8 +223,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -249,8 +249,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = NULL,       suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  clusters = NULL,       suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, clusters = NULL,       suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  clusters = NULL,       suffix = "hc1_small"),
+  list(vcov = "robust",  small = FALSE, clusters = NULL,       suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  clusters = NULL,       suffix = "hc1_small"),
   list(vcov = "iid",  small = FALSE, clusters = ~smsa66,    suffix = "cl"),
   list(vcov = "iid",  small = TRUE,  clusters = ~smsa66,    suffix = "cl_small")
 )) {
@@ -282,8 +282,8 @@ if (file.exists(sim_noconst_path)) {
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,

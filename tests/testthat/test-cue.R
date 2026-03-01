@@ -170,7 +170,7 @@ test_that("CUE robust coefficients match Stata fixture", {
   skip_if(!file.exists(fixture_path), "CUE robust fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0")
+                data = card, method = "cue", vcov = "robust")
   fixture <- read.csv(fixture_path)
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
@@ -197,7 +197,7 @@ test_that("CUE robust VCV matches Stata fixture", {
   skip_if(!file.exists(coef_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0")
+                data = card, method = "cue", vcov = "robust")
   V_stata <- read_vcov_fixture(fixture_path)
   stata_terms <- read.csv(coef_path)$term
   r_names <- ifelse(stata_terms == "_cons", "(Intercept)", stata_terms)
@@ -221,7 +221,7 @@ test_that("CUE robust diagnostics match Stata fixture", {
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0")
+                data = card, method = "cue", vcov = "robust")
   diag <- read.csv(fixture_path)
 
   # Overid
@@ -248,7 +248,7 @@ test_that("CUE robust small coefficients match Stata fixture", {
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC1", small = TRUE)
+                data = card, method = "cue", vcov = "robust", small = TRUE)
   fixture <- read.csv(fixture_path)
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
@@ -343,9 +343,9 @@ test_that("CUE equals 2SLS for exactly-identified model", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   fit_cue <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                    data = card, method = "cue", vcov = "HC0")
+                    data = card, method = "cue", vcov = "robust")
 
   # Coefficients should match to high precision
   expect_equal(coef(fit_cue), coef(fit_2sls), tolerance = 1e-6)
@@ -357,7 +357,7 @@ test_that("CUE just-identified coefficients match Stata fixture", {
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, method = "cue", vcov = "HC0")
+                data = card, method = "cue", vcov = "robust")
   fixture <- read.csv(fixture_path)
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
@@ -375,7 +375,7 @@ test_that("CUE just-identified J = 0", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, method = "cue", vcov = "HC0")
+                data = card, method = "cue", vcov = "robust")
 
   expect_equal(fit$diagnostics$overid$stat, 0)
   expect_true(is.na(fit$diagnostics$overid$p))
@@ -414,7 +414,7 @@ test_that("CUE overid is always Hansen J", {
 
   # Robust
   fit_robust <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                       data = card, method = "cue", vcov = "HC0")
+                       data = card, method = "cue", vcov = "robust")
   expect_equal(fit_robust$diagnostics$overid$test_name, "Hansen J")
 
   # Cluster
@@ -431,7 +431,7 @@ test_that("CUE populates identification diagnostics", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0")
+                data = card, method = "cue", vcov = "robust")
 
   # Overid
   expect_false(is.null(fit$diagnostics$overid))
@@ -466,7 +466,7 @@ test_that("CUE endog test matches Stata fixture", {
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0", endog = "educ")
+                data = card, method = "cue", vcov = "robust", endog = "educ")
   diag <- read.csv(fixture_path)
 
   expect_equal(fit$diagnostics$endogeneity$stat, diag$endog_stat,
@@ -485,7 +485,7 @@ test_that("CUE orthog test matches Stata fixture", {
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0", orthog = "nearc2")
+                data = card, method = "cue", vcov = "robust", orthog = "nearc2")
   diag <- read.csv(fixture_path)
 
   # Orthog stat should be in the diagnostics
@@ -502,7 +502,7 @@ test_that("Weighted CUE coefficients match Stata fixture", {
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0", weights = age)
+                data = card, method = "cue", vcov = "robust", weights = age)
   fixture <- read.csv(fixture_path)
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
@@ -531,7 +531,7 @@ test_that("CUE dofminus coefficients match Stata fixture", {
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0", dofminus = 2L)
+                data = card, method = "cue", vcov = "robust", dofminus = 2L)
   fixture <- read.csv(fixture_path)
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
@@ -556,7 +556,7 @@ test_that("CUE dofminus diagnostics match Stata fixture", {
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", vcov = "HC0", dofminus = 2L)
+                data = card, method = "cue", vcov = "robust", dofminus = 2L)
   diag <- read.csv(fixture_path)
 
   expect_equal(fit$sigma, diag$sigma, tolerance = cue_tol$coef, info = "sigma")
@@ -575,7 +575,7 @@ test_that("HAC CUE coefficients match Stata fixture", {
   ts_data <- read.csv(ts_data_path)
   fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
                 method = "cue", kernel = "bartlett", bw = 3, tvar = "t",
-                vcov = "HC0")
+                vcov = "robust")
   fixture <- read.csv(fixture_path)
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
@@ -603,7 +603,7 @@ test_that("HAC CUE diagnostics match Stata fixture", {
   ts_data <- read.csv(ts_data_path)
   fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
                 method = "cue", kernel = "bartlett", bw = 3, tvar = "t",
-                vcov = "HC0")
+                vcov = "robust")
   diag <- read.csv(fixture_path)
 
   expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
@@ -620,11 +620,11 @@ test_that("b0 mode produces coefficients equal to b0", {
 
   # Get 2SLS estimates to use as b0
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   b0_vec <- coef(fit_2sls)
 
   fit_b0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                   data = card, vcov = "HC0", b0 = b0_vec)
+                   data = card, vcov = "robust", b0 = b0_vec)
 
   # Coefficients should be exactly b0
   expect_equal(coef(fit_b0), b0_vec, tolerance = 1e-14)
@@ -643,7 +643,7 @@ test_that("b0 mode J(b0) matches Stata fixture", {
   names(b0_vec) <- r_names
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "HC0", b0 = b0_vec)
+                data = card, vcov = "robust", b0 = b0_vec)
   diag <- read.csv(fixture_path)
 
   # J(b0)
@@ -657,11 +657,11 @@ test_that("b0 mode suppresses identification diagnostics", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   b0_vec <- coef(fit_2sls)
 
   fit_b0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                   data = card, vcov = "HC0", b0 = b0_vec)
+                   data = card, vcov = "robust", b0 = b0_vec)
 
   # Overid should still be populated (J-stat)
   expect_false(is.null(fit_b0$diagnostics$overid))
@@ -683,11 +683,11 @@ test_that("b0 implies method = cue", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   b0_vec <- coef(fit_2sls)
 
   fit_b0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                   data = card, vcov = "HC0", b0 = b0_vec)
+                   data = card, vcov = "robust", b0 = b0_vec)
 
   expect_equal(fit_b0$method, "cue")
 })
@@ -696,11 +696,11 @@ test_that("b0 convergence is 0", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   b0_vec <- coef(fit_2sls)
 
   fit_b0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                   data = card, vcov = "HC0", b0 = b0_vec)
+                   data = card, vcov = "robust", b0 = b0_vec)
 
   expect_equal(fit_b0$cue_convergence, 0L)
 })
@@ -709,14 +709,14 @@ test_that("b0 unnamed vector works in column order", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   b0_named <- coef(fit_2sls)
   b0_unnamed <- unname(b0_named)
 
   fit_named <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                      data = card, vcov = "HC0", b0 = b0_named)
+                      data = card, vcov = "robust", b0 = b0_named)
   fit_unnamed <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                        data = card, vcov = "HC0", b0 = b0_unnamed)
+                        data = card, vcov = "robust", b0 = b0_unnamed)
 
   expect_equal(coef(fit_named), coef(fit_unnamed))
 })
@@ -862,11 +862,11 @@ test_that("b0 + uppercase method errors correctly (case-insensitive)", {
 test_that("b0 + uppercase '2SLS' auto-promotes to CUE", {
   skip_if(!file.exists(card_path), "Card dataset not found")
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   b0_vec <- coef(fit_2sls)
   # method = "2SLS" (uppercase) should still auto-promote to CUE
   fit_b0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                   data = card, vcov = "HC0", method = "2SLS", b0 = b0_vec)
+                   data = card, vcov = "robust", method = "2SLS", b0 = b0_vec)
   expect_equal(fit_b0$method, "cue")
 })
 
@@ -995,9 +995,9 @@ test_that("summary prints for CUE with b0", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   fit_b0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                   data = card, vcov = "HC0", b0 = coef(fit_2sls))
+                   data = card, vcov = "robust", b0 = coef(fit_2sls))
 
   out <- capture.output(summary(fit_b0))
   expect_true(any(grepl("User-supplied Parameter Vector", out)))

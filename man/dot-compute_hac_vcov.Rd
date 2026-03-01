@@ -15,6 +15,7 @@
   K,
   dofminus = 0L,
   sdofminus = 0L,
+  small = FALSE,
   weights = NULL,
   weight_type = "aweight",
   center = FALSE
@@ -41,6 +42,9 @@
 
 \item{sdofminus}{Integer: small-sample DoF adjustment.}
 
+\item{small}{Logical: if \code{TRUE}, apply the finite-sample correction
+\code{(N-dofminus)/(N-K-dofminus-sdofminus)}.}
+
 \item{weights}{Normalized weights (sorted) or NULL.}
 
 \item{weight_type}{Character: weight type.}
@@ -53,6 +57,7 @@ Sandwich estimator: \code{V = bread * meat * bread * N/(N - dofminus)}.
 This matches the HC scaling pattern used in \code{.compute_hc_vcov()}.
 Note: Stata's m_omega divides by (N-dofminus) in Z-space, but our bread
 is \verb{(X'P_Z X)^\{-1\}} (unscaled), so we use the HC-style \code{N/(N-dofminus)}
-multiplier instead.
+multiplier instead. When \code{small = TRUE}, applies the additional
+correction \code{(N-dofminus)/(N-K-dofminus-sdofminus)}.
 }
 \keyword{internal}

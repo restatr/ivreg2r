@@ -345,7 +345,7 @@ test_that("GMM2S + partial matches Stata — robust", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc2 + nearc4,
                 data = card, partial = c("black", "south", "smsa"),
-                method = "gmm2s", vcov = "HC0")
+                method = "gmm2s", vcov = "robust")
 
   check_coef_fixture(fit,
     file.path(fixture_dir, "card_partial_gmm2s_coef_robust.csv"))
@@ -365,7 +365,7 @@ test_that("robust partial matches Stata — HC0", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc2 + nearc4,
                 data = card, partial = c("black", "south", "smsa"),
-                vcov = "HC0")
+                vcov = "robust")
 
   check_coef_fixture(fit,
     file.path(fixture_dir, "card_partial_robust_coef_hc0.csv"))
@@ -381,7 +381,7 @@ test_that("robust small partial matches Stata — HC1 small", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc2 + nearc4,
                 data = card, partial = c("black", "south", "smsa"),
-                vcov = "HC1", small = TRUE)
+                vcov = "robust", small = TRUE)
 
   check_coef_fixture(fit,
     file.path(fixture_dir, "card_partial_robust_coef_hc1_small.csv"))

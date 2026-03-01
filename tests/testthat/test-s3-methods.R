@@ -259,7 +259,7 @@ test_that("print.summary IV output contains 2SLS and diagnostics", {
 test_that("print.summary IV robust shows KP stats", {
   skip_if_not(exists("card"))
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1", small = TRUE)
+                data = card, vcov = "robust", small = TRUE)
   out <- capture.output(summary(fit))
   out_text <- paste(out, collapse = "\n")
   expect_match(out_text, "Kleibergen-Paap")
@@ -479,8 +479,8 @@ test_that("model.matrix weighted projected uses weights", {
 
 test_that("update changes vcov type", {
   fit_iid <- ivreg2(mpg ~ wt + hp, data = mtcars)
-  fit_hc1 <- update(fit_iid, vcov = "HC1")
-  expect_equal(fit_hc1$vcov_type, "HC1")
+  fit_hc1 <- update(fit_iid, vcov = "robust")
+  expect_equal(fit_hc1$vcov_type, "robust")
   # Coefficients unchanged
   expect_equal(coef(fit_iid), coef(fit_hc1))
   # SEs differ
@@ -496,9 +496,9 @@ test_that("update changes formula (drop regressor)", {
 
 test_that("update evaluate = FALSE returns unevaluated call", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars)
-  cl <- update(fit, vcov = "HC0", evaluate = FALSE)
+  cl <- update(fit, vcov = "robust", evaluate = FALSE)
   expect_true(is.call(cl))
-  expect_equal(cl$vcov, "HC0")
+  expect_equal(cl$vcov, "robust")
 })
 
 test_that("update changes data", {
@@ -512,7 +512,7 @@ test_that("update IV model changes vcov", {
   skip_if_not(exists("card"))
   fit_iid <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                     data = card)
-  fit_hc1 <- update(fit_iid, vcov = "HC1")
-  expect_equal(fit_hc1$vcov_type, "HC1")
+  fit_hc1 <- update(fit_iid, vcov = "robust")
+  expect_equal(fit_hc1$vcov_type, "robust")
   expect_equal(coef(fit_iid), coef(fit_hc1))
 })

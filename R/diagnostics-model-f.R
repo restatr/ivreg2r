@@ -20,7 +20,7 @@
 #' @param N Integer: number of observations.
 #' @param K Integer: number of regressors (including intercept if present).
 #' @param has_intercept Logical: does the model include an intercept?
-#' @param vcov_type Character: `"iid"`, `"HC0"`, `"HC1"`, or `"CL"`.
+#' @param vcov_type Character: `"iid"`, `"robust"`, `"HAC"`, `"AC"`, or `"CL"`.
 #' @param small Logical: whether small-sample corrections were applied.
 #' @param M Integer or NULL: number of clusters (only for `vcov_type = "CL"`).
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
@@ -86,15 +86,16 @@
   # so the F-statistic is invariant to whether corrections were applied.
   #
   # Three branches:
-  #   1. Corrected VCV (iid+small, HC1, CL+small): F = chi2 / df1
-  #   2. Uncorrected, no cluster (iid+!small, HC0):
+  #   1. Corrected VCV (small + any non-cluster type): F = chi2 / df1
+  #   2. Uncorrected, no cluster (iid/robust/HAC/AC + !small):
   #      F = chi2/df1 * (N-K-dofminus-sdofminus)/(N-dofminus)
   #   3. Uncorrected, cluster (CL+!small):
   #      F = chi2/df1 * (M-1)/M * (N-K-sdofminus)/(N-1)
 
   is_corrected <- (vcov_type == "iid" && small) ||
                   (vcov_type == "AC" && small) ||
-                  (vcov_type == "HC1") ||
+                  (vcov_type == "robust" && small) ||
+                  (vcov_type == "HAC" && small) ||
                   (vcov_type == "CL" && small)
 
   if (is_corrected) {

@@ -92,22 +92,22 @@ infrastructure.
 
 ```r
 # Heteroskedasticity-robust (equivalent to Stata's ", robust")
-fit_hc0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                   data = card, vcov = "HC0")
+fit_robust <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                      data = card, vcov = "robust")
 
 # With small-sample correction (equivalent to Stata's ", robust small")
-fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                   data = card, vcov = "HC1", small = TRUE)
+fit_robust_small <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                            data = card, vcov = "robust", small = TRUE)
 
 # Cluster-robust (equivalent to Stata's ", cluster(smsa)")
 fit_cl <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                   data = card, clusters = ~ smsa, small = TRUE)
 ```
 
-The `vcov` argument accepts `"iid"` (default), `"HC0"`, or `"HC1"`. When
-`clusters` is supplied, VCE is automatically cluster-robust. The `small`
-argument controls whether t/F (instead of z/chi-squared) and finite-sample
-corrections are used.
+The `vcov` argument accepts `"iid"` (default) or `"robust"`. When `clusters`
+is supplied, VCE is automatically cluster-robust. The `small` argument
+controls whether t/F (instead of z/chi-squared) and finite-sample corrections
+are used.
 
 ## Broom integration
 
@@ -172,7 +172,7 @@ test statistics to 1e-4 relative) across all VCE types. Verified against
 | **Estimation** | 2SLS, LIML, Fuller, k-class, GMM2S, CUE coefficients, SEs, VCV, residuals, fitted values |
 | **GMM/CUE** | Two-step efficient GMM, CUE optimization, user-supplied W/S matrices, `b0` evaluation, `center` option |
 | **Model statistics** | R-squared, adjusted R-squared, RMSE, model F |
-| **Robust VCE** | Classical (iid), HC0, HC1, one-way cluster, two-way cluster |
+| **Robust VCE** | Classical (iid), robust (with optional small-sample correction), one-way cluster, two-way cluster |
 | **HAC/AC VCE** | 8 kernels (Bartlett, Parzen, QS, Truncated, Tukey-Hanning/Hamming, Daniell, Tent), auto-bandwidth |
 | **Kiefer/DK/CK** | Kiefer VCE, Driscoll-Kraay VCE, Thompson (2009) cluster+kernel VCE |
 | **Small-sample** | t/F vs z/chi-sq, N-K denominator, cluster corrections |

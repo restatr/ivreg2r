@@ -23,7 +23,7 @@
 #' @param y N-vector of responses.
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param cluster_vec Cluster membership vector, or NULL.
-#' @param vcov_type Character: `"iid"`, `"HC0"`, `"HC1"`, or `"CL"`.
+#' @param vcov_type Character: `"iid"`, `"robust"`, `"HAC"`, `"AC"`, or `"CL"`.
 #' @param N,K,L,K1,L1 Integer dimensions.
 #' @param M Number of clusters (or NULL).
 #' @param endo_names Character vector of endogenous variable names.
@@ -76,7 +76,7 @@
     sigma2_y <- rss_y / (N - dofminus)
     RVR <- sigma2_y * ZtWZ_inv[excl_idx, excl_idx, drop = FALSE]
   } else {
-    # Robust sandwich (HC0/HC1/CL/HAC/cluster+kernel)
+    # Robust sandwich (robust/CL/HAC/cluster+kernel)
     if (!is.null(cluster_vec) && !is.null(kernel)) {
       # Cluster + kernel (DK or Thompson)
       if (is.list(cluster_vec)) {

@@ -143,7 +143,7 @@ test_that("KP rk LM matches Stata card_just_id hc1 fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1")
+                data = card, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$underid$test_name,
@@ -161,7 +161,7 @@ test_that("KP rk LM matches Stata card_overid hc1 fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "HC1")
+                data = card, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
@@ -177,7 +177,7 @@ test_that("KP rk LM matches Stata sim_multi_endo hc1 fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                data = sim_multi, vcov = "HC1")
+                data = sim_multi, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
@@ -198,7 +198,7 @@ test_that("KP rk Wald F matches Stata card_just_id hc1 fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1")
+                data = card, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id_robust$test_name,
@@ -213,7 +213,7 @@ test_that("KP rk Wald F matches Stata card_overid hc1 fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "HC1")
+                data = card, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id_robust$stat, fixture$widstat,
@@ -226,7 +226,7 @@ test_that("KP rk Wald F matches Stata sim_multi_endo hc1 fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                data = sim_multi, vcov = "HC1")
+                data = sim_multi, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id_robust$stat, fixture$widstat,
@@ -285,7 +285,7 @@ test_that("Cragg-Donald F present alongside KP stats (HC1)", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1")
+                data = card, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
@@ -318,7 +318,7 @@ test_that("IID reports Anderson LM, robust reports KP rk LM", {
   fit_iid <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                     data = card)
   fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                    data = card, vcov = "HC1")
+                    data = card, vcov = "robust")
 
   expect_equal(fit_iid$diagnostics$underid$test_name,
                "Anderson canon. corr. LM statistic")
@@ -359,9 +359,9 @@ test_that("small does not change KP rk LM statistic (HC1)", {
   skip_if(!file.exists(card_path), "card data not found")
 
   fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC1", small = FALSE)
+                 data = card, vcov = "robust", small = FALSE)
   fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "HC1", small = TRUE)
+                 data = card, vcov = "robust", small = TRUE)
   expect_equal(fit1$diagnostics$underid$stat, fit2$diagnostics$underid$stat)
   expect_equal(fit1$diagnostics$weak_id_robust$stat,
                fit2$diagnostics$weak_id_robust$stat)
@@ -388,9 +388,9 @@ test_that("HC0 and HC1 produce identical KP rk LM and Wald F", {
   skip_if(!file.exists(card_path), "card data not found")
 
   fit_hc0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                     data = card, vcov = "HC1")
+                     data = card, vcov = "robust")
 
   expect_equal(fit_hc0$diagnostics$underid$stat,
                fit_hc1$diagnostics$underid$stat)
@@ -421,7 +421,7 @@ test_that("Cragg-Donald F is identical across VCE types", {
   fit_iid <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                     data = card)
   fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                    data = card, vcov = "HC1")
+                    data = card, vcov = "robust")
 
   expect_equal(fit_iid$diagnostics$weak_id$stat,
                fit_hc1$diagnostics$weak_id$stat)
@@ -469,7 +469,7 @@ test_that("KP rk LM matches Stata sim_no_constant hc1 fixture", {
   diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
@@ -484,7 +484,7 @@ test_that("KP rk Wald F matches Stata sim_no_constant hc1 fixture", {
   diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id_robust$stat, fixture$widstat,
@@ -505,7 +505,7 @@ test_that("Cragg-Donald F present alongside KP stats sim_no_constant (HC1)", {
   diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,

@@ -125,7 +125,7 @@ requested or for OLS). See \code{\link[=ivreg2]{ivreg2()}} \code{reduced_form} a
 
 \item{nobs}{Number of observations (integer).}
 
-\item{vcov_type}{Character: \code{"iid"}, \code{"HC0"}, \code{"HC1"}, or \code{"CL"}.}
+\item{vcov_type}{Character: \code{"iid"}, \code{"robust"}, \code{"HAC"}, \code{"AC"}, or \code{"CL"}.}
 
 \item{small}{Logical: whether small-sample corrections were applied.}
 

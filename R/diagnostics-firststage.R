@@ -20,7 +20,7 @@
 #' @param Z N x L instrument matrix.
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param cluster_vec Cluster membership vector, or NULL.
-#' @param vcov_type Character: `"iid"`, `"HC0"`, `"HC1"`, or `"CL"`.
+#' @param vcov_type Character: `"iid"`, `"robust"`, `"HAC"`, `"AC"`, or `"CL"`.
 #' @param endo_names Character vector of endogenous variable names.
 #' @param excluded_names Character vector of excluded instrument names.
 #' @param N,K,L,K1,L1 Integer dimensions.

@@ -139,7 +139,7 @@ test_that("psd parameter validation works", {
   skip_if_not(file.exists(card_path))
   expect_error(
     ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
-           vcov = "HC0", psd = "invalid"),
+           vcov = "robust", psd = "invalid"),
     "should be one of"
   )
 })
@@ -147,9 +147,9 @@ test_that("psd parameter validation works", {
 test_that("psd = NULL is the default and changes nothing", {
   skip_if_not(file.exists(card_path))
   fit_default <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                         data = card, vcov = "HC0")
+                         data = card, vcov = "robust")
   fit_null <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                      data = card, vcov = "HC0", psd = NULL)
+                      data = card, vcov = "robust", psd = NULL)
   expect_equal(coef(fit_default), coef(fit_null))
   expect_equal(vcov(fit_default), vcov(fit_null))
   expect_null(fit_default$psd)
@@ -159,9 +159,9 @@ test_that("psd = NULL is the default and changes nothing", {
 test_that("psd is stored in the returned object", {
   skip_if_not(file.exists(card_path))
   fit0 <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                  data = card, vcov = "HC0", psd = "psd0")
+                  data = card, vcov = "robust", psd = "psd0")
   fita <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                  data = card, vcov = "HC0", psd = "psda")
+                  data = card, vcov = "robust", psd = "psda")
   expect_equal(fit0$psd, "psd0")
   expect_equal(fita$psd, "psda")
 })
@@ -169,13 +169,13 @@ test_that("psd is stored in the returned object", {
 test_that("psd appears in glance() output", {
   skip_if_not(file.exists(card_path))
   fit0 <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                  data = card, vcov = "HC0", psd = "psd0")
+                  data = card, vcov = "robust", psd = "psd0")
   gl <- glance(fit0)
   expect_true("psd" %in% names(gl))
   expect_equal(gl$psd, "psd0")
 
   fit_none <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                      data = card, vcov = "HC0")
+                      data = card, vcov = "robust")
   gl_none <- glance(fit_none)
   expect_true(is.na(gl_none$psd))
 })
@@ -183,7 +183,7 @@ test_that("psd appears in glance() output", {
 test_that("psd appears in summary footer", {
   skip_if_not(file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                 data = card, vcov = "HC0", psd = "psda")
+                 data = card, vcov = "robust", psd = "psda")
   out <- capture.output(print(summary(fit)))
   vcv_line <- grep("VCV type:", out, value = TRUE)
   expect_true(any(grepl("psda", vcv_line)))
@@ -193,14 +193,14 @@ test_that("non-pathological model: psd has no effect (VCV already PSD)", {
   skip_if_not(file.exists(card_path))
   # Card dataset with robust VCE: VCV should already be PSD
   fit_plain <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                       data = card, vcov = "HC0")
+                       data = card, vcov = "robust")
   fit_psd0 <- suppressWarnings(
     ivreg2(lwage ~ exper + expersq | educ | nearc4,
-            data = card, vcov = "HC0", psd = "psd0")
+            data = card, vcov = "robust", psd = "psd0")
   )
   fit_psda <- suppressWarnings(
     ivreg2(lwage ~ exper + expersq | educ | nearc4,
-            data = card, vcov = "HC0", psd = "psda")
+            data = card, vcov = "robust", psd = "psda")
   )
   # Coefficients unchanged
   expect_equal(coef(fit_plain), coef(fit_psd0))
@@ -230,7 +230,7 @@ test_that("psd works with iid VCE", {
 test_that("psd works with GMM2S", {
   skip_if_not(file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4 + nearc2,
-                 data = card, method = "gmm2s", vcov = "HC0", psd = "psd0")
+                 data = card, method = "gmm2s", vcov = "robust", psd = "psd0")
   expect_equal(fit$psd, "psd0")
   expect_true(all(is.finite(coef(fit))))
 })

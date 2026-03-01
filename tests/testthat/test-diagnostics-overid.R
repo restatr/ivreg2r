@@ -88,7 +88,7 @@ test_that("Hansen J stat matches Stata card_overid hc1 fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "HC1")
+                data = card, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
@@ -105,7 +105,7 @@ test_that("Hansen J stat matches Stata card_overid hc1_small fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "HC1", small = TRUE)
+                data = card, vcov = "robust", small = TRUE)
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, fixture$j,
@@ -118,9 +118,9 @@ test_that("small does not change Hansen J statistic (HC)", {
   skip_if(!file.exists(card_path), "card data not found")
 
   fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC1", small = FALSE)
+                 data = card, vcov = "robust", small = FALSE)
   fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC1", small = TRUE)
+                 data = card, vcov = "robust", small = TRUE)
   expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
 })
 
@@ -197,7 +197,7 @@ test_that("exactly identified HC model has stat=0, df=0, p=NA", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1")
+                data = card, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, 0)
@@ -225,9 +225,9 @@ test_that("HC0 and HC1 produce identical Hansen J statistic", {
   skip_if(!file.exists(card_path), "card data not found")
 
   fit_hc0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC0")
+                     data = card, vcov = "robust")
   fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "HC1")
+                     data = card, vcov = "robust")
   expect_equal(fit_hc0$diagnostics$overid$stat,
                fit_hc1$diagnostics$overid$stat)
 })
@@ -277,7 +277,7 @@ test_that("Hansen J stat matches Stata sim_no_constant hc1 fixture", {
   diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "HC1")
+  fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
@@ -294,7 +294,7 @@ test_that("Hansen J stat matches Stata sim_no_constant hc1_small fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst,
-                vcov = "HC1", small = TRUE)
+                vcov = "robust", small = TRUE)
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, fixture$j,
@@ -311,9 +311,9 @@ test_that("small does not change overid statistic (sim_no_constant)", {
   expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
 
   fit3 <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst,
-                 vcov = "HC1", small = FALSE)
+                 vcov = "robust", small = FALSE)
   fit4 <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst,
-                 vcov = "HC1", small = TRUE)
+                 vcov = "robust", small = TRUE)
   expect_equal(fit3$diagnostics$overid$stat, fit4$diagnostics$overid$stat)
 })
 
@@ -365,7 +365,7 @@ test_that("Hansen J stat matches Stata sim_multi_endo hc1 fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                data = sim_multi, vcov = "HC1")
+                data = sim_multi, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
@@ -382,7 +382,7 @@ test_that("Hansen J stat matches Stata sim_multi_endo hc1_small fixture", {
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                data = sim_multi, vcov = "HC1", small = TRUE)
+                data = sim_multi, vcov = "robust", small = TRUE)
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, fixture$j,
@@ -401,8 +401,8 @@ test_that("small does not change overid statistic (sim_multi_endo)", {
   expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
 
   fit3 <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                 data = sim_multi, vcov = "HC1", small = FALSE)
+                 data = sim_multi, vcov = "robust", small = FALSE)
   fit4 <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                 data = sim_multi, vcov = "HC1", small = TRUE)
+                 data = sim_multi, vcov = "robust", small = TRUE)
   expect_equal(fit3$diagnostics$overid$stat, fit4$diagnostics$overid$stat)
 })

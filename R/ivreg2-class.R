@@ -33,7 +33,7 @@ NULL
 #' @param formula The parsed Formula object.
 #' @param terms List of terms objects.
 #' @param nobs Number of observations (integer).
-#' @param vcov_type Character: `"iid"`, `"HC0"`, `"HC1"`, or `"CL"`.
+#' @param vcov_type Character: `"iid"`, `"robust"`, `"HAC"`, `"AC"`, or `"CL"`.
 #' @param small Logical: whether small-sample corrections were applied.
 #' @param cluster_var Name of cluster variable(s) (character scalar for one-way,
 #'   character vector of length 2 for two-way, or NULL).
@@ -500,7 +500,7 @@ model.matrix.ivreg2 <- function(object,
 #' @param formula. A formula to update the model formula (see [update.formula]).
 #'   Multi-part formula updates are supported.
 #' @param ... Additional arguments to update in the call (e.g.,
-#'   `vcov = "HC1"`, `data = new_data`).
+#'   `vcov = "robust"`, `data = new_data`).
 #' @param evaluate Logical: if `TRUE` (default), evaluate the updated call;
 #'   if `FALSE`, return the unevaluated call.
 #' @return If `evaluate = TRUE`, a new `ivreg2` object. If `evaluate = FALSE`,
@@ -601,7 +601,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
       "clustering"
     } else if (x$vcov_type %in% c("HAC", "AC")) {
       "autocorrelation"
-    } else if (x$vcov_type %in% c("HC0", "HC1")) {
+    } else if (x$vcov_type == "robust") {
       "heteroskedasticity"
     } else {
       "homoskedasticity"
@@ -760,8 +760,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
                                kiefer = FALSE, dkraay = NULL, psd = NULL) {
   base <- switch(vcov_type,
     "iid" = "Classical (iid)",
-    "HC0" = "Robust (HC0)",
-    "HC1" = "Robust (HC1)",
+    "robust" = "Robust",
     "CL"  = "Cluster-robust",
     "HAC" = "HAC",
     "AC"  = "AC",

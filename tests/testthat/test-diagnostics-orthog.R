@@ -82,9 +82,9 @@ test_that("small=TRUE and small=FALSE produce identical orthog stats (IID)", {
 test_that("small=TRUE and small=FALSE produce identical orthog stats (HC1)", {
   skip_if(!file.exists(card_path), "card data not found")
   fit1 <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC1", orthog = "nearc2", small = FALSE)
+                 data = card, vcov = "robust", orthog = "nearc2", small = FALSE)
   fit2 <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC1", orthog = "nearc2", small = TRUE)
+                 data = card, vcov = "robust", orthog = "nearc2", small = TRUE)
   expect_equal(fit1$diagnostics$orthog$stat,
                fit2$diagnostics$orthog$stat)
   expect_equal(fit1$diagnostics$orthog$p,
@@ -94,9 +94,9 @@ test_that("small=TRUE and small=FALSE produce identical orthog stats (HC1)", {
 test_that("HC0 and HC1 produce identical orthog stat", {
   skip_if(!file.exists(card_path), "card data not found")
   fit0 <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC0", orthog = "nearc2")
+                 data = card, vcov = "robust", orthog = "nearc2")
   fit1 <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC1", orthog = "nearc2")
+                 data = card, vcov = "robust", orthog = "nearc2")
   expect_equal(fit0$diagnostics$orthog$stat,
                fit1$diagnostics$orthog$stat)
 })
@@ -219,8 +219,8 @@ check_orthog <- function(fit, fixture_path, label) {
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -261,8 +261,8 @@ test_that("Orthog with all excluded IVs gives stat=0 (underidentified restricted
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC1",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,

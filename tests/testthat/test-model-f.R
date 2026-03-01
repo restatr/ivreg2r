@@ -97,9 +97,9 @@ test_that("model F-stat is invariant to small (OLS IID)", {
   expect_equal(fit1$model_f, fit2$model_f)
 })
 
-test_that("model F-stat is invariant to small (HC)", {
-  fit1 <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "HC0")
-  fit2 <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "HC1")
+test_that("model F-stat is invariant to small (robust)", {
+  fit1 <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "robust", small = FALSE)
+  fit2 <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "robust", small = TRUE)
   expect_equal(fit1$model_f, fit2$model_f)
 })
 
@@ -138,8 +138,8 @@ check_model_f <- function(fit, fixture_path, label) {
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC0",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -162,8 +162,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC0",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -186,8 +186,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC0",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -211,8 +211,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC0",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -237,8 +237,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = NULL,          suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  clusters = NULL,          suffix = "iid_small"),
-  list(vcov = "HC0",  small = FALSE, clusters = NULL,          suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  clusters = NULL,          suffix = "hc1_small"),
+  list(vcov = "robust",  small = FALSE, clusters = NULL,          suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  clusters = NULL,          suffix = "hc1_small"),
   list(vcov = "iid",  small = FALSE, clusters = ~cluster_id,   suffix = "cl"),
   list(vcov = "iid",  small = TRUE,  clusters = ~cluster_id,   suffix = "cl_small")
 )) {
@@ -265,8 +265,8 @@ for (vce_combo in list(
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = NULL,       suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  clusters = NULL,       suffix = "iid_small"),
-  list(vcov = "HC0",  small = FALSE, clusters = NULL,       suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  clusters = NULL,       suffix = "hc1_small"),
+  list(vcov = "robust",  small = FALSE, clusters = NULL,       suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  clusters = NULL,       suffix = "hc1_small"),
   list(vcov = "iid",  small = FALSE, clusters = ~smsa66,    suffix = "cl"),
   list(vcov = "iid",  small = TRUE,  clusters = ~smsa66,    suffix = "cl_small")
 )) {

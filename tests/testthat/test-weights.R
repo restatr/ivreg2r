@@ -82,10 +82,10 @@ test_that("weighted OLS R-squared matches lm() summary", {
 # Weighted OLS vs lm(): HC1 VCV
 # ============================================================================
 
-test_that("weighted OLS HC1 VCV matches sandwich::vcovHC with lm weights", {
+test_that("weighted OLS robust+small VCV matches sandwich::vcovHC(type='HC1')", {
   skip_if_not_installed("sandwich")
   fit_iv2 <- ivreg2(mpg ~ wt + hp, data = mtcars, weights = disp,
-                    vcov = "HC1")
+                    vcov = "robust", small = TRUE)
   fit_lm <- lm(mpg ~ wt + hp, data = mtcars, weights = disp)
   V_sand <- sandwich::vcovHC(fit_lm, type = "HC1")
   expect_equal(fit_iv2$vcov, V_sand, tolerance = .Machine$double.eps^0.5)
@@ -167,7 +167,7 @@ test_that("weighted 2SLS SEs match Stata fixture (robust/HC0, small=FALSE)", {
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, vcov = "HC0")
+                data = card, weights = weight, vcov = "robust")
   fixture <- read.csv(coef_path)
   fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
 
@@ -187,7 +187,7 @@ test_that("weighted 2SLS SEs match Stata fixture (robust/HC1, small=TRUE)", {
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, vcov = "HC1", small = TRUE)
+                data = card, weights = weight, vcov = "robust", small = TRUE)
   fixture <- read.csv(coef_path)
   fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
 

@@ -98,10 +98,10 @@ test_that("pweight + iid overrides to HC0 with message", {
                   weight_type = "pweight", vcov = "iid"),
     'pweight implies robust VCE'
   )
-  expect_equal(fit$vcov_type, "HC0")
+  expect_equal(fit$vcov_type, "robust")
 })
 
-test_that("pweight + iid + small overrides to HC1 with message", {
+test_that("pweight + iid + small overrides to robust with message", {
   d <- mtcars
   d$w <- runif(nrow(d), 1, 5)
   expect_message(
@@ -109,7 +109,7 @@ test_that("pweight + iid + small overrides to HC1 with message", {
                   weight_type = "pweight", vcov = "iid", small = TRUE),
     'pweight implies robust VCE'
   )
-  expect_equal(fit$vcov_type, "HC1")
+  expect_equal(fit$vcov_type, "robust")
 })
 
 test_that("pweight + cluster does not override vcov", {
@@ -128,7 +128,7 @@ test_that("pweight + explicit HC0 matches pweight + iid override", {
            weight_type = "pweight", vcov = "iid")
   )
   fit_explicit <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
-                         weight_type = "pweight", vcov = "HC0")
+                         weight_type = "pweight", vcov = "robust")
   expect_equal(vcov(fit_explicit), vcov(fit_override))
   expect_equal(coef(fit_explicit), coef(fit_override))
   expect_equal(fit_explicit$sigma, fit_override$sigma)
@@ -142,7 +142,7 @@ test_that("pweight + explicit HC1 + small matches pweight + iid + small override
            weight_type = "pweight", vcov = "iid", small = TRUE)
   )
   fit_explicit <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
-                         weight_type = "pweight", vcov = "HC1", small = TRUE)
+                         weight_type = "pweight", vcov = "robust", small = TRUE)
   expect_equal(vcov(fit_explicit), vcov(fit_override))
   expect_equal(coef(fit_explicit), coef(fit_override))
   expect_equal(fit_explicit$sigma, fit_override$sigma)
@@ -190,10 +190,10 @@ test_that("weight_type='aweight' is identical to omitting it", {
 test_that("weight_type='aweight' IV is identical to omitting it", {
   skip_if(!file.exists(card_path))
   fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, weights = weight, vcov = "HC1")
+                 data = card, weights = weight, vcov = "robust")
   fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                  data = card, weights = weight, weight_type = "aweight",
-                 vcov = "HC1")
+                 vcov = "robust")
   expect_equal(coef(fit1), coef(fit2))
   expect_equal(vcov(fit1), vcov(fit2))
   expect_equal(fit1$diagnostics$weak_id$stat, fit2$diagnostics$weak_id$stat)
@@ -322,14 +322,14 @@ test_that("fweight just-id: robust matches Stata", {
   skip_if(!file.exists(card_path))
   # Stata robust (no small) = our HC0
   test_fweight_config("card_fweight_just_id", "hc1", card,
-                      vcov_arg = "HC0", small_arg = FALSE, cluster_arg = NULL)
+                      vcov_arg = "robust", small_arg = FALSE, cluster_arg = NULL)
 })
 
 test_that("fweight just-id: robust_small matches Stata", {
   skip_if(!file.exists(card_path))
   # Stata robust small = our HC1
   test_fweight_config("card_fweight_just_id", "hc1_small", card,
-                      vcov_arg = "HC1", small_arg = TRUE, cluster_arg = NULL)
+                      vcov_arg = "robust", small_arg = TRUE, cluster_arg = NULL)
 })
 
 test_that("fweight just-id: cl matches Stata", {
@@ -365,7 +365,7 @@ test_that("fweight overid: robust matches Stata", {
   skip_if(!file.exists(card_path))
   # Stata robust (no small) = our HC0
   test_fweight_config("card_fweight_overid", "hc1", card,
-                      vcov_arg = "HC0", small_arg = FALSE, cluster_arg = NULL,
+                      vcov_arg = "robust", small_arg = FALSE, cluster_arg = NULL,
                       overid = TRUE)
 })
 
@@ -373,7 +373,7 @@ test_that("fweight overid: robust_small matches Stata", {
   skip_if(!file.exists(card_path))
   # Stata robust small = our HC1
   test_fweight_config("card_fweight_overid", "hc1_small", card,
-                      vcov_arg = "HC1", small_arg = TRUE, cluster_arg = NULL,
+                      vcov_arg = "robust", small_arg = TRUE, cluster_arg = NULL,
                       overid = TRUE)
 })
 
@@ -609,7 +609,7 @@ test_that("aweight overid: robust matches Stata", {
   skip_if(!file.exists(card_path))
   # Stata robust (no small) = our HC0
   test_aweight_overid_config("hc1", card,
-                             vcov_arg = "HC0", small_arg = FALSE,
+                             vcov_arg = "robust", small_arg = FALSE,
                              cluster_arg = NULL)
 })
 
@@ -617,7 +617,7 @@ test_that("aweight overid: robust_small matches Stata", {
   skip_if(!file.exists(card_path))
   # Stata robust small = our HC1
   test_aweight_overid_config("hc1_small", card,
-                             vcov_arg = "HC1", small_arg = TRUE,
+                             vcov_arg = "robust", small_arg = TRUE,
                              cluster_arg = NULL)
 })
 

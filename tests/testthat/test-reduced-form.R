@@ -141,7 +141,7 @@ test_that("RF F equals AR F (IID)", {
 
 test_that("RF F equals AR F (HC0)", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC0", reduced_form = "rf")
+                data = card, vcov = "robust", reduced_form = "rf")
   expect_equal(fit$reduced_form$f_stat,
                fit$diagnostics$anderson_rubin$f_stat,
                tolerance = 1e-14)
@@ -149,7 +149,7 @@ test_that("RF F equals AR F (HC0)", {
 
 test_that("RF F equals AR F (HC1)", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1", reduced_form = "rf")
+                data = card, vcov = "robust", reduced_form = "rf")
   expect_equal(fit$reduced_form$f_stat,
                fit$diagnostics$anderson_rubin$f_stat,
                tolerance = 1e-14)
@@ -178,7 +178,7 @@ test_that("RF F equals AR F (cluster, small)", {
 
 test_that("RF F equals AR F (overidentified, HC1)", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "HC1", reduced_form = "rf")
+                data = card, vcov = "robust", reduced_form = "rf")
   expect_equal(fit$reduced_form$f_stat,
                fit$diagnostics$anderson_rubin$f_stat,
                tolerance = 1e-14)
@@ -365,13 +365,13 @@ test_that("card_just_id RF: IID small", {
 
 test_that("card_just_id RF: HC1", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1", reduced_form = "rf")
+                data = card, vcov = "robust", reduced_form = "rf")
   compare_rf_fixture(fit, "card_just_id", "hc1")
 })
 
 test_that("card_just_id RF: HC1 small", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1", small = TRUE, reduced_form = "rf")
+                data = card, vcov = "robust", small = TRUE, reduced_form = "rf")
   compare_rf_fixture(fit, "card_just_id", "hc1_small")
 })
 
@@ -403,7 +403,7 @@ test_that("card_just_id system: IID", {
 
 test_that("card_just_id system: HC1", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "HC1", reduced_form = "system")
+                data = card, vcov = "robust", reduced_form = "system")
   compare_system_fixture(fit, "card_just_id", "hc1")
 })
 
@@ -426,7 +426,7 @@ test_that("card_overid RF: IID", {
 
 test_that("card_overid RF: HC1", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "HC1", reduced_form = "rf")
+                data = card, vcov = "robust", reduced_form = "rf")
   compare_rf_fixture(fit, "card_overid", "hc1")
 })
 
@@ -455,7 +455,7 @@ test_that("card_just_id_weighted RF: IID", {
 
 test_that("card_just_id_weighted RF: HC1", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, vcov = "HC1",
+                data = card, weights = weight, vcov = "robust",
                 reduced_form = "rf")
   compare_rf_fixture(fit, "card_just_id_weighted", "hc1")
 })
@@ -488,7 +488,7 @@ test_that("sim_multi_endo RF: IID", {
 test_that("sim_multi_endo RF: HC1", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                data = sim_multi_endo, vcov = "HC1", reduced_form = "rf")
+                data = sim_multi_endo, vcov = "robust", reduced_form = "rf")
   compare_rf_fixture(fit, "sim_multi_endo", "hc1")
 })
 
@@ -502,7 +502,7 @@ test_that("sim_multi_endo system: IID", {
 test_that("sim_multi_endo system: HC1", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
-                data = sim_multi_endo, vcov = "HC1", reduced_form = "system")
+                data = sim_multi_endo, vcov = "robust", reduced_form = "system")
   compare_system_fixture(fit, "sim_multi_endo", "hc1")
 })
 

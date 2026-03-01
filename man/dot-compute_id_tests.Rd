@@ -44,7 +44,7 @@
 
 \item{cluster_vec}{Cluster vector or NULL.}
 
-\item{vcov_type}{Character: "iid", "HC0", "HC1", or "CL".}
+\item{vcov_type}{Character: "iid", "robust", "HAC", "AC", or "CL".}
 
 \item{N, K, L, K1, L1}{Integer dimensions.}
 

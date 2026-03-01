@@ -372,7 +372,7 @@
 #' @param residuals N x 1 residual vector from 2SLS.
 #' @param weights Normalized weights or NULL.
 #' @param cluster_vec Cluster vector or NULL.
-#' @param vcov_type Character: "iid", "HC0", "HC1", or "CL".
+#' @param vcov_type Character: "iid", "robust", "HAC", "AC", or "CL".
 #' @param N,K,L,K1,L1 Integer dimensions.
 #' @param endo_names Character vector of endogenous variable names.
 #' @param excluded_names Character vector of excluded instrument names.

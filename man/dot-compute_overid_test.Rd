@@ -42,7 +42,7 @@
 
 \item{cluster_vec}{Cluster membership vector, or NULL.}
 
-\item{vcov_type}{Character: "iid", "HC0", "HC1", or "CL".}
+\item{vcov_type}{Character: "iid", "robust", "HAC", "AC", or "CL".}
 
 \item{is_iv}{Logical: TRUE if this is an IV model.}
 

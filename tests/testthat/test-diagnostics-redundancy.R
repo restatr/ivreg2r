@@ -132,9 +132,9 @@ test_that("small=TRUE and small=FALSE produce identical redundancy stats (IID)",
 test_that("small=TRUE and small=FALSE produce identical redundancy stats (HC1)", {
   skip_if(!file.exists(card_path), "card data not found")
   fit1 <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC1", redundant = "nearc2", small = FALSE)
+                 data = card, vcov = "robust", redundant = "nearc2", small = FALSE)
   fit2 <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC1", redundant = "nearc2", small = TRUE)
+                 data = card, vcov = "robust", redundant = "nearc2", small = TRUE)
   expect_equal(fit1$diagnostics$redundancy$stat,
                fit2$diagnostics$redundancy$stat)
 })
@@ -142,9 +142,9 @@ test_that("small=TRUE and small=FALSE produce identical redundancy stats (HC1)",
 test_that("HC0 and HC1 produce identical redundancy stat", {
   skip_if(!file.exists(card_path), "card data not found")
   fit0 <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC0", redundant = "nearc2")
+                 data = card, vcov = "robust", redundant = "nearc2")
   fit1 <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                 data = card, vcov = "HC1", redundant = "nearc2")
+                 data = card, vcov = "robust", redundant = "nearc2")
   expect_equal(fit0$diagnostics$redundancy$stat,
                fit1$diagnostics$redundancy$stat)
 })
@@ -249,9 +249,9 @@ check_redundancy <- function(fit, fixture_path, label) {
 
 for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = NULL, suffix = "nearc2_iid"),
-  list(vcov = "HC0",  small = FALSE, clusters = NULL, suffix = "nearc2_hc0"),
-  list(vcov = "HC1",  small = TRUE,  clusters = NULL, suffix = "nearc2_hc1_small"),
-  list(vcov = "HC1",  small = FALSE, clusters = ~smsa, suffix = "nearc2_cluster")
+  list(vcov = "robust",  small = FALSE, clusters = NULL, suffix = "nearc2_hc0"),
+  list(vcov = "robust",  small = TRUE,  clusters = NULL, suffix = "nearc2_hc1_small"),
+  list(vcov = "robust",  small = FALSE, clusters = ~smsa, suffix = "nearc2_cluster")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -314,7 +314,7 @@ test_that("redundant(nearc2 nearc4) IID matches Stata", {
 
 for (vce_combo in list(
   list(vcov = "iid",  clusters = NULL,   suffix = "nearc2_iid"),
-  list(vcov = "HC1",  clusters = ~smsa,  suffix = "nearc2_cluster")
+  list(vcov = "robust",  clusters = ~smsa,  suffix = "nearc2_cluster")
 )) {
   fixture_file <- file.path(
     fixture_dir,
@@ -363,7 +363,7 @@ test_that("redundant(nearc2) gmm2s robust matches Stata", {
 
   fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
                 data = card, redundant = "nearc2",
-                method = "gmm2s", vcov = "HC1")
+                method = "gmm2s", vcov = "robust")
   fixture <- read_redundancy_fixture(fixture_file)
   expect_equal(fit$diagnostics$redundancy$stat, fixture$redstat,
                tolerance = stata_tol$stat)
@@ -380,7 +380,7 @@ test_that("redundant(nearc2) gmm2s robust matches Stata", {
 
 for (vce_combo in list(
   list(vcov = "iid", suffix = "z1_iid"),
-  list(vcov = "HC1", suffix = "z1_hc1")
+  list(vcov = "robust", suffix = "z1_hc1")
 )) {
   fixture_file <- file.path(
     fixture_dir,

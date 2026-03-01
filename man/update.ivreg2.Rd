@@ -13,7 +13,7 @@
 Multi-part formula updates are supported.}
 
 \item{...}{Additional arguments to update in the call (e.g.,
-\code{vcov = "HC1"}, \code{data = new_data}).}
+\code{vcov = "robust"}, \code{data = new_data}).}
 
 \item{evaluate}{Logical: if \code{TRUE} (default), evaluate the updated call;
 if \code{FALSE}, return the unevaluated call.}

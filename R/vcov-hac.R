@@ -422,7 +422,8 @@
 #' This matches the HC scaling pattern used in `.compute_hc_vcov()`.
 #' Note: Stata's m_omega divides by (N-dofminus) in Z-space, but our bread
 #' is `(X'P_Z X)^{-1}` (unscaled), so we use the HC-style `N/(N-dofminus)`
-#' multiplier instead.
+#' multiplier instead. When `small = TRUE`, applies the additional
+#' correction `(N-dofminus)/(N-K-dofminus-sdofminus)`.
 #'
 #' @param bread K x K bread matrix.
 #' @param X_hat N x K projected regressor matrix (sorted by time).
@@ -434,12 +435,15 @@
 #' @param K Integer: number of regressors.
 #' @param dofminus Integer: large-sample DoF adjustment.
 #' @param sdofminus Integer: small-sample DoF adjustment.
+#' @param small Logical: if `TRUE`, apply the finite-sample correction
+#'   `(N-dofminus)/(N-K-dofminus-sdofminus)`.
 #' @param weights Normalized weights (sorted) or NULL.
 #' @param weight_type Character: weight type.
 #' @return K x K variance-covariance matrix.
 #' @keywords internal
 .compute_hac_vcov <- function(bread, X_hat, resid, time_index, kernel, bw,
                               N, K, dofminus = 0L, sdofminus = 0L,
+                              small = FALSE,
                               weights = NULL, weight_type = "aweight",
                               center = FALSE) {
   meat <- .hac_meat(X_hat, resid, time_index, kernel, bw,
@@ -447,6 +451,10 @@
   V <- bread %*% meat %*% bread
   V <- (V + t(V)) / 2
   V <- V * (N / (N - dofminus))
+  # Small-sample correction (Stata ivreg2.ado lines 1182-1189)
+  if (small) {
+    V <- V * ((N - dofminus) / (N - K - dofminus - sdofminus))
+  }
   colnames(V) <- rownames(V) <- colnames(bread)
   V
 }

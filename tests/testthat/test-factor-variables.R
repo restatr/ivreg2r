@@ -269,7 +269,7 @@ test_that("HC1 with factor variables works", {
   d <- .make_factor_data()
 
   fit <- ivreg2(y ~ x1 + region | endo | z1 + z2, data = d,
-                vcov = "HC1", small = TRUE)
+                vcov = "robust", small = TRUE)
 
   expect_true(all(is.finite(coef(fit))))
   s <- summary(fit)

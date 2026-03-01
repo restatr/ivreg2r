@@ -20,7 +20,7 @@
 #' @param rss Residual sum of squares from the full model (unused directly).
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param cluster_vec Cluster membership vector, or NULL.
-#' @param vcov_type Character: "iid", "HC0", "HC1", or "CL".
+#' @param vcov_type Character: "iid", "robust", "HAC", "AC", or "CL".
 #' @param N Number of observations.
 #' @param K Number of regressors.
 #' @param L Number of instruments.

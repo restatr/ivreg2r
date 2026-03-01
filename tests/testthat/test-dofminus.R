@@ -26,8 +26,8 @@ if (file.exists(sim_path))  sim_cluster <- read.csv(sim_path)
 vce_configs <- list(
   list(vcov = "iid",  small = FALSE, suffix = "iid"),
   list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "HC0",  small = FALSE, suffix = "hc1"),
-  list(vcov = "HC1",  small = TRUE,  suffix = "hc1_small"),
+  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
+  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small"),
   list(vcov = "iid",  small = FALSE, suffix = "cl",       clusters = TRUE),
   list(vcov = "iid",  small = TRUE,  suffix = "cl_small", clusters = TRUE)
 )

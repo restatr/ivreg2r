@@ -226,7 +226,7 @@ test_that("HAC Bartlett bw=1 equals HC0 (zero off-diagonal lags)", {
   skip_if(!file.exists(hac_data_path), "HAC data not found")
   fit_hac <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
                     vcov = "HAC", kernel = "bartlett", bw = 1, tvar = "t")
-  fit_hc0 <- ivreg2(y ~ w | x | z1 + z2, data = ts_data, vcov = "HC0")
+  fit_hc0 <- ivreg2(y ~ w | x | z1 + z2, data = ts_data, vcov = "robust")
   expect_equal(fit_hac$vcov, fit_hc0$vcov, tolerance = 1e-12)
 })
 
@@ -331,7 +331,7 @@ test_that("kernel + iid infers AC", {
 test_that("kernel + robust infers HAC", {
   skip_if(!file.exists(hac_data_path), "HAC data not found")
   fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
-                vcov = "HC1", kernel = "bartlett", bw = 3, tvar = "t")
+                vcov = "robust", kernel = "bartlett", bw = 3, tvar = "t")
   expect_equal(fit$vcov_type, "HAC")
 })
 

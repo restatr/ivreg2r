@@ -41,7 +41,7 @@
 
 \item{cluster_vec}{Cluster membership vector, or NULL.}
 
-\item{vcov_type}{Character: "iid", "HC0", "HC1", or "CL".}
+\item{vcov_type}{Character: "iid", "robust", "HAC", "AC", or "CL".}
 
 \item{N}{Number of observations.}
 
