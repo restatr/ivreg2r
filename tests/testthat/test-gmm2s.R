@@ -654,6 +654,68 @@ test_that("GMM2S robust VCV matches Stata fixture", {
 })
 
 
+test_that("GMM2S HAC VCV matches Stata fixture", {
+  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
+  vcov_path <- file.path(fixture_dir, "ts_gmm2s_vcov_hac_bartlett_bw3.csv")
+  coef_path <- file.path(fixture_dir, "ts_gmm2s_coef_hac_bartlett_bw3.csv")
+  skip_if(!file.exists(vcov_path), "GMM2S HAC VCV fixture not found")
+  skip_if(!file.exists(coef_path), "GMM2S HAC coef fixture not found")
+
+  ts_data <- read.csv(ts_path)
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                method = "gmm2s", vcov = "robust",
+                kernel = "bartlett", bw = 3, tvar = "t")
+  V_stata <- unname(as.matrix(read.csv(vcov_path)))
+  V_r <- vcov(fit)
+
+  coef_fixture <- read.csv(coef_path)
+  stata_order <- ifelse(coef_fixture$term == "_cons", "(Intercept)", coef_fixture$term)
+  V_r_reordered <- V_r[stata_order, stata_order]
+
+  expect_equal(nrow(V_r_reordered), nrow(V_stata))
+  expect_equal(ncol(V_r_reordered), ncol(V_stata))
+
+  for (i in seq_len(nrow(V_r_reordered))) {
+    for (j in seq_len(ncol(V_r_reordered))) {
+      expect_equal(unname(V_r_reordered[i, j]), V_stata[i, j],
+                   tolerance = stata_tol$vcov,
+                   info = paste("HAC VCV mismatch:", i, j))
+    }
+  }
+})
+
+test_that("GMM2S AC VCV matches Stata fixture", {
+  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
+  vcov_path <- file.path(fixture_dir, "ts_gmm2s_vcov_ac_bartlett_bw3.csv")
+  coef_path <- file.path(fixture_dir, "ts_gmm2s_coef_ac_bartlett_bw3.csv")
+  skip_if(!file.exists(vcov_path), "GMM2S AC VCV fixture not found")
+  skip_if(!file.exists(coef_path), "GMM2S AC coef fixture not found")
+
+  ts_data <- read.csv(ts_path)
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                method = "gmm2s", kernel = "bartlett", bw = 3, tvar = "t")
+  V_stata <- unname(as.matrix(read.csv(vcov_path)))
+  V_r <- vcov(fit)
+
+  coef_fixture <- read.csv(coef_path)
+  stata_order <- ifelse(coef_fixture$term == "_cons", "(Intercept)", coef_fixture$term)
+  V_r_reordered <- V_r[stata_order, stata_order]
+
+  expect_equal(nrow(V_r_reordered), nrow(V_stata))
+  expect_equal(ncol(V_r_reordered), ncol(V_stata))
+
+  for (i in seq_len(nrow(V_r_reordered))) {
+    for (j in seq_len(ncol(V_r_reordered))) {
+      expect_equal(unname(V_r_reordered[i, j]), V_stata[i, j],
+                   tolerance = stata_tol$vcov,
+                   info = paste("AC VCV mismatch:", i, j))
+    }
+  }
+})
+
+
 # ============================================================================
 # 12. Input validation
 # ============================================================================
