@@ -240,7 +240,14 @@ Equivalent to Stata's \code{nopartialsmall} option.}
 \item{center}{Logical: if \code{TRUE}, subtract the mean of moment conditions
 (scores) before computing the S matrix (meat of the sandwich VCE).
 Default \code{FALSE}. Centering only affects non-homoskedastic VCE types
-(HC, cluster, HAC); a warning is issued if used with IID or AC VCE.}
+(HC, cluster, HAC); a warning is issued if used with IID or AC VCE.
+
+\strong{Note:} Centering is applied to the main model's VCE and to
+diagnostic tests that use the main model's S matrix (overidentification,
+orthogonality). However, the endogeneity test (\code{endog}) computes its own
+S matrix from the restricted model \emph{without} centering, even when
+\code{center = TRUE}. This matches Stata's \code{ivreg2}, where \code{center} is not
+forwarded to the recursive call for the endogeneity test.}
 
 \item{psd}{Character or NULL: PSD correction for the meat matrix.
 \code{NULL} (default) applies no correction. \code{"psd0"} zeroes negative

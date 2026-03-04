@@ -174,6 +174,13 @@
 #'   (scores) before computing the S matrix (meat of the sandwich VCE).
 #'   Default `FALSE`. Centering only affects non-homoskedastic VCE types
 #'   (HC, cluster, HAC); a warning is issued if used with IID or AC VCE.
+#'
+#'   **Note:** Centering is applied to the main model's VCE and to
+#'   diagnostic tests that use the main model's S matrix (overidentification,
+#'   orthogonality). However, the endogeneity test (`endog`) computes its own
+#'   S matrix from the restricted model *without* centering, even when
+#'   `center = TRUE`. This matches Stata's `ivreg2`, where `center` is not
+#'   forwarded to the recursive call for the endogeneity test.
 #' @param psd Character or NULL: PSD correction for the meat matrix.
 #'   `NULL` (default) applies no correction. `"psd0"` zeroes negative
 #'   eigenvalues (Politis 2007). `"psda"` replaces negative eigenvalues
