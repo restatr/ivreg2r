@@ -84,6 +84,15 @@
 #'   covariance at each candidate beta during optimization. CUE is
 #'   asymptotically equivalent to LIML under weak instruments.
 #'   Incompatible with `fuller`, `kclass`, `wmatrix`, and `smatrix`.
+#'
+#'   **CUE optimizer note:** This package uses R's `optim()` (BFGS +
+#'   Nelder-Mead) while Stata uses Mata's `optimize()` (modified
+#'   Newton-Raphson). The CUE objective is non-convex and can have
+#'   multiple local minima, so the two optimizers may converge to
+#'   different solutions. In rare cases, Stata's Newton-Raphson can
+#'   traverse indefinite-Hessian regions and land in pathological basins
+#'   (e.g., negative R-squared). When results differ, compare the
+#'   J-statistic and R-squared to assess which solution is more sensible.
 #' @param kclass Numeric scalar: user-supplied k value for k-class
 #'   estimation. When supplied, `method` is automatically set to `"kclass"`.
 #'   Must be non-negative. Cannot be combined with `method = "liml"` or

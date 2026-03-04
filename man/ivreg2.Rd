@@ -108,7 +108,16 @@ specified error structure. Incompatible with \code{fuller} and \code{kclass}.
 \code{"cue"} continuously updates both moment conditions and moment
 covariance at each candidate beta during optimization. CUE is
 asymptotically equivalent to LIML under weak instruments.
-Incompatible with \code{fuller}, \code{kclass}, \code{wmatrix}, and \code{smatrix}.}
+Incompatible with \code{fuller}, \code{kclass}, \code{wmatrix}, and \code{smatrix}.
+
+\strong{CUE optimizer note:} This package uses R's \code{optim()} (BFGS +
+Nelder-Mead) while Stata uses Mata's \code{optimize()} (modified
+Newton-Raphson). The CUE objective is non-convex and can have
+multiple local minima, so the two optimizers may converge to
+different solutions. In rare cases, Stata's Newton-Raphson can
+traverse indefinite-Hessian regions and land in pathological basins
+(e.g., negative R-squared). When results differ, compare the
+J-statistic and R-squared to assess which solution is more sensible.}
 
 \item{kclass}{Numeric scalar: user-supplied k value for k-class
 estimation. When supplied, \code{method} is automatically set to \code{"kclass"}.
