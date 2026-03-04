@@ -26,6 +26,10 @@
 #' @param L Number of instruments.
 #' @param orthog_vars Character vector of instrument names to test.
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
+#' @param omega Pre-computed Omega (S) matrix from the full model, or NULL.
+#'   When non-NULL (GMM2S/CUE paths), used directly instead of recomputing
+#'   from residuals. This ensures the C-statistic uses the same first-step
+#'   Omega as the main model's J statistic (Hayashi 2000, p. 220).
 #' @return Named list with `stat`, `p`, `df`, `test_name`, `tested_vars`,
 #'   or NULL if this is not an IV model or orthog_vars is NULL.
 #' @keywords internal
@@ -35,7 +39,8 @@
                                   weight_type = "aweight",
                                   kernel = NULL, bw = NULL,
                                   time_index = NULL,
-                                  center = FALSE, psd = NULL) {
+                                  center = FALSE, psd = NULL,
+                                  omega = NULL) {
   q <- length(orthog_vars)
 
   # --- Build restricted instrument matrix (remove tested columns) ---
@@ -51,8 +56,11 @@
                 tested_vars = orthog_vars))
   }
 
-  # --- Compute Omega_full from full model's residuals ---
-  if (vcov_type %in% c("iid", "AC")) {
+  # --- Omega_full: use pre-computed omega if provided (GMM2S/CUE paths),
+  #     otherwise compute from full model's residuals ---
+  if (!is.null(omega)) {
+    Omega_full <- omega
+  } else if (vcov_type %in% c("iid", "AC")) {
     sigma_sq <- rss / (N - dofminus)
     if (is.null(weights)) {
       ZwZ <- crossprod(Z)

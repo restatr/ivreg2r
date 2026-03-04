@@ -1505,7 +1505,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         orthog_vars = orthog_cols, dofminus = dofminus,
         weight_type = weight_type,
         kernel = kernel, bw = bw, time_index = time_index,
-        psd = psd
+        center = center, psd = psd,
+        omega = fit$omega
       )
     }
 

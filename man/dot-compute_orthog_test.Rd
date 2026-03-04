@@ -23,7 +23,8 @@
   bw = NULL,
   time_index = NULL,
   center = FALSE,
-  psd = NULL
+  psd = NULL,
+  omega = NULL
 )
 }
 \arguments{
@@ -52,6 +53,11 @@
 \item{orthog_vars}{Character vector of instrument names to test.}
 
 \item{dofminus}{Integer: large-sample DoF adjustment (default 0).}
+
+\item{omega}{Pre-computed Omega (S) matrix from the full model, or NULL.
+When non-NULL (GMM2S/CUE paths), used directly instead of recomputing
+from residuals. This ensures the C-statistic uses the same first-step
+Omega as the main model's J statistic (Hayashi 2000, p. 220).}
 }
 \value{
 Named list with \code{stat}, \code{p}, \code{df}, \code{test_name}, \code{tested_vars},
