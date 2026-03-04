@@ -44,7 +44,8 @@
 .compute_omega <- function(Z, residuals, weights, cluster_vec, N,
                             dofminus = 0L, weight_type = "aweight",
                             kernel = NULL, bw = NULL, time_index = NULL,
-                            center = FALSE, psd = NULL) {
+                            center = FALSE, psd = NULL,
+                            vcov_type = "HAC", ZwZ = NULL) {
   if (!is.null(cluster_vec) && !is.null(kernel)) {
     # Cluster + kernel (DK or Thompson)
     if (is.list(cluster_vec)) {
@@ -69,8 +70,13 @@
     scores <- .cl_scores(Z, residuals, weights,
                          center = center, weight_type = weight_type)
     Omega <- .cluster_meat(scores, cluster_vec) / N
+  } else if (!is.null(kernel) && vcov_type == "AC") {
+    # AC path — homoskedastic Kronecker structure (sigma_tau * Z'WZ_tau)
+    # .ac_meat() returns shat / N (already normalized)
+    Omega <- .ac_meat(Z, residuals, time_index, kernel, bw,
+                       N, dofminus, weights, weight_type, ZwZ)
   } else if (!is.null(kernel)) {
-    # HAC path — same structure as HC but with autocovariance lags
+    # HAC path — heteroskedastic scores with autocovariance lags
     meat <- .hac_meat(Z, residuals, time_index, kernel, bw,
                       weights, weight_type, center = center)
     Omega <- meat / (N - dofminus)

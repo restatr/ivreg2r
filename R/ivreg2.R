@@ -1076,6 +1076,17 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     gmm_is_iid <- is.null(cluster_vec) && vcov == "iid" && is.null(kernel)
     gmm_center <- center
     gmm_psd <- psd
+    gmm_vcov_type <- vcov  # "AC" or "HAC" (already inferred by line 392-394)
+    # Precompute Z'WZ for AC path (needed by .ac_meat())
+    if (vcov == "AC") {
+      if (!is.null(parsed$weights)) {
+        gmm_ZwZ <- crossprod(parsed$Z, parsed$weights * parsed$Z)
+      } else {
+        gmm_ZwZ <- crossprod(parsed$Z)
+      }
+    } else {
+      gmm_ZwZ <- NULL
+    }
     omega_fn <- function(resid) {
       if (gmm_is_iid) {
         # Homoskedastic omega: sigma^2 * Z'WZ / N
@@ -1094,7 +1105,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         .compute_omega(gmm_Z, resid, gmm_w, gmm_cv, gmm_N,
                        dofminus = gmm_dm, weight_type = gmm_wt,
                        kernel = gmm_k, bw = gmm_bw, time_index = gmm_ti,
-                       center = gmm_center, psd = gmm_psd)
+                       center = gmm_center, psd = gmm_psd,
+                       vcov_type = gmm_vcov_type, ZwZ = gmm_ZwZ)
       }
     }
   }

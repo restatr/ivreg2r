@@ -298,6 +298,16 @@ save_ivreg2_results, prefix(ts_gmm2s) suffix(hac_bartlett_bw3) outdir(`outdir')
 
 
 /*===========================================================================
+  AC GMM2S (kernel without robust → AC path)
+===========================================================================*/
+
+// --- AC GMM2S Bartlett bw=3 (no robust) ---
+use "`outdir'/_ts_gmm_temp.dta", clear
+ivreg2 y w (x = z1 z2), gmm2s bw(3) kernel(bartlett)
+save_ivreg2_results, prefix(ts_gmm2s) suffix(ac_bartlett_bw3) outdir(`outdir')
+
+
+/*===========================================================================
   Clean up temp files
 ===========================================================================*/
 capture erase "`outdir'/_card_gmm_temp.dta"

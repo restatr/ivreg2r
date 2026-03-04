@@ -544,6 +544,56 @@ test_that("GMM2S HAC diagnostics match Stata fixture", {
 
 
 # ============================================================================
+# 9b. AC GMM2S (kernel without robust)
+# ============================================================================
+
+test_that("GMM2S AC Bartlett bw=3 coefficients match Stata fixture", {
+  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
+  fixture_path <- file.path(fixture_dir, "ts_gmm2s_coef_ac_bartlett_bw3.csv")
+  skip_if(!file.exists(fixture_path), "GMM2S AC fixture not found")
+
+  ts_data <- read.csv(ts_path)
+  # No vcov = "robust" → AC path (kernel + iid → AC)
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                method = "gmm2s", kernel = "bartlett", bw = 3, tvar = "t")
+  fixture <- read.csv(fixture_path)
+  stata_names <- fixture$term
+  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
+
+  for (i in seq_len(nrow(fixture))) {
+    expect_equal(
+      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
+      tolerance = stata_tol$coef,
+      info = paste("AC coef mismatch:", r_names[i])
+    )
+    expect_equal(
+      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
+      tolerance = stata_tol$se,
+      info = paste("AC SE mismatch:", r_names[i])
+    )
+  }
+})
+
+test_that("GMM2S AC Bartlett bw=3 diagnostics match Stata fixture", {
+  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
+  fixture_path <- file.path(fixture_dir, "ts_gmm2s_diagnostics_ac_bartlett_bw3.csv")
+  skip_if(!file.exists(fixture_path), "GMM2S AC diagnostics fixture not found")
+
+  ts_data <- read.csv(ts_path)
+  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                method = "gmm2s", kernel = "bartlett", bw = 3, tvar = "t")
+  diag <- read.csv(fixture_path)
+
+  expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
+               tolerance = stata_tol$stat, info = "Sargan stat AC")
+  expect_equal(fit$sigma, diag$sigma, tolerance = stata_tol$coef,
+               info = "sigma AC")
+})
+
+
+# ============================================================================
 # 10. Endogeneity test
 # ============================================================================
 
