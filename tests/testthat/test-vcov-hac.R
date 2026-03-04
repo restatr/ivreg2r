@@ -788,6 +788,7 @@ test_that("OLS AC auto QS bandwidth matches Stata", {
                 kernel = "qs", bw = "auto", tvar = "t")
   expect_equal(fit$bw, stata_bw, tolerance = stata_tol$stat,
                info = "OLS AC auto QS bw")
+  check_hac_fixture(fit, "ts_ols_ac", "auto_qs")
 })
 
 test_that("OLS HAC auto Bartlett bandwidth matches Stata", {
@@ -810,4 +811,5 @@ test_that("OLS HAC auto QS bandwidth matches Stata", {
                 vcov = "robust", kernel = "qs", bw = "auto", tvar = "t")
   expect_equal(fit$bw, stata_bw, tolerance = stata_tol$stat,
                info = "OLS HAC auto QS bw")
+  check_hac_fixture(fit, "ts_ols_hac", "auto_qs")
 })
