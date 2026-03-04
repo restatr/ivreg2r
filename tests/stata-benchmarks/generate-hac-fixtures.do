@@ -312,6 +312,31 @@ save_autobiw_results, prefix(ts_hac) suffix(auto_bartlett_justid) outdir(`outdir
 
 
 /*---------------------------------------------------------------------------
+  Auto-bandwidth fixtures: OLS (no endogenous) — tests Z=X path
+---------------------------------------------------------------------------*/
+
+// --- OLS AC auto Bartlett ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w x, bw(auto) kernel(bartlett)
+save_autobiw_results, prefix(ts_ols_ac) suffix(auto_bartlett) outdir(`outdir')
+
+// --- OLS AC auto QS ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w x, bw(auto) kernel(qs)
+save_autobiw_results, prefix(ts_ols_ac) suffix(auto_qs) outdir(`outdir')
+
+// --- OLS HAC auto Bartlett ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w x, bw(auto) kernel(bartlett) robust
+save_autobiw_results, prefix(ts_ols_hac) suffix(auto_bartlett) outdir(`outdir')
+
+// --- OLS HAC auto QS ---
+use "`outdir'/_ts_hac_temp.dta", clear
+ivreg2 y w x, bw(auto) kernel(qs) robust
+save_autobiw_results, prefix(ts_ols_hac) suffix(auto_qs) outdir(`outdir')
+
+
+/*---------------------------------------------------------------------------
   Auto-bandwidth fixture: gappy data
 ---------------------------------------------------------------------------*/
 use "`outdir'/_ts_hac_temp.dta", clear

@@ -763,3 +763,51 @@ test_that("glance reports resolved bw for auto-bandwidth", {
   expect_true(is.numeric(gl$bw))
   expect_true(gl$bw >= 1)
 })
+
+# ============================================================================
+# OLS auto-bandwidth: tests Z=X path (no endogenous variables)
+# ============================================================================
+
+test_that("OLS AC auto Bartlett bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_ols_ac", "auto_bartlett")
+  skip_if(is.na(stata_bw), "OLS auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w + x, data = ts_data,
+                kernel = "bartlett", bw = "auto", tvar = "t")
+  expect_equal(fit$bw, stata_bw, info = "OLS AC auto Bartlett bw")
+  check_hac_fixture(fit, "ts_ols_ac", "auto_bartlett")
+})
+
+test_that("OLS AC auto QS bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_ols_ac", "auto_qs")
+  skip_if(is.na(stata_bw), "OLS auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w + x, data = ts_data,
+                kernel = "qs", bw = "auto", tvar = "t")
+  expect_equal(fit$bw, stata_bw, tolerance = stata_tol$stat,
+               info = "OLS AC auto QS bw")
+})
+
+test_that("OLS HAC auto Bartlett bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_ols_hac", "auto_bartlett")
+  skip_if(is.na(stata_bw), "OLS auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w + x, data = ts_data,
+                vcov = "robust", kernel = "bartlett", bw = "auto", tvar = "t")
+  expect_equal(fit$bw, stata_bw, info = "OLS HAC auto Bartlett bw")
+  check_hac_fixture(fit, "ts_ols_hac", "auto_bartlett")
+})
+
+test_that("OLS HAC auto QS bandwidth matches Stata", {
+  skip_if(!file.exists(hac_data_path), "HAC data not found")
+  stata_bw <- read_autobiw("ts_ols_hac", "auto_qs")
+  skip_if(is.na(stata_bw), "OLS auto-bw fixture not found")
+
+  fit <- ivreg2(y ~ w + x, data = ts_data,
+                vcov = "robust", kernel = "qs", bw = "auto", tvar = "t")
+  expect_equal(fit$bw, stata_bw, tolerance = stata_tol$stat,
+               info = "OLS HAC auto QS bw")
+})

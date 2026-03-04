@@ -1172,9 +1172,12 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       stop("Automatic bandwidth selection not available for panel data.",
            call. = FALSE)
     }
+    # For OLS (1-part formula), Z is NULL; instruments = regressors = X.
+    # Stata's abw always passes exexog+inexog (ivreg2.ado:975).
+    abw_Z <- if (is.null(parsed$Z)) parsed$X else parsed$Z
     bw <- .auto_bandwidth(
       resid = fit$residuals,
-      Z = parsed$Z,
+      Z = abw_Z,
       time_index = time_index,
       kernel = kernel,
       has_intercept = parsed$has_intercept,
