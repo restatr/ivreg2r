@@ -1454,6 +1454,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         endog, parsed$endo_names, parsed$endo_colnames, parsed$endo_assign
       )
     }
+    # Note: center is intentionally NOT passed here. Stata's recursive
+    # ivreg2 call for endog() omits `center` (ivreg2.ado lines 1582-1601):
+    # it converts center to a boolean at line 297 but never reconstructs
+    # the string for forwarding. We match this behavior for Stata parity.
     diagnostics$endogeneity <- .compute_endogeneity_test(
       Z = parsed$Z, X = parsed$X, y = parsed$y,
       residuals = fit$residuals, rss = fit$rss,
