@@ -1144,7 +1144,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
 
   } else if (method == "cue") {
     fit <- .fit_cue(parsed, small = small, dofminus = dofminus,
-                    sdofminus = sdofminus, omega_fn = omega_fn, b0 = b0)
+                    sdofminus = sdofminus, omega_fn = omega_fn, b0 = b0,
+                    iid = gmm_is_iid)
 
   } else if (method == "gmm2s") {
     # Existing N1 path: standard two-step efficient GMM
