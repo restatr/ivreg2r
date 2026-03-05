@@ -69,7 +69,8 @@ for (cfg in vce_configs) {
                  data = card, vcov = cfg$vcov, small = cfg$small,
                  dofminus = 1L, sdofminus = 1L)
     if (isTRUE(cfg$clusters)) args$clusters <- ~ smsa66
-    fit <- do.call(ivreg2, args)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(do.call(ivreg2, args))
     fixture <- read.csv(coef_path)
 
     # Cluster VCV has ~5e-6 R-vs-Stata gap on Card data (pre-existing,
@@ -104,7 +105,8 @@ for (cfg in vce_configs) {
                  data = card, vcov = cfg$vcov, small = cfg$small,
                  dofminus = 1L, sdofminus = 1L)
     if (isTRUE(cfg$clusters)) args$clusters <- ~ smsa66
-    fit <- do.call(ivreg2, args)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(do.call(ivreg2, args))
     fixture <- read.csv(vcov_path)
 
     stata_names <- fixture$term
@@ -143,7 +145,8 @@ for (cfg in vce_configs) {
                  data = card, vcov = cfg$vcov, small = cfg$small,
                  dofminus = 1L, sdofminus = 1L)
     if (isTRUE(cfg$clusters)) args$clusters <- ~ smsa66
-    fit <- do.call(ivreg2, args)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(do.call(ivreg2, args))
     d <- fit$diagnostics
     fx <- read.csv(diag_path)
 
@@ -221,7 +224,8 @@ for (cfg in vce_configs) {
                  data = card, vcov = cfg$vcov, small = cfg$small,
                  dofminus = 1L, sdofminus = 1L)
     if (isTRUE(cfg$clusters)) args$clusters <- ~ smsa66
-    fit <- do.call(ivreg2, args)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(do.call(ivreg2, args))
     fs <- fit$first_stage
     fx <- read.csv(fs_path)
 
@@ -299,7 +303,8 @@ for (cfg in vce_configs) {
                  data = card, vcov = cfg$vcov, small = cfg$small,
                  dofminus = 1L, sdofminus = 1L)
     if (isTRUE(cfg$clusters)) args$clusters <- ~ smsa66
-    fit <- do.call(ivreg2, args)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(do.call(ivreg2, args))
     d <- fit$diagnostics
     fx <- read.csv(diag_path)
 
@@ -369,7 +374,8 @@ for (cfg in vce_configs) {
                  data = sim_cluster, vcov = cfg$vcov, small = cfg$small,
                  dofminus = 1L, sdofminus = 1L)
     if (isTRUE(cfg$clusters)) args$clusters <- ~ cluster_id
-    fit <- do.call(ivreg2, args)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(do.call(ivreg2, args))
     fixture <- read.csv(coef_path)
 
     se_tol <- if (isTRUE(cfg$clusters)) 1e-5 else stata_tol$se
@@ -397,7 +403,8 @@ for (cfg in vce_configs) {
                  data = sim_cluster, vcov = cfg$vcov, small = cfg$small,
                  dofminus = 1L, sdofminus = 1L)
     if (isTRUE(cfg$clusters)) args$clusters <- ~ cluster_id
-    fit <- do.call(ivreg2, args)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(do.call(ivreg2, args))
     d <- fit$diagnostics
     fx <- read.csv(diag_path)
 
@@ -469,9 +476,12 @@ test_that("df.residual = N - K - dofminus - sdofminus (non-cluster)", {
 test_that("df.residual = M - 1 for cluster models with dofminus", {
   skip_if(!file.exists(card_path), "card data not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, clusters = ~ smsa66,
-                dofminus = 1L, sdofminus = 1L)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, clusters = ~ smsa66,
+           dofminus = 1L, sdofminus = 1L)
+  )
 
   # For clustered models, df.residual = M - 1 (not affected by dofminus)
   expect_identical(fit$df.residual, as.integer(fit$n_clusters - 1L))

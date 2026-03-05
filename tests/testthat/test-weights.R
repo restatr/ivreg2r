@@ -211,8 +211,11 @@ test_that("weighted 2SLS SEs match Stata fixture (cluster, small=FALSE)", {
   coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_cl.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, clusters = ~smsa66)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, weights = weight, clusters = ~smsa66)
+  )
   fixture <- read.csv(coef_path)
   fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
 
@@ -231,9 +234,12 @@ test_that("weighted 2SLS SEs match Stata fixture (cluster, small=TRUE)", {
   coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_cl_small.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, clusters = ~smsa66,
-                small = TRUE)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, weights = weight, clusters = ~smsa66,
+           small = TRUE)
+  )
   fixture <- read.csv(coef_path)
   fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
 
@@ -376,8 +382,11 @@ test_that("weighted OLS 1-part formula works", {
 
 test_that("weighted IV with clustering works", {
   skip_if(!file.exists(card_path), "Card data not found")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, clusters = ~smsa66)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, weights = weight, clusters = ~smsa66)
+  )
   expect_s3_class(fit, "ivreg2")
   expect_identical(fit$vcov_type, "CL")
   expect_false(is.null(fit$weights))

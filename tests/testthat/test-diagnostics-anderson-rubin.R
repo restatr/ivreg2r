@@ -261,10 +261,13 @@ for (vce_combo in list(
   label <- paste("card_just_id_weighted", vce_combo$suffix)
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, weights = weight,
-                  vcov = vce_combo$vcov, small = vce_combo$small,
-                  clusters = vce_combo$clusters)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(
+      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+             data = card, weights = weight,
+             vcov = vce_combo$vcov, small = vce_combo$small,
+             clusters = vce_combo$clusters)
+    )
     check_anderson_rubin(fit, fixture_file, label)
   }
 }

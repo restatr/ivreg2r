@@ -267,8 +267,11 @@ test_that("print.summary IV robust shows KP stats", {
 
 test_that("print.summary clustered shows cluster info", {
   skip_if_not(exists("card"))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, clusters = ~smsa, small = TRUE)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, clusters = ~smsa, small = TRUE)
+  )
   out <- capture.output(summary(fit))
   out_text <- paste(out, collapse = "\n")
   expect_match(out_text, "Cluster")

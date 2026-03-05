@@ -213,8 +213,11 @@ test_that("non-pathological model: psd has no effect (VCV already PSD)", {
 test_that("psd works with clustered VCE", {
   skip_if_not(file.exists(card_path))
   # Should not error; for well-conditioned data, results are the same
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                 data = card, clusters = ~smsa, psd = "psd0")
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq | educ | nearc4,
+           data = card, clusters = ~smsa, psd = "psd0")
+  )
   expect_equal(fit$psd, "psd0")
   expect_true(all(is.finite(coef(fit))))
 })

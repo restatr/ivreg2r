@@ -280,10 +280,13 @@ for (vce_combo in list(
   label <- paste("card_just_id_weighted", vce_combo$suffix)
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, weights = weight,
-                  vcov = vce_combo$vcov, small = vce_combo$small,
-                  clusters = vce_combo$clusters)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(
+      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+             data = card, weights = weight,
+             vcov = vce_combo$vcov, small = vce_combo$small,
+             clusters = vce_combo$clusters)
+    )
     check_stock_wright(fit, fixture_file, label)
   }
 }
@@ -309,10 +312,13 @@ for (vce_combo in list(
   label <- paste("card_just_id_dofminus", vce_combo$suffix)
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small,
-                  clusters = vce_combo$clusters,
-                  dofminus = 1L, sdofminus = 1L)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(
+      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+             data = card, vcov = vce_combo$vcov, small = vce_combo$small,
+             clusters = vce_combo$clusters,
+             dofminus = 1L, sdofminus = 1L)
+    )
     check_stock_wright(fit, fixture_file, label)
   }
 }
@@ -333,10 +339,13 @@ for (vce_combo in list(
   label <- paste("card_overid_dofminus", vce_combo$suffix)
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small,
-                  clusters = vce_combo$clusters,
-                  dofminus = 1L, sdofminus = 1L)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(
+      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+             data = card, vcov = vce_combo$vcov, small = vce_combo$small,
+             clusters = vce_combo$clusters,
+             dofminus = 1L, sdofminus = 1L)
+    )
     check_stock_wright(fit, fixture_file, label)
   }
 }

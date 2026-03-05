@@ -276,8 +276,11 @@ test_that("CUE cluster coefficients match Stata fixture", {
   fixture_path <- file.path(fixture_dir, "card_overid_cue_coef_cluster.csv")
   skip_if(!file.exists(fixture_path))
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", clusters = ~age)
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                  data = card, method = "cue", clusters = ~age),
+    "CUE optimization did not converge"
+  )
   fixture <- read.csv(fixture_path)
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
@@ -301,8 +304,11 @@ test_that("CUE cluster diagnostics match Stata fixture", {
   fixture_path <- file.path(fixture_dir, "card_overid_cue_diagnostics_cluster.csv")
   skip_if(!file.exists(fixture_path))
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", clusters = ~age)
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                  data = card, method = "cue", clusters = ~age),
+    "CUE optimization did not converge"
+  )
   diag <- read.csv(fixture_path)
 
   expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
@@ -315,8 +321,11 @@ test_that("CUE cluster small coefficients match Stata fixture", {
   fixture_path <- file.path(fixture_dir, "card_overid_cue_coef_cluster_small.csv")
   skip_if(!file.exists(fixture_path))
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "cue", clusters = ~age, small = TRUE)
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                  data = card, method = "cue", clusters = ~age, small = TRUE),
+    "CUE optimization did not converge"
+  )
   fixture <- read.csv(fixture_path)
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
@@ -417,9 +426,12 @@ test_that("CUE overid is always Hansen J", {
                        data = card, method = "cue", vcov = "robust")
   expect_equal(fit_robust$diagnostics$overid$test_name, "Hansen J")
 
-  # Cluster
-  fit_cl <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                   data = card, method = "cue", clusters = ~age)
+  # Cluster (CUE with clusters=~age triggers non-convergence warning)
+  expect_warning(
+    fit_cl <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                     data = card, method = "cue", clusters = ~age),
+    "CUE optimization did not converge"
+  )
   expect_equal(fit_cl$diagnostics$overid$test_name, "Hansen J")
 })
 

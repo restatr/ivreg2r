@@ -192,7 +192,9 @@ test_that("non-default contrasts on factor endo: predict uses stored contrasts",
   expect_true("region_sum" %in% names(fit$contrasts))
 
   # predict(newdata) should use the stored contrasts
-  preds <- predict(fit, newdata = d[1:5, ])
+  # R emits "contrasts dropped" when newdata factors carry different
+  # contrasts attributes than contrasts.arg — harmless here.
+  preds <- suppressWarnings(predict(fit, newdata = d[1:5, ]))
   expect_length(preds, 5L)
   expect_true(all(is.finite(preds)))
   expect_equal(unname(preds), unname(fitted(fit)[1:5]), tolerance = 1e-10)

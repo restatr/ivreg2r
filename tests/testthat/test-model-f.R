@@ -277,10 +277,13 @@ for (vce_combo in list(
   label <- paste("card_just_id_weighted", vce_combo$suffix)
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, weights = weight,
-                  vcov = vce_combo$vcov, small = vce_combo$small,
-                  clusters = vce_combo$clusters)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(
+      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+             data = card, weights = weight,
+             vcov = vce_combo$vcov, small = vce_combo$small,
+             clusters = vce_combo$clusters)
+    )
     check_model_f(fit, fixture_file, label)
   }
 }
@@ -360,9 +363,12 @@ test_that(".syminv_sweep chi2 matches Stata for M=2 cluster case", {
   # The surviving constraint is "black" (largest diagonal in VCV submatrix).
   skip_if(!file.exists(card_path), "card data not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight,
-                clusters = ~smsa66, small = TRUE)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, weights = weight,
+           clusters = ~smsa66, small = TRUE)
+  )
 
   # Verify the model F was computed (not NA) despite rank-deficient VCV
   expect_false(is.na(fit$model_f))

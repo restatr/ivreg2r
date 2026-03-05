@@ -10,7 +10,8 @@
   dofminus = 0L,
   sdofminus = 0L,
   omega_fn,
-  b0 = NULL
+  b0 = NULL,
+  iid = TRUE
 )
 }
 \arguments{
@@ -27,6 +28,11 @@ the L x L moment covariance matrix Omega. Built in \code{ivreg2()}.}
 
 \item{b0}{Optional numeric vector: fixed parameter vector for J evaluation
 (no optimization). NULL for standard CUE optimization.}
+
+\item{iid}{Logical: if \code{TRUE} (default), use 2SLS starting values. If
+\code{FALSE} (non-IID VCE: robust, cluster, HAC, AC), use two-step efficient
+GMM starting values, matching Stata's behavior (ivreg2.ado changelog
+line 6596).}
 }
 \value{
 A named list with the same fields as \code{.fit_gmm2s()} plus
@@ -35,8 +41,9 @@ A named list with the same fields as \code{.fit_gmm2s()} plus
 \description{
 Minimizes the CUE objective \verb{J(b) = N * gbar(b)' * Omega(b)^\{-1\} * gbar(b)}
 where both moment conditions \code{gbar} and moment covariance \code{Omega} are
-re-evaluated at each candidate beta. Uses \code{nlminb} for optimization with
-2SLS starting values (Stata ivreg2.ado lines 5918-5948).
+re-evaluated at each candidate beta. Uses BFGS + Nelder-Mead for
+optimization. Starting values are 2SLS (IID) or two-step efficient GMM
+(non-IID), matching Stata ivreg2.ado lines 5918-5948.
 }
 \details{
 When \code{b0} is supplied, evaluates the CUE objective at the fixed parameter

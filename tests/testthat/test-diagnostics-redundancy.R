@@ -260,9 +260,12 @@ for (vce_combo in list(
   label <- paste("card_overid", vce_combo$suffix)
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small,
-                  clusters = vce_combo$clusters, redundant = "nearc2")
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(
+      ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
+             data = card, vcov = vce_combo$vcov, small = vce_combo$small,
+             clusters = vce_combo$clusters, redundant = "nearc2")
+    )
     check_redundancy(fit, fixture_file, label)
   }
 }
@@ -323,10 +326,13 @@ for (vce_combo in list(
   label <- paste("card_overid_dof", vce_combo$suffix)
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                  data = card, vcov = vce_combo$vcov,
-                  clusters = vce_combo$clusters,
-                  redundant = "nearc2", dofminus = 1L)
+    # M=2 clusters → expected rank-deficient diagnostics
+    fit <- suppressWarnings(
+      ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
+             data = card, vcov = vce_combo$vcov,
+             clusters = vce_combo$clusters,
+             redundant = "nearc2", dofminus = 1L)
+    )
     check_redundancy(fit, fixture_file, label)
   }
 }

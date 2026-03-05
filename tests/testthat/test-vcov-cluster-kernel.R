@@ -357,10 +357,11 @@ test_that("DK Parzen bw=4 overid matches Stata", {
 
 test_that("DK Truncated bw=2 overid matches Stata", {
   skip_if(!file.exists(wp_data_path), "wagepan data not found")
-  fit <- ivreg2(
+  # DK with short panel → expected rank-deficient diagnostics
+  fit <- suppressWarnings(ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, dkraay = 2, kernel = "truncated", tvar = "year", ivar = "nr"
-  )
+  ))
   check_ck_fixture(fit, "wp_dk", "tru2_overid")
 })
 
@@ -400,11 +401,12 @@ test_that("Thompson Bartlett bw=3 overid small matches Stata", {
 
 test_that("Thompson Parzen bw=4 overid matches Stata", {
   skip_if(!file.exists(wp_data_path), "wagepan data not found")
-  fit <- ivreg2(
+  # Thompson two-way cluster → expected rank-deficient diagnostics
+  fit <- suppressWarnings(ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, clusters = ~nr + year, kernel = "parzen", bw = 4,
     tvar = "year", ivar = "nr"
-  )
+  ))
   check_ck_fixture(fit, "wp_ck", "par4_overid")
 })
 

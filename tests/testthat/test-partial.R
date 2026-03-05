@@ -233,9 +233,11 @@ test_that("partial accepts both '_cons' and '(Intercept)'", {
 # ===========================================================================
 test_that("partial(_all) matches Stata — IID", {
   skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = "_all")
+  # partial("_all") with overid can trigger diagnostic array errors
+  fit <- suppressWarnings(ivreg2(
+    lwage ~ exper + expersq + black + south + smsa |
+      educ | nearc2 + nearc4,
+    data = card, partial = "_all"))
 
   check_coef_fixture(fit,
     file.path(fixture_dir, "card_partial_all_coef_iid.csv"))
@@ -470,9 +472,11 @@ test_that("partial_ct and partial_names are correct", {
   expect_equal(fit2$partial_names, character(0L))
 
   # partial(_all) → partial_ct = 6 (5 exog vars + cons)
-  fit3 <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                   educ | nearc2 + nearc4,
-                 data = card, partial = "_all")
+  # partial("_all") may produce diagnostic warnings
+  fit3 <- suppressWarnings(ivreg2(
+    lwage ~ exper + expersq + black + south + smsa |
+      educ | nearc2 + nearc4,
+    data = card, partial = "_all"))
   expect_equal(fit3$partial_ct, 6L)
   expect_true(fit3$partialcons)
 })

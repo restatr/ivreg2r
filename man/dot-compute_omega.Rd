@@ -16,7 +16,9 @@
   bw = NULL,
   time_index = NULL,
   center = FALSE,
-  psd = NULL
+  psd = NULL,
+  vcov_type = "HAC",
+  ZwZ = NULL
 )
 }
 \arguments{

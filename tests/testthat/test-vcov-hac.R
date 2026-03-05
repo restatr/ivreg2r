@@ -224,8 +224,11 @@ test_that(".lag_pairs returns zero rows for too-large lag", {
 
 test_that("HAC Bartlett bw=1 equals HC0 (zero off-diagonal lags)", {
   skip_if(!file.exists(hac_data_path), "HAC data not found")
-  fit_hac <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
-                    vcov = "HAC", kernel = "bartlett", bw = 1, tvar = "t")
+  expect_warning(
+    fit_hac <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
+                      vcov = "HAC", kernel = "bartlett", bw = 1, tvar = "t"),
+    "zero lags used"
+  )
   fit_hc0 <- ivreg2(y ~ w | x | z1 + z2, data = ts_data, vcov = "robust")
   expect_equal(fit_hac$vcov, fit_hc0$vcov, tolerance = 1e-12)
 })

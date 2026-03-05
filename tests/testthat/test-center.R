@@ -328,10 +328,11 @@ test_that("Cluster + center: coefs and SEs match Stata", {
   fp <- file.path(fixture_dir, "card_overid_coef_center_cl.csv")
   skip_if(!file.exists(fp), "Cluster center fixture not found")
 
-  fit <- ivreg2(
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card, clusters = ~smsa, center = TRUE
-  )
+  ))
   check_coef_fixture(fit, fp)
 })
 
@@ -341,10 +342,10 @@ test_that("Cluster + center: VCV matches Stata", {
   cp <- file.path(fixture_dir, "card_overid_coef_center_cl.csv")
   skip_if(!file.exists(vp), "Cluster center VCV fixture not found")
 
-  fit <- ivreg2(
+  fit <- suppressWarnings(ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card, clusters = ~smsa, center = TRUE
-  )
+  ))
   check_vcov_fixture(fit, vp, cp)
 })
 
@@ -353,10 +354,10 @@ test_that("Cluster + center: diagnostics match Stata", {
   dp <- file.path(fixture_dir, "card_overid_diagnostics_center_cl.csv")
   skip_if(!file.exists(dp), "Cluster center diag fixture not found")
 
-  fit <- ivreg2(
+  fit <- suppressWarnings(ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card, clusters = ~smsa, center = TRUE
-  )
+  ))
   check_diag_fixture(fit, dp)
 })
 
@@ -370,10 +371,10 @@ test_that("Cluster + small + center: coefs and SEs match Stata", {
   fp <- file.path(fixture_dir, "card_overid_coef_center_cl_small.csv")
   skip_if(!file.exists(fp), "Cluster small center fixture not found")
 
-  fit <- ivreg2(
+  fit <- suppressWarnings(ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card, clusters = ~smsa, small = TRUE, center = TRUE
-  )
+  ))
   check_coef_fixture(fit, fp)
 })
 
@@ -504,9 +505,12 @@ test_that("CUE cluster + center: coefs and SEs match Stata", {
   fp <- file.path(fixture_dir, "card_overid_coef_center_cue_cl.csv")
   skip_if(!file.exists(fp), "CUE cluster center fixture not found")
 
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "cue", clusters = ~age, center = TRUE
+  expect_warning(
+    fit <- ivreg2(
+      lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+      data = card, method = "cue", clusters = ~age, center = TRUE
+    ),
+    "CUE optimization did not converge"
   )
   check_coef_fixture(fit, fp, tol = cue_tol)
 })
@@ -584,7 +588,7 @@ test_that("HAC Bartlett + center: coefs and SEs match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card_ts, kernel = "bartlett", bw = 3, tvar = "t",
+    data = card_ts, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "t",
     center = TRUE
   )
   check_coef_fixture(fit, fp)
@@ -601,7 +605,7 @@ test_that("HAC Bartlett + center: VCV matches Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card_ts, kernel = "bartlett", bw = 3, tvar = "t",
+    data = card_ts, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "t",
     center = TRUE
   )
   check_vcov_fixture(fit, vp, cp)
@@ -617,7 +621,7 @@ test_that("HAC Bartlett + center: diagnostics match Stata", {
 
   fit <- ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card_ts, kernel = "bartlett", bw = 3, tvar = "t",
+    data = card_ts, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "t",
     center = TRUE
   )
   check_diag_fixture(fit, dp)

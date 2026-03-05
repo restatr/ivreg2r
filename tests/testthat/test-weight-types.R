@@ -226,9 +226,12 @@ test_fweight_config <- function(fixture_prefix, suffix, card_data,
     lwage ~ exper + expersq + black + south | educ | nearc4
   }
 
-  fit <- ivreg2(iv_formula, data = card_data, weights = weight,
-                weight_type = "fweight", vcov = vcov_arg,
-                small = small_arg, clusters = cluster_arg)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(iv_formula, data = card_data, weights = weight,
+           weight_type = "fweight", vcov = vcov_arg,
+           small = small_arg, clusters = cluster_arg)
+  )
 
   # Test N
   expect_equal(nobs(fit), as.integer(stata_diag$N))
@@ -243,7 +246,7 @@ test_fweight_config <- function(fixture_prefix, suffix, card_data,
 
   # VCV
   r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
-  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, check.attributes = FALSE)
+  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
 
   # Sigma
   expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
@@ -417,11 +420,12 @@ test_pweight_config <- function(fixture_prefix, suffix, card_data,
     lwage ~ exper + expersq + black + south | educ | nearc4
   }
 
-  fit <- suppressMessages(
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(suppressMessages(
     ivreg2(iv_formula, data = card_data, weights = weight,
            weight_type = "pweight", vcov = vcov_arg,
            small = small_arg, clusters = cluster_arg)
-  )
+  ))
 
   # Test N (pweight uses physical N)
   expect_equal(nobs(fit), as.integer(stata_diag$N))
@@ -436,7 +440,7 @@ test_pweight_config <- function(fixture_prefix, suffix, card_data,
 
   # VCV
   r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
-  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, check.attributes = FALSE)
+  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
 
   # Sigma
   expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
@@ -556,9 +560,12 @@ test_aweight_overid_config <- function(suffix, card_data,
   stata_vcov <- read_vcov_fixture(vcov_path)
   stata_diag <- read_diagnostics_fixture(diag_path)
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
-                data = card_data, weights = weight, vcov = vcov_arg,
-                small = small_arg, clusters = cluster_arg)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+           data = card_data, weights = weight, vcov = vcov_arg,
+           small = small_arg, clusters = cluster_arg)
+  )
 
   # Coefficients
   r_coef <- coef(fit)[names(stata_coef$estimate)]
@@ -570,7 +577,7 @@ test_aweight_overid_config <- function(suffix, card_data,
 
   # VCV
   r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
-  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, check.attributes = FALSE)
+  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
 
   # Sigma
   expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)

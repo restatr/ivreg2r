@@ -233,7 +233,7 @@ save_ivreg2_results, prefix(card_overid) suffix(center_dofminus) outdir(`outdir'
 use "`outdir'/_card_center_temp.dta", clear
 gen t = _n
 tsset t
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), bw(3) kernel(bartlett) center
+ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), robust bw(3) kernel(bartlett) center
 save_ivreg2_results, prefix(card_overid) suffix(center_hac_bartlett) outdir(`outdir')
 
 

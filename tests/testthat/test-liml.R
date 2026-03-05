@@ -694,8 +694,11 @@ test_that("LIML overid matches Stata (cluster, small=FALSE)", {
   skip_if(!file.exists(file.path(fixture_dir, "card_liml_overid_coef_cl.csv")),
           "LIML cluster fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "liml", clusters = ~smsa66)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "liml", clusters = ~smsa66)
+  )
   compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_cl.csv"))
   compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_cl.csv"))
   compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_cl.csv"))
@@ -704,8 +707,11 @@ test_that("LIML overid matches Stata (cluster, small=FALSE)", {
 test_that("LIML overid matches Stata (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "liml", clusters = ~smsa66, small = TRUE)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "liml", clusters = ~smsa66, small = TRUE)
+  )
   compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_cl_small.csv"))
   compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_cl_small.csv"))
   compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_cl_small.csv"))
@@ -759,8 +765,11 @@ test_that("LIML overid COVIV matches Stata (HC1, small=TRUE)", {
 test_that("LIML overid COVIV matches Stata (cluster, small=FALSE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "liml", clusters = ~smsa66, coviv = TRUE)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "liml", clusters = ~smsa66, coviv = TRUE)
+  )
   compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_cl.csv"))
   compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_cl.csv"))
 })
@@ -768,8 +777,11 @@ test_that("LIML overid COVIV matches Stata (cluster, small=FALSE)", {
 test_that("LIML overid COVIV matches Stata (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "liml", clusters = ~smsa66, small = TRUE, coviv = TRUE)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "liml", clusters = ~smsa66, small = TRUE, coviv = TRUE)
+  )
   compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_cl_small.csv"))
   compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_cl_small.csv"))
 })
@@ -859,8 +871,11 @@ test_that("LIML justid matches Stata (HC1, small=TRUE)", {
 test_that("LIML justid matches Stata (cluster)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, method = "liml", clusters = ~smsa66)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, method = "liml", clusters = ~smsa66)
+  )
   compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_cl.csv"))
   # VCV comparison omitted: the just-identified Card model with expersq has
   # tiny VCV entries (~1e-11) where the pre-existing R-vs-Stata gap (~5e-8
@@ -871,8 +886,11 @@ test_that("LIML justid matches Stata (cluster)", {
 test_that("LIML justid matches Stata (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, method = "liml", clusters = ~smsa66, small = TRUE)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, method = "liml", clusters = ~smsa66, small = TRUE)
+  )
   compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_cl_small.csv"))
   # VCV comparison omitted for the same reason as above.
 })
@@ -887,11 +905,15 @@ test_that("LIML justid robust VCV equals 2SLS robust VCV", {
                      data = card, vcov = "robust")
   expect_equal(vcov(fit_liml), vcov(fit_2sls), tolerance = 1e-10)
 
-  # Cluster
-  fit_liml_cl <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                        data = card, method = "liml", clusters = ~smsa66)
-  fit_2sls_cl <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                        data = card, clusters = ~smsa66)
+  # Cluster (M=2 clusters → expected rank-deficient diagnostics)
+  fit_liml_cl <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, method = "liml", clusters = ~smsa66)
+  )
+  fit_2sls_cl <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, clusters = ~smsa66)
+  )
   expect_equal(vcov(fit_liml_cl), vcov(fit_2sls_cl), tolerance = 1e-10)
 })
 
@@ -923,8 +945,11 @@ test_that("Fuller(1) matches Stata (HC1, small=TRUE)", {
 test_that("Fuller(1) matches Stata (cluster)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, fuller = 1, clusters = ~smsa66)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, fuller = 1, clusters = ~smsa66)
+  )
   compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_cl.csv"))
   compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_cl.csv"))
 })
@@ -932,8 +957,11 @@ test_that("Fuller(1) matches Stata (cluster)", {
 test_that("Fuller(1) matches Stata (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, fuller = 1, clusters = ~smsa66, small = TRUE)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, fuller = 1, clusters = ~smsa66, small = TRUE)
+  )
   compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_cl_small.csv"))
   compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_cl_small.csv"))
 })
@@ -1123,8 +1151,11 @@ test_that("AR LIML overid: NULL for robust LIML", {
 test_that("AR LIML overid: NULL for cluster LIML", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "liml", clusters = ~smsa66)
+  # M=2 clusters → expected rank-deficient diagnostics
+  fit <- suppressWarnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "liml", clusters = ~smsa66)
+  )
   expect_null(fit$diagnostics$anderson_rubin_overid)
 })
 

@@ -371,8 +371,14 @@ predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
   mf <- stats::model.frame(stats::delete.response(tt), newdata,
                             na.action = na.action,
                             xlev = object$xlevels)
+  # Filter contrasts to regressor variables only — object$contrasts may
+
+  # also contain instrument contrasts, which triggers warnings from
+  # stats::model.matrix about variables absent from the terms.
+  reg_vars <- all.vars(stats::delete.response(tt))
+  reg_contrasts <- object$contrasts[intersect(names(object$contrasts), reg_vars)]
   X <- stats::model.matrix(stats::delete.response(tt), mf,
-                            contrasts.arg = object$contrasts)
+                            contrasts.arg = reg_contrasts)
   cf <- coef(object)
   # model.matrix may regenerate columns dropped for collinearity;
   # use only columns that have corresponding coefficients
@@ -435,8 +441,10 @@ model.matrix.ivreg2 <- function(object,
     Z <- object$x$Z
   } else if (!is.null(object$model)) {
     # --- Path 2: reconstruct from model frame ---
+    reg_vars <- all.vars(object$terms$regressors)
+    reg_contrasts <- object$contrasts[intersect(names(object$contrasts), reg_vars)]
     X <- stats::model.matrix(object$terms$regressors, object$model,
-                             contrasts.arg = object$contrasts)
+                             contrasts.arg = reg_contrasts)
     if (!is.null(object$terms$instruments)) {
       # Build Z = cbind(exog columns from X, excluded IV columns)
       # Use X (already correct post-collinearity) to extract the exog part,
@@ -444,8 +452,10 @@ model.matrix.ivreg2 <- function(object,
       # or endogenous-to-exogenous reclassification.
       endo_cols <- object$endo_colnames
       exog_mm <- X[, !colnames(X) %in% endo_cols, drop = FALSE]
+      iv_vars <- all.vars(object$terms$instruments)
+      iv_contrasts <- object$contrasts[intersect(names(object$contrasts), iv_vars)]
       excl_mm <- stats::model.matrix(object$terms$instruments, object$model,
-                                     contrasts.arg = object$contrasts)
+                                     contrasts.arg = iv_contrasts)
       excl_mm <- .strip_intercept(excl_mm)
       # Drop excluded instruments removed by collinearity detection
       if (length(object$dropped_instruments) > 0L) {
