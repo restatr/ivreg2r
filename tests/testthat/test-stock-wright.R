@@ -281,7 +281,7 @@ for (vce_combo in list(
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
     # M=2 clusters → expected rank-deficient diagnostics
-    fit <- suppressWarnings(
+    fit <- muffle_rank_warnings(
       ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
              data = card, weights = weight,
              vcov = vce_combo$vcov, small = vce_combo$small,
@@ -313,7 +313,7 @@ for (vce_combo in list(
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
     # M=2 clusters → expected rank-deficient diagnostics
-    fit <- suppressWarnings(
+    fit <- muffle_rank_warnings(
       ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
              data = card, vcov = vce_combo$vcov, small = vce_combo$small,
              clusters = vce_combo$clusters,
@@ -340,7 +340,7 @@ for (vce_combo in list(
 
   if (file.exists(card_path) && file.exists(fixture_file)) {
     # M=2 clusters → expected rank-deficient diagnostics
-    fit <- suppressWarnings(
+    fit <- muffle_rank_warnings(
       ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
              data = card, vcov = vce_combo$vcov, small = vce_combo$small,
              clusters = vce_combo$clusters,

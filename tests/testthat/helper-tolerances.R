@@ -28,6 +28,21 @@
 #   Anything above 1e-6 relative would be hard to explain as floating-point
 #   noise and warrants investigation.
 
+# Selective warning handler for M=2 cluster diagnostic warnings.
+# Binary cluster variables (e.g., smsa with 2 unique values) make diagnostic
+# matrices rank-deficient. The warnings are correct and expected, but
+# suppressWarnings() would mask unrelated warnings. This handler muffles
+# only rank-deficient/singular diagnostic warnings and lets others propagate.
+muffle_rank_warnings <- function(expr) {
+  withCallingHandlers(
+    expr,
+    warning = function(w) {
+      if (grepl("rank-deficient|singular|not computed", conditionMessage(w)))
+        invokeRestart("muffleWarning")
+    }
+  )
+}
+
 stata_tol <- list(
   coef = 1e-6,   # coefficients       (observed R-vs-Stata: ~5e-8)
   se   = 1e-6,   # standard errors    (observed R-vs-Stata: ~4.5e-9)

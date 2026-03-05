@@ -400,7 +400,7 @@ test_that("robust small partial matches Stata — HC1 small", {
 # ===========================================================================
 test_that("cluster partial matches Stata — CL", {
   skip_if_not(file.exists(card_path))
-  fit <- suppressWarnings(ivreg2(
+  fit <- muffle_rank_warnings(ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
     data = card, partial = c("black", "south", "smsa"),
     clusters = ~smsa66))
@@ -416,7 +416,7 @@ test_that("cluster partial matches Stata — CL", {
 
 test_that("cluster small partial matches Stata — CL small", {
   skip_if_not(file.exists(card_path))
-  fit <- suppressWarnings(ivreg2(
+  fit <- muffle_rank_warnings(ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
     data = card, partial = c("black", "south", "smsa"),
     clusters = ~smsa66, small = TRUE))

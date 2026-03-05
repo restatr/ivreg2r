@@ -212,7 +212,7 @@ test_that("weighted 2SLS SEs match Stata fixture (cluster, small=FALSE)", {
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, weights = weight, clusters = ~smsa66)
   )
@@ -235,7 +235,7 @@ test_that("weighted 2SLS SEs match Stata fixture (cluster, small=TRUE)", {
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, weights = weight, clusters = ~smsa66,
            small = TRUE)
@@ -383,7 +383,7 @@ test_that("weighted OLS 1-part formula works", {
 test_that("weighted IV with clustering works", {
   skip_if(!file.exists(card_path), "Card data not found")
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, weights = weight, clusters = ~smsa66)
   )

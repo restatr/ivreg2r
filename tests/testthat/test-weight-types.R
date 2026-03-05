@@ -227,7 +227,7 @@ test_fweight_config <- function(fixture_prefix, suffix, card_data,
   }
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(iv_formula, data = card_data, weights = weight,
            weight_type = "fweight", vcov = vcov_arg,
            small = small_arg, clusters = cluster_arg)
@@ -421,7 +421,7 @@ test_pweight_config <- function(fixture_prefix, suffix, card_data,
   }
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(suppressMessages(
+  fit <- muffle_rank_warnings(suppressMessages(
     ivreg2(iv_formula, data = card_data, weights = weight,
            weight_type = "pweight", vcov = vcov_arg,
            small = small_arg, clusters = cluster_arg)
@@ -561,7 +561,7 @@ test_aweight_overid_config <- function(suffix, card_data,
   stata_diag <- read_diagnostics_fixture(diag_path)
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
            data = card_data, weights = weight, vcov = vcov_arg,
            small = small_arg, clusters = cluster_arg)

@@ -156,21 +156,21 @@ test_that("RF F equals AR F (HC1)", {
 })
 
 test_that("RF F equals AR F (cluster)", {
-  suppressWarnings({
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, clusters = ~smsa, reduced_form = "rf")
-  })
+  fit <- muffle_rank_warnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, clusters = ~smsa, reduced_form = "rf")
+  )
   expect_equal(fit$reduced_form$f_stat,
                fit$diagnostics$anderson_rubin$f_stat,
                tolerance = 1e-14)
 })
 
 test_that("RF F equals AR F (cluster, small)", {
-  suppressWarnings({
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, clusters = ~smsa, small = TRUE,
-                  reduced_form = "rf")
-  })
+  fit <- muffle_rank_warnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, clusters = ~smsa, small = TRUE,
+           reduced_form = "rf")
+  )
   expect_equal(fit$reduced_form$f_stat,
                fit$diagnostics$anderson_rubin$f_stat,
                tolerance = 1e-14)
@@ -376,19 +376,19 @@ test_that("card_just_id RF: HC1 small", {
 })
 
 test_that("card_just_id RF: cluster", {
-  suppressWarnings({
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, clusters = ~smsa, reduced_form = "rf")
-  })
+  fit <- muffle_rank_warnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, clusters = ~smsa, reduced_form = "rf")
+  )
   compare_rf_fixture(fit, "card_just_id", "cl")
 })
 
 test_that("card_just_id RF: cluster small", {
-  suppressWarnings({
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, clusters = ~smsa, small = TRUE,
-                  reduced_form = "rf")
-  })
+  fit <- muffle_rank_warnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, clusters = ~smsa, small = TRUE,
+           reduced_form = "rf")
+  )
   compare_rf_fixture(fit, "card_just_id", "cl_small")
 })
 
@@ -408,10 +408,10 @@ test_that("card_just_id system: HC1", {
 })
 
 test_that("card_just_id system: cluster", {
-  suppressWarnings({
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, clusters = ~smsa, reduced_form = "system")
-  })
+  fit <- muffle_rank_warnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, clusters = ~smsa, reduced_form = "system")
+  )
   compare_system_fixture(fit, "card_just_id", "cl")
 })
 
@@ -431,10 +431,10 @@ test_that("card_overid RF: HC1", {
 })
 
 test_that("card_overid RF: cluster", {
-  suppressWarnings({
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                  data = card, clusters = ~smsa, reduced_form = "rf")
-  })
+  fit <- muffle_rank_warnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, clusters = ~smsa, reduced_form = "rf")
+  )
   compare_rf_fixture(fit, "card_overid", "cl")
 })
 
@@ -461,11 +461,11 @@ test_that("card_just_id_weighted RF: HC1", {
 })
 
 test_that("card_just_id_weighted RF: cluster", {
-  suppressWarnings({
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, weights = weight, clusters = ~smsa,
-                  reduced_form = "rf")
-  })
+  fit <- muffle_rank_warnings(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+           data = card, weights = weight, clusters = ~smsa,
+           reduced_form = "rf")
+  )
   compare_rf_fixture(fit, "card_just_id_weighted", "cl")
 })
 

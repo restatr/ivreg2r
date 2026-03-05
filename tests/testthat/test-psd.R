@@ -214,7 +214,7 @@ test_that("psd works with clustered VCE", {
   skip_if_not(file.exists(card_path))
   # Should not error; for well-conditioned data, results are the same
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq | educ | nearc4,
            data = card, clusters = ~smsa, psd = "psd0")
   )

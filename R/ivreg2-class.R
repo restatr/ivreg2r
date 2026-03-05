@@ -372,10 +372,11 @@ predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
                             na.action = na.action,
                             xlev = object$xlevels)
   # Filter contrasts to regressor variables only — object$contrasts may
-
   # also contain instrument contrasts, which triggers warnings from
   # stats::model.matrix about variables absent from the terms.
-  reg_vars <- all.vars(stats::delete.response(tt))
+  # Use rownames(factors) instead of all.vars() to preserve function
+  # wrappers (e.g., "factor(x)") that match names(object$contrasts).
+  reg_vars <- rownames(attr(stats::delete.response(tt), "factors"))
   reg_contrasts <- object$contrasts[intersect(names(object$contrasts), reg_vars)]
   X <- stats::model.matrix(stats::delete.response(tt), mf,
                             contrasts.arg = reg_contrasts)
@@ -441,7 +442,7 @@ model.matrix.ivreg2 <- function(object,
     Z <- object$x$Z
   } else if (!is.null(object$model)) {
     # --- Path 2: reconstruct from model frame ---
-    reg_vars <- all.vars(object$terms$regressors)
+    reg_vars <- rownames(attr(object$terms$regressors, "factors"))
     reg_contrasts <- object$contrasts[intersect(names(object$contrasts), reg_vars)]
     X <- stats::model.matrix(object$terms$regressors, object$model,
                              contrasts.arg = reg_contrasts)
@@ -452,7 +453,7 @@ model.matrix.ivreg2 <- function(object,
       # or endogenous-to-exogenous reclassification.
       endo_cols <- object$endo_colnames
       exog_mm <- X[, !colnames(X) %in% endo_cols, drop = FALSE]
-      iv_vars <- all.vars(object$terms$instruments)
+      iv_vars <- rownames(attr(object$terms$instruments, "factors"))
       iv_contrasts <- object$contrasts[intersect(names(object$contrasts), iv_vars)]
       excl_mm <- stats::model.matrix(object$terms$instruments, object$model,
                                      contrasts.arg = iv_contrasts)

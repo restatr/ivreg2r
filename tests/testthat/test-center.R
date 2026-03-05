@@ -329,7 +329,7 @@ test_that("Cluster + center: coefs and SEs match Stata", {
   skip_if(!file.exists(fp), "Cluster center fixture not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(ivreg2(
+  fit <- muffle_rank_warnings(ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card, clusters = ~smsa, center = TRUE
   ))
@@ -342,7 +342,7 @@ test_that("Cluster + center: VCV matches Stata", {
   cp <- file.path(fixture_dir, "card_overid_coef_center_cl.csv")
   skip_if(!file.exists(vp), "Cluster center VCV fixture not found")
 
-  fit <- suppressWarnings(ivreg2(
+  fit <- muffle_rank_warnings(ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card, clusters = ~smsa, center = TRUE
   ))
@@ -354,7 +354,7 @@ test_that("Cluster + center: diagnostics match Stata", {
   dp <- file.path(fixture_dir, "card_overid_diagnostics_center_cl.csv")
   skip_if(!file.exists(dp), "Cluster center diag fixture not found")
 
-  fit <- suppressWarnings(ivreg2(
+  fit <- muffle_rank_warnings(ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card, clusters = ~smsa, center = TRUE
   ))
@@ -371,7 +371,7 @@ test_that("Cluster + small + center: coefs and SEs match Stata", {
   fp <- file.path(fixture_dir, "card_overid_coef_center_cl_small.csv")
   skip_if(!file.exists(fp), "Cluster small center fixture not found")
 
-  fit <- suppressWarnings(ivreg2(
+  fit <- muffle_rank_warnings(ivreg2(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card, clusters = ~smsa, small = TRUE, center = TRUE
   ))

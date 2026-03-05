@@ -695,7 +695,7 @@ test_that("LIML overid matches Stata (cluster, small=FALSE)", {
           "LIML cluster fixture not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66)
   )
@@ -708,7 +708,7 @@ test_that("LIML overid matches Stata (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66, small = TRUE)
   )
@@ -766,7 +766,7 @@ test_that("LIML overid COVIV matches Stata (cluster, small=FALSE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66, coviv = TRUE)
   )
@@ -778,7 +778,7 @@ test_that("LIML overid COVIV matches Stata (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66, small = TRUE, coviv = TRUE)
   )
@@ -872,7 +872,7 @@ test_that("LIML justid matches Stata (cluster)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, method = "liml", clusters = ~smsa66)
   )
@@ -887,7 +887,7 @@ test_that("LIML justid matches Stata (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, method = "liml", clusters = ~smsa66, small = TRUE)
   )
@@ -906,11 +906,11 @@ test_that("LIML justid robust VCV equals 2SLS robust VCV", {
   expect_equal(vcov(fit_liml), vcov(fit_2sls), tolerance = 1e-10)
 
   # Cluster (M=2 clusters → expected rank-deficient diagnostics)
-  fit_liml_cl <- suppressWarnings(
+  fit_liml_cl <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, method = "liml", clusters = ~smsa66)
   )
-  fit_2sls_cl <- suppressWarnings(
+  fit_2sls_cl <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, clusters = ~smsa66)
   )
@@ -946,7 +946,7 @@ test_that("Fuller(1) matches Stata (cluster)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, fuller = 1, clusters = ~smsa66)
   )
@@ -958,7 +958,7 @@ test_that("Fuller(1) matches Stata (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, fuller = 1, clusters = ~smsa66, small = TRUE)
   )
@@ -1152,7 +1152,7 @@ test_that("AR LIML overid: NULL for cluster LIML", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
-  fit <- suppressWarnings(
+  fit <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66)
   )
