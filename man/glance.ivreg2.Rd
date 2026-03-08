@@ -4,19 +4,28 @@
 \alias{glance.ivreg2}
 \title{Glance at an ivreg2 object}
 \usage{
-\method{glance}{ivreg2}(x, ...)
+\method{glance}{ivreg2}(x, diagnostics = TRUE, ...)
 }
 \arguments{
 \item{x}{An object of class \code{"ivreg2"}.}
 
+\item{diagnostics}{Logical: include IV diagnostic test columns? Default
+\code{TRUE}. Set to \code{FALSE} for a compact summary without test statistics.
+Follows the same convention as broom's \code{glance.ivreg()}.}
+
 \item{...}{Additional arguments (ignored).}
 }
 \value{
-A single-row \code{\link[tibble:tibble]{tibble::tibble()}} with columns:
+A single-row \code{\link[tibble:tibble]{tibble::tibble()}}.
+
+\strong{Always present} (24 columns):
 \code{r.squared}, \code{adj.r.squared}, \code{sigma}, \code{statistic}, \code{p.value}, \code{df},
-\code{df.residual}, \code{nobs}, \code{vcov_type}, \code{method}, \code{lambda}, \code{kclass_value},
-\code{fuller_parameter}, \code{coviv},
-\code{n_clusters1}, \code{n_clusters2},
+\code{df.residual}, \code{nobs}, \code{vcov_type}, \code{small}, \code{weight_type}, \code{method},
+\code{lambda}, \code{kclass_value}, \code{fuller_parameter}, \code{coviv}, \code{center}, \code{psd},
+\code{kernel}, \code{bw}, \code{kiefer}, \code{dkraay}, \code{n_clusters1}, \code{n_clusters2},
+\code{cue_convergence}, \code{partial_ct}.
+
+\strong{When \code{diagnostics = TRUE}} (default, 24 additional columns):
 \code{weak_id_stat}, \code{weak_id_robust_stat},
 \code{underid_stat}, \code{underid_p},
 \code{overid_stat}, \code{overid_p},
@@ -25,9 +34,63 @@ A single-row \code{\link[tibble:tibble]{tibble::tibble()}} with columns:
 \code{endogeneity_stat}, \code{endogeneity_p},
 \code{stock_wright_stat}, \code{stock_wright_p}, \code{stock_wright_df},
 \code{orthog_stat}, \code{orthog_p},
+\code{redundancy_stat}, \code{redundancy_p},
 \code{rf_f_stat}, \code{rf_f_p}.
 }
 \description{
 Returns a single-row tibble of model-level summary statistics and
 diagnostic test results.
+}
+\details{
+\code{glance()} always returns the same columns for a given value of the
+\code{diagnostics} argument, using \code{NA} for metrics that do not apply
+to the fitted model.
+
+The \code{small} column indicates whether finite-sample corrections were
+applied. When \code{small = TRUE}, test statistics are F-distributed;
+when \code{small = FALSE}, they are chi-squared.
+
+When \code{diagnostics = TRUE} (default), the output includes IV
+specification tests. Columns that are conditionally \code{NA}:
+\itemize{
+\item All diagnostic columns are \code{NA} for OLS models (1-part formula).
+\item \code{overid_stat}, \code{overid_p}: also \code{NA} when exactly
+identified (number of excluded instruments equals number of endogenous
+regressors).
+\item \code{weak_id_robust_stat}: \code{NA} when \code{vcov = "iid"}
+(Cragg-Donald F is used instead of Kleibergen-Paap).
+\item \code{ar_overid_*}: only non-\code{NA} for \code{method = "liml"}
+with \code{vcov = "iid"}.
+\item \code{orthog_*}, \code{redundancy_*}: \code{NA} unless \code{orthog}
+or \code{redundant} was specified.
+\item \code{rf_f_*}: \code{NA} unless \code{reduced_form = "rf"}.
+}
+
+Set \code{diagnostics = FALSE} for a compact summary without test statistics.
+}
+\examples{
+data(card)
+fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
+              educ | nearc4 + nearc2, data = card, vcov = "robust")
+
+# Full output with diagnostics
+glance(fit)
+
+# Compact output without diagnostics
+glance(fit, diagnostics = FALSE)
+
+# Extract specific diagnostics
+glance(fit)[, c("overid_stat", "overid_p")]
+glance(fit)[, c("weak_id_stat", "weak_id_robust_stat")]
+
+\donttest{
+# Compare Sargan (IID) vs Hansen J (robust)
+fit_iid <- ivreg2(log(wage) ~ exper + expersq + black + south |
+                   educ | nearc4 + nearc2, data = card)
+data.frame(
+  vcov = c("iid", "robust"),
+  overid = c(glance(fit_iid)$overid_stat, glance(fit)$overid_stat),
+  overid_p = c(glance(fit_iid)$overid_p, glance(fit)$overid_p)
+)
+}
 }

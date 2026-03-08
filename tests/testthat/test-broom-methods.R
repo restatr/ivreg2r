@@ -92,12 +92,12 @@ test_that("tidy IV estimates/SEs match Stata fixtures (card_just_id iid)", {
 # glance() — OLS
 # ============================================================================
 
-test_that("glance OLS returns 1-row tibble with 17 columns", {
+test_that("glance OLS returns 1-row tibble with expected columns", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
   gl <- glance(fit)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 47L)
+  expect_equal(ncol(gl), 48L)
 })
 
 test_that("glance OLS has correct column names", {
@@ -105,11 +105,13 @@ test_that("glance OLS has correct column names", {
   gl <- glance(fit)
   expected_names <- c("r.squared", "adj.r.squared", "sigma", "statistic",
                       "p.value", "df", "df.residual", "nobs", "vcov_type",
-                      "weight_type",
+                      "small", "weight_type",
                       "method", "lambda", "kclass_value", "fuller_parameter",
                       "coviv", "center", "psd", "kernel", "bw",
                       "kiefer", "dkraay",
                       "n_clusters1", "n_clusters2",
+                      "cue_convergence",
+                      "partial_ct",
                       "weak_id_stat", "weak_id_robust_stat",
                       "underid_stat", "underid_p",
                       "overid_stat", "overid_p",
@@ -121,9 +123,7 @@ test_that("glance OLS has correct column names", {
                       "stock_wright_df",
                       "orthog_stat", "orthog_p",
                       "redundancy_stat", "redundancy_p",
-                      "rf_f_stat", "rf_f_p",
-                      "cue_convergence",
-                      "partial_ct")
+                      "rf_f_stat", "rf_f_p")
   expect_named(gl, expected_names)
 })
 
@@ -303,4 +303,65 @@ test_that("augment IV returns expected columns", {
   expect_true(".fitted" %in% names(aug))
   expect_true(".resid" %in% names(aug))
   expect_equal(nrow(aug), nobs(fit))
+})
+
+
+# ============================================================================
+# glance() — diagnostics argument
+# ============================================================================
+
+test_that("glance diagnostics = FALSE returns compact tibble", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  gl <- glance(fit, diagnostics = FALSE)
+  expect_s3_class(gl, "tbl_df")
+  expect_equal(nrow(gl), 1L)
+  expect_equal(ncol(gl), 26L)
+  # Diagnostic columns should be absent
+  diag_cols <- c("weak_id_stat", "weak_id_robust_stat",
+                 "underid_stat", "underid_p",
+                 "overid_stat", "overid_p",
+                 "endogeneity_stat", "endogeneity_p",
+                 "orthog_stat", "orthog_p",
+                 "redundancy_stat", "redundancy_p",
+                 "rf_f_stat", "rf_f_p")
+  for (col in diag_cols) {
+    expect_false(col %in% names(gl),
+                 info = paste(col, "should not be present with diagnostics = FALSE"))
+  }
+})
+
+test_that("glance diagnostics = TRUE matches default", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  gl_default <- glance(fit)
+  gl_true <- glance(fit, diagnostics = TRUE)
+  expect_identical(gl_default, gl_true)
+})
+
+test_that("glance diagnostics = FALSE retains model-fit columns", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  gl <- glance(fit, diagnostics = FALSE)
+  retained <- c("r.squared", "adj.r.squared", "sigma", "statistic",
+                "p.value", "df", "df.residual", "nobs", "vcov_type",
+                "small", "weight_type", "method")
+  for (col in retained) {
+    expect_true(col %in% names(gl),
+                info = paste(col, "should be present with diagnostics = FALSE"))
+  }
+})
+
+
+# ============================================================================
+# glance() — small column
+# ============================================================================
+
+test_that("glance includes small column matching fit$small", {
+  fit_small <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  fit_large <- ivreg2(mpg ~ wt + hp, data = mtcars, small = FALSE)
+  expect_true(glance(fit_small)$small)
+  expect_false(glance(fit_large)$small)
+})
+
+test_that("glance small column is logical", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  expect_type(glance(fit)$small, "logical")
 })

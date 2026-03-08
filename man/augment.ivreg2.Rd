@@ -23,3 +23,14 @@ and \code{.resid}.
 Adds \code{.fitted} and \code{.resid} columns to the model frame (or user-supplied
 data).
 }
+\examples{
+data(card)
+fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
+              educ | nearc4, data = card)
+augment(fit) |> head()
+
+# Residuals vs fitted
+aug <- augment(fit)
+plot(aug$.fitted, aug$.resid, xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, lty = 2)
+}

@@ -172,7 +172,12 @@ One of \code{"bartlett"}, \code{"parzen"}, \code{"truncated"}, \code{"tukey-hann
 \code{"tukey-hamming"}, \code{"qs"} (quadratic spectral), \code{"daniell"}, or
 \code{"tent"}. When specified without an explicit \code{vcov} change, \code{vcov}
 is automatically set: \code{"iid"} becomes \code{"AC"}, \code{"robust"} becomes
-\code{"HAC"}. Requires \code{bw} and \code{tvar}.}
+\code{"HAC"}. Requires \code{bw} and \code{tvar}.
+
+\strong{Note:} Kleibergen-Paap identification tests (underidentification and
+weak identification) always use the Bartlett kernel internally, regardless
+of the user-specified kernel. This matches a known behavior in Stata's
+\code{ivreg2}, where \code{ranktest} hard-codes the Bartlett kernel.}
 
 \item{bw}{Numeric or \code{"auto"}: bandwidth for kernel estimation. Must be
 positive numeric, or \code{"auto"} for automatic selection via Newey-West

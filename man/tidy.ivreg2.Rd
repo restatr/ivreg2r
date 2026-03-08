@@ -23,3 +23,21 @@ A \code{\link[tibble:tibble]{tibble::tibble()}} with columns \code{term}, \code{
 Constructs a tibble summarizing coefficient estimates, standard errors,
 test statistics, and p-values.
 }
+\examples{
+data(card)
+fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
+              educ | nearc4, data = card, vcov = "robust")
+tidy(fit)
+tidy(fit, conf.int = FALSE)
+
+\donttest{
+# Compare 2SLS and LIML side-by-side
+fit_liml <- ivreg2(log(wage) ~ exper + expersq + black + south |
+                    educ | nearc4 + nearc2, data = card, method = "liml")
+comparison <- rbind(
+  cbind(method = "2SLS", tidy(fit)),
+  cbind(method = "LIML", tidy(fit_liml))
+)
+comparison[comparison$term == "educ", c("method", "estimate", "std.error")]
+}
+}
