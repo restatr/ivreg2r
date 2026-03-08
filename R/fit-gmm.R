@@ -196,8 +196,12 @@
 #' @return Numeric vector of residuals from the W-weighted first step.
 #' @keywords internal
 .wmatrix_first_step_resid <- function(parsed, W) {
-  X <- parsed$X; Z <- parsed$Z; y <- parsed$y
-  N <- parsed$N; K <- parsed$K; w <- parsed$weights
+  X <- parsed$X
+  Z <- parsed$Z
+  y <- parsed$y
+  N <- parsed$N
+  K <- parsed$K
+  w <- parsed$weights
 
   if (!is.null(w)) {
     QXZ <- crossprod(X, w * Z) / N
@@ -248,9 +252,14 @@
 #' @keywords internal
 .fit_gmm_wmatrix <- function(parsed, small = FALSE, dofminus = 0L,
                               sdofminus = 0L, W, omega_fn) {
-  y <- parsed$y; X <- parsed$X; Z <- parsed$Z
-  N <- parsed$N; K <- parsed$K; L <- parsed$L
-  w <- parsed$weights; overid_df <- parsed$overid_df
+  y <- parsed$y
+  X <- parsed$X
+  Z <- parsed$Z
+  N <- parsed$N
+  K <- parsed$K
+  L <- parsed$L
+  w <- parsed$weights
+  overid_df <- parsed$overid_df
   has_intercept <- parsed$has_intercept
 
   # Get 2SLS bread and X_hat for diagnostics

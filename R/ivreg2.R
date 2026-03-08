@@ -982,7 +982,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
         cluster_vec <- list(cluster_vec[[2L]], cluster_vec[[1L]])
         cluster_var_name <- c(ivar, tvar)
         # Recompute M1/M2 for correct ordering
-        M1_old <- M1; M2_old <- M2
+        M1_old <- M1
+        M2_old <- M2
         M1 <- M2_old
         M2 <- M1_old
       }
