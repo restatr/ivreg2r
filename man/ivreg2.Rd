@@ -289,8 +289,57 @@ k-class with automatic diagnostic tests. Uses a three-part formula for IV:
 \code{y ~ exog | endo | instruments}.
 }
 \examples{
-fit <- ivreg2(mpg ~ wt + hp, data = mtcars)
-print(fit)
-coef(fit)
+data(card)
+
+# --- Just-identified IV: return to schooling ---
+# Card (1995) instruments education with college proximity.
+# One instrument for one endogenous variable: no overid test possible,
+# so you must defend instrument validity on substantive grounds.
+fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+                educ | nearc4, data = card)
+summary(fit)
+
+# --- Overidentified IV: testing instrument validity ---
+# Adding nearc2 provides an overidentifying restriction.
+# Now the Sargan test can detect misspecification (invalid instruments).
+fit_overid <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+                       educ | nearc4 + nearc2, data = card)
+summary(fit_overid)
+
+# --- Robust standard errors ---
+# With heteroskedasticity, Kleibergen-Paap diagnostics replace
+# Anderson/Cragg-Donald, and Hansen J replaces Sargan.
+fit_robust <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+                       educ | nearc4 + nearc2, data = card,
+                       vcov = "robust")
+summary(fit_robust)
+
+\donttest{
+# --- LIML: reducing finite-sample bias ---
+# With weak instruments, 2SLS is biased toward OLS.
+# LIML is approximately median-unbiased.
+data(mroz)
+mroz_work <- subset(mroz, inlf == 1)
+fit_liml <- ivreg2(lwage ~ exper + expersq | educ |
+                     age + kidslt6 + kidsge6, data = mroz_work,
+                     method = "liml")
+summary(fit_liml)
+
+# --- Endogeneity test ---
+# Is education actually endogenous? The C-statistic tests
+# H0: OLS is consistent (educ is exogenous).
+fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
+                      age + kidslt6 + kidsge6, data = mroz_work,
+                      endog = "educ")
+fit_endog$diagnostics$endogeneity
+
+# --- Clustering ---
+# Panel data: cluster on individual to account for
+# within-person correlation across time periods.
+data(wagepan)
+fit_cl <- ivreg2(lwage ~ hours + married + union,
+                  data = wagepan, clusters = ~nr, small = TRUE)
+summary(fit_cl)
+}
 
 }
