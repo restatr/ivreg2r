@@ -148,6 +148,50 @@ test_that("pweight + explicit HC1 + small matches pweight + iid + small override
   expect_equal(fit_explicit$sigma, fit_override$sigma)
 })
 
+test_that("pweight + kernel + iid overrides to HAC (not AC)", {
+  phil <- na.omit(ivreg2r::phillips)
+  expect_message(
+    fit <- ivreg2(cinf ~ unem, data = phil, weights = unem,
+                  weight_type = "pweight", vcov = "iid",
+                  kernel = "bartlett", bw = 3, tvar = "year"),
+    'pweight implies robust VCE'
+  )
+
+  expect_equal(fit$vcov_type, "HAC")
+})
+
+test_that("pweight + kernel + iid + small overrides to HAC with correction", {
+  phil <- na.omit(ivreg2r::phillips)
+  expect_message(
+    fit <- ivreg2(cinf ~ unem, data = phil, weights = unem,
+                  weight_type = "pweight", vcov = "iid",
+                  kernel = "bartlett", bw = 3, tvar = "year", small = TRUE),
+    'pweight implies robust VCE'
+  )
+  expect_equal(fit$vcov_type, "HAC")
+  expect_true(fit$small)
+})
+
+test_that("pweight + kernel + iid + small=FALSE overrides to HAC without correction", {
+  phil <- na.omit(ivreg2r::phillips)
+  expect_message(
+    fit <- ivreg2(cinf ~ unem, data = phil, weights = unem,
+                  weight_type = "pweight", vcov = "iid",
+                  kernel = "bartlett", bw = 3, tvar = "year", small = FALSE),
+    'pweight implies robust VCE'
+  )
+  expect_equal(fit$vcov_type, "HAC")
+  expect_false(fit$small)
+})
+
+test_that("pweight + explicit robust + kernel routes to HAC", {
+  phil <- na.omit(ivreg2r::phillips)
+  fit <- ivreg2(cinf ~ unem, data = phil, weights = unem,
+                weight_type = "pweight", vcov = "robust",
+                kernel = "bartlett", bw = 3, tvar = "year")
+  expect_equal(fit$vcov_type, "HAC")
+})
+
 
 # ============================================================================
 # Section 2: N semantics

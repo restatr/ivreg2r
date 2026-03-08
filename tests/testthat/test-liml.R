@@ -564,6 +564,25 @@ test_that("kclass auto-promotes method to kclass", {
   expect_equal(fit$method, "kclass")
 })
 
+test_that("LIML with collinear instruments drops them gracefully", {
+  set.seed(42)
+  n <- 100
+  z1 <- rnorm(n)
+  z2 <- z1  # exact collinearity
+  x <- z1 + rnorm(n)
+  y <- x + rnorm(n)
+  d <- data.frame(y = y, x = x, z1 = z1, z2 = z2)
+  # Collinear instruments: z2 = z1. Should be dropped with warning,
+  # reducing to exact identification (lambda = 1). No cryptic LAPACK error.
+  suppressWarnings(
+    expect_warning(
+      fit <- ivreg2(y ~ 1 | x | z1 + z2, data = d, method = "liml"),
+      "collinear"
+    )
+  )
+  expect_equal(fit$lambda, 1.0)
+})
+
 
 # ============================================================================
 # 11. Display and broom methods

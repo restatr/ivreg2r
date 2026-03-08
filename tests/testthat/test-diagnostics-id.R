@@ -388,9 +388,9 @@ test_that("HC0 and HC1 produce identical KP rk LM and Wald F", {
   skip_if(!file.exists(card_path), "card data not found")
 
   fit_hc0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                     data = card, vcov = "robust")
+                     data = card, vcov = "robust", small = FALSE)
   fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                     data = card, vcov = "robust")
+                     data = card, vcov = "robust", small = TRUE)
 
   expect_equal(fit_hc0$diagnostics$underid$stat,
                fit_hc1$diagnostics$underid$stat)

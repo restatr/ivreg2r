@@ -119,6 +119,11 @@
 #'   `"tent"`. When specified without an explicit `vcov` change, `vcov`
 #'   is automatically set: `"iid"` becomes `"AC"`, `"robust"` becomes
 #'   `"HAC"`. Requires `bw` and `tvar`.
+#'
+#'   **Note:** Kleibergen-Paap identification tests (underidentification and
+#'   weak identification) always use the Bartlett kernel internally, regardless
+#'   of the user-specified kernel. This matches a known behavior in Stata's
+#'   `ivreg2`, where `ranktest` hard-codes the Bartlett kernel.
 #' @param bw Numeric or `"auto"`: bandwidth for kernel estimation. Must be
 #'   positive numeric, or `"auto"` for automatic selection via Newey-West
 #'   (1994). Auto selection is available for Bartlett, Parzen, and Quadratic
@@ -446,6 +451,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     # DK clustering on tvar is handled after cluster construction
   }
 
+  # pweight forces robust VCE (Stata: [pw=weight] → robust)
+  # Must run BEFORE kernel routing so kernel + pweight + iid → HAC (not AC)
+  if (weight_type == "pweight" && vcov == "iid" && is.null(clusters)) {
+    message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".')
+    vcov <- "robust"
+  }
+
   # --- 2c (cont). Validate bw / tvar / ivar ---
   if (!is.null(bw) && is.null(kernel)) {
     # bw specified without kernel: default to Bartlett
@@ -721,12 +733,6 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       # aweight/pweight: normalize to sum = N (Stata convention)
       parsed$weights <- w_raw * (parsed$N / sum(w_raw))
     }
-  }
-
-  # pweight forces robust VCE (Stata: [pw=weight] → robust)
-  if (weight_type == "pweight" && vcov == "iid" && is.null(clusters)) {
-    message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".')
-    vcov <- "robust"
   }
 
   # Re-validate dofminus against (possibly updated) N for fweight

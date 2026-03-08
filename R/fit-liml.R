@@ -121,7 +121,14 @@
   XhXh <- (XhXh + t(XhXh)) / 2  # enforce symmetry
   Xhy  <- (1 - k) * Xty + k * XtPzy
 
-  coef <- drop(solve(XhXh, Xhy))
+  coef <- tryCatch(
+    drop(.chol_solve(XhXh, Xhy)),
+    error = function(e) {
+      stop("k-class normal equation matrix is singular or near-singular. ",
+           "Check for collinearity among regressors/instruments.",
+           call. = FALSE)
+    }
+  )
   names(coef) <- colnames(X)
 
   # --- Residuals use original X ---
@@ -135,8 +142,16 @@
   sigma <- sqrt(rss / denom)
 
   # --- k-class IID VCV: sigma^2 * solve(XhXh) ---
-  XhXh_inv <- solve(XhXh)
+  XhXh_inv <- tryCatch(
+    .chol_solve(XhXh, diag(ncol(XhXh))),
+    error = function(e) {
+      stop("k-class normal equation matrix is singular or near-singular. ",
+           "Check for collinearity among regressors/instruments.",
+           call. = FALSE)
+    }
+  )
   XhXh_inv <- (XhXh_inv + t(XhXh_inv)) / 2
+  colnames(XhXh_inv) <- rownames(XhXh_inv) <- colnames(X)
   V <- sigma^2 * XhXh_inv
   colnames(V) <- rownames(V) <- colnames(X)
 
@@ -217,13 +232,25 @@
     YtY <- crossprod(Y_mat)
     ZtY <- crossprod(Z, Y_mat)
     ZtZ <- crossprod(Z)
-    QWW <- YtY - crossprod(ZtY, solve(ZtZ, ZtY))
+    QWW <- tryCatch(
+      YtY - crossprod(ZtY, .chol_solve(ZtZ, ZtY)),
+      error = function(e) {
+        stop("Instrument matrix Z'Z is singular. ",
+             "Check for collinear instruments.", call. = FALSE)
+      }
+    )
 
     if (length(incl_cols) > 0L) {
       Z2  <- Z[, incl_cols, drop = FALSE]
       Z2tY  <- crossprod(Z2, Y_mat)
       Z2tZ2 <- crossprod(Z2)
-      QWW1 <- YtY - crossprod(Z2tY, solve(Z2tZ2, Z2tY))
+      QWW1 <- tryCatch(
+        YtY - crossprod(Z2tY, .chol_solve(Z2tZ2, Z2tY)),
+        error = function(e) {
+          stop("Included instrument matrix Z2'Z2 is singular. ",
+               "Check for collinear instruments.", call. = FALSE)
+        }
+      )
     } else {
       QWW1 <- YtY
     }
@@ -235,13 +262,25 @@
     YtWY <- crossprod(Y_w)
     ZtWY <- crossprod(Z_w, Y_w)
     ZtWZ <- crossprod(Z_w)
-    QWW  <- YtWY - crossprod(ZtWY, solve(ZtWZ, ZtWY))
+    QWW  <- tryCatch(
+      YtWY - crossprod(ZtWY, .chol_solve(ZtWZ, ZtWY)),
+      error = function(e) {
+        stop("Instrument matrix Z'WZ is singular. ",
+             "Check for collinear instruments.", call. = FALSE)
+      }
+    )
 
     if (length(incl_cols) > 0L) {
       Z2_w    <- Z_w[, incl_cols, drop = FALSE]
       Z2tWY   <- crossprod(Z2_w, Y_w)
       Z2tWZ2  <- crossprod(Z2_w)
-      QWW1 <- YtWY - crossprod(Z2tWY, solve(Z2tWZ2, Z2tWY))
+      QWW1 <- tryCatch(
+        YtWY - crossprod(Z2tWY, .chol_solve(Z2tWZ2, Z2tWY)),
+        error = function(e) {
+          stop("Included instrument matrix Z2'WZ2 is singular. ",
+               "Check for collinear instruments.", call. = FALSE)
+        }
+      )
     } else {
       QWW1 <- YtWY
     }
