@@ -82,7 +82,11 @@ The \code{small} argument controls whether the finite-sample correction
 \item{endog}{Character vector of endogenous regressor names to test for
 exogeneity (endogeneity test / C-statistic). If \code{NULL} (default), tests
 all endogenous regressors. Names must match variables in the endogenous
-part of the formula. Ignored for OLS models.}
+part of the formula. Ignored for OLS models.
+
+\strong{Note:} Unlike Stata's \code{ivreg2}, which only computes the endogeneity
+test when the \code{endog()} option is explicitly specified, \code{ivreg2r} computes
+it automatically for all IV models.}
 
 \item{orthog}{Character vector of instrument names to test for
 orthogonality (instrument-subset C-statistic). Names must be included
@@ -106,8 +110,10 @@ is specified, method is automatically promoted to \code{"liml"}.
 optimal weighting matrix, yielding efficient estimates under the
 specified error structure. Incompatible with \code{fuller} and \code{kclass}.
 \code{"cue"} continuously updates both moment conditions and moment
-covariance at each candidate beta during optimization. CUE is
-asymptotically equivalent to LIML under weak instruments.
+covariance at each candidate beta during optimization. Under iid errors
+(no robust/cluster/kernel VCE), CUE with no other options is equivalent
+to LIML with \code{coviv = TRUE}. Under non-iid errors, CUE generalizes
+LIML to produce efficient estimates.
 Incompatible with \code{fuller}, \code{kclass}, \code{wmatrix}, and \code{smatrix}.
 
 \strong{CUE optimizer note:} This package uses R's \code{optim()} (BFGS +

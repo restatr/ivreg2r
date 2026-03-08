@@ -331,6 +331,12 @@ correction uses `min(M1, M2)` clusters, and t-tests use
 users should be cautious: the CGM two-way cluster-robust VCE requires both
 cluster dimensions to grow to infinity for consistency.
 
+**Note:** Two-way clustering is only useful when the two cluster variables
+define distinct, non-nested categories. If one category is nested within the
+other (e.g., students within schools, or time periods within panels), the
+two-way VCE reduces to the single-cluster VCE on the larger (outer) category,
+so two-way clustering provides no additional robustness.
+
 ## Reduced-form regression
 
 The reduced form regresses the outcome directly on the full instrument set

@@ -40,6 +40,10 @@
 #'   exogeneity (endogeneity test / C-statistic). If `NULL` (default), tests
 #'   all endogenous regressors. Names must match variables in the endogenous
 #'   part of the formula. Ignored for OLS models.
+#'
+#'   **Note:** Unlike Stata's `ivreg2`, which only computes the endogeneity
+#'   test when the `endog()` option is explicitly specified, `ivreg2r` computes
+#'   it automatically for all IV models.
 #' @param orthog Character vector of instrument names to test for
 #'   orthogonality (instrument-subset C-statistic). Names must be included
 #'   or excluded instruments (not endogenous regressors or the intercept).
@@ -81,8 +85,10 @@
 #'   optimal weighting matrix, yielding efficient estimates under the
 #'   specified error structure. Incompatible with `fuller` and `kclass`.
 #'   `"cue"` continuously updates both moment conditions and moment
-#'   covariance at each candidate beta during optimization. CUE is
-#'   asymptotically equivalent to LIML under weak instruments.
+#'   covariance at each candidate beta during optimization. Under iid errors
+#'   (no robust/cluster/kernel VCE), CUE with no other options is equivalent
+#'   to LIML with `coviv = TRUE`. Under non-iid errors, CUE generalizes
+#'   LIML to produce efficient estimates.
 #'   Incompatible with `fuller`, `kclass`, `wmatrix`, and `smatrix`.
 #'
 #'   **CUE optimizer note:** This package uses R's `optim()` (BFGS +

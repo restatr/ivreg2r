@@ -55,15 +55,20 @@ With time-series data, the errors are likely autocorrelated, making classical
 SEs inconsistent. HAC (heteroskedasticity and autocorrelation consistent)
 standard errors account for both.
 
-### Specifying HAC standard errors
+### Specifying kernel-based standard errors
 
-Use `kernel` and `bw` (bandwidth) to request HAC inference. The `tvar`
-argument identifies the time variable, which `ivreg2r` uses to compute lags
-and detect gaps:
+Use `kernel`, `bw` (bandwidth), and `tvar` to request kernel-based inference.
+The type of VCE depends on the `vcov` setting: with `vcov = "robust"` (or
+when heteroskedasticity-robust VCE is already active), you get **HAC**
+(heteroskedasticity and autocorrelation consistent) standard errors. With the
+default `vcov = "iid"`, specifying a kernel gives **AC** (autocorrelation
+consistent) standard errors, which assume homoskedasticity but allow for
+serial correlation. This matches Stata's `ivreg2`, where `bw`/`kernel` alone
+produces AC and combining `robust` with `bw` produces HAC.
 
 ```{r hac-bartlett}
 fit_hac <- ivreg2(cinf ~ unem, data = phil,
-                  kernel = "bartlett", bw = 3, tvar = "year")
+                  vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year")
 summary(fit_hac)
 ```
 
@@ -180,6 +185,10 @@ DK is robust to arbitrary cross-sectional dependence --- useful when common
 shocks (business cycles, policy changes) affect all individuals
 simultaneously. DK is equivalent to clustering on the time variable with a
 kernel (Bartlett by default; can be overridden with the `kernel` argument).
+
+**Important:** Driscoll-Kraay is a large-T estimator --- the panel should have
+a reasonably long time-series dimension for the asymptotics to apply. It is
+not appropriate for panels with very few time periods.
 
 ### Cluster + kernel (Thompson)
 
