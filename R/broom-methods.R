@@ -103,14 +103,14 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
 #' @param ... Additional arguments (ignored).
 #' @return A single-row [tibble::tibble()].
 #'
-#'   **Always present** (24 columns):
+#'   **Always present** (26 columns):
 #'   `r.squared`, `adj.r.squared`, `sigma`, `statistic`, `p.value`, `df`,
 #'   `df.residual`, `nobs`, `vcov_type`, `small`, `weight_type`, `method`,
 #'   `lambda`, `kclass_value`, `fuller_parameter`, `coviv`, `center`, `psd`,
 #'   `kernel`, `bw`, `kiefer`, `dkraay`, `n_clusters1`, `n_clusters2`,
 #'   `cue_convergence`, `partial_ct`.
 #'
-#'   **When `diagnostics = TRUE`** (default, 24 additional columns):
+#'   **When `diagnostics = TRUE`** (default, 22 additional columns):
 #'   `weak_id_stat`, `weak_id_robust_stat`,
 #'   `underid_stat`, `underid_p`,
 #'   `overid_stat`, `overid_p`,
