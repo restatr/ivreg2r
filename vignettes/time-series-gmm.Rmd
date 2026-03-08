@@ -125,21 +125,22 @@ HAC allows both heteroskedasticity and autocorrelation; AC assumes
 homoskedastic errors with autocorrelation. AC is more efficient when
 homoskedasticity holds, at the cost of inconsistency if it does not.
 
-### HAC with IV
+### Kernel-based VCE with IV
 
-HAC standard errors work with all estimation methods. Here we instrument
-unemployment with its second lag:
+Kernel-based standard errors work with all estimation methods. Here we
+instrument unemployment with its second lag, using HAC (adding
+`vcov = "robust"`):
 
 ```{r hac-iv}
 fit_iv_hac <- ivreg2(
   cinf ~ unem_1 | unem | unem_2,
-  data = phil, kernel = "bartlett", bw = 3, tvar = "year"
+  data = phil, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year"
 )
 summary(fit_iv_hac)
 ```
 
 All diagnostics (overidentification, identification, endogeneity) automatically
-adapt to the HAC VCE.
+adapt to the kernel-based VCE.
 
 ## Panel VCE options
 

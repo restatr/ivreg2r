@@ -400,7 +400,8 @@ augment(fit_iv) |> head()
 | Reduced form | `ivreg2 ..., rf` | `ivreg2(..., reduced_form = "rf")` |
 | GMM2S | `ivreg2 ..., gmm2s` | `ivreg2(..., method = "gmm2s")` |
 | CUE | `ivreg2 ..., cue` | `ivreg2(..., method = "cue")` |
-| HAC kernel | `ivreg2 ..., kernel(bar) bw(3)` | `ivreg2(..., kernel = "bartlett", bw = 3, tvar = "year")` |
+| AC kernel | `ivreg2 ..., kernel(bar) bw(3)` | `ivreg2(..., kernel = "bartlett", bw = 3, tvar = "year")` |
+| HAC kernel | `ivreg2 ..., robust kernel(bar) bw(3)` | `ivreg2(..., vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year")` |
 | Auto bandwidth | `ivreg2 ..., kernel(bar) bw(auto)` | `ivreg2(..., kernel = "bartlett", bw = "auto", tvar = "year")` |
 | Driscoll-Kraay | `ivreg2 ..., dkraay(3)` | `ivreg2(..., dkraay = 3, tvar = "year", ivar = "id")` |
 | Kiefer VCE | `ivreg2 ..., kiefer` | `ivreg2(..., kiefer = TRUE, tvar = "year", ivar = "id")` |
