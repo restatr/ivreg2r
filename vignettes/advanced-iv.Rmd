@@ -28,6 +28,9 @@ workflow introduced in `vignette("introduction")`. Topics include:
 - Degrees-of-freedom adjustments
 - Factor variables
 
+For HAC/AC standard errors, GMM, CUE, Kiefer, Driscoll-Kraay, partialling,
+and user-supplied matrices, see `vignette("time-series-gmm")`.
+
 We use two datasets: the Mroz (1987) female labor supply data and the
 Wooldridge wage panel.
 
@@ -67,7 +70,11 @@ foundation for comparing estimators and exploring instrument diagnostics.
 ### LIML
 
 Limited Information Maximum Likelihood (LIML) is an alternative to 2SLS that
-is less biased when instruments are weak. Use `method = "liml"`:
+is more robust to weak instruments. Unlike 2SLS, LIML is approximately
+median-unbiased and its Wald test suffers less size distortion when instruments
+are weak (Stock & Yogo, 2005). However, LIML may lack finite moments,
+especially when the degree of overidentification is small. Use
+`method = "liml"`:
 
 ```{r liml}
 fit_liml <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
@@ -83,8 +90,9 @@ values of `lambda` indicate potential weak instrument problems.
 
 Fuller's (1977) modified LIML uses `k = lambda - alpha / (N - L)` where `L`
 is the number of instruments (including exogenous regressors) and `alpha` is
-the Fuller parameter. Use `fuller = 1` for bias correction or `fuller = 4` to
-target minimum MSE:
+the Fuller parameter. Unlike LIML, Fuller's estimator has finite moments.
+Use `fuller = 1` for approximate mean-unbiasedness (to order 1/N) or
+`fuller = 4` to target approximate minimum MSE:
 
 ```{r fuller}
 fit_fuller1 <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
@@ -104,12 +112,24 @@ fit_k05 <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
                   data = mroz_work, kclass = 0.5)
 ```
 
+### When to use LIML
+
+Use LIML when the Cragg-Donald or Kleibergen-Paap F statistic falls below the
+Stock-Yogo critical values for 2SLS size distortion. LIML has lower Stock-Yogo
+thresholds than 2SLS, meaning it tolerates weaker instruments before inference
+becomes unreliable. When exactly identified (one excluded instrument per
+endogenous variable), LIML and 2SLS are numerically identical --- LIML's
+advantages only appear in the overidentified case.
+
 ### COVIV
 
 When using LIML or k-class with robust or cluster-robust standard errors, the
 default sandwich bread uses the k-class projection matrix. The COVIV option
-(`coviv = TRUE`) switches to the 2SLS bread `(X_hat'X_hat)^{-1}`, which can be
-more robust to misspecification of the LIML model:
+(`coviv = TRUE`) computes the covariance matrix using the 2SLS projection
+(`k = 1`) rather than the LIML/k-class projection. Under iid errors, LIML with
+COVIV is equivalent to CUE (see Estimator Equivalences below). With robust or
+cluster-robust VCE, COVIV changes the bread matrix but uses the same LIML
+residuals for the meat:
 
 ```{r coviv}
 fit_coviv <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
@@ -142,6 +162,24 @@ With strong instruments (as in this specification), all estimators produce
 similar point estimates. Differences become more pronounced with weaker
 instruments.
 
+### Estimator equivalences
+
+Several estimators coincide under specific conditions:
+
+- **LIML + COVIV = CUE under iid errors**: under iid errors, LIML and CUE
+  produce identical coefficient estimates. Adding `coviv = TRUE` further
+  aligns the standard errors and test statistics, making the full output
+  match CUE to machine precision. CUE generalizes LIML to the non-IID case.
+- **Driscoll-Kraay = cluster(time) + kernel**: DK VCE is equivalent
+  to clustering on the time variable with a kernel (Bartlett by default) at
+  the specified bandwidth. See `vignette("time-series-gmm")` for details.
+- **Kiefer = truncated kernel at full bandwidth**: Kiefer VCE is equivalent
+  to AC VCE with a truncated kernel where the bandwidth equals T (the number
+  of time periods per panel unit). See `vignette("time-series-gmm")`.
+- **LIML = 2SLS when exactly identified**: with one excluded instrument per
+  endogenous variable, LIML reduces to 2SLS. LIML's advantages only appear
+  in the overidentified case.
+
 ## Instrument validity tests
 
 ### Overidentification recap
@@ -170,8 +208,11 @@ fit_orthog <- ivreg2(
 summary(fit_orthog)
 ```
 
-The orthogonality test null hypothesis is that `motheduc` is uncorrelated with
-the structural error. Failure to reject supports its validity as an instrument.
+The null hypothesis is that `motheduc` satisfies the exclusion restriction,
+*given that `fatheduc` is a valid instrument*. Failure to reject is consistent
+with its validity. Note that removing `motheduc` leaves the model exactly
+identified, so the restricted Sargan/J is zero and the C-statistic equals
+the full-model overidentification statistic.
 
 The test also works with robust and cluster-robust standard errors, where it
 uses the Hansen J difference form:
@@ -187,9 +228,12 @@ glance(fit_orthog_robust)[, c("orthog_stat", "orthog_p")]
 ### Anderson-Rubin LIML overidentification
 
 When using LIML with iid errors, two additional overidentification statistics
-are reported: the Anderson-Rubin likelihood-ratio (LR) statistic and its
-linearized form. These are alternatives to the Sargan test specific to the
-LIML framework:
+are reported. The Anderson-Rubin (1950) LR statistic is `N * log(lambda)` and
+its linearized form is `N * (lambda - 1)`, where `lambda` is the LIML
+eigenvalue. Both are chi-squared with `L - K` degrees of freedom under the null
+that the overidentifying restrictions hold. When `lambda` is close to 1, all
+three overidentification tests (Sargan, AR LR, AR linearized) give similar
+results:
 
 ```{r ar-overid}
 glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
@@ -200,17 +244,21 @@ glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
 
 ### Stock-Wright S statistic
 
-The Stock-Wright (2000) S statistic is a weak-instrument-robust analog of the
-overidentification test. Unlike the Wald test on 2SLS coefficients, the S
-statistic has correct size even when instruments are weak. It is automatically
-computed for all IV models:
+The Stock-Wright (2000) S statistic is a weak-instrument-robust test of the
+joint null hypothesis that the coefficients on the endogenous regressors are
+zero and that the overidentifying restrictions hold. Unlike Wald tests on 2SLS
+coefficients, the S statistic has correct size even when instruments are weak.
+It uses a GMM-distance formulation and is automatically computed for all IV
+models:
 
 ```{r stock-wright}
 glance(fit_2sls)[, c("stock_wright_stat", "stock_wright_p")]
 ```
 
-Under iid errors, the S statistic equals the Sargan statistic (for 2SLS). The
-two diverge with robust or clustered standard errors.
+Under iid errors with 2SLS, the S statistic and the Sargan statistic are
+closely related --- both are based on the same GMM objective function, though
+they test different null hypotheses (the S statistic includes the joint null
+that the endogenous coefficients are zero).
 
 ### When instruments are genuinely weak
 
@@ -277,10 +325,11 @@ se_comparison
 ```
 
 Two-way clustering uses the Cameron, Gelbach & Miller (2011) formula:
-`V_twoway = V_cluster1 + V_cluster2 - V_intersection`. The effective cluster
-count is `min(M1, M2)`. With 545 persons but only 8 years, the effective
-cluster count is 8, which affects degrees of freedom for t-tests (df = 7
-for the cluster dimension).
+`V_twoway = V_cluster1 + V_cluster2 - V_intersection`. The small-sample
+correction uses `min(M1, M2)` clusters, and t-tests use
+`min(M1, M2) - 1 = 7` degrees of freedom. With only 8 effective clusters,
+users should be cautious: the CGM two-way cluster-robust VCE requires both
+cluster dimensions to grow to infinity for consistency.
 
 ## Reduced-form regression
 
@@ -301,7 +350,9 @@ fit_rf <- ivreg2(
 # Reduced-form coefficients
 fit_rf$reduced_form$coefficients
 
-# The RF F-statistic for excluded instruments equals the Anderson-Rubin F
+# The RF F-statistic for excluded instruments IS the Anderson-Rubin F ---
+# the AR test is precisely this reduced-form F-test, which is why it
+# remains valid under weak instruments.
 fit_rf$reduced_form$f_stat
 ```
 
@@ -457,26 +508,11 @@ diag_table <- do.call(rbind, lapply(names(models), function(nm) {
 diag_table[, c("model", "method", "r.squared", "sigma", "nobs")]
 ```
 
-## Stata migration --- advanced features
+## Stata migration
 
-The table below maps Tier 2 Stata `ivreg2` commands to their `ivreg2r`
-equivalents. For the basic feature mapping, see `vignette("introduction")`.
-
-| Task | Stata | R (`ivreg2r`) |
-|------|-------|---------------|
-| LIML | `ivreg2 ..., liml` | `ivreg2(..., method = "liml")` |
-| Fuller(1) | `ivreg2 ..., fuller(1)` | `ivreg2(..., fuller = 1)` |
-| Fuller(4) | `ivreg2 ..., fuller(4)` | `ivreg2(..., fuller = 4)` |
-| k-class | `ivreg2 ..., kclass(0.5)` | `ivreg2(..., kclass = 0.5)` |
-| COVIV | `ivreg2 ..., liml coviv` | `ivreg2(..., method = "liml", coviv = TRUE)` |
-| Two-way cluster | `ivreg2 ..., cluster(g1 g2)` | `ivreg2(..., clusters = ~ g1 + g2)` |
-| Orthogonality test | `ivreg2 ..., orthog(z1)` | `ivreg2(..., orthog = c("z1"))` |
-| Frequency weights | `ivreg2 ... [fw=w]` | `ivreg2(..., weights = w, weight_type = "fweight")` |
-| Probability weights | `ivreg2 ... [pw=w]` | `ivreg2(..., weights = w, weight_type = "pweight")` |
-| DoF adjustment | `ivreg2 ..., dofminus(5)` | `ivreg2(..., dofminus = 5)` |
-| Small-sample DoF adj. | `ivreg2 ..., sdofminus(2)` | `ivreg2(..., sdofminus = 2)` |
-| Reduced form (y-eq) | `ivreg2 ..., rf` | `ivreg2(..., reduced_form = "rf")` |
-| Reduced form (system) | `ivreg2 ..., savesfirst` | `ivreg2(..., reduced_form = "system")` |
+For a comprehensive Stata-to-R translation table covering all features (basic
+IV, robust/cluster, LIML/k-class, GMM, HAC, and more), see the Stata migration
+section in `vignette("introduction")`.
 
 ## References
 
@@ -488,6 +524,9 @@ equivalents. For the basic feature mapping, see `vignette("introduction")`.
   29(2), 238--249.
 - Fuller, W.A. (1977). "Some Properties of a Modification of the Limited
   Information Estimator." *Econometrica*, 45(4), 939--953.
+- Hansen, L.P., Heaton, J., and Yaron, A. (1996). "Finite-Sample Properties
+  of Some Alternative GMM Estimators." *Journal of Business & Economic
+  Statistics*, 14(3), 262--280.
 - Hayashi, F. (2000). *Econometrics*. Princeton University Press.
 - Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married
   Women's Hours of Work to Economic and Statistical Assumptions."

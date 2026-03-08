@@ -16,12 +16,19 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-`ivreg2r` provides two-stage least squares (2SLS) estimation with automatic
-diagnostic tests for weak identification, underidentification, and
-overidentification. It is an R implementation inspired by Stata's `ivreg2`
-(Baum, Schaffer & Stillman), designed for applied researchers --- especially
-those migrating from Stata who expect rich diagnostics reported alongside
-their IV estimates.
+`ivreg2r` provides comprehensive instrumental variables and GMM estimation with
+automatic diagnostic tests. It supports 2SLS, LIML, Fuller, k-class, two-step
+efficient GMM, and continuously-updated (CUE) estimators with classical,
+robust, cluster-robust, HAC, and Driscoll-Kraay standard errors. It is an R
+implementation inspired by Stata's `ivreg2` (Baum, Schaffer & Stillman),
+designed for applied researchers --- especially those migrating from Stata who
+expect rich diagnostics reported alongside their IV estimates.
+
+This vignette covers the core workflow: OLS, 2SLS, diagnostics, robust and
+cluster-robust inference, weights, and broom integration. For LIML, k-class,
+and additional Tier 2 features, see `vignette("advanced-iv")`. For HAC/AC
+standard errors, GMM, CUE, partialling, and panel VCE options, see
+`vignette("time-series-gmm")`.
 
 We'll use the Card (1995) dataset throughout this vignette. Card uses
 geographic proximity to a four-year college as an instrument for years of
@@ -95,16 +102,18 @@ Weak instruments lead to biased 2SLS estimates and unreliable standard errors.
 **Stock-Yogo critical values** provide formal thresholds for the F statistic.
 Two types are available:
 
-- **IV size**: the critical value such that the true rejection rate of a
-  nominal 5% Wald test is no more than 10%, 15%, 20%, or 25%. For one
-  endogenous variable and one instrument, the 10% maximal size critical value
-  is 16.38.
-- **IV relative bias**: the critical value such that the relative bias of 2SLS
-  (compared to OLS) is no more than 5%, 10%, 20%, or 30%.
+- **IV size**: the critical value such that the *maximal* rejection rate of a
+  nominal 5% Wald test on the endogenous regressors' coefficients is no more
+  than 10%, 15%, 20%, or 25%. "Maximal" means the worst case over all possible
+  true parameter values. For one endogenous variable and one instrument, the
+  10% maximal-size critical value is 16.38.
+- **IV relative bias**: the critical value such that the *maximum* relative
+  bias of 2SLS (relative to OLS bias) is no more than 5%, 10%, 20%, or 30%.
 
-A common rule of thumb is "F > 10 means instruments are strong enough," but the
-Stock-Yogo tables give more precise guidance that accounts for the number of
-endogenous regressors and instruments (Stock & Yogo, 2005).
+A common rule of thumb is "F > 10 means instruments are strong enough" (Staiger
+& Stock, 1997), but the Stock-Yogo (2005) tables give more precise guidance
+that accounts for the number of endogenous regressors and instruments, and
+distinguish between size distortion and relative bias criteria.
 
 The Cragg-Donald F assumes iid errors. Under heteroskedasticity or clustering,
 the Kleibergen-Paap rk Wald F is the appropriate analog (see the robust
@@ -154,8 +163,10 @@ Important caveats:
 - The test is only available when the model is overidentified (more excluded
   instruments than endogenous regressors). With exact identification, there are
   no testable restrictions.
-- The test has low power when instruments are weak --- failure to reject does
-  not guarantee that the instruments are valid.
+- The test has low power when instruments are weak. More generally, failure to
+  reject does not guarantee instrument validity --- the test can only detect
+  violations of the *overidentifying* restrictions and has no power against
+  alternatives where all instruments are invalid in the same direction.
 
 To test a *subset* of instruments while maintaining the rest, use the `orthog`
 argument --- see `vignette("advanced-iv")` for details.
@@ -185,15 +196,19 @@ t-test on 2SLS coefficients --- which can be severely distorted by weak
 instruments --- the AR test has correct size regardless of instrument strength.
 
 The null hypothesis is that the coefficients on the endogenous regressors are
-jointly zero *and* the overidentifying restrictions hold.
+jointly zero *and* the overidentifying restrictions hold. When the model is
+overidentified, rejection could indicate either nonzero coefficients or invalid
+overidentifying restrictions (or both). In the just-identified case, the
+overidentifying restrictions are trivially satisfied and the test is purely
+about the coefficients.
 
 This serves as a useful cross-check: if the standard t-test says an endogenous
 regressor is significant but the AR test does not reject, weak instruments may
 be distorting inference.
 
-The Stock-Wright (2000) S statistic is a related weak-instrument-robust test
-that is also automatically computed. See `vignette("advanced-iv")` for more on
-weak-instrument-robust inference.
+The Stock-Wright (2000) S statistic tests the same joint null hypothesis using
+a GMM-distance formulation. It is also automatically computed. See
+`vignette("advanced-iv")` for more on weak-instrument-robust inference.
 
 ## First-stage diagnostics
 
@@ -201,12 +216,18 @@ The summary output also reports a table of first-stage diagnostics for each
 endogenous variable:
 
 - **F-stat**: the partial F-test of the excluded instruments in the first-stage
-  regression. This is the standard measure of instrument relevance.
+  regression. This is the standard measure of instrument relevance for each
+  endogenous variable individually. With multiple endogenous regressors, high
+  individual F statistics are necessary but not sufficient --- the Cragg-Donald
+  or Kleibergen-Paap multivariate statistics provide the proper joint test.
 - **Partial R-sq**: the partial R-squared from the first-stage regression,
   measuring the fraction of variation in the endogenous variable explained by
   the excluded instruments after partialling out the exogenous regressors.
-- **Shea partial R-sq**: Shea's (1997) partial R-squared, which accounts for
-  intercorrelations among instruments. With a single endogenous variable, this
+- **Shea partial R-sq**: Shea's (1997) partial R-squared, which adjusts for
+  intercorrelations among the *endogenous regressors* in the first stage. When
+  the instruments predict multiple endogenous variables in similar ways, Shea's
+  measure will be lower than the standard partial R-squared, signaling a
+  potential identification problem. With a single endogenous variable, it
   equals the standard partial R-squared.
 - **SW F** and **AP F**: Sanderson-Windmeijer (2016) and Angrist-Pischke
   (2009) conditional F statistics. With a single endogenous variable, SW F =
@@ -263,8 +284,14 @@ For two-way clustering (e.g., by firm and year in a panel), use
 | `"iid"` | — | `TRUE` | `ivreg2 ..., small` |
 | `"robust"` | — | `FALSE` | `ivreg2 ..., robust` |
 | `"robust"` | — | `TRUE` | `ivreg2 ..., robust small` |
-| `"iid"` | `~ var` | `FALSE` | `ivreg2 ..., cluster(var)` |
-| `"iid"` | `~ var` | `TRUE` | `ivreg2 ..., cluster(var) small` |
+| — | `~ var` | `FALSE` | `ivreg2 ..., cluster(var)` |
+| — | `~ var` | `TRUE` | `ivreg2 ..., cluster(var) small` |
+
+When `clusters` is supplied, VCE is automatically cluster-robust regardless of
+the `vcov` argument.
+
+For HAC, AC, Kiefer, and Driscoll-Kraay VCE options, see
+`vignette("time-series-gmm")`.
 
 ## Weighted estimation
 
@@ -291,9 +318,9 @@ probability/sampling weights (`weight_type = "pweight"`). See
 
 This vignette focuses on 2SLS, but `ivreg2r` also supports LIML, Fuller,
 and k-class estimation via the `method`, `fuller`, and `kclass` arguments.
-These alternative estimators are less biased than 2SLS when instruments are
-weak, at the cost of slightly larger variance. See `vignette("advanced-iv")`
-for examples and comparisons.
+LIML has smaller approximate bias than 2SLS when there are many or weak
+instruments. Fuller's modified LIML further improves on LIML by having finite
+moments. See `vignette("advanced-iv")` for examples and comparisons.
 
 ## Confidence intervals
 
@@ -365,8 +392,33 @@ augment(fit_iv) |> head()
 | Probability weights | `ivreg2 ... [pw=w]` | `ivreg2(..., weights = w, weight_type = "pweight")` |
 | DoF adjustment | `ivreg2 ..., dofminus(5)` | `ivreg2(..., dofminus = 5)` |
 | Reduced form | `ivreg2 ..., rf` | `ivreg2(..., reduced_form = "rf")` |
+| GMM2S | `ivreg2 ..., gmm2s` | `ivreg2(..., method = "gmm2s")` |
+| CUE | `ivreg2 ..., cue` | `ivreg2(..., method = "cue")` |
+| HAC kernel | `ivreg2 ..., kernel(bar) bw(3)` | `ivreg2(..., kernel = "bartlett", bw = 3, tvar = "year")` |
+| Auto bandwidth | `ivreg2 ..., kernel(bar) bw(auto)` | `ivreg2(..., kernel = "bartlett", bw = "auto", tvar = "year")` |
+| Driscoll-Kraay | `ivreg2 ..., dkraay(3)` | `ivreg2(..., dkraay = 3, tvar = "year", ivar = "id")` |
+| Kiefer VCE | `ivreg2 ..., kiefer` | `ivreg2(..., kiefer = TRUE, tvar = "year", ivar = "id")` |
+| Partialling | `ivreg2 ..., partial(x1)` | `ivreg2(..., partial = c("x1"))` |
+| Redundancy test | `ivreg2 ..., redundant(z1)` | `ivreg2(..., redundant = c("z1"))` |
+| User W matrix | `ivreg2 ..., wmatrix(name)` | `ivreg2(..., wmatrix = W)` |
+| Center moments | `ivreg2 ..., center` | `ivreg2(..., center = TRUE)` |
 
-See `vignette("advanced-iv")` for detailed examples of all advanced features.
+See `vignette("advanced-iv")` for LIML, k-class, two-way clustering, and model
+comparison examples. See `vignette("time-series-gmm")` for HAC/AC, GMM, CUE,
+partialling, and panel VCE examples.
+
+### Intentional differences from Stata
+
+| Area | Stata `ivreg2` | `ivreg2r` | Rationale |
+|------|----------------|-----------|-----------|
+| Formula | `ivreg2 y x (endo = z)` | `y ~ x \| endo \| z` | R convention; each variable listed once |
+| Numerical method | Cross-products via Mata | QR-based regression via `lm.fit` | Better conditioning for core estimation |
+| Diagnostics | Some computed at post-estimation | All computed at estimation time | Always available in `glance()` |
+| Sigma (weighted) | Weights normalized to sum to N | Same convention | Matches Stata; differs from R's `lm()` by `sqrt(N/sum(w))` |
+| Factor variables | `i.` prefix syntax | R `model.matrix()` / contrasts | R convention |
+| COVIV | Implicit for LIML+robust | Explicit `coviv = TRUE` | Explicit > implicit |
+| Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |
+| CUE optimizer | Mata `optimize()` | R `optim()` (BFGS + Nelder-Mead) | Different optimizer, same objective |
 
 ## References
 
@@ -398,6 +450,10 @@ See `vignette("advanced-iv")` for detailed examples of all advanced features.
   Instrumental Variables." *Econometrica*, 26(3), 393--415.
 - Shea, J. (1997). "Instrument Relevance in Multivariate Linear Models: A
   Simple Measure." *Review of Economics and Statistics*, 79(2), 348--352.
+- Staiger, D. and Stock, J.H. (1997). "Instrumental Variables Regression with
+  Weak Instruments." *Econometrica*, 65(3), 557--586.
+- Stock, J.H. and Wright, J.H. (2000). "GMM with Weak Identification."
+  *Econometrica*, 68(5), 1055--1096.
 - Stock, J.H. and Yogo, M. (2005). "Testing for Weak Instruments in Linear IV
   Regression." In D.W.K. Andrews and J.H. Stock (Eds.), *Identification and
   Inference for Econometric Models: Essays in Honor of Thomas Rothenberg*.
