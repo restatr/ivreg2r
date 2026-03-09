@@ -247,6 +247,11 @@ By default, \code{sdofminus} is automatically incremented by the number of
 partialled variables (including the constant). Use \code{nopartialsmall = TRUE}
 to suppress this adjustment.
 
+\strong{Note:} FWL invariance holds for OLS, 2SLS, LIML, and two-step GMM, but
+\strong{not} for CUE. The CUE objective recomputes the moment covariance at each
+iteration, so partialled residuals produce a different optimization surface.
+A warning is issued when \code{partial} is used with \code{method = "cue"}.
+
 After partialling, \code{predict()} is restricted to residuals only (no
 \code{newdata}). Summary output notes that total SS, model F, and R-squared
 are partial-model values.

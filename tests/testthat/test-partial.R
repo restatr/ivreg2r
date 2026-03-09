@@ -623,6 +623,40 @@ test_that("FWL theorem: partial(_cons) coefficients match full model", {
 # ===========================================================================
 # Interaction with sdofminus parameter
 # ===========================================================================
+# ===========================================================================
+# CUE + partial: warning and non-invariance
+# ===========================================================================
+test_that("CUE + partial emits FWL non-invariance warning", {
+  skip_if_not(file.exists(card_path))
+  expect_warning(
+    ivreg2(lwage ~ exper + expersq + black + south + smsa |
+             educ | nearc2 + nearc4,
+           data = card, method = "cue", partial = "smsa"),
+    "FWL invariance does not hold for CUE"
+  )
+})
+
+test_that("CUE + partial is NOT FWL-invariant with robust VCE", {
+  skip_if_not(file.exists(card_path))
+  # Under IID, CUE = LIML which IS FWL-invariant.
+  # Non-invariance requires a heteroskedasticity-robust S matrix.
+  fit_full <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+                       educ | nearc2 + nearc4,
+                     data = card, method = "cue", vcov = "robust")
+  fit_partial <- suppressWarnings(ivreg2(
+    lwage ~ exper + expersq + black + south + smsa |
+      educ | nearc2 + nearc4,
+    data = card, method = "cue", vcov = "robust", partial = "smsa"))
+  shared <- intersect(names(coef(fit_full)), names(coef(fit_partial)))
+  # At least one coefficient should differ (non-invariance)
+  diffs <- vapply(shared, function(nm) {
+    abs(coef(fit_full)[nm] - coef(fit_partial)[nm])
+  }, numeric(1))
+  expect_true(max(diffs) > 1e-6,
+              info = "CUE + partial should NOT be FWL-invariant with robust VCE")
+})
+
+
 test_that("partial + sdofminus stack correctly", {
   skip_if_not(file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |

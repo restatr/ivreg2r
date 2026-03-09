@@ -182,6 +182,11 @@
 #'   partialled variables (including the constant). Use `nopartialsmall = TRUE`
 #'   to suppress this adjustment.
 #'
+#'   **Note:** FWL invariance holds for OLS, 2SLS, LIML, and two-step GMM, but
+#'   **not** for CUE. The CUE objective recomputes the moment covariance at each
+#'   iteration, so partialled residuals produce a different optimization surface.
+#'   A warning is issued when `partial` is used with `method = "cue"`.
+#'
 #'   After partialling, `predict()` is restricted to residuals only (no
 #'   `newdata`). Summary output notes that total SS, model F, and R-squared
 #'   are partial-model values.
@@ -588,6 +593,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
   if (method == "cue" && !is.null(smatrix)) {
     stop("Cannot specify `smatrix` with `method = \"cue\"`.", call. = FALSE)
+  }
+  if (method == "cue" && !is.null(partial)) {
+    warning("FWL invariance does not hold for CUE: results with `partial` may ",
+            "differ from the equivalent unpartialled specification ",
+            "(Baum, Schaffer & Stillman, 2007, p. 484).", call. = FALSE)
   }
   # wmatrix/smatrix mutual exclusion with liml (check after method validation)
   if (!is.null(wmatrix) && method %in% c("liml", "kclass"))
