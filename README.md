@@ -114,9 +114,8 @@ A one-part formula (`y ~ x1 + x2`) estimates OLS with the same diagnostics.
 
 ## Stata parity
 
-All outputs match Stata within tight numerical tolerances (coefficients/SEs to
-1e-6 relative, test statistics to 1e-4 relative). Verified against 900+ Stata
-fixture files and 8,600+ automated tests. Stata statistical conventions are
+All outputs match Stata within tight numerical tolerances, verified against
+900+ Stata fixture files and 8,600+ automated tests. Stata statistical conventions are
 followed by default (e.g., sigma normalization for weighted models).
 
 ## Learn more
