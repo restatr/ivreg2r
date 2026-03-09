@@ -44,9 +44,19 @@ muffle_rank_warnings <- function(expr) {
 }
 
 stata_tol <- list(
-  coef = 1e-6,   # coefficients       (observed R-vs-Stata: ~5e-8)
-  se   = 1e-6,   # standard errors    (observed R-vs-Stata: ~4.5e-9)
-  vcov = 1e-6,   # VCV matrix elements (observed R-vs-Stata: ~9e-9)
-  stat = 1e-4,   # test statistics (F, chi-sq, LM, J) — not yet measured
-  pval = 1e-4    # p-values (absolute) — not yet measured
+  coef = 1e-6,   # coefficients       (2SLS observed: ~5e-8, LIML: ~4e-6)
+  se   = 1e-6,   # standard errors    (2SLS observed: ~5e-9, LIML+cl: ~2e-6)
+  vcov = 1e-6,   # VCV matrix elements (2SLS observed: ~9e-9, LIML+cl: ~4e-6)
+  stat = 1e-4,   # test statistics (F, chi-sq, LM, J) — observed worst: ~6e-6
+  pval = 1e-4    # p-values (absolute) — observed worst: ~6e-6
 )
+
+# Known exceptions: some test files use wider tolerances for specific configs.
+# These are documented here for auditability:
+#
+#   test-cue.R:     coef/se/vcov = 5e-6  (CUE optimizer noise)
+#   test-center.R:  coef/se/vcov = 2e-5  (CUE + centered moments)
+#   test-dofminus.R: se/vcov = 1e-5      (M=2 cluster on Card data)
+#   test-user-matrices.R: vcov = 1e-5    (Hessian condition number)
+#
+# Run `Rscript pkg/tests/audit-tolerances.R` to measure actual discrepancies.

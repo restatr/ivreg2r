@@ -1,6 +1,6 @@
 Package: ivreg2r
 Title: Extended Instrumental Variables Estimation with Diagnostics
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R:
     person("Francis", "DiTraglia", , email = "francis.ditraglia@economics.ox.ac.uk", role = c("aut", "cre"))
 Description: Comprehensive instrumental variables and GMM estimation with

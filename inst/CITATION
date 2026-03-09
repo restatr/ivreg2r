@@ -1,0 +1,41 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "ivreg2r: Extended Instrumental Variables Estimation with Diagnostics",
+  author   = person("Francis", "DiTraglia"),
+  year     = "2026",
+  note     = "R package",
+  url      = "https://github.com/restatr/ivreg2r"
+)
+
+bibentry(
+  bibtype  = "Article",
+  title    = "Instrumental Variables and {GMM}: Estimation and Testing",
+  author   = c(
+    person("Christopher F.", "Baum"),
+    person("Mark E.", "Schaffer"),
+    person("Steven", "Stillman")
+  ),
+  journal  = "The Stata Journal",
+  year     = "2003",
+  volume   = "3",
+  number   = "1",
+  pages    = "1--31",
+  doi      = "10.1177/1536867X0300300101",
+  header   = "The Stata ivreg2 command that inspired this package is described in:"
+)
+
+bibentry(
+  bibtype  = "Article",
+  title    = "Enhanced Routines for Instrumental Variables/Generalized Method of Moments Estimation and Testing",
+  author   = c(
+    person("Christopher F.", "Baum"),
+    person("Mark E.", "Schaffer"),
+    person("Steven", "Stillman")
+  ),
+  journal  = "The Stata Journal",
+  year     = "2007",
+  volume   = "7",
+  number   = "4",
+  pages    = "465--506",
+  doi      = "10.1177/1536867X0800700402"
+)
