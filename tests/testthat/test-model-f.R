@@ -395,3 +395,18 @@ test_that(".compute_model_f returns NA for indefinite VCV", {
   )
   expect_true(is.na(result$model_f))
 })
+
+test_that(".compute_model_f keeps scale-disparate full-rank VCVs on Cholesky path", {
+  result <- ivreg2r:::.compute_model_f(
+    coefficients = c("(Intercept)" = 0, x1 = 1, x2 = 1),
+    vcov = diag(c(1, 1e18, 1)),
+    N = 10L, K = 3L,
+    has_intercept = TRUE,
+    vcov_type = "iid",
+    small = TRUE
+  )
+
+  expect_equal(result$model_f, 0.5, tolerance = 1e-15)
+  expect_equal(result$model_f_df1, 2L)
+  expect_equal(result$model_f_df2, 7L)
+})

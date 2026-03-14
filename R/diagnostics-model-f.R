@@ -62,10 +62,12 @@
   # The fallback matches Stata's `syminv()` algorithm used by `test`.
   chi2 <- tryCatch({
     R_chol <- chol(V_s)
-    # Cholesky can succeed on near-singular matrices but lose all precision.
-    # Check condition via Cholesky diagonal: kappa(V) ≈ (max/min)^2.
-    cond_r <- max(diag(R_chol)) / min(diag(R_chol))
-    if (cond_r > 1e8) stop("ill-conditioned")
+
+    # Cholesky can succeed on numerically singular matrices. Assess
+    # conditioning after scaling to correlation form so the guard is
+    # invariant to coefficient units.
+    if (.is_badly_conditioned_vcov(V_s)) stop("numerically singular")
+
     z <- forwardsolve(t(R_chol), beta_s)
     drop(crossprod(z))
   }, error = function(e) {
@@ -130,6 +132,26 @@
     model_f_df1 = as.integer(df1),
     model_f_df2 = df2
   )
+}
+
+
+# --------------------------------------------------------------------------
+# .is_badly_conditioned_vcov
+# --------------------------------------------------------------------------
+#' Scale-invariant singularity check for covariance matrices
+#'
+#' Cholesky factorization can succeed on matrices that are numerically
+#' singular in floating-point arithmetic. To avoid treating coefficient scale
+#' differences as singularity, this check first rescales to correlation form
+#' and then uses the reciprocal condition estimate.
+#'
+#' @param V Symmetric positive definite covariance matrix.
+#' @return Logical scalar: `TRUE` when `V` is numerically singular.
+#' @keywords internal
+.is_badly_conditioned_vcov <- function(V) {
+  C <- tryCatch(stats::cov2cor(V), warning = function(w) V, error = function(e) V)
+  rc <- rcond(C)
+  !is.finite(rc) || rc < sqrt(.Machine$double.eps)
 }
 
 
