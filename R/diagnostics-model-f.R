@@ -62,6 +62,10 @@
   # The fallback matches Stata's `syminv()` algorithm used by `test`.
   chi2 <- tryCatch({
     R_chol <- chol(V_s)
+    # Cholesky can succeed on near-singular matrices but lose all precision.
+    # Check condition via Cholesky diagonal: kappa(V) ≈ (max/min)^2.
+    cond_r <- max(diag(R_chol)) / min(diag(R_chol))
+    if (cond_r > 1e8) stop("ill-conditioned")
     z <- forwardsolve(t(R_chol), beta_s)
     drop(crossprod(z))
   }, error = function(e) {

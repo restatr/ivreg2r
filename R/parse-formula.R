@@ -128,7 +128,13 @@ NULL
     .check_duplicates(formula)
 
     # Compose X and Z
-    X <- cbind(exog, endo)
+    # Endogenous before exogenous (matching Stata/ivreg convention), but
+    # intercept stays first (R model.matrix convention).
+    X <- cbind(endo, exog)
+    if (has_intercept && "(Intercept)" %in% colnames(X)) {
+      ic <- which(colnames(X) == "(Intercept)")
+      if (ic != 1L) X <- X[, c(ic, setdiff(seq_len(ncol(X)), ic)), drop = FALSE]
+    }
     Z <- cbind(exog, excluded)
   }
 
@@ -210,7 +216,11 @@ NULL
       excluded <- NULL
       n_rhs <- 1L
     } else {
-      X <- cbind(exog, endo)
+      X <- cbind(endo, exog)
+      if (has_intercept && "(Intercept)" %in% colnames(X)) {
+        ic <- which(colnames(X) == "(Intercept)")
+        if (ic != 1L) X <- X[, c(ic, setdiff(seq_len(ncol(X)), ic)), drop = FALSE]
+      }
       Z <- cbind(exog, excluded)
     }
 
@@ -332,7 +342,7 @@ NULL
   # --- 9. Build terms objects ---
   # When reclassification or drops changed the variable lists, rebuild terms
   # from the surviving names rather than from the original formula parts.
-  all_reg_labels <- c(exog_names, endo_names)
+  all_reg_labels <- c(endo_names, exog_names)
   mt_regressors <- if (length(all_reg_labels) == 0L) {
     # Intercept-only model
     mt_exog

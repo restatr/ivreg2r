@@ -118,7 +118,7 @@ test_that("OLS: dimension counts correct", {
 test_that("IV: correct X/Z composition", {
   d <- make_test_data()
   result <- .parse_formula(y ~ x1 | endo1 | z1, data = d)
-  expect_equal(colnames(result$X), c("(Intercept)", "x1", "endo1"))
+  expect_equal(colnames(result$X), c("(Intercept)", "endo1", "x1"))
   expect_equal(colnames(result$Z), c("(Intercept)", "x1", "z1"))
 })
 

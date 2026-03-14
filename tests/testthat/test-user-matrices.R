@@ -343,12 +343,12 @@ test_that("wmatrix identity robust: VCV matches Stata", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", wmatrix = diag(7))
   # Stata VCV is in Stata's coefficient order (educ, exper, ..., _cons);
-  # R VCV is in R's coefficient order (Intercept, exper, ..., educ).
+  # R VCV is in R's coefficient order (Intercept, educ, exper, ...).
   # Reorder Stata VCV to match R's order for comparison.
   stata_coef_order <- c("educ", "exper", "expersq", "black", "south",
                          "(Intercept)")
-  r_coef_order <- c("(Intercept)", "exper", "expersq", "black", "south",
-                     "educ")
+  r_coef_order <- c("(Intercept)", "educ", "exper", "expersq", "black",
+                     "south")
   V_stata <- read_vcov_fixture(fixture_path)
   perm <- match(r_coef_order, stata_coef_order)
   V_stata <- unname(V_stata[perm, perm])

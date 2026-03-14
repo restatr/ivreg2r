@@ -283,7 +283,7 @@ test_that("kclass(0) matches OLS exactly", {
   fit_ols <- ivreg2(lwage ~ exper + expersq + black + south + educ, data = card)
 
   # OLS with all regressors (including educ)
-  expect_equal(unname(coef(fit_k0)), unname(coef(fit_ols)), tolerance = 1e-10)
+  expect_equal(coef(fit_k0)[names(coef(fit_ols))], coef(fit_ols), tolerance = 1e-10)
   expect_equal(fit_k0$sigma, fit_ols$sigma, tolerance = 1e-10)
 })
 
