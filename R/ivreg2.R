@@ -1413,6 +1413,320 @@
 }
 
 
+#' Compute all diagnostic tests, reduced-form regression, and model F.
+#'
+#' Derives effective_vcov_type, resets center if no effect, runs 11 diagnostic
+#' tests (gated by b0), reduced-form regression, and model F-test.
+#'
+#' @return Named list with diagnostics, first_stage, reduced_form_result,
+#'   model_f_result, effective_vcov_type, center.
+#' @noRd
+.compute_diagnostics <- function(fit, parsed, prep, opts, method, bw) {
+  vcov <- opts$vcov
+  kernel <- opts$kernel
+  small <- opts$small
+  dofminus <- opts$dofminus
+  fuller <- opts$fuller
+  kiefer <- opts$kiefer
+  endog <- opts$endog
+  orthog <- opts$orthog
+  redundant <- opts$redundant
+  weight_type <- opts$weight_type
+  center <- opts$center
+  psd <- opts$psd
+  reduced_form <- opts$reduced_form
+  ivar <- opts$ivar
+  b0 <- opts$b0
+
+  sdofminus   <- prep$sdofminus
+  cluster_vec <- prep$cluster_vec
+  time_index  <- prep$time_index
+  M           <- prep$M
+
+  # Derive effective VCE type
+  effective_vcov_type <- if (!is.null(cluster_vec)) {
+    "CL"
+  } else if (vcov == "HAC") {
+    "HAC"
+  } else if (vcov == "AC") {
+    "AC"
+  } else {
+    vcov
+  }
+
+  # Warn and reset center if it has no effect
+  if (center && effective_vcov_type %in% c("iid", "AC")) {
+    warning("`center = TRUE` has no effect with ", effective_vcov_type,
+            " VCE (centering only applies to robust/cluster/HAC).",
+            call. = FALSE)
+    center <- FALSE
+  }
+
+  diagnostics <- list()
+  first_stage <- NULL
+  if (parsed$is_iv) {
+
+    # Overidentification test (D1)
+    if (method %in% c("gmm2s", "gmmw", "cue")) {
+      overid_test_name <- if (method %in% c("gmmw", "cue")) {
+        "Hansen J"
+      } else if (effective_vcov_type %in% c("iid", "AC")) {
+        "Sargan"
+      } else {
+        "Hansen J"
+      }
+      diagnostics$overid <- list(
+        stat = fit$j_stat, p = fit$j_p,
+        df = fit$j_df, test_name = overid_test_name
+      )
+    } else {
+    diagnostics$overid <- .compute_overid_test(
+      Z = parsed$Z, X = parsed$X, y = parsed$y,
+      residuals = fit$residuals, rss = fit$rss,
+      weights = parsed$weights, cluster_vec = cluster_vec,
+      vcov_type = effective_vcov_type, is_iv = parsed$is_iv,
+      N = parsed$N, K = parsed$K, L = parsed$L,
+      overid_df = parsed$overid_df, dofminus = dofminus,
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center, psd = psd
+    )
+    }
+
+    # b0 suppresses all identification diagnostics (Stata line 3819)
+    if (is.null(b0)) {
+
+    # AR LIML overidentification (H3)
+    if (method == "liml" && effective_vcov_type == "iid") {
+      diagnostics$anderson_rubin_overid <- .compute_ar_liml_overid(
+        lambda = fit$lambda, N = parsed$N,
+        overid_df = parsed$overid_df, dofminus = dofminus
+      )
+    }
+
+    # Identification tests (D2)
+    id_vcov_type <- if (isTRUE(kiefer)) "iid" else effective_vcov_type
+    id_kernel    <- if (isTRUE(kiefer)) NULL else kernel
+    id_tests <- .compute_id_tests(
+      X = parsed$X, Z = parsed$Z, y = parsed$y,
+      residuals = fit$residuals, weights = parsed$weights,
+      cluster_vec = cluster_vec, vcov_type = id_vcov_type,
+      N = parsed$N, K = parsed$K, L = parsed$L,
+      K1 = parsed$K1, L1 = parsed$L1, M = M,
+      endo_names = parsed$endo_colnames,
+      excluded_names = parsed$excluded_colnames,
+      has_intercept = parsed$has_intercept,
+      dofminus = dofminus, sdofminus = sdofminus,
+      weight_type = weight_type,
+      kernel = id_kernel, bw = bw, time_index = time_index,
+      psd = psd
+    )
+    diagnostics$underid        <- id_tests$underid
+    diagnostics$weak_id        <- id_tests$weak_id
+    diagnostics$weak_id_robust <- id_tests$weak_id_robust
+
+    # Stock-Yogo critical values (D3)
+    sy_method <- if (method %in% c("gmm2s", "gmmw")) {
+      "2sls"
+    } else if (method == "cue") {
+      "liml"
+    } else {
+      method
+    }
+    diagnostics$weak_id_sy <- .stock_yogo_lookup(
+      parsed$K1, parsed$L1, method = sy_method, fuller = fuller
+    )
+
+    # First-stage diagnostics (E1)
+    first_stage <- .compute_first_stage(
+      X = parsed$X, Z = parsed$Z,
+      weights = parsed$weights, cluster_vec = cluster_vec,
+      vcov_type = effective_vcov_type,
+      endo_names = parsed$endo_colnames,
+      excluded_names = parsed$excluded_colnames,
+      N = parsed$N, K = parsed$K, L = parsed$L,
+      K1 = parsed$K1, L1 = parsed$L1, M = M,
+      bread_2sls = fit$bread,
+      dofminus = dofminus, sdofminus = sdofminus,
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center
+    )
+
+    # Anderson-Rubin test (E3)
+    diagnostics$anderson_rubin <- .compute_anderson_rubin(
+      Z = parsed$Z, X = parsed$X, y = parsed$y,
+      weights = parsed$weights, cluster_vec = cluster_vec,
+      vcov_type = effective_vcov_type,
+      N = parsed$N, K = parsed$K, L = parsed$L,
+      K1 = parsed$K1, L1 = parsed$L1, M = M,
+      endo_names = parsed$endo_colnames,
+      excluded_names = parsed$excluded_colnames,
+      dofminus = dofminus, sdofminus = sdofminus,
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center
+    )
+
+    # Stock-Wright S statistic (J2)
+    diagnostics$stock_wright <- .compute_stock_wright(
+      Z = parsed$Z, X = parsed$X, y = parsed$y,
+      weights = parsed$weights, cluster_vec = cluster_vec,
+      vcov_type = effective_vcov_type,
+      N = parsed$N, K1 = parsed$K1, L1 = parsed$L1,
+      endo_names = parsed$endo_colnames, dofminus = dofminus,
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index,
+      center = center, psd = psd
+    )
+
+    # Endogeneity test / C-statistic (E4)
+    endog_cols <- NULL
+    if (!is.null(endog)) {
+      bad <- setdiff(endog, parsed$endo_names)
+      if (length(bad) > 0L) {
+        stop("`endog` contains variables not in the endogenous list: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      endog_cols <- .expand_terms_to_colnames(
+        endog, parsed$endo_names, parsed$endo_colnames, parsed$endo_assign
+      )
+    }
+    diagnostics$endogeneity <- .compute_endogeneity_test(
+      Z = parsed$Z, X = parsed$X, y = parsed$y,
+      residuals = fit$residuals, rss = fit$rss,
+      weights = parsed$weights, cluster_vec = cluster_vec,
+      vcov_type = effective_vcov_type,
+      N = parsed$N, K = parsed$K, L = parsed$L,
+      K1 = parsed$K1, endo_names = parsed$endo_colnames,
+      endog_vars = endog_cols, dofminus = dofminus,
+      weight_type = weight_type,
+      kernel = kernel, bw = bw, time_index = time_index,
+      psd = psd
+    )
+
+    # Orthogonality test (J1)
+    if (!is.null(orthog) && length(orthog) > 0L) {
+      valid_terms <- c(parsed$excluded_names, parsed$exog_term_labels)
+      bad <- setdiff(orthog, valid_terms)
+      if (length(bad) > 0L) {
+        stop("`orthog` contains variables not in the instrument list: ",
+             paste0("'", bad, "'", collapse = ", "),
+             ". Must be excluded or exogenous instruments (not endogenous ",
+             "regressors or the intercept).", call. = FALSE)
+      }
+      orthog_in_excl <- intersect(orthog, parsed$excluded_names)
+      orthog_in_exog <- intersect(orthog, parsed$exog_term_labels)
+      orthog_cols <- c(
+        .expand_terms_to_colnames(orthog_in_excl, parsed$excluded_names,
+                                   parsed$excluded_colnames,
+                                   parsed$excluded_assign),
+        .expand_terms_to_colnames(orthog_in_exog, parsed$exog_term_labels,
+                                   parsed$exog_colnames, parsed$exog_assign)
+      )
+      partialled_out <- setdiff(orthog_cols, colnames(parsed$Z))
+      if (length(partialled_out) > 0L) {
+        stop("Cannot test orthogonality of variables that were partialled out: ",
+             paste0("'", partialled_out, "'", collapse = ", "),
+             ". Remove these from `orthog` or `partial`.", call. = FALSE)
+      }
+      diagnostics$orthog <- .compute_orthog_test(
+        Z = parsed$Z, X = parsed$X, y = parsed$y,
+        residuals = fit$residuals, rss = fit$rss,
+        weights = parsed$weights, cluster_vec = cluster_vec,
+        vcov_type = effective_vcov_type,
+        N = parsed$N, K = parsed$K, L = parsed$L,
+        orthog_vars = orthog_cols, dofminus = dofminus,
+        weight_type = weight_type,
+        kernel = kernel, bw = bw, time_index = time_index,
+        center = center, psd = psd,
+        omega = fit$omega
+      )
+    }
+
+    # Redundancy test (P1)
+    if (!is.null(redundant) && length(redundant) > 0L) {
+      bad <- setdiff(redundant, parsed$excluded_names)
+      if (length(bad) > 0L) {
+        stop("`redundant` contains variables not in the excluded instrument list: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      redundant_cols <- .expand_terms_to_colnames(
+        redundant, parsed$excluded_names, parsed$excluded_colnames,
+        parsed$excluded_assign
+      )
+      diagnostics$redundancy <- .compute_redundancy_test(
+        X = parsed$X, Z = parsed$Z,
+        weights = parsed$weights, cluster_vec = cluster_vec,
+        vcov_type = effective_vcov_type,
+        N = parsed$N, K1 = parsed$K1,
+        endo_colnames = parsed$endo_colnames,
+        excluded_colnames = parsed$excluded_colnames,
+        redundant_vars = redundant_cols, dofminus = dofminus,
+        weight_type = weight_type,
+        kernel = kernel, bw = bw, time_index = time_index,
+        center = center, psd = psd
+      )
+    }
+
+    }  # end of if (is.null(b0)) — identification diagnostics block
+  }
+  if (length(diagnostics) == 0L) diagnostics <- NULL
+
+  # Reduced-form regression
+  reduced_form_result <- NULL
+  if (parsed$is_iv && reduced_form != "none") {
+    rf_depvar <- parsed$y_name
+    reduced_form_result <- .compute_reduced_form(
+      mode           = reduced_form,
+      Z              = parsed$Z,
+      X              = parsed$X,
+      y              = parsed$y,
+      weights        = parsed$weights,
+      cluster_vec    = cluster_vec,
+      vcov_type      = effective_vcov_type,
+      N              = parsed$N,
+      K              = parsed$K,
+      L              = parsed$L,
+      K1             = parsed$K1,
+      L1             = parsed$L1,
+      M              = M,
+      endo_names     = parsed$endo_colnames,
+      excluded_names = parsed$excluded_colnames,
+      depvar_name    = rf_depvar,
+      dofminus       = dofminus,
+      sdofminus      = sdofminus,
+      weight_type    = weight_type,
+      kernel         = kernel,
+      bw             = bw,
+      time_index     = time_index,
+      center         = center
+    )
+  }
+
+  # Model F-test
+  model_f_result <- .compute_model_f(
+    coefficients  = fit$coefficients,
+    vcov          = fit$vcov,
+    N             = parsed$N,
+    K             = parsed$K,
+    has_intercept = parsed$has_intercept,
+    vcov_type     = effective_vcov_type,
+    small         = small,
+    M             = M,
+    dofminus      = dofminus,
+    sdofminus     = sdofminus
+  )
+
+  list(
+    diagnostics = diagnostics, first_stage = first_stage,
+    reduced_form_result = reduced_form_result,
+    model_f_result = model_f_result,
+    effective_vcov_type = effective_vcov_type, center = center
+  )
+}
+
+
 #' @export
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
@@ -1518,297 +1832,14 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   # --- 5. VCV ---
   fit <- .compute_vcov(fit, parsed, prep, opts, method, bw)
 
-  # --- 5b. Diagnostics ---
-  # HAC/robust → robust diagnostics path (Hansen J, KP rk)
-  # AC → iid-like diagnostics path (Sargan, Anderson LM, CD F)
-  effective_vcov_type <- if (!is.null(cluster_vec)) {
-    "CL"
-  } else if (vcov == "HAC") {
-    "HAC"
-  } else if (vcov == "AC") {
-    "AC"
-  } else {
-    vcov  # "iid" or "robust"
-  }
-
-  # Warn and reset center if it has no effect
-  if (center && effective_vcov_type %in% c("iid", "AC")) {
-    warning("`center = TRUE` has no effect with ", effective_vcov_type,
-            " VCE (centering only applies to robust/cluster/HAC).",
-            call. = FALSE)
-    center <- FALSE
-  }
-
-  diagnostics <- list()
-  first_stage <- NULL
-  if (parsed$is_iv) {
-
-    # Overidentification test (D1)
-    # For GMM2S/gmmw/CUE, J is computed as part of estimation — skip .compute_overid_test()
-    if (method %in% c("gmm2s", "gmmw", "cue")) {
-      overid_test_name <- if (method %in% c("gmmw", "cue")) {
-        "Hansen J"
-      } else if (effective_vcov_type %in% c("iid", "AC")) {
-        "Sargan"
-      } else {
-        "Hansen J"
-      }
-      diagnostics$overid <- list(
-        stat = fit$j_stat, p = fit$j_p,
-        df = fit$j_df, test_name = overid_test_name
-      )
-    } else {
-    diagnostics$overid <- .compute_overid_test(
-      Z = parsed$Z, X = parsed$X, y = parsed$y,
-      residuals = fit$residuals, rss = fit$rss,
-      weights = parsed$weights, cluster_vec = cluster_vec,
-      vcov_type = effective_vcov_type, is_iv = parsed$is_iv,
-      N = parsed$N, K = parsed$K, L = parsed$L,
-      overid_df = parsed$overid_df, dofminus = dofminus,
-      weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index,
-      center = center, psd = psd
-    )
-    }
-
-    # b0 suppresses all identification diagnostics (Stata line 3819)
-    if (is.null(b0)) {
-
-    # AR LIML overidentification (H3) — only for LIML/Fuller + IID
-    if (method == "liml" && effective_vcov_type == "iid") {
-      diagnostics$anderson_rubin_overid <- .compute_ar_liml_overid(
-        lambda = fit$lambda, N = parsed$N,
-        overid_df = parsed$overid_df, dofminus = dofminus
-      )
-    }
-
-    # Identification tests (D2)
-    # Kiefer: use IID path for identification tests.  Stata's ivreg2 sets
-    # bwopt/kernopt in vkernel BEFORE kiefer overrides bw=T, so ranktest
-    # never receives kernel/bw → enters IID path (Anderson LM, CD F).
-    id_vcov_type <- if (isTRUE(kiefer)) "iid" else effective_vcov_type
-    id_kernel    <- if (isTRUE(kiefer)) NULL else kernel
-    id_tests <- .compute_id_tests(
-      X = parsed$X, Z = parsed$Z, y = parsed$y,
-      residuals = fit$residuals, weights = parsed$weights,
-      cluster_vec = cluster_vec, vcov_type = id_vcov_type,
-      N = parsed$N, K = parsed$K, L = parsed$L,
-      K1 = parsed$K1, L1 = parsed$L1, M = M,
-      endo_names = parsed$endo_colnames,
-      excluded_names = parsed$excluded_colnames,
-      has_intercept = parsed$has_intercept,
-      dofminus = dofminus, sdofminus = sdofminus,
-      weight_type = weight_type,
-      kernel = id_kernel, bw = bw, time_index = time_index,
-      psd = psd
-    )
-    diagnostics$underid        <- id_tests$underid
-    diagnostics$weak_id        <- id_tests$weak_id
-    diagnostics$weak_id_robust <- id_tests$weak_id_robust
-
-    # Stock-Yogo critical values (D3)
-    # GMM2S/gmmw use IV tables; CUE uses LIML size tables (Stata line 3363)
-    sy_method <- if (method %in% c("gmm2s", "gmmw")) {
-      "2sls"
-    } else if (method == "cue") {
-      "liml"
-    } else {
-      method
-    }
-    diagnostics$weak_id_sy <- .stock_yogo_lookup(
-      parsed$K1, parsed$L1, method = sy_method, fuller = fuller
-    )
-
-    # First-stage diagnostics (E1)
-    first_stage <- .compute_first_stage(
-      X = parsed$X, Z = parsed$Z,
-      weights = parsed$weights, cluster_vec = cluster_vec,
-      vcov_type = effective_vcov_type,
-      endo_names = parsed$endo_colnames,
-      excluded_names = parsed$excluded_colnames,
-      N = parsed$N, K = parsed$K, L = parsed$L,
-      K1 = parsed$K1, L1 = parsed$L1, M = M,
-      bread_2sls = fit$bread,
-      dofminus = dofminus, sdofminus = sdofminus,
-      weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index,
-      center = center
-    )
-
-    # Anderson-Rubin test (E3)
-    diagnostics$anderson_rubin <- .compute_anderson_rubin(
-      Z = parsed$Z, X = parsed$X, y = parsed$y,
-      weights = parsed$weights, cluster_vec = cluster_vec,
-      vcov_type = effective_vcov_type,
-      N = parsed$N, K = parsed$K, L = parsed$L,
-      K1 = parsed$K1, L1 = parsed$L1, M = M,
-      endo_names = parsed$endo_colnames,
-      excluded_names = parsed$excluded_colnames,
-      dofminus = dofminus, sdofminus = sdofminus,
-      weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index,
-      center = center
-    )
-
-    # Stock-Wright S statistic (J2)
-    diagnostics$stock_wright <- .compute_stock_wright(
-      Z = parsed$Z, X = parsed$X, y = parsed$y,
-      weights = parsed$weights, cluster_vec = cluster_vec,
-      vcov_type = effective_vcov_type,
-      N = parsed$N, K1 = parsed$K1, L1 = parsed$L1,
-      endo_names = parsed$endo_colnames, dofminus = dofminus,
-      weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index,
-      center = center, psd = psd
-    )
-
-    # Endogeneity test / C-statistic (E4)
-    # Validate endog against term labels, then expand to column names
-    endog_cols <- NULL
-    if (!is.null(endog)) {
-      bad <- setdiff(endog, parsed$endo_names)
-      if (length(bad) > 0L) {
-        stop("`endog` contains variables not in the endogenous list: ",
-             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
-      }
-      endog_cols <- .expand_terms_to_colnames(
-        endog, parsed$endo_names, parsed$endo_colnames, parsed$endo_assign
-      )
-    }
-    # Note: center is intentionally NOT passed here. Stata's recursive
-    # ivreg2 call for endog() omits `center` (ivreg2.ado lines 1582-1601):
-    # it converts center to a boolean at line 297 but never reconstructs
-    # the string for forwarding. We match this behavior for Stata parity.
-    diagnostics$endogeneity <- .compute_endogeneity_test(
-      Z = parsed$Z, X = parsed$X, y = parsed$y,
-      residuals = fit$residuals, rss = fit$rss,
-      weights = parsed$weights, cluster_vec = cluster_vec,
-      vcov_type = effective_vcov_type,
-      N = parsed$N, K = parsed$K, L = parsed$L,
-      K1 = parsed$K1, endo_names = parsed$endo_colnames,
-      endog_vars = endog_cols, dofminus = dofminus,
-      weight_type = weight_type,
-      kernel = kernel, bw = bw, time_index = time_index,
-      psd = psd
-    )
-
-    # Orthogonality test / instrument-subset C-statistic (J1)
-    # Validate against term labels, then expand to column names (factor-safe).
-    # Matches the endog/redundant pattern.
-    if (!is.null(orthog) && length(orthog) > 0L) {
-      valid_terms <- c(parsed$excluded_names, parsed$exog_term_labels)
-      bad <- setdiff(orthog, valid_terms)
-      if (length(bad) > 0L) {
-        stop("`orthog` contains variables not in the instrument list: ",
-             paste0("'", bad, "'", collapse = ", "),
-             ". Must be excluded or exogenous instruments (not endogenous ",
-             "regressors or the intercept).", call. = FALSE)
-      }
-      # Expand term labels to Z column names
-      orthog_in_excl <- intersect(orthog, parsed$excluded_names)
-      orthog_in_exog <- intersect(orthog, parsed$exog_term_labels)
-      orthog_cols <- c(
-        .expand_terms_to_colnames(orthog_in_excl, parsed$excluded_names,
-                                   parsed$excluded_colnames,
-                                   parsed$excluded_assign),
-        .expand_terms_to_colnames(orthog_in_exog, parsed$exog_term_labels,
-                                   parsed$exog_colnames, parsed$exog_assign)
-      )
-      # Guard: columns partialled out no longer exist in Z
-      partialled_out <- setdiff(orthog_cols, colnames(parsed$Z))
-      if (length(partialled_out) > 0L) {
-        stop("Cannot test orthogonality of variables that were partialled out: ",
-             paste0("'", partialled_out, "'", collapse = ", "),
-             ". Remove these from `orthog` or `partial`.", call. = FALSE)
-      }
-      diagnostics$orthog <- .compute_orthog_test(
-        Z = parsed$Z, X = parsed$X, y = parsed$y,
-        residuals = fit$residuals, rss = fit$rss,
-        weights = parsed$weights, cluster_vec = cluster_vec,
-        vcov_type = effective_vcov_type,
-        N = parsed$N, K = parsed$K, L = parsed$L,
-        orthog_vars = orthog_cols, dofminus = dofminus,
-        weight_type = weight_type,
-        kernel = kernel, bw = bw, time_index = time_index,
-        center = center, psd = psd,
-        omega = fit$omega
-      )
-    }
-
-    # Redundancy test / instrument redundancy LM (P1)
-    # Validate against term labels, then expand to column names (factor-safe)
-    if (!is.null(redundant) && length(redundant) > 0L) {
-      bad <- setdiff(redundant, parsed$excluded_names)
-      if (length(bad) > 0L) {
-        stop("`redundant` contains variables not in the excluded instrument list: ",
-             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
-      }
-      redundant_cols <- .expand_terms_to_colnames(
-        redundant, parsed$excluded_names, parsed$excluded_colnames,
-        parsed$excluded_assign
-      )
-      diagnostics$redundancy <- .compute_redundancy_test(
-        X = parsed$X, Z = parsed$Z,
-        weights = parsed$weights, cluster_vec = cluster_vec,
-        vcov_type = effective_vcov_type,
-        N = parsed$N, K1 = parsed$K1,
-        endo_colnames = parsed$endo_colnames,
-        excluded_colnames = parsed$excluded_colnames,
-        redundant_vars = redundant_cols, dofminus = dofminus,
-        weight_type = weight_type,
-        kernel = kernel, bw = bw, time_index = time_index,
-        center = center, psd = psd
-      )
-    }
-
-    }  # end of if (is.null(b0)) — identification diagnostics block
-  }
-  if (length(diagnostics) == 0L) diagnostics <- NULL
-
-  # --- 5b2. Reduced-form regression ---
-  reduced_form_result <- NULL
-  if (parsed$is_iv && reduced_form != "none") {
-    rf_depvar <- parsed$y_name
-    reduced_form_result <- .compute_reduced_form(
-      mode           = reduced_form,
-      Z              = parsed$Z,
-      X              = parsed$X,
-      y              = parsed$y,
-      weights        = parsed$weights,
-      cluster_vec    = cluster_vec,
-      vcov_type      = effective_vcov_type,
-      N              = parsed$N,
-      K              = parsed$K,
-      L              = parsed$L,
-      K1             = parsed$K1,
-      L1             = parsed$L1,
-      M              = M,
-      endo_names     = parsed$endo_colnames,
-      excluded_names = parsed$excluded_colnames,
-      depvar_name    = rf_depvar,
-      dofminus       = dofminus,
-      sdofminus      = sdofminus,
-      weight_type    = weight_type,
-      kernel         = kernel,
-      bw             = bw,
-      time_index     = time_index,
-      center         = center
-    )
-  }
-
-  # --- 5c. Model F-test ---
-  model_f_result <- .compute_model_f(
-    coefficients  = fit$coefficients,
-    vcov          = fit$vcov,
-    N             = parsed$N,
-    K             = parsed$K,
-    has_intercept = parsed$has_intercept,
-    vcov_type     = effective_vcov_type,
-    small         = small,
-    M             = M,
-    dofminus      = dofminus,
-    sdofminus     = sdofminus
-  )
+  # --- 5b. Diagnostics, reduced-form, model F ---
+  diag_result <- .compute_diagnostics(fit, parsed, prep, opts, method, bw)
+  diagnostics         <- diag_result$diagnostics
+  first_stage         <- diag_result$first_stage
+  reduced_form_result <- diag_result$reduced_form_result
+  model_f_result      <- diag_result$model_f_result
+  effective_vcov_type <- diag_result$effective_vcov_type
+  center              <- diag_result$center
 
   # --- 5d. Unsort for user-facing output ---
   # If data was sorted for HAC/AC, restore original row order for user-facing
