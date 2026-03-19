@@ -1,287 +1,6 @@
 # --------------------------------------------------------------------------
-# ivreg2
+# ivreg2 — pipeline helpers defined first, then the main function
 # --------------------------------------------------------------------------
-#' Extended Instrumental Variables Estimation
-#'
-#' Estimate models by OLS, two-stage least squares (2SLS), LIML, Fuller, or
-#' k-class with automatic diagnostic tests. Uses a three-part formula for IV:
-#' `y ~ exog | endo | instruments`.
-#'
-#' @param formula A formula: `y ~ exog` (OLS) or
-#'   `y ~ exog | endo | instruments` (IV).
-#' @param data A data frame containing the variables in the formula.
-#' @param weights Optional analytic weights expression (evaluated in `data`),
-#'   equivalent to Stata's `[aw=varname]`. Must be strictly positive.
-#'   Weights are normalized internally to sum to N, following Stata's
-#'   convention. This makes sigma (RMSE) scale-invariant: multiplying all
-#'   weights by a constant does not change sigma. Coefficients, standard
-#'   errors, and all test statistics are unaffected by scale.
-#'
-#'   **Note:** sigma will differ from [lm()]`(..., weights = w)` by a factor
-#'   of `sqrt(N / sum(w))` because `lm()` uses raw (unnormalized) weights.
-#'   Coefficients, SEs, and the VCV matrix are identical to `lm()` for OLS.
-#' @param subset Optional subset expression (evaluated in `data`).
-#' @param na.action Function for handling `NA`s (default [na.omit]).
-#' @param vcov Character: covariance type. One of `"iid"` (classical),
-#'   `"robust"` (White heteroskedasticity-robust), `"HAC"`
-#'   (heteroskedasticity and autocorrelation consistent), or `"AC"`
-#'   (autocorrelation consistent). Use `small = TRUE` to apply
-#'   finite-sample corrections. To match Stata's `ivreg2, robust`:
-#'   use `vcov = "robust"`. To match Stata's `ivreg2, robust small`:
-#'   use `vcov = "robust", small = TRUE`.
-#' @param clusters One-sided formula specifying one or two cluster variables
-#'   (e.g. `~ firmid` for one-way, `~ firmid + year` for two-way).
-#'   Two-way clustering uses the Cameron-Gelbach-Miller (2006) formula.
-#'   The effective cluster count is `min(M1, M2)` per Stata convention.
-#'   The `small` argument controls whether the finite-sample correction
-#'   `(N-1)/(N-K) * M/(M-1)` is applied (matching Stata's
-#'   `cluster() small` combination).
-#' @param endog Character vector of endogenous regressor names to test for
-#'   exogeneity (endogeneity test / C-statistic). If `NULL` (default), tests
-#'   all endogenous regressors. Names must match variables in the endogenous
-#'   part of the formula. Ignored for OLS models.
-#'
-#'   **Note:** Unlike Stata's `ivreg2`, which only computes the endogeneity
-#'   test when the `endog()` option is explicitly specified, `ivreg2r` computes
-#'   it automatically for all IV models.
-#' @param orthog Character vector of instrument names to test for
-#'   orthogonality (instrument-subset C-statistic). Names must be included
-#'   or excluded instruments (not endogenous regressors or the intercept).
-#'   If `NULL` (default), no orthogonality test is computed. Ignored for
-#'   OLS models. Equivalent to Stata's `orthog()` option.
-#' @param redundant Character vector of excluded instrument names to test
-#'   for redundancy (zero first-stage explanatory power). The test is a
-#'   KP rk LM test of H0: rank=0 on the first-stage coefficient matrix
-#'   for the tested instruments, conditional on maintained instruments.
-#'   If `NULL` (default), no redundancy test is computed. Ignored for OLS
-#'   models. Equivalent to Stata's `redundant()` option.
-#' @param small Logical: if `TRUE`, use small-sample corrections
-#'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
-#' @param weight_type Character: type of weights. One of `"aweight"`
-#'   (analytic weights, default), `"fweight"` (frequency weights), or
-#'   `"pweight"` (probability/sampling weights).
-#'
-#'   **aweight**: Normalized to sum to N. Standard for WLS.
-#'
-#'   **fweight**: Integer-valued; N is redefined as `sum(weights)`.
-#'   HC meat uses `w * e^2` (linear, not quadratic).
-#'
-#'   **pweight**: Normalized to sum to N. Forces robust VCE
-#'   (overrides `vcov = "iid"` to `"robust"`).
-#' @param dofminus Non-negative integer: large-sample degrees-of-freedom
-#'   adjustment. Subtracted from N in large-sample variance formulas
-#'   (e.g., sigma = rss/(N-dofminus)). Useful when fixed effects have been
-#'   partialled out. Equivalent to Stata's `dofminus()` option.
-#' @param sdofminus Non-negative integer: small-sample degrees-of-freedom
-#'   adjustment. Subtracted from the residual degrees of freedom alongside K
-#'   (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
-#'   partialling out regressors. Equivalent to Stata's `sdofminus()` option.
-#' @param method Character: estimation method. One of `"2sls"` (default),
-#'   `"liml"`, `"kclass"`, `"gmm2s"` (two-step efficient GMM), or `"cue"`
-#'   (continuously updated GMM estimator).
-#'   For OLS models (1-part formula), this is ignored. When `fuller > 0`
-#'   is specified, method is automatically promoted to `"liml"`.
-#'   `"gmm2s"` uses the inverse of the moment covariance matrix as the
-#'   optimal weighting matrix, yielding efficient estimates under the
-#'   specified error structure. Incompatible with `fuller` and `kclass`.
-#'   `"cue"` continuously updates both moment conditions and moment
-#'   covariance at each candidate beta during optimization. Under iid errors
-#'   (no robust/cluster/kernel VCE), CUE with no other options is equivalent
-#'   to LIML with `coviv = TRUE`. Under non-iid errors, CUE generalizes
-#'   LIML to produce efficient estimates.
-#'   Incompatible with `fuller`, `kclass`, `wmatrix`, and `smatrix`.
-#'
-#'   **CUE optimizer note:** This package uses R's `optim()` (BFGS +
-#'   Nelder-Mead) while Stata uses Mata's `optimize()` (modified
-#'   Newton-Raphson). The CUE objective is non-convex and can have
-#'   multiple local minima, so the two optimizers may converge to
-#'   different solutions. In rare cases, Stata's Newton-Raphson can
-#'   traverse indefinite-Hessian regions and land in pathological basins
-#'   (e.g., negative R-squared). When results differ, compare the
-#'   J-statistic and R-squared to assess which solution is more sensible.
-#' @param kclass Numeric scalar: user-supplied k value for k-class
-#'   estimation. When supplied, `method` is automatically set to `"kclass"`.
-#'   Must be non-negative. Cannot be combined with `method = "liml"` or
-#'   `fuller`.
-#' @param fuller Numeric scalar: Fuller (1977) modification parameter.
-#'   Must be positive. When supplied, `method` is automatically set to
-#'   `"liml"` and `k = lambda - fuller / (N - L)`. `fuller = 1` gives the
-#'   bias-corrected LIML estimator; `fuller = 4` targets MSE. Cannot be
-#'   combined with `kclass`.
-#' @param coviv Logical: if `TRUE`, use the 2SLS bread `(X_hat'X_hat)^{-1}`
-#'   instead of the k-class bread for VCV computation in LIML/k-class
-#'   estimation. This gives the "COVIV" (covariance at the IV estimates)
-#'   VCV that is robust to misspecification of the LIML model. Silently
-#'   ignored for OLS and 2SLS. Default `FALSE`.
-#' @param kernel Character: kernel function for HAC/AC standard errors.
-#'   One of `"bartlett"`, `"parzen"`, `"truncated"`, `"tukey-hanning"`,
-#'   `"tukey-hamming"`, `"qs"` (quadratic spectral), `"daniell"`, or
-#'   `"tent"`. When specified without an explicit `vcov` change, `vcov`
-#'   is automatically set: `"iid"` becomes `"AC"`, `"robust"` becomes
-#'   `"HAC"`. Requires `bw` and `tvar`.
-#'
-#'   **Note:** Kleibergen-Paap identification tests (underidentification and
-#'   weak identification) always use the Bartlett kernel internally, regardless
-#'   of the user-specified kernel. This matches a known behavior in Stata's
-#'   `ivreg2`, where `ranktest` hard-codes the Bartlett kernel.
-#' @param bw Numeric or `"auto"`: bandwidth for kernel estimation. Must be
-#'   positive numeric, or `"auto"` for automatic selection via Newey-West
-#'   (1994). Auto selection is available for Bartlett, Parzen, and Quadratic
-#'   Spectral kernels only, and is not supported for panel data (`ivar`).
-#'   Required when `kernel` is specified.
-#' @param tvar Character: name of the time variable in `data`. Required
-#'   for HAC/AC estimation.
-#' @param ivar Character: name of the panel identifier variable in `data`.
-#'   Optional; only needed for panel data with HAC/AC estimation.
-#' @param kiefer Logical: if `TRUE`, use the Kiefer (1980) VCE —
-#'   autocorrelation-consistent with kernel = Truncated and bandwidth = T
-#'   (the full time span). Requires panel data (`tvar` + `ivar`).
-#'   Incompatible with robust VCE, clustering, explicit kernel or bandwidth.
-#'   Equivalent to Stata's `ivreg2 ..., kiefer`.
-#' @param dkraay Positive numeric scalar: bandwidth for Driscoll-Kraay (1998)
-#'   VCE. When specified, clusters on the time variable and applies kernel
-#'   smoothing across time lags, producing standard errors robust to
-#'   cross-sectional dependence. Requires panel data (`tvar` + `ivar`).
-#'   Incompatible with explicit `bw`. If `kernel` is not specified, defaults
-#'   to Bartlett. Equivalent to Stata's `ivreg2 ..., dkraay(3)`.
-#' @param wmatrix Numeric matrix: user-supplied L x L weighting matrix for
-#'   GMM estimation, where L is the number of instruments (including exogenous
-#'   regressors). When supplied without `method = "gmm2s"`, produces
-#'   inefficient GMM with full sandwich VCV (`method` becomes `"gmmw"`).
-#'   When combined with `method = "gmm2s"`, used as the first-step weighting
-#'   matrix (second step uses the optimal weighting matrix). Must be symmetric.
-#'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
-#'   When `method` is not `"gmm2s"`, ignored without robust VCE, clustering,
-#'   or HAC (with a warning).
-#'   Equivalent to Stata's `wmatrix()` option.
-#' @param smatrix Numeric matrix: user-supplied L x L moment covariance matrix
-#'   for GMM estimation. When supplied, the GMM estimation uses this matrix
-#'   instead of computing Omega from residuals. Implies efficient GMM
-#'   (`method` is promoted to `"gmm2s"` if `"2sls"`). Must be symmetric.
-#'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
-#'   Equivalent to Stata's `smatrix()` option.
-#' @param b0 Numeric vector: evaluate the CUE objective at this fixed
-#'   parameter vector without optimization. When supplied, `method` is
-#'   promoted to `"cue"` and the J(b0) statistic is computed and stored.
-#'   Identification diagnostics (underid, weak-id, first-stage, AR, SW,
-#'   endogeneity, orthog) are suppressed (matching Stata's `b0()` option).
-#'   Length must equal the number of regressors K. Named vectors are
-#'   reordered to match model matrix columns; unnamed vectors are used
-#'   as-is in model matrix column order.
-#'   Incompatible with `method = "gmm2s"`, `"liml"`, `kclass`, `fuller`,
-#'   and `wmatrix`.
-#' @param partial Character vector: exogenous regressors to partial out
-#'   via Frisch-Waugh-Lovell projection before estimation. Coefficients on
-#'   partialled variables are not recoverable and are not reported.
-#'   Special values:
-#'   - `"_cons"` or `"(Intercept)"`: partial only the constant (demean).
-#'   - `"_all"`: partial all included exogenous regressors.
-#'   - `NULL` (default): no partialling.
-#'
-#'   By default, `sdofminus` is automatically incremented by the number of
-#'   partialled variables (including the constant). Use `nopartialsmall = TRUE`
-#'   to suppress this adjustment.
-#'
-#'   **Note:** FWL invariance holds for OLS, 2SLS, LIML, and two-step GMM, but
-#'   **not** for CUE. The CUE objective recomputes the moment covariance at each
-#'   iteration, so partialled residuals produce a different optimization surface.
-#'   A warning is issued when `partial` is used with `method = "cue"`.
-#'
-#'   After partialling, `predict()` is restricted to residuals only (no
-#'   `newdata`). Summary output notes that total SS, model F, and R-squared
-#'   are partial-model values.
-#'
-#'   Equivalent to Stata's `partial()` option.
-#' @param nopartialsmall Logical: if `TRUE`, suppress the automatic
-#'   `sdofminus` adjustment from partialling. Default `FALSE`.
-#'   Equivalent to Stata's `nopartialsmall` option.
-#' @param center Logical: if `TRUE`, subtract the mean of moment conditions
-#'   (scores) before computing the S matrix (meat of the sandwich VCE).
-#'   Default `FALSE`. Centering only affects non-homoskedastic VCE types
-#'   (HC, cluster, HAC); a warning is issued if used with IID or AC VCE.
-#'
-#'   **Note:** Centering is applied to the main model's VCE and to
-#'   diagnostic tests that use the main model's S matrix (overidentification,
-#'   orthogonality). However, the endogeneity test (`endog`) computes its own
-#'   S matrix from the restricted model *without* centering, even when
-#'   `center = TRUE`. This matches Stata's `ivreg2`, where `center` is not
-#'   forwarded to the recursive call for the endogeneity test.
-#' @param psd Character or NULL: PSD correction for the meat matrix.
-#'   `NULL` (default) applies no correction. `"psd0"` zeroes negative
-#'   eigenvalues (Politis 2007). `"psda"` replaces negative eigenvalues
-#'   with their absolute values (Stock & Watson 2008). A warning is emitted
-#'   when negative eigenvalues are detected and corrected.
-#'   Equivalent to Stata's `psd0` and `psda` options.
-#' @param reduced_form Character: what reduced-form output to store.
-#'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
-#'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
-#'   y + all endogenous variables regressed on Z, with cross-equation VCV
-#'   (equivalent to Stata's `savesfirst`). Silently ignored for OLS models.
-#' @param model Logical: if `TRUE` (default), store the model frame in the
-#'   return object.
-#' @param x Logical: if `TRUE`, store model matrices (`X`, `Z`) in the
-#'   return object.
-#' @param y Logical: if `TRUE` (default), store the response vector in the
-#'   return object.
-#'
-#' @return An object of class `"ivreg2"`.
-#'
-#' @examples
-#' data(card)
-#'
-#' # --- Just-identified IV: return to schooling ---
-#' # Card (1995) instruments education with college proximity.
-#' # One instrument for one endogenous variable: no overid test possible,
-#' # so you must defend instrument validity on substantive grounds.
-#' fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-#'                 educ | nearc4, data = card)
-#' summary(fit)
-#'
-#' # --- Overidentified IV: testing instrument validity ---
-#' # Adding nearc2 provides an overidentifying restriction.
-#' # Now the Sargan test can detect misspecification (invalid instruments).
-#' fit_overid <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-#'                        educ | nearc4 + nearc2, data = card)
-#' summary(fit_overid)
-#'
-#' # --- Robust standard errors ---
-#' # With heteroskedasticity, Kleibergen-Paap diagnostics replace
-#' # Anderson/Cragg-Donald, and Hansen J replaces Sargan.
-#' fit_robust <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-#'                        educ | nearc4 + nearc2, data = card,
-#'                        vcov = "robust")
-#' summary(fit_robust)
-#'
-#' \donttest{
-#' # --- LIML: reducing finite-sample bias ---
-#' # With weak instruments, 2SLS is biased toward OLS.
-#' # LIML is approximately median-unbiased.
-#' data(mroz)
-#' mroz_work <- subset(mroz, inlf == 1)
-#' fit_liml <- ivreg2(lwage ~ exper + expersq | educ |
-#'                      age + kidslt6 + kidsge6, data = mroz_work,
-#'                      method = "liml")
-#' summary(fit_liml)
-#'
-#' # --- Endogeneity test ---
-#' # Is education actually endogenous? The C-statistic tests
-#' # H0: OLS is consistent (educ is exogenous).
-#' fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
-#'                       age + kidslt6 + kidsge6, data = mroz_work,
-#'                       endog = "educ")
-#' fit_endog$diagnostics$endogeneity
-#'
-#' # --- Clustering ---
-#' # Panel data: cluster on individual to account for
-#' # within-person correlation across time periods.
-#' data(wagepan)
-#' fit_cl <- ivreg2(lwage ~ hours + married + union,
-#'                   data = wagepan, clusters = ~nr, small = TRUE)
-#' summary(fit_cl)
-#' }
-#'
-#' @export
-ivreg2 <- NULL  # forward declaration; real definition below helpers
 
 # --------------------------------------------------------------------------
 # Pipeline helpers (internal, called only by ivreg2)
@@ -1730,6 +1449,286 @@ ivreg2 <- NULL  # forward declaration; real definition below helpers
 }
 
 
+#' Extended Instrumental Variables Estimation
+#'
+#' Estimate models by OLS, two-stage least squares (2SLS), LIML, Fuller, or
+#' k-class with automatic diagnostic tests. Uses a three-part formula for IV:
+#' `y ~ exog | endo | instruments`.
+#'
+#' @param formula A formula: `y ~ exog` (OLS) or
+#'   `y ~ exog | endo | instruments` (IV).
+#' @param data A data frame containing the variables in the formula.
+#' @param weights Optional analytic weights expression (evaluated in `data`),
+#'   equivalent to Stata's `[aw=varname]`. Must be strictly positive.
+#'   Weights are normalized internally to sum to N, following Stata's
+#'   convention. This makes sigma (RMSE) scale-invariant: multiplying all
+#'   weights by a constant does not change sigma. Coefficients, standard
+#'   errors, and all test statistics are unaffected by scale.
+#'
+#'   **Note:** sigma will differ from [lm()]`(..., weights = w)` by a factor
+#'   of `sqrt(N / sum(w))` because `lm()` uses raw (unnormalized) weights.
+#'   Coefficients, SEs, and the VCV matrix are identical to `lm()` for OLS.
+#' @param subset Optional subset expression (evaluated in `data`).
+#' @param na.action Function for handling `NA`s (default [na.omit]).
+#' @param vcov Character: covariance type. One of `"iid"` (classical),
+#'   `"robust"` (White heteroskedasticity-robust), `"HAC"`
+#'   (heteroskedasticity and autocorrelation consistent), or `"AC"`
+#'   (autocorrelation consistent). Use `small = TRUE` to apply
+#'   finite-sample corrections. To match Stata's `ivreg2, robust`:
+#'   use `vcov = "robust"`. To match Stata's `ivreg2, robust small`:
+#'   use `vcov = "robust", small = TRUE`.
+#' @param clusters One-sided formula specifying one or two cluster variables
+#'   (e.g. `~ firmid` for one-way, `~ firmid + year` for two-way).
+#'   Two-way clustering uses the Cameron-Gelbach-Miller (2006) formula.
+#'   The effective cluster count is `min(M1, M2)` per Stata convention.
+#'   The `small` argument controls whether the finite-sample correction
+#'   `(N-1)/(N-K) * M/(M-1)` is applied (matching Stata's
+#'   `cluster() small` combination).
+#' @param endog Character vector of endogenous regressor names to test for
+#'   exogeneity (endogeneity test / C-statistic). If `NULL` (default), tests
+#'   all endogenous regressors. Names must match variables in the endogenous
+#'   part of the formula. Ignored for OLS models.
+#'
+#'   **Note:** Unlike Stata's `ivreg2`, which only computes the endogeneity
+#'   test when the `endog()` option is explicitly specified, `ivreg2r` computes
+#'   it automatically for all IV models.
+#' @param orthog Character vector of instrument names to test for
+#'   orthogonality (instrument-subset C-statistic). Names must be included
+#'   or excluded instruments (not endogenous regressors or the intercept).
+#'   If `NULL` (default), no orthogonality test is computed. Ignored for
+#'   OLS models. Equivalent to Stata's `orthog()` option.
+#' @param redundant Character vector of excluded instrument names to test
+#'   for redundancy (zero first-stage explanatory power). The test is a
+#'   KP rk LM test of H0: rank=0 on the first-stage coefficient matrix
+#'   for the tested instruments, conditional on maintained instruments.
+#'   If `NULL` (default), no redundancy test is computed. Ignored for OLS
+#'   models. Equivalent to Stata's `redundant()` option.
+#' @param small Logical: if `TRUE`, use small-sample corrections
+#'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
+#' @param weight_type Character: type of weights. One of `"aweight"`
+#'   (analytic weights, default), `"fweight"` (frequency weights), or
+#'   `"pweight"` (probability/sampling weights).
+#'
+#'   **aweight**: Normalized to sum to N. Standard for WLS.
+#'
+#'   **fweight**: Integer-valued; N is redefined as `sum(weights)`.
+#'   HC meat uses `w * e^2` (linear, not quadratic).
+#'
+#'   **pweight**: Normalized to sum to N. Forces robust VCE
+#'   (overrides `vcov = "iid"` to `"robust"`).
+#' @param dofminus Non-negative integer: large-sample degrees-of-freedom
+#'   adjustment. Subtracted from N in large-sample variance formulas
+#'   (e.g., sigma = rss/(N-dofminus)). Useful when fixed effects have been
+#'   partialled out. Equivalent to Stata's `dofminus()` option.
+#' @param sdofminus Non-negative integer: small-sample degrees-of-freedom
+#'   adjustment. Subtracted from the residual degrees of freedom alongside K
+#'   (e.g., df.residual = N - K - dofminus - sdofminus). Useful when
+#'   partialling out regressors. Equivalent to Stata's `sdofminus()` option.
+#' @param method Character: estimation method. One of `"2sls"` (default),
+#'   `"liml"`, `"kclass"`, `"gmm2s"` (two-step efficient GMM), or `"cue"`
+#'   (continuously updated GMM estimator).
+#'   For OLS models (1-part formula), this is ignored. When `fuller > 0`
+#'   is specified, method is automatically promoted to `"liml"`.
+#'   `"gmm2s"` uses the inverse of the moment covariance matrix as the
+#'   optimal weighting matrix, yielding efficient estimates under the
+#'   specified error structure. Incompatible with `fuller` and `kclass`.
+#'   `"cue"` continuously updates both moment conditions and moment
+#'   covariance at each candidate beta during optimization. Under iid errors
+#'   (no robust/cluster/kernel VCE), CUE with no other options is equivalent
+#'   to LIML with `coviv = TRUE`. Under non-iid errors, CUE generalizes
+#'   LIML to produce efficient estimates.
+#'   Incompatible with `fuller`, `kclass`, `wmatrix`, and `smatrix`.
+#'
+#'   **CUE optimizer note:** This package uses R's `optim()` (BFGS +
+#'   Nelder-Mead) while Stata uses Mata's `optimize()` (modified
+#'   Newton-Raphson). The CUE objective is non-convex and can have
+#'   multiple local minima, so the two optimizers may converge to
+#'   different solutions. In rare cases, Stata's Newton-Raphson can
+#'   traverse indefinite-Hessian regions and land in pathological basins
+#'   (e.g., negative R-squared). When results differ, compare the
+#'   J-statistic and R-squared to assess which solution is more sensible.
+#' @param kclass Numeric scalar: user-supplied k value for k-class
+#'   estimation. When supplied, `method` is automatically set to `"kclass"`.
+#'   Must be non-negative. Cannot be combined with `method = "liml"` or
+#'   `fuller`.
+#' @param fuller Numeric scalar: Fuller (1977) modification parameter.
+#'   Must be positive. When supplied, `method` is automatically set to
+#'   `"liml"` and `k = lambda - fuller / (N - L)`. `fuller = 1` gives the
+#'   bias-corrected LIML estimator; `fuller = 4` targets MSE. Cannot be
+#'   combined with `kclass`.
+#' @param coviv Logical: if `TRUE`, use the 2SLS bread `(X_hat'X_hat)^{-1}`
+#'   instead of the k-class bread for VCV computation in LIML/k-class
+#'   estimation. This gives the "COVIV" (covariance at the IV estimates)
+#'   VCV that is robust to misspecification of the LIML model. Silently
+#'   ignored for OLS and 2SLS. Default `FALSE`.
+#' @param kernel Character: kernel function for HAC/AC standard errors.
+#'   One of `"bartlett"`, `"parzen"`, `"truncated"`, `"tukey-hanning"`,
+#'   `"tukey-hamming"`, `"qs"` (quadratic spectral), `"daniell"`, or
+#'   `"tent"`. When specified without an explicit `vcov` change, `vcov`
+#'   is automatically set: `"iid"` becomes `"AC"`, `"robust"` becomes
+#'   `"HAC"`. Requires `bw` and `tvar`.
+#'
+#'   **Note:** Kleibergen-Paap identification tests (underidentification and
+#'   weak identification) always use the Bartlett kernel internally, regardless
+#'   of the user-specified kernel. This matches a known behavior in Stata's
+#'   `ivreg2`, where `ranktest` hard-codes the Bartlett kernel.
+#' @param bw Numeric or `"auto"`: bandwidth for kernel estimation. Must be
+#'   positive numeric, or `"auto"` for automatic selection via Newey-West
+#'   (1994). Auto selection is available for Bartlett, Parzen, and Quadratic
+#'   Spectral kernels only, and is not supported for panel data (`ivar`).
+#'   Required when `kernel` is specified.
+#' @param tvar Character: name of the time variable in `data`. Required
+#'   for HAC/AC estimation.
+#' @param ivar Character: name of the panel identifier variable in `data`.
+#'   Optional; only needed for panel data with HAC/AC estimation.
+#' @param kiefer Logical: if `TRUE`, use the Kiefer (1980) VCE —
+#'   autocorrelation-consistent with kernel = Truncated and bandwidth = T
+#'   (the full time span). Requires panel data (`tvar` + `ivar`).
+#'   Incompatible with robust VCE, clustering, explicit kernel or bandwidth.
+#'   Equivalent to Stata's `ivreg2 ..., kiefer`.
+#' @param dkraay Positive numeric scalar: bandwidth for Driscoll-Kraay (1998)
+#'   VCE. When specified, clusters on the time variable and applies kernel
+#'   smoothing across time lags, producing standard errors robust to
+#'   cross-sectional dependence. Requires panel data (`tvar` + `ivar`).
+#'   Incompatible with explicit `bw`. If `kernel` is not specified, defaults
+#'   to Bartlett. Equivalent to Stata's `ivreg2 ..., dkraay(3)`.
+#' @param wmatrix Numeric matrix: user-supplied L x L weighting matrix for
+#'   GMM estimation, where L is the number of instruments (including exogenous
+#'   regressors). When supplied without `method = "gmm2s"`, produces
+#'   inefficient GMM with full sandwich VCV (`method` becomes `"gmmw"`).
+#'   When combined with `method = "gmm2s"`, used as the first-step weighting
+#'   matrix (second step uses the optimal weighting matrix). Must be symmetric.
+#'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
+#'   When `method` is not `"gmm2s"`, ignored without robust VCE, clustering,
+#'   or HAC (with a warning).
+#'   Equivalent to Stata's `wmatrix()` option.
+#' @param smatrix Numeric matrix: user-supplied L x L moment covariance matrix
+#'   for GMM estimation. When supplied, the GMM estimation uses this matrix
+#'   instead of computing Omega from residuals. Implies efficient GMM
+#'   (`method` is promoted to `"gmm2s"` if `"2sls"`). Must be symmetric.
+#'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
+#'   Equivalent to Stata's `smatrix()` option.
+#' @param b0 Numeric vector: evaluate the CUE objective at this fixed
+#'   parameter vector without optimization. When supplied, `method` is
+#'   promoted to `"cue"` and the J(b0) statistic is computed and stored.
+#'   Identification diagnostics (underid, weak-id, first-stage, AR, SW,
+#'   endogeneity, orthog) are suppressed (matching Stata's `b0()` option).
+#'   Length must equal the number of regressors K. Named vectors are
+#'   reordered to match model matrix columns; unnamed vectors are used
+#'   as-is in model matrix column order.
+#'   Incompatible with `method = "gmm2s"`, `"liml"`, `kclass`, `fuller`,
+#'   and `wmatrix`.
+#' @param partial Character vector: exogenous regressors to partial out
+#'   via Frisch-Waugh-Lovell projection before estimation. Coefficients on
+#'   partialled variables are not recoverable and are not reported.
+#'   Special values:
+#'   - `"_cons"` or `"(Intercept)"`: partial only the constant (demean).
+#'   - `"_all"`: partial all included exogenous regressors.
+#'   - `NULL` (default): no partialling.
+#'
+#'   By default, `sdofminus` is automatically incremented by the number of
+#'   partialled variables (including the constant). Use `nopartialsmall = TRUE`
+#'   to suppress this adjustment.
+#'
+#'   **Note:** FWL invariance holds for OLS, 2SLS, LIML, and two-step GMM, but
+#'   **not** for CUE. The CUE objective recomputes the moment covariance at each
+#'   iteration, so partialled residuals produce a different optimization surface.
+#'   A warning is issued when `partial` is used with `method = "cue"`.
+#'
+#'   After partialling, `predict()` is restricted to residuals only (no
+#'   `newdata`). Summary output notes that total SS, model F, and R-squared
+#'   are partial-model values.
+#'
+#'   Equivalent to Stata's `partial()` option.
+#' @param nopartialsmall Logical: if `TRUE`, suppress the automatic
+#'   `sdofminus` adjustment from partialling. Default `FALSE`.
+#'   Equivalent to Stata's `nopartialsmall` option.
+#' @param center Logical: if `TRUE`, subtract the mean of moment conditions
+#'   (scores) before computing the S matrix (meat of the sandwich VCE).
+#'   Default `FALSE`. Centering only affects non-homoskedastic VCE types
+#'   (HC, cluster, HAC); a warning is issued if used with IID or AC VCE.
+#'
+#'   **Note:** Centering is applied to the main model's VCE and to
+#'   diagnostic tests that use the main model's S matrix (overidentification,
+#'   orthogonality). However, the endogeneity test (`endog`) computes its own
+#'   S matrix from the restricted model *without* centering, even when
+#'   `center = TRUE`. This matches Stata's `ivreg2`, where `center` is not
+#'   forwarded to the recursive call for the endogeneity test.
+#' @param psd Character or NULL: PSD correction for the meat matrix.
+#'   `NULL` (default) applies no correction. `"psd0"` zeroes negative
+#'   eigenvalues (Politis 2007). `"psda"` replaces negative eigenvalues
+#'   with their absolute values (Stock & Watson 2008). A warning is emitted
+#'   when negative eigenvalues are detected and corrected.
+#'   Equivalent to Stata's `psd0` and `psda` options.
+#' @param reduced_form Character: what reduced-form output to store.
+#'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
+#'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
+#'   y + all endogenous variables regressed on Z, with cross-equation VCV
+#'   (equivalent to Stata's `savesfirst`). Silently ignored for OLS models.
+#' @param model Logical: if `TRUE` (default), store the model frame in the
+#'   return object.
+#' @param x Logical: if `TRUE`, store model matrices (`X`, `Z`) in the
+#'   return object.
+#' @param y Logical: if `TRUE` (default), store the response vector in the
+#'   return object.
+#'
+#' @return An object of class `"ivreg2"`.
+#'
+#' @examples
+#' data(card)
+#'
+#' # --- Just-identified IV: return to schooling ---
+#' # Card (1995) instruments education with college proximity.
+#' # One instrument for one endogenous variable: no overid test possible,
+#' # so you must defend instrument validity on substantive grounds.
+#' fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+#'                 educ | nearc4, data = card)
+#' summary(fit)
+#'
+#' # --- Overidentified IV: testing instrument validity ---
+#' # Adding nearc2 provides an overidentifying restriction.
+#' # Now the Sargan test can detect misspecification (invalid instruments).
+#' fit_overid <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+#'                        educ | nearc4 + nearc2, data = card)
+#' summary(fit_overid)
+#'
+#' # --- Robust standard errors ---
+#' # With heteroskedasticity, Kleibergen-Paap diagnostics replace
+#' # Anderson/Cragg-Donald, and Hansen J replaces Sargan.
+#' fit_robust <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+#'                        educ | nearc4 + nearc2, data = card,
+#'                        vcov = "robust")
+#' summary(fit_robust)
+#'
+#' \donttest{
+#' # --- LIML: reducing finite-sample bias ---
+#' # With weak instruments, 2SLS is biased toward OLS.
+#' # LIML is approximately median-unbiased.
+#' data(mroz)
+#' mroz_work <- subset(mroz, inlf == 1)
+#' fit_liml <- ivreg2(lwage ~ exper + expersq | educ |
+#'                      age + kidslt6 + kidsge6, data = mroz_work,
+#'                      method = "liml")
+#' summary(fit_liml)
+#'
+#' # --- Endogeneity test ---
+#' # Is education actually endogenous? The C-statistic tests
+#' # H0: OLS is consistent (educ is exogenous).
+#' fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
+#'                       age + kidslt6 + kidsge6, data = mroz_work,
+#'                       endog = "educ")
+#' fit_endog$diagnostics$endogeneity
+#'
+#' # --- Clustering ---
+#' # Panel data: cluster on individual to account for
+#' # within-person correlation across time periods.
+#' data(wagepan)
+#' fit_cl <- ivreg2(lwage ~ hours + married + union,
+#'                   data = wagepan, clusters = ~nr, small = TRUE)
+#' summary(fit_cl)
+#' }
+#'
+#' @export
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
                    orthog = NULL,
