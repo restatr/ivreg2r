@@ -280,31 +280,28 @@
 #' summary(fit_cl)
 #' }
 #'
-#' @export
-ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
-                   vcov = "iid", clusters = NULL, endog = NULL,
-                   orthog = NULL,
-                   redundant = NULL,
-                   method = "2sls", kclass = NULL, fuller = 0,
-                   coviv = FALSE,
-                   small = FALSE,
-                   dofminus = 0L, sdofminus = 0L,
-                   weight_type = "aweight",
-                   kernel = NULL, bw = NULL, tvar = NULL, ivar = NULL,
-                   kiefer = FALSE, dkraay = NULL,
-                   wmatrix = NULL, smatrix = NULL,
-                   b0 = NULL,
-                   partial = NULL,
-                   nopartialsmall = FALSE,
-                   center = FALSE,
-                   psd = NULL,
-                   reduced_form = "none",
-                   model = TRUE, x = FALSE, y = TRUE) {
+# --------------------------------------------------------------------------
+# Pipeline helpers (internal, called only by ivreg2)
+# --------------------------------------------------------------------------
 
-  # --- 1. Capture call ---
-  cl <- match.call()
+#' Validate and normalize all user arguments to ivreg2().
+#'
+#' Performs all type/value checks, option routing (kiefer→kernel+vcov,
+#' dkraay→bw+kernel, pweight→robust, kernel→HAC/AC), and method/kclass/fuller
+#' mutual-exclusion checks.
+#'
+#' @return Named list of normalized options.
+#' @noRd
+.validate_and_normalize_args <- function(vcov, clusters, endog, orthog,
+                                          redundant, method, kclass, fuller,
+                                          coviv, small, dofminus, sdofminus,
+                                          weight_type, kernel, bw, tvar, ivar,
+                                          kiefer, dkraay, wmatrix, smatrix,
+                                          b0, partial, nopartialsmall,
+                                          center, psd, reduced_form,
+                                          model_flag, x_flag, y_flag) {
 
-  # --- 2. Validate arguments ---
+  # --- Validate vcov ---
   if (!is.character(vcov) || length(vcov) != 1L) {
     stop("`vcov` must be a single character string.", call. = FALSE)
   }
@@ -380,12 +377,12 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("`center` must be TRUE or FALSE.", call. = FALSE)
   }
 
-  # --- 2g. Validate psd ---
+  # --- Validate psd ---
   if (!is.null(psd)) {
     psd <- match.arg(psd, c("psd0", "psda"))
   }
 
-  # --- 2f. Validate partial / nopartialsmall (type checks only) ---
+  # --- Validate partial / nopartialsmall (type checks only) ---
   if (!is.null(partial) && !is.character(partial)) {
     stop("`partial` must be a character vector or NULL.", call. = FALSE)
   }
@@ -401,12 +398,12 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
          call. = FALSE)
   }
 
-  # --- 2c. Normalize kernel name early (before kiefer/dkraay checks) ---
+  # --- Normalize kernel name early (before kiefer/dkraay checks) ---
   if (!is.null(kernel)) {
     kernel <- .validate_kernel(kernel)
   }
 
-  # --- 2d. Validate kiefer ---
+  # --- Validate kiefer ---
   if (!is.logical(kiefer) || length(kiefer) != 1L || is.na(kiefer)) {
     stop("`kiefer` must be TRUE or FALSE.", call. = FALSE)
   }
@@ -434,7 +431,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     vcov <- "AC"
   }
 
-  # --- 2e. Validate dkraay ---
+  # --- Validate dkraay ---
   if (!is.null(dkraay)) {
     if (!is.numeric(dkraay) || length(dkraay) != 1L || !is.finite(dkraay) ||
         dkraay <= 0) {
@@ -463,7 +460,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     vcov <- "robust"
   }
 
-  # --- 2c (cont). Validate bw / tvar / ivar ---
+  # --- Validate bw / tvar / ivar ---
   if (!is.null(bw) && is.null(kernel)) {
     # bw specified without kernel: default to Bartlett
     kernel <- "Bartlett"
@@ -500,7 +497,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     stop("`ivar` must be a single character string.", call. = FALSE)
   }
 
-  # --- 2b. Validate wmatrix / smatrix (type checks) ---
+  # --- Validate wmatrix / smatrix (type checks) ---
   # Must come BEFORE method/kclass/fuller promotion so parameter-specific
   # error messages fire before method has been changed.
   if (!is.null(wmatrix)) {
@@ -511,13 +508,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     if (!is.matrix(smatrix) || !is.numeric(smatrix))
       stop("`smatrix` must be a numeric matrix.", call. = FALSE)
   }
-  # --- 2b2. Normalize method early (needed for b0 checks below) ---
+  # --- Normalize method early (needed for b0 checks below) ---
   if (!is.character(method) || length(method) != 1L) {
     stop("`method` must be a single character string.", call. = FALSE)
   }
   method <- tolower(method)
 
-  # --- 2b3. Validate b0 (type checks) ---
+  # --- Validate b0 (type checks) ---
   if (!is.null(b0)) {
     if (!is.numeric(b0) || !is.null(dim(b0)))
       stop("`b0` must be a numeric vector.", call. = FALSE)
@@ -550,7 +547,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   if (!is.null(smatrix) && fuller > 0)
     stop("Cannot specify `smatrix` with `fuller`.", call. = FALSE)
 
-  # --- 2c. Validate method / kclass / fuller ---
+  # --- Validate method / kclass / fuller ---
   valid_methods <- c("2sls", "liml", "kclass", "gmm2s", "cue")
   if (!method %in% valid_methods) {
     stop('`method` must be one of "2sls", "liml", "kclass", "gmm2s", or "cue".',
@@ -631,6 +628,90 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     coviv <- FALSE
   }
 
+  # fweight + kernel incompatible (Stata ivreg2.ado:335)
+  if (weight_type == "fweight" && !is.null(kernel)) {
+    stop("fweights not allowed with kernel-based VCE.", call. = FALSE)
+  }
+
+  list(
+    method = method, vcov = vcov, kernel = kernel, bw = bw,
+    kiefer = kiefer, dkraay = dkraay, tvar = tvar, ivar = ivar,
+    coviv = coviv, small = small, dofminus = dofminus, sdofminus = sdofminus,
+    endog = endog, orthog = orthog, redundant = redundant,
+    weight_type = weight_type, center = center, psd = psd,
+    partial = partial, nopartialsmall = nopartialsmall,
+    reduced_form = reduced_form,
+    kclass = kclass, fuller = fuller, b0 = b0,
+    wmatrix = wmatrix, smatrix = smatrix,
+    model_flag = model_flag, x_flag = x_flag, y_flag = y_flag
+  )
+}
+
+
+#' @export
+ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
+                   vcov = "iid", clusters = NULL, endog = NULL,
+                   orthog = NULL,
+                   redundant = NULL,
+                   method = "2sls", kclass = NULL, fuller = 0,
+                   coviv = FALSE,
+                   small = FALSE,
+                   dofminus = 0L, sdofminus = 0L,
+                   weight_type = "aweight",
+                   kernel = NULL, bw = NULL, tvar = NULL, ivar = NULL,
+                   kiefer = FALSE, dkraay = NULL,
+                   wmatrix = NULL, smatrix = NULL,
+                   b0 = NULL,
+                   partial = NULL,
+                   nopartialsmall = FALSE,
+                   center = FALSE,
+                   psd = NULL,
+                   reduced_form = "none",
+                   model = TRUE, x = FALSE, y = TRUE) {
+
+  # --- 1. Capture call ---
+  cl <- match.call()
+
+  # --- 2. Validate and normalize arguments ---
+  opts <- .validate_and_normalize_args(
+    vcov = vcov, clusters = clusters, endog = endog, orthog = orthog,
+    redundant = redundant, method = method, kclass = kclass, fuller = fuller,
+    coviv = coviv, small = small, dofminus = dofminus, sdofminus = sdofminus,
+    weight_type = weight_type, kernel = kernel, bw = bw, tvar = tvar,
+    ivar = ivar, kiefer = kiefer, dkraay = dkraay,
+    wmatrix = wmatrix, smatrix = smatrix, b0 = b0,
+    partial = partial, nopartialsmall = nopartialsmall,
+    center = center, psd = psd, reduced_form = reduced_form,
+    model_flag = model, x_flag = x, y_flag = y
+  )
+  # Unpack normalized options into local scope
+  method <- opts$method
+  vcov <- opts$vcov
+  kernel <- opts$kernel
+  bw <- opts$bw
+  kiefer <- opts$kiefer
+  dkraay <- opts$dkraay
+  tvar <- opts$tvar
+  ivar <- opts$ivar
+  coviv <- opts$coviv
+  small <- opts$small
+  dofminus <- opts$dofminus
+  sdofminus <- opts$sdofminus
+  endog <- opts$endog
+  orthog <- opts$orthog
+  redundant <- opts$redundant
+  weight_type <- opts$weight_type
+  center <- opts$center
+  psd <- opts$psd
+  partial <- opts$partial
+  nopartialsmall <- opts$nopartialsmall
+  reduced_form <- opts$reduced_form
+  kclass <- opts$kclass
+  fuller <- opts$fuller
+  b0 <- opts$b0
+  wmatrix <- opts$wmatrix
+  smatrix <- opts$smatrix
+
   # --- 3. Forward to parser ---
   # Build a call to .parse_formula() using the NSE arguments from ivreg2().
   # Evaluate in an environment where .parse_formula is visible (it's unexported)
@@ -695,10 +776,6 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     if (any(abs(w_raw - round(w_raw)) > sqrt(.Machine$double.eps)))
       stop('Frequency weights (`weight_type = "fweight"`) must be integers.',
            call. = FALSE)
-  }
-  # fweight + kernel incompatible (Stata ivreg2.ado:335)
-  if (weight_type == "fweight" && !is.null(kernel)) {
-    stop("fweights not allowed with kernel-based VCE.", call. = FALSE)
   }
 
   # Weight normalization dispatch.
