@@ -1294,6 +1294,125 @@
 }
 
 
+#' Apply VCV corrections and compute final variance-covariance matrix.
+#'
+#' GMM path: apply small-sample corrections to fit$vcov, recompute sigma.
+#' Non-GMM path: select bread (k-class vs 2SLS for COVIV), dispatch to VCV
+#' helpers. PSD correction via .psd_correct().
+#'
+#' @return Updated fit with final vcov, sigma, df.residual.
+#' @noRd
+.compute_vcov <- function(fit, parsed, prep, opts, method, bw) {
+  vcov <- opts$vcov
+  kernel <- opts$kernel
+  small <- opts$small
+  dofminus <- opts$dofminus
+  coviv <- opts$coviv
+  weight_type <- opts$weight_type
+  center <- opts$center
+  psd <- opts$psd
+
+  sdofminus   <- prep$sdofminus
+  cluster_vec <- prep$cluster_vec
+  time_index  <- prep$time_index
+  M           <- prep$M
+
+  if (method %in% c("gmm2s", "gmmw", "cue")) {
+    needs_vcov_correction <- small
+    if (needs_vcov_correction) {
+      if (!is.null(cluster_vec)) {
+        fit$vcov <- fit$vcov * ((parsed$N - 1) / (parsed$N - parsed$K - sdofminus)) *
+          (M / (M - 1))
+        fit$df.residual <- as.integer(M - 1L)
+      } else {
+        fit$vcov <- fit$vcov * ((parsed$N - dofminus) /
+                                  (parsed$N - parsed$K - dofminus - sdofminus))
+      }
+    } else if (!is.null(cluster_vec)) {
+      fit$df.residual <- as.integer(M - 1L)
+    }
+    if (small) {
+      fit$sigma <- sqrt(fit$rss / (parsed$N - parsed$K - dofminus - sdofminus))
+    }
+    colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
+  } else {
+
+  # For LIML/kclass, select bread: k-class bread by default, 2SLS bread if coviv
+  bread_vcov <- if (method %in% c("liml", "kclass") && !coviv) {
+    fit$bread_kclass
+  } else {
+    fit$bread
+  }
+
+  # COVIV + IID: override the k-class IID VCV with 2SLS-bread IID VCV
+  if (method %in% c("liml", "kclass") && coviv &&
+      vcov == "iid" && is.null(cluster_vec)) {
+    fit$vcov <- fit$sigma^2 * fit$bread
+    colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
+  }
+
+  if (!is.null(cluster_vec) || vcov %in% c("robust", "HAC", "AC")) {
+    X_hat_vcov <- if (parsed$is_iv) fit$X_hat else parsed$X
+    resid_vcov <- fit$residuals
+  }
+
+  if (!is.null(cluster_vec) && !is.null(kernel)) {
+    is_twoway <- is.list(cluster_vec)
+    fit$vcov <- .compute_cluster_kernel_vcov(
+      bread = bread_vcov, X_hat = X_hat_vcov, resid = resid_vcov,
+      cluster_vec = cluster_vec, time_index = time_index,
+      kernel = kernel, bw = bw,
+      N = parsed$N, K = parsed$K, M = M, small = small,
+      dofminus = dofminus, sdofminus = sdofminus,
+      weights = parsed$weights, weight_type = weight_type,
+      is_twoway = is_twoway,
+      center = center
+    )
+    fit$df.residual <- as.integer(M - 1L)
+  } else if (vcov == "HAC") {
+    fit$vcov <- .compute_hac_vcov(bread_vcov, X_hat_vcov, resid_vcov,
+                                   time_index, kernel, bw,
+                                   parsed$N, parsed$K,
+                                   dofminus = dofminus, sdofminus = sdofminus,
+                                   small = small,
+                                   weights = parsed$weights,
+                                   weight_type = weight_type,
+                                   center = center)
+  } else if (vcov == "AC") {
+    fit$vcov <- .compute_ac_vcov(bread_vcov, X_hat_vcov, resid_vcov,
+                                  time_index, kernel, bw,
+                                  parsed$N, parsed$K,
+                                  dofminus = dofminus, sdofminus = sdofminus,
+                                  small = small,
+                                  weights = parsed$weights,
+                                  weight_type = weight_type)
+  } else if (!is.null(cluster_vec)) {
+    fit$vcov <- .compute_cl_vcov(bread_vcov, X_hat_vcov, resid_vcov,
+                                  cluster_vec, parsed$N, parsed$K, M, small,
+                                  dofminus = dofminus, sdofminus = sdofminus,
+                                  weights = parsed$weights,
+                                  weight_type = weight_type,
+                                  center = center)
+    fit$df.residual <- as.integer(M - 1L)
+  } else if (vcov == "robust") {
+    fit$vcov <- .compute_hc_vcov(bread_vcov, X_hat_vcov, resid_vcov,
+                                  parsed$N, parsed$K,
+                                  small = small, dofminus = dofminus,
+                                  sdofminus = sdofminus,
+                                  weights = parsed$weights,
+                                  weight_type = weight_type,
+                                  center = center)
+  }
+
+  }  # end of non-GMM VCV block
+
+  # PSD correction on final VCV
+  fit$vcov <- .psd_correct(fit$vcov, psd)
+
+  fit
+}
+
+
 #' @export
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
@@ -1397,106 +1516,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   omega_fn <- est$omega_fn
 
   # --- 5. VCV ---
-  # For GMM2S/gmmw: VCV is already computed by the GMM functions. Apply
-  # small-sample corrections here when requested.
-  if (method %in% c("gmm2s", "gmmw", "cue")) {
-    bread_vcov <- fit$bread_gmm
-    needs_vcov_correction <- small
-    if (needs_vcov_correction) {
-      if (!is.null(cluster_vec)) {
-        fit$vcov <- fit$vcov * ((parsed$N - 1) / (parsed$N - parsed$K - sdofminus)) *
-          (M / (M - 1))
-        fit$df.residual <- as.integer(M - 1L)
-      } else {
-        fit$vcov <- fit$vcov * ((parsed$N - dofminus) /
-                                  (parsed$N - parsed$K - dofminus - sdofminus))
-      }
-    } else if (!is.null(cluster_vec)) {
-      fit$df.residual <- as.integer(M - 1L)
-    }
-    # Recompute sigma for small
-    if (small) {
-      fit$sigma <- sqrt(fit$rss / (parsed$N - parsed$K - dofminus - sdofminus))
-    }
-    colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
-  } else {
-
-  # For LIML/kclass, select bread: k-class bread by default, 2SLS bread if coviv
-  bread_vcov <- if (method %in% c("liml", "kclass") && !coviv) {
-    fit$bread_kclass
-  } else {
-    fit$bread
-  }
-
-  # COVIV + IID: override the k-class IID VCV with 2SLS-bread IID VCV
-  if (method %in% c("liml", "kclass") && coviv &&
-      vcov == "iid" && is.null(cluster_vec)) {
-    fit$vcov <- fit$sigma^2 * fit$bread
-    colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
-  }
-
-  # For HC/CL/HAC/AC VCV: pass weights and weight_type to VCV functions.
-  # The helper functions .hc_meat() / .cl_scores() handle weight-type dispatch.
-  if (!is.null(cluster_vec) || vcov %in% c("robust", "HAC", "AC")) {
-    X_hat_vcov <- if (parsed$is_iv) fit$X_hat else parsed$X
-    resid_vcov <- fit$residuals
-  }
-
-  if (!is.null(cluster_vec) && !is.null(kernel)) {
-    # Cluster + kernel (DK or Thompson) — must check before HAC/AC since
-    # kernel sets vcov = "AC" via VCE inference, but cluster+kernel has its
-    # own distinct computation path
-    is_twoway <- is.list(cluster_vec)
-    fit$vcov <- .compute_cluster_kernel_vcov(
-      bread = bread_vcov, X_hat = X_hat_vcov, resid = resid_vcov,
-      cluster_vec = cluster_vec, time_index = time_index,
-      kernel = kernel, bw = bw,
-      N = parsed$N, K = parsed$K, M = M, small = small,
-      dofminus = dofminus, sdofminus = sdofminus,
-      weights = parsed$weights, weight_type = weight_type,
-      is_twoway = is_twoway,
-      center = center
-    )
-    fit$df.residual <- as.integer(M - 1L)
-  } else if (vcov == "HAC") {
-    fit$vcov <- .compute_hac_vcov(bread_vcov, X_hat_vcov, resid_vcov,
-                                   time_index, kernel, bw,
-                                   parsed$N, parsed$K,
-                                   dofminus = dofminus, sdofminus = sdofminus,
-                                   small = small,
-                                   weights = parsed$weights,
-                                   weight_type = weight_type,
-                                   center = center)
-  } else if (vcov == "AC") {
-    fit$vcov <- .compute_ac_vcov(bread_vcov, X_hat_vcov, resid_vcov,
-                                  time_index, kernel, bw,
-                                  parsed$N, parsed$K,
-                                  dofminus = dofminus, sdofminus = sdofminus,
-                                  small = small,
-                                  weights = parsed$weights,
-                                  weight_type = weight_type)
-  } else if (!is.null(cluster_vec)) {
-    fit$vcov <- .compute_cl_vcov(bread_vcov, X_hat_vcov, resid_vcov,
-                                  cluster_vec, parsed$N, parsed$K, M, small,
-                                  dofminus = dofminus, sdofminus = sdofminus,
-                                  weights = parsed$weights,
-                                  weight_type = weight_type,
-                                  center = center)
-    fit$df.residual <- as.integer(M - 1L)
-  } else if (vcov == "robust") {
-    fit$vcov <- .compute_hc_vcov(bread_vcov, X_hat_vcov, resid_vcov,
-                                  parsed$N, parsed$K,
-                                  small = small, dofminus = dofminus,
-                                  sdofminus = sdofminus,
-                                  weights = parsed$weights,
-                                  weight_type = weight_type,
-                                  center = center)
-  }
-
-  }  # end of non-GMM2S VCV block
-
-  # --- 5a. PSD correction on final VCV ---
-  fit$vcov <- .psd_correct(fit$vcov, psd)
+  fit <- .compute_vcov(fit, parsed, prep, opts, method, bw)
 
   # --- 5b. Diagnostics ---
   # HAC/robust → robust diagnostics path (Hansen J, KP rk)
