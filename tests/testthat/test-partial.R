@@ -657,6 +657,29 @@ test_that("CUE + partial is NOT FWL-invariant with robust VCE", {
 })
 
 
+test_that("CUE b0 + partial works (b0 validated after partialling)", {
+  skip_if_not(file.exists(card_path))
+  # Regression test: b0 must be validated AFTER partialling removes columns.
+  # Before the fix, b0 was validated against pre-partial K, causing a
+  # dimension mismatch when partial removes exogenous regressors.
+  # After partialling "smsa", remaining regressors are:
+  #   educ, exper, expersq, black, south (K=5, no intercept)
+  # CUE + IID = LIML, so we can compare against LIML + partial.
+  fit_liml <- ivreg2(
+    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
+    data = card, method = "liml", partial = "smsa")
+  b0_vec <- coef(fit_liml)
+  fit_cue <- suppressWarnings(ivreg2(
+    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
+    data = card, method = "cue", partial = "smsa", b0 = b0_vec))
+  # CUE + IID should match LIML
+  for (nm in names(b0_vec)) {
+    expect_equal(unname(coef(fit_cue)[nm]), unname(coef(fit_liml)[nm]),
+                 tolerance = 1e-4,
+                 info = paste("b0+partial CUE vs LIML:", nm))
+  }
+})
+
 test_that("partial + sdofminus stack correctly", {
   skip_if_not(file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |

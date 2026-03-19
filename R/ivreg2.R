@@ -668,33 +668,6 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
          parsed$N - parsed$L, ").", call. = FALSE)
   }
 
-  # --- 3b1. Validate b0 dimensions and reorder (need parsed$K) ---
-  if (!is.null(b0)) {
-    if (length(b0) != parsed$K) {
-      stop("`b0` length (", length(b0), ") must equal the number of ",
-           "regressors K (", parsed$K, ").", call. = FALSE)
-    }
-    if (!is.null(names(b0))) {
-      # Named: reorder to match X column order
-      xnames <- colnames(parsed$X)
-      bad <- setdiff(names(b0), xnames)
-      if (length(bad) > 0L) {
-        stop("`b0` has names not matching model columns: ",
-             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
-      }
-      missing_names <- setdiff(xnames, names(b0))
-      if (length(missing_names) > 0L) {
-        stop("`b0` is missing names for model columns: ",
-             paste0("'", missing_names, "'", collapse = ", "), ".",
-             call. = FALSE)
-      }
-      b0 <- b0[xnames]
-    } else {
-      # Unnamed: assign X column names
-      names(b0) <- colnames(parsed$X)
-    }
-  }
-
   # --- 3b2. Validate wmatrix/smatrix (symmetry + IV-only; dimensions
   #          checked after partialling, which may reduce L) ---
   if (!is.null(wmatrix)) {
@@ -875,6 +848,35 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
       stop("After partialling: N - L - dofminus - sdofminus = ",
            parsed$N - parsed$L - dofminus - sdofminus,
            " (must be > 0).", call. = FALSE)
+    }
+  }
+
+  # --- 3d1. Validate b0 dimensions and reorder (after partialling) ---
+  # Must come AFTER partialling because partialling removes columns from X,
+  # changing K and the column names that b0 must match.
+  if (!is.null(b0)) {
+    if (length(b0) != parsed$K) {
+      stop("`b0` length (", length(b0), ") must equal the number of ",
+           "regressors K (", parsed$K, ").", call. = FALSE)
+    }
+    if (!is.null(names(b0))) {
+      # Named: reorder to match X column order
+      xnames <- colnames(parsed$X)
+      bad <- setdiff(names(b0), xnames)
+      if (length(bad) > 0L) {
+        stop("`b0` has names not matching model columns: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      missing_names <- setdiff(xnames, names(b0))
+      if (length(missing_names) > 0L) {
+        stop("`b0` is missing names for model columns: ",
+             paste0("'", missing_names, "'", collapse = ", "), ".",
+             call. = FALSE)
+      }
+      b0 <- b0[xnames]
+    } else {
+      # Unnamed: assign X column names
+      names(b0) <- colnames(parsed$X)
     }
   }
 
