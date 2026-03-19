@@ -648,6 +648,444 @@
 }
 
 
+#' Prepare model matrices, weights, clusters, and time-index for estimation.
+#'
+#' Post-parse validation, weight normalization, FWL partialling, b0 validation,
+#' wmatrix/smatrix dimension checks, cluster parsing, DK auto-clustering,
+#' time-index construction, and HAC/AC sorting.
+#'
+#' @return Named list with parsed (modified), sdofminus, b0, cluster_vec,
+#'   cluster_var_name, M/M1/M2, time_index, unsort_order, partial_ct,
+#'   partial_names, partialcons, n_physical, w_raw, bw.
+#' @noRd
+.prepare_model <- function(parsed, opts, data, clusters) {
+  method <- opts$method
+  vcov <- opts$vcov
+  kernel <- opts$kernel
+  bw <- opts$bw
+  kiefer <- opts$kiefer
+  dkraay <- opts$dkraay
+  tvar <- opts$tvar
+  ivar <- opts$ivar
+  dofminus <- opts$dofminus
+  sdofminus <- opts$sdofminus
+  weight_type <- opts$weight_type
+  partial <- opts$partial
+  nopartialsmall <- opts$nopartialsmall
+  fuller <- opts$fuller
+  b0 <- opts$b0
+  wmatrix <- opts$wmatrix
+  smatrix <- opts$smatrix
+
+  # --- Validate dofminus/sdofminus against model dimensions ---
+  if (dofminus >= parsed$N) {
+    stop("`dofminus` (", dofminus, ") must be less than N (", parsed$N, ").",
+         call. = FALSE)
+  }
+  if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
+    stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
+         parsed$N - parsed$K - dofminus - sdofminus,
+         " (must be > 0).", call. = FALSE)
+  }
+  if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
+    stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
+         parsed$N - parsed$L - dofminus - sdofminus,
+         " (must be > 0).", call. = FALSE)
+  }
+
+  # --- Validate method against parsed model ---
+  if (method %in% c("liml", "kclass", "gmm2s", "cue") && !parsed$is_iv) {
+    stop('`method = "', method, '"` requires an IV model (3-part formula).',
+         call. = FALSE)
+  }
+  if (fuller > 0 && parsed$is_iv && fuller >= (parsed$N - parsed$L)) {
+    stop("`fuller` (", fuller, ") must be less than N - L (",
+         parsed$N - parsed$L, ").", call. = FALSE)
+  }
+
+  # --- Validate wmatrix/smatrix (symmetry + IV-only) ---
+  if (!is.null(wmatrix)) {
+    if (!isSymmetric(unname(wmatrix), tol = sqrt(.Machine$double.eps)))
+      stop("`wmatrix` is not symmetric.", call. = FALSE)
+    if (!parsed$is_iv)
+      stop("`wmatrix` requires an IV model (endogenous variables).",
+           call. = FALSE)
+  }
+  if (!is.null(smatrix)) {
+    if (!isSymmetric(unname(smatrix), tol = sqrt(.Machine$double.eps)))
+      stop("`smatrix` is not symmetric.", call. = FALSE)
+    if (!parsed$is_iv)
+      stop("`smatrix` requires an IV model (endogenous variables).",
+           call. = FALSE)
+  }
+
+  # --- Validate and normalize weights ---
+  w_raw <- parsed$weights
+  if (!is.null(w_raw) && any(!is.finite(w_raw)))
+    stop("Weights must be finite and non-missing.", call. = FALSE)
+  if (!is.null(w_raw) && any(w_raw <= 0))
+    stop("All weights must be strictly positive.", call. = FALSE)
+  if (weight_type == "fweight" && !is.null(w_raw)) {
+    if (any(abs(w_raw - round(w_raw)) > sqrt(.Machine$double.eps)))
+      stop('Frequency weights (`weight_type = "fweight"`) must be integers.',
+           call. = FALSE)
+  }
+
+  # Weight normalization dispatch.
+  # Raw (user-supplied) weights are stored in the return object.
+  n_physical <- parsed$N
+  if (!is.null(w_raw)) {
+    if (weight_type == "fweight") {
+      # fweight: no normalization; N = sum(w)
+      parsed$weights <- w_raw
+      N_eff <- sum(w_raw)
+      if (N_eff > .Machine$integer.max)
+        stop("Sum of frequency weights exceeds integer limit.", call. = FALSE)
+      parsed$N <- as.integer(round(N_eff))
+    } else {
+      # aweight/pweight: normalize to sum = N (Stata convention)
+      parsed$weights <- w_raw * (parsed$N / sum(w_raw))
+    }
+  }
+
+  # Re-validate dofminus against (possibly updated) N for fweight
+  if (weight_type == "fweight" && !is.null(w_raw)) {
+    if (dofminus >= parsed$N) {
+      stop("`dofminus` (", dofminus, ") must be less than N (", parsed$N, ").",
+           call. = FALSE)
+    }
+    if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
+      stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
+           parsed$N - parsed$K - dofminus - sdofminus,
+           " (must be > 0).", call. = FALSE)
+    }
+    if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
+      stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
+           parsed$N - parsed$L - dofminus - sdofminus,
+           " (must be > 0).", call. = FALSE)
+    }
+  }
+
+  # ===== Design-matrix work (weights, partialling, b0) =====
+
+  # --- Partial out exogenous regressors (FWL projection) ---
+  partial_ct <- 0L
+  partial_names <- character(0L)
+  partialcons <- FALSE
+
+  if (!is.null(partial)) {
+    # Resolve special strings
+    if (length(partial) == 1L && partial == "_all") {
+      partial <- parsed$exog_term_labels
+    }
+
+    # Handle _cons / (Intercept)
+    cons_strings <- c("_cons", "(Intercept)")
+    has_cons_request <- any(partial %in% cons_strings)
+    if (has_cons_request) {
+      if (!parsed$has_intercept) {
+        stop('Cannot partial `"_cons"` from a model without an intercept.',
+             call. = FALSE)
+      }
+      partialcons <- TRUE
+      partial <- setdiff(partial, cons_strings)
+    }
+
+    # Validate remaining names against exogenous term labels
+    if (length(partial) > 0L) {
+      bad <- setdiff(partial, parsed$exog_names)
+      if (length(bad) > 0L) {
+        stop("`partial` contains variables not in the exogenous regressor list: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      partial_names <- partial
+
+      # When partialling variables, constant is always included (Stata behavior)
+      if (parsed$has_intercept) {
+        partialcons <- TRUE
+      }
+    }
+
+    # Nothing to do if no vars and no cons
+    if (length(partial_names) == 0L && !partialcons) {
+      partial <- NULL
+    }
+  }
+
+  if (!is.null(partial) || partialcons) {
+    exog_mt <- stats::terms(parsed$formula, data = data, rhs = 1L)
+    exog_term_labels <- attr(exog_mt, "term.labels")
+    exog_colnames <- setdiff(colnames(parsed$X),
+                              c("(Intercept)", parsed$endo_colnames))
+    x_all_names <- colnames(parsed$X)
+    exog_col_mask <- x_all_names %in% exog_colnames
+    exog_full_mm <- stats::model.matrix(exog_mt, parsed$model_frame)
+    exog_full_assign <- attr(exog_full_mm, "assign")
+    icept_pos <- which(colnames(exog_full_mm) == "(Intercept)")
+    if (length(icept_pos) > 0L) {
+      exog_full_colnames <- colnames(exog_full_mm)[-icept_pos]
+      exog_full_assign <- exog_full_assign[-icept_pos]
+    } else {
+      exog_full_colnames <- colnames(exog_full_mm)
+    }
+    surv_idx <- match(exog_colnames, exog_full_colnames)
+    surv_idx <- surv_idx[!is.na(surv_idx)]
+    exog_assign <- exog_full_assign[surv_idx]
+
+    if (length(partial_names) > 0L) {
+      partial_colnames <- .expand_terms_to_colnames(
+        partial_names, exog_term_labels, exog_full_colnames, exog_full_assign
+      )
+      partial_colnames <- intersect(partial_colnames, exog_colnames)
+    } else {
+      partial_colnames <- character(0L)
+    }
+
+    if (partialcons && "(Intercept)" %in% colnames(parsed$X)) {
+      partial_colnames <- c("(Intercept)", partial_colnames)
+    }
+
+    partial_ct <- length(partial_colnames)
+    parsed <- .partial_out(parsed, partial_colnames, partialcons)
+
+    if (!nopartialsmall) {
+      sdofminus <- sdofminus + as.integer(partial_ct)
+    }
+
+    # Re-validate dimensions after partialling
+    if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
+      stop("After partialling: N - K - dofminus - sdofminus = ",
+           parsed$N - parsed$K - dofminus - sdofminus,
+           " (must be > 0).", call. = FALSE)
+    }
+    if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
+      stop("After partialling: N - L - dofminus - sdofminus = ",
+           parsed$N - parsed$L - dofminus - sdofminus,
+           " (must be > 0).", call. = FALSE)
+    }
+  }
+
+  # --- Validate b0 dimensions and reorder (after partialling) ---
+  if (!is.null(b0)) {
+    if (length(b0) != parsed$K) {
+      stop("`b0` length (", length(b0), ") must equal the number of ",
+           "regressors K (", parsed$K, ").", call. = FALSE)
+    }
+    if (!is.null(names(b0))) {
+      xnames <- colnames(parsed$X)
+      bad <- setdiff(names(b0), xnames)
+      if (length(bad) > 0L) {
+        stop("`b0` has names not matching model columns: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      missing_names <- setdiff(xnames, names(b0))
+      if (length(missing_names) > 0L) {
+        stop("`b0` is missing names for model columns: ",
+             paste0("'", missing_names, "'", collapse = ", "), ".",
+             call. = FALSE)
+      }
+      b0 <- b0[xnames]
+    } else {
+      names(b0) <- colnames(parsed$X)
+    }
+  }
+
+  # --- Validate wmatrix/smatrix dimensions (after partialling) ---
+  if (!is.null(wmatrix)) {
+    if (nrow(wmatrix) != parsed$L || ncol(wmatrix) != parsed$L)
+      stop("`wmatrix` dimensions (", nrow(wmatrix), "x", ncol(wmatrix),
+           ") do not match the number of instruments (", parsed$L, ").",
+           call. = FALSE)
+  }
+  if (!is.null(smatrix)) {
+    if (nrow(smatrix) != parsed$L || ncol(smatrix) != parsed$L)
+      stop("`smatrix` dimensions (", nrow(smatrix), "x", ncol(smatrix),
+           ") do not match the number of instruments (", parsed$L, ").",
+           call. = FALSE)
+  }
+
+  # ===== Dependence-structure work (clusters, time-index, sorting) =====
+
+  # --- Parse clusters ---
+  cluster_vec <- NULL
+  cluster_var_name <- NULL
+  M <- NULL
+  M1 <- NULL
+  M2 <- NULL
+  if (!is.null(clusters)) {
+    cl_terms <- attr(stats::terms(clusters), "term.labels")
+    has_interaction <- any(grepl(":", cl_terms, fixed = TRUE))
+    if (has_interaction)
+      stop("`clusters` must use `+` for two-way clustering (e.g. ~a + b), ",
+           "not `:` or `*`. For one-way clustering on an interaction, ",
+           "create the variable first (e.g. interaction(a, b)).", call. = FALSE)
+    cluster_var_names <- cl_terms
+    n_clvars <- length(cluster_var_names)
+    if (n_clvars < 1L || n_clvars > 2L)
+      stop("`clusters` must reference one or two variables.", call. = FALSE)
+
+    mf_rows <- match(rownames(parsed$model_frame), rownames(data))
+
+    if (n_clvars == 1L) {
+      cluster_var_name <- cluster_var_names
+      if (!cluster_var_name %in% names(data))
+        stop("Cluster variable '", cluster_var_name, "' not found in data.",
+             call. = FALSE)
+      cluster_vec <- data[[cluster_var_name]][mf_rows]
+      if (anyNA(cluster_vec))
+        stop("Cluster variable '", cluster_var_name, "' contains NA values.",
+             call. = FALSE)
+      M <- length(unique(cluster_vec))
+      if (M < 2L)
+        stop("At least 2 clusters required; found ", M, ".", call. = FALSE)
+    } else {
+      cluster_var_name <- cluster_var_names
+      for (cvn in cluster_var_name) {
+        if (!cvn %in% names(data))
+          stop("Cluster variable '", cvn, "' not found in data.",
+               call. = FALSE)
+      }
+      cv1 <- data[[cluster_var_name[1L]]][mf_rows]
+      cv2 <- data[[cluster_var_name[2L]]][mf_rows]
+      if (anyNA(cv1))
+        stop("Cluster variable '", cluster_var_name[1L],
+             "' contains NA values.", call. = FALSE)
+      if (anyNA(cv2))
+        stop("Cluster variable '", cluster_var_name[2L],
+             "' contains NA values.", call. = FALSE)
+      M1 <- length(unique(cv1))
+      M2 <- length(unique(cv2))
+      if (M1 < 2L)
+        stop("At least 2 clusters required in '", cluster_var_name[1L],
+             "'; found ", M1, ".", call. = FALSE)
+      if (M2 < 2L)
+        stop("At least 2 clusters required in '", cluster_var_name[2L],
+             "'; found ", M2, ".", call. = FALSE)
+      M <- min(M1, M2)
+      cluster_vec <- list(cv1, cv2)
+    }
+  }
+
+  # --- DK auto-clustering on tvar ---
+  if (!is.null(dkraay) && is.null(cluster_vec)) {
+    mf_rows_dk <- match(rownames(parsed$model_frame), rownames(data))
+    cluster_var_name <- tvar
+    cluster_vec <- data[[tvar]][mf_rows_dk]
+    M <- length(unique(cluster_vec))
+    if (M < 2L) {
+      stop("At least 2 time periods required for dkraay; found ", M, ".",
+           call. = FALSE)
+    }
+  }
+
+  # --- Validate cluster+kernel combinations ---
+  if (!is.null(kernel) && !is.null(cluster_vec)) {
+    if (is.list(cluster_vec)) {
+      if (is.null(tvar) || is.null(ivar)) {
+        stop("cluster+kernel requires both `tvar` and `ivar`.", call. = FALSE)
+      }
+      cv_names <- cluster_var_name
+      cv_set <- sort(cv_names)
+      iv_set <- sort(c(ivar, tvar))
+      if (!identical(cv_set, iv_set)) {
+        stop("cluster+kernel requires cluster variables to match ivar and tvar.",
+             call. = FALSE)
+      }
+      if (cv_names[1L] != ivar) {
+        cluster_vec <- list(cluster_vec[[2L]], cluster_vec[[1L]])
+        cluster_var_name <- c(ivar, tvar)
+        M1_old <- M1
+        M2_old <- M2
+        M1 <- M2_old
+        M2 <- M1_old
+      }
+    } else {
+      if (is.null(tvar)) {
+        stop("cluster+kernel requires `tvar`.", call. = FALSE)
+      }
+      if (!identical(cluster_var_name, tvar)) {
+        stop("cluster+kernel requires clustering on the time variable.",
+             call. = FALSE)
+      }
+    }
+  }
+
+  time_index <- NULL
+  unsort_order <- NULL
+  if (!is.null(kernel)) {
+    mf_rows_ti <- match(rownames(parsed$model_frame), rownames(data))
+    if (!tvar %in% names(data)) {
+      stop("Time variable '", tvar, "' not found in data.", call. = FALSE)
+    }
+    tvar_vec <- data[[tvar]][mf_rows_ti]
+    if (anyNA(tvar_vec)) {
+      stop("Time variable '", tvar, "' contains NA values.", call. = FALSE)
+    }
+    if (!is.numeric(tvar_vec)) {
+      stop("Time variable '", tvar, "' must be numeric.", call. = FALSE)
+    }
+
+    ivar_vec <- NULL
+    if (!is.null(ivar)) {
+      if (!ivar %in% names(data)) {
+        stop("Panel variable '", ivar, "' not found in data.", call. = FALSE)
+      }
+      ivar_vec <- data[[ivar]][mf_rows_ti]
+      if (anyNA(ivar_vec)) {
+        stop("Panel variable '", ivar, "' contains NA values.", call. = FALSE)
+      }
+    }
+
+    time_index <- .build_time_index(tvar_vec, ivar_vec)
+
+    if (isTRUE(kiefer)) {
+      bw <- time_index$T_span
+    }
+
+    if (time_index$n_gaps > 0L) {
+      warning("Time variable '", tvar, "' has ", time_index$n_gaps,
+              " gap(s) in relevant range.", call. = FALSE)
+    }
+
+    if (is.numeric(bw) && !isTRUE(kiefer)) {
+      max_bw <- (time_index$T_span - 1) / time_index$tdelta
+      if (bw > max_bw) {
+        stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
+             call. = FALSE)
+      }
+    }
+
+    # Sort all matrices by time-index sort order
+    so <- time_index$sort_order
+    unsort_order <- order(so)
+    parsed$X <- parsed$X[so, , drop = FALSE]
+    parsed$Z <- parsed$Z[so, , drop = FALSE]
+    parsed$y <- parsed$y[so]
+    if (!is.null(parsed$weights)) {
+      parsed$weights <- parsed$weights[so]
+    }
+    if (!is.null(cluster_vec)) {
+      if (is.list(cluster_vec)) {
+        cluster_vec[[1L]] <- cluster_vec[[1L]][so]
+        cluster_vec[[2L]] <- cluster_vec[[2L]][so]
+      } else {
+        cluster_vec <- cluster_vec[so]
+      }
+    }
+  }
+
+  list(
+    parsed = parsed, sdofminus = sdofminus, b0 = b0,
+    cluster_vec = cluster_vec, cluster_var_name = cluster_var_name,
+    M = M, M1 = M1, M2 = M2,
+    time_index = time_index, unsort_order = unsort_order,
+    partial_ct = partial_ct, partial_names = partial_names,
+    partialcons = partialcons, n_physical = n_physical, w_raw = w_raw,
+    bw = bw
+  )
+}
+
+
 #' @export
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
@@ -723,447 +1161,24 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                      parent = parent.frame())
   parsed <- eval(pf_call, pf_env)
 
-  # --- 3a. Validate dofminus/sdofminus against model dimensions ---
-  if (dofminus >= parsed$N) {
-    stop("`dofminus` (", dofminus, ") must be less than N (", parsed$N, ").",
-         call. = FALSE)
-  }
-  if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
-    stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
-         parsed$N - parsed$K - dofminus - sdofminus,
-         " (must be > 0).", call. = FALSE)
-  }
-  if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
-    stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
-         parsed$N - parsed$L - dofminus - sdofminus,
-         " (must be > 0).", call. = FALSE)
-  }
-
-  # --- 3b. Validate method against parsed model ---
-  if (method %in% c("liml", "kclass", "gmm2s", "cue") && !parsed$is_iv) {
-    stop('`method = "', method, '"` requires an IV model (3-part formula).',
-         call. = FALSE)
-  }
-  if (fuller > 0 && parsed$is_iv && fuller >= (parsed$N - parsed$L)) {
-    stop("`fuller` (", fuller, ") must be less than N - L (",
-         parsed$N - parsed$L, ").", call. = FALSE)
-  }
-
-  # --- 3b2. Validate wmatrix/smatrix (symmetry + IV-only; dimensions
-  #          checked after partialling, which may reduce L) ---
-  if (!is.null(wmatrix)) {
-    if (!isSymmetric(unname(wmatrix), tol = sqrt(.Machine$double.eps)))
-      stop("`wmatrix` is not symmetric.", call. = FALSE)
-    if (!parsed$is_iv)
-      stop("`wmatrix` requires an IV model (endogenous variables).",
-           call. = FALSE)
-  }
-  if (!is.null(smatrix)) {
-    if (!isSymmetric(unname(smatrix), tol = sqrt(.Machine$double.eps)))
-      stop("`smatrix` is not symmetric.", call. = FALSE)
-    if (!parsed$is_iv)
-      stop("`smatrix` requires an IV model (endogenous variables).",
-           call. = FALSE)
-  }
-
-  # --- 3c. Validate and normalize weights ---
-  w_raw <- parsed$weights
-  if (!is.null(w_raw) && any(!is.finite(w_raw)))
-    stop("Weights must be finite and non-missing.", call. = FALSE)
-  if (!is.null(w_raw) && any(w_raw <= 0))
-    stop("All weights must be strictly positive.", call. = FALSE)
-  if (weight_type == "fweight" && !is.null(w_raw)) {
-    if (any(abs(w_raw - round(w_raw)) > sqrt(.Machine$double.eps)))
-      stop('Frequency weights (`weight_type = "fweight"`) must be integers.',
-           call. = FALSE)
-  }
-
-  # Weight normalization dispatch.
-  # Raw (user-supplied) weights are stored in the return object.
-  n_physical <- parsed$N
-  if (!is.null(w_raw)) {
-    if (weight_type == "fweight") {
-      # fweight: no normalization; N = sum(w)
-      parsed$weights <- w_raw
-      N_eff <- sum(w_raw)
-      if (N_eff > .Machine$integer.max)
-        stop("Sum of frequency weights exceeds integer limit.", call. = FALSE)
-      parsed$N <- as.integer(round(N_eff))
-    } else {
-      # aweight/pweight: normalize to sum = N (Stata convention)
-      parsed$weights <- w_raw * (parsed$N / sum(w_raw))
-    }
-  }
-
-  # Re-validate dofminus against (possibly updated) N for fweight
-  if (weight_type == "fweight" && !is.null(w_raw)) {
-    if (dofminus >= parsed$N) {
-      stop("`dofminus` (", dofminus, ") must be less than N (", parsed$N, ").",
-           call. = FALSE)
-    }
-    if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
-      stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
-           parsed$N - parsed$K - dofminus - sdofminus,
-           " (must be > 0).", call. = FALSE)
-    }
-    if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
-      stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
-           parsed$N - parsed$L - dofminus - sdofminus,
-           " (must be > 0).", call. = FALSE)
-    }
-  }
-
-  # --- 3d. Partial out exogenous regressors (FWL projection) ---
-  partial_ct <- 0L
-  partial_names <- character(0L)
-  partialcons <- FALSE
-
-  if (!is.null(partial)) {
-    # Resolve special strings
-    if (length(partial) == 1L && partial == "_all") {
-      # Partial all original exogenous regressors (not reclassified endogenous).
-      # Matches Stata, which expands _all before reclassification.
-      partial <- parsed$exog_term_labels
-    }
-
-    # Handle _cons / (Intercept)
-    cons_strings <- c("_cons", "(Intercept)")
-    has_cons_request <- any(partial %in% cons_strings)
-    if (has_cons_request) {
-      if (!parsed$has_intercept) {
-        stop('Cannot partial `"_cons"` from a model without an intercept.',
-             call. = FALSE)
-      }
-      partialcons <- TRUE
-      partial <- setdiff(partial, cons_strings)
-    }
-
-    # Validate remaining names against exogenous term labels
-    if (length(partial) > 0L) {
-      bad <- setdiff(partial, parsed$exog_names)
-      if (length(bad) > 0L) {
-        stop("`partial` contains variables not in the exogenous regressor list: ",
-             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
-      }
-      partial_names <- partial
-
-      # When partialling variables, constant is always included (Stata behavior)
-      if (parsed$has_intercept) {
-        partialcons <- TRUE
-      }
-    }
-
-    # Nothing to do if no vars and no cons
-    if (length(partial_names) == 0L && !partialcons) {
-      partial <- NULL
-    }
-  }
-
-  if (!is.null(partial) || partialcons) {
-    # Expand term labels to column names
-    # Exogenous regressors are in part 1 of the formula; their term labels
-    # and column names come from the model matrix.  Use the exog term labels
-    # from the parsed object.
-    exog_mt <- stats::terms(parsed$formula, data = data, rhs = 1L)
-    exog_term_labels <- attr(exog_mt, "term.labels")
-    exog_colnames <- setdiff(colnames(parsed$X),
-                              c("(Intercept)", parsed$endo_colnames))
-    # Build assign vector for exogenous columns (excluding intercept and endo)
-    x_all_names <- colnames(parsed$X)
-    exog_col_mask <- x_all_names %in% exog_colnames
-    # Simple case: numeric vars have 1:1 term-to-colname mapping
-    # For factor vars, use the existing .expand_terms_to_colnames utility
-    # Build a custom assign for exogenous part of X
-    exog_full_mm <- stats::model.matrix(exog_mt, parsed$model_frame)
-    exog_full_assign <- attr(exog_full_mm, "assign")
-    # Remove intercept entry
-    icept_pos <- which(colnames(exog_full_mm) == "(Intercept)")
-    if (length(icept_pos) > 0L) {
-      exog_full_colnames <- colnames(exog_full_mm)[-icept_pos]
-      exog_full_assign <- exog_full_assign[-icept_pos]
-    } else {
-      exog_full_colnames <- colnames(exog_full_mm)
-    }
-    # Filter to surviving columns
-    surv_idx <- match(exog_colnames, exog_full_colnames)
-    surv_idx <- surv_idx[!is.na(surv_idx)]
-    exog_assign <- exog_full_assign[surv_idx]
-
-    if (length(partial_names) > 0L) {
-      partial_colnames <- .expand_terms_to_colnames(
-        partial_names, exog_term_labels, exog_full_colnames, exog_full_assign
-      )
-      # Filter to surviving columns only
-      partial_colnames <- intersect(partial_colnames, exog_colnames)
-    } else {
-      partial_colnames <- character(0L)
-    }
-
-    # Add intercept if partialcons
-    if (partialcons && "(Intercept)" %in% colnames(parsed$X)) {
-      partial_colnames <- c("(Intercept)", partial_colnames)
-    }
-
-    # Count partialled variables
-    partial_ct <- length(partial_colnames)
-
-    # Perform FWL projection
-    parsed <- .partial_out(parsed, partial_colnames, partialcons)
-
-    # Increment sdofminus (unless nopartialsmall)
-    if (!nopartialsmall) {
-      sdofminus <- sdofminus + as.integer(partial_ct)
-    }
-
-    # Re-validate dimensions after partialling
-    if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
-      stop("After partialling: N - K - dofminus - sdofminus = ",
-           parsed$N - parsed$K - dofminus - sdofminus,
-           " (must be > 0).", call. = FALSE)
-    }
-    if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
-      stop("After partialling: N - L - dofminus - sdofminus = ",
-           parsed$N - parsed$L - dofminus - sdofminus,
-           " (must be > 0).", call. = FALSE)
-    }
-  }
-
-  # --- 3d1. Validate b0 dimensions and reorder (after partialling) ---
-  # Must come AFTER partialling because partialling removes columns from X,
-  # changing K and the column names that b0 must match.
-  if (!is.null(b0)) {
-    if (length(b0) != parsed$K) {
-      stop("`b0` length (", length(b0), ") must equal the number of ",
-           "regressors K (", parsed$K, ").", call. = FALSE)
-    }
-    if (!is.null(names(b0))) {
-      # Named: reorder to match X column order
-      xnames <- colnames(parsed$X)
-      bad <- setdiff(names(b0), xnames)
-      if (length(bad) > 0L) {
-        stop("`b0` has names not matching model columns: ",
-             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
-      }
-      missing_names <- setdiff(xnames, names(b0))
-      if (length(missing_names) > 0L) {
-        stop("`b0` is missing names for model columns: ",
-             paste0("'", missing_names, "'", collapse = ", "), ".",
-             call. = FALSE)
-      }
-      b0 <- b0[xnames]
-    } else {
-      # Unnamed: assign X column names
-      names(b0) <- colnames(parsed$X)
-    }
-  }
-
-  # --- 3d2. Validate wmatrix/smatrix dimensions (after partialling) ---
-  if (!is.null(wmatrix)) {
-    if (nrow(wmatrix) != parsed$L || ncol(wmatrix) != parsed$L)
-      stop("`wmatrix` dimensions (", nrow(wmatrix), "x", ncol(wmatrix),
-           ") do not match the number of instruments (", parsed$L, ").",
-           call. = FALSE)
-  }
-  if (!is.null(smatrix)) {
-    if (nrow(smatrix) != parsed$L || ncol(smatrix) != parsed$L)
-      stop("`smatrix` dimensions (", nrow(smatrix), "x", ncol(smatrix),
-           ") do not match the number of instruments (", parsed$L, ").",
-           call. = FALSE)
-  }
-
-  # --- 3b. Parse clusters ---
-  cluster_vec <- NULL
-  cluster_var_name <- NULL
-  M <- NULL
-  M1 <- NULL
-  M2 <- NULL
-  if (!is.null(clusters)) {
-    # Use terms() to distinguish ~a+b (two additive terms) from ~a:b (one
-    # interaction term).  all.vars() strips operators, making them ambiguous.
-    cl_terms <- attr(stats::terms(clusters), "term.labels")
-    # Reject interaction terms (`:` or `*`) — user should pre-compute the
-    # interaction variable for one-way clustering, or use `+` for two-way.
-    has_interaction <- any(grepl(":", cl_terms, fixed = TRUE))
-    if (has_interaction)
-      stop("`clusters` must use `+` for two-way clustering (e.g. ~a + b), ",
-           "not `:` or `*`. For one-way clustering on an interaction, ",
-           "create the variable first (e.g. interaction(a, b)).", call. = FALSE)
-    cluster_var_names <- cl_terms
-    n_clvars <- length(cluster_var_names)
-    if (n_clvars < 1L || n_clvars > 2L)
-      stop("`clusters` must reference one or two variables.", call. = FALSE)
-
-    # Align with model frame (respects subset + na.action).
-    mf_rows <- match(rownames(parsed$model_frame), rownames(data))
-
-    if (n_clvars == 1L) {
-      # --- One-way clustering ---
-      cluster_var_name <- cluster_var_names
-      if (!cluster_var_name %in% names(data))
-        stop("Cluster variable '", cluster_var_name, "' not found in data.",
-             call. = FALSE)
-      cluster_vec <- data[[cluster_var_name]][mf_rows]
-      if (anyNA(cluster_vec))
-        stop("Cluster variable '", cluster_var_name, "' contains NA values.",
-             call. = FALSE)
-      M <- length(unique(cluster_vec))
-      if (M < 2L)
-        stop("At least 2 clusters required; found ", M, ".", call. = FALSE)
-    } else {
-      # --- Two-way clustering (Cameron-Gelbach-Miller) ---
-      cluster_var_name <- cluster_var_names
-      for (cvn in cluster_var_name) {
-        if (!cvn %in% names(data))
-          stop("Cluster variable '", cvn, "' not found in data.",
-               call. = FALSE)
-      }
-      cv1 <- data[[cluster_var_name[1L]]][mf_rows]
-      cv2 <- data[[cluster_var_name[2L]]][mf_rows]
-      if (anyNA(cv1))
-        stop("Cluster variable '", cluster_var_name[1L],
-             "' contains NA values.", call. = FALSE)
-      if (anyNA(cv2))
-        stop("Cluster variable '", cluster_var_name[2L],
-             "' contains NA values.", call. = FALSE)
-      M1 <- length(unique(cv1))
-      M2 <- length(unique(cv2))
-      if (M1 < 2L)
-        stop("At least 2 clusters required in '", cluster_var_name[1L],
-             "'; found ", M1, ".", call. = FALSE)
-      if (M2 < 2L)
-        stop("At least 2 clusters required in '", cluster_var_name[2L],
-             "'; found ", M2, ".", call. = FALSE)
-      M <- min(M1, M2)  # Stata convention: effective M = min(M1, M2)
-      cluster_vec <- list(cv1, cv2)
-    }
-  }
-
-  # --- 3d. DK auto-clustering on tvar ---
-  if (!is.null(dkraay) && is.null(cluster_vec)) {
-    mf_rows_dk <- match(rownames(parsed$model_frame), rownames(data))
-    cluster_var_name <- tvar
-    cluster_vec <- data[[tvar]][mf_rows_dk]
-    M <- length(unique(cluster_vec))
-    if (M < 2L) {
-      stop("At least 2 time periods required for dkraay; found ", M, ".",
-           call. = FALSE)
-    }
-  }
-
-  # --- 3e. Validate cluster+kernel combinations ---
-  if (!is.null(kernel) && !is.null(cluster_vec)) {
-    if (is.list(cluster_vec)) {
-      # Two-way cluster + kernel → Thompson
-      # Cluster vars must be {ivar, tvar} in either order
-      if (is.null(tvar) || is.null(ivar)) {
-        stop("cluster+kernel requires both `tvar` and `ivar`.", call. = FALSE)
-      }
-      # Validate that cluster vars match ivar and tvar
-      cv_names <- cluster_var_name  # length-2 character vector
-      cv_set <- sort(cv_names)
-      iv_set <- sort(c(ivar, tvar))
-      if (!identical(cv_set, iv_set)) {
-        stop("cluster+kernel requires cluster variables to match ivar and tvar.",
-             call. = FALSE)
-      }
-      # Normalize so cluster_vec[[1]] = ivar, cluster_vec[[2]] = tvar
-      if (cv_names[1L] != ivar) {
-        cluster_vec <- list(cluster_vec[[2L]], cluster_vec[[1L]])
-        cluster_var_name <- c(ivar, tvar)
-        # Recompute M1/M2 for correct ordering
-        M1_old <- M1
-        M2_old <- M2
-        M1 <- M2_old
-        M2 <- M1_old
-      }
-    } else {
-      # One-way cluster + kernel → DK path
-      # Cluster var must equal tvar
-      if (is.null(tvar)) {
-        stop("cluster+kernel requires `tvar`.", call. = FALSE)
-      }
-      if (!identical(cluster_var_name, tvar)) {
-        stop("cluster+kernel requires clustering on the time variable.",
-             call. = FALSE)
-      }
-    }
-  }
-
-  time_index <- NULL
-  unsort_order <- NULL
-  if (!is.null(kernel)) {
-    # Extract tvar and ivar from data, aligned to model frame rows
-    mf_rows_ti <- match(rownames(parsed$model_frame), rownames(data))
-    if (!tvar %in% names(data)) {
-      stop("Time variable '", tvar, "' not found in data.", call. = FALSE)
-    }
-    tvar_vec <- data[[tvar]][mf_rows_ti]
-    if (anyNA(tvar_vec)) {
-      stop("Time variable '", tvar, "' contains NA values.", call. = FALSE)
-    }
-    if (!is.numeric(tvar_vec)) {
-      stop("Time variable '", tvar, "' must be numeric.", call. = FALSE)
-    }
-
-    ivar_vec <- NULL
-    if (!is.null(ivar)) {
-      if (!ivar %in% names(data)) {
-        stop("Panel variable '", ivar, "' not found in data.", call. = FALSE)
-      }
-      ivar_vec <- data[[ivar]][mf_rows_ti]
-      if (anyNA(ivar_vec)) {
-        stop("Panel variable '", ivar, "' contains NA values.", call. = FALSE)
-      }
-    }
-
-    time_index <- .build_time_index(tvar_vec, ivar_vec)
-
-    # Kiefer bw: Stata sets bw = T where T = max(tvar) - min(tvar) + 1 = T_span.
-    # This can exceed max_bw (= (T_span-1)/tdelta), which is fine because
-    # Stata sets kiefer bw AFTER the max_bw check (ivreg2.ado lines 429-432).
-    # For Truncated kernel: TAU = floor(bw) = T_span, but lags beyond T-1 have
-    # no valid pairs and are skipped. The KP identification test uses Bartlett
-    # kernel (Stata bug), where bw = T_span gives kw(T-1) = 1-(T-1)/T_span > 0,
-    # matching Stata's behavior.
-    if (isTRUE(kiefer)) {
-      bw <- time_index$T_span
-    }
-
-    # Warn about gaps (Stata ivreg2.ado:415)
-    if (time_index$n_gaps > 0L) {
-      warning("Time variable '", tvar, "' has ", time_index$n_gaps,
-              " gap(s) in relevant range.", call. = FALSE)
-    }
-
-    # Check bandwidth span (Stata ivreg2.ado:423) — skip for "auto" (resolved
-    # after estimation, when residuals are available) and for kiefer (bw = T_span
-    # is set after this check in Stata, so it bypasses the limit)
-    if (is.numeric(bw) && !isTRUE(kiefer)) {
-      max_bw <- (time_index$T_span - 1) / time_index$tdelta
-      if (bw > max_bw) {
-        stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
-             call. = FALSE)
-      }
-    }
-
-    # Sort all matrices by time-index sort order
-    so <- time_index$sort_order
-    unsort_order <- order(so)
-    parsed$X <- parsed$X[so, , drop = FALSE]
-    parsed$Z <- parsed$Z[so, , drop = FALSE]
-    parsed$y <- parsed$y[so]
-    if (!is.null(parsed$weights)) {
-      parsed$weights <- parsed$weights[so]
-    }
-    if (!is.null(cluster_vec)) {
-      if (is.list(cluster_vec)) {
-        cluster_vec[[1L]] <- cluster_vec[[1L]][so]
-        cluster_vec[[2L]] <- cluster_vec[[2L]][so]
-      } else {
-        cluster_vec <- cluster_vec[so]
-      }
-    }
-  }
+  # --- 3a. Prepare model ---
+  prep <- .prepare_model(parsed, opts, data, clusters)
+  parsed       <- prep$parsed
+  sdofminus    <- prep$sdofminus
+  b0           <- prep$b0
+  cluster_vec  <- prep$cluster_vec
+  cluster_var_name <- prep$cluster_var_name
+  M            <- prep$M
+  M1           <- prep$M1
+  M2           <- prep$M2
+  time_index   <- prep$time_index
+  unsort_order <- prep$unsort_order
+  partial_ct   <- prep$partial_ct
+  partial_names <- prep$partial_names
+  partialcons  <- prep$partialcons
+  n_physical   <- prep$n_physical
+  w_raw        <- prep$w_raw
+  bw           <- prep$bw
 
   # --- 4. Dispatch ---
 
