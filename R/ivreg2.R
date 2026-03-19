@@ -280,6 +280,9 @@
 #' summary(fit_cl)
 #' }
 #'
+#' @export
+ivreg2 <- NULL  # forward declaration; real definition below helpers
+
 # --------------------------------------------------------------------------
 # Pipeline helpers (internal, called only by ivreg2)
 # --------------------------------------------------------------------------
@@ -1727,7 +1730,6 @@
 }
 
 
-#' @export
 ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    vcov = "iid", clusters = NULL, endog = NULL,
                    orthog = NULL,
@@ -1763,33 +1765,19 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     center = center, psd = psd, reduced_form = reduced_form,
     model_flag = model, x_flag = x, y_flag = y
   )
-  # Unpack normalized options into local scope
-  method <- opts$method
-  vcov <- opts$vcov
-  kernel <- opts$kernel
-  bw <- opts$bw
-  kiefer <- opts$kiefer
-  dkraay <- opts$dkraay
-  tvar <- opts$tvar
-  ivar <- opts$ivar
-  coviv <- opts$coviv
-  small <- opts$small
-  dofminus <- opts$dofminus
-  sdofminus <- opts$sdofminus
-  endog <- opts$endog
-  orthog <- opts$orthog
-  redundant <- opts$redundant
+  # Unpack options needed in ivreg2() scope (for .new_ivreg2() assembly).
+  # Helpers read from `opts` directly.
+  small       <- opts$small
+  dofminus    <- opts$dofminus
+  coviv       <- opts$coviv
   weight_type <- opts$weight_type
-  center <- opts$center
-  psd <- opts$psd
-  partial <- opts$partial
-  nopartialsmall <- opts$nopartialsmall
-  reduced_form <- opts$reduced_form
-  kclass <- opts$kclass
-  fuller <- opts$fuller
-  b0 <- opts$b0
-  wmatrix <- opts$wmatrix
-  smatrix <- opts$smatrix
+  kernel      <- opts$kernel
+  kiefer      <- opts$kiefer
+  dkraay      <- opts$dkraay
+  tvar        <- opts$tvar
+  ivar        <- opts$ivar
+  psd         <- opts$psd
+  smatrix     <- opts$smatrix
 
   # --- 3. Forward to parser ---
   # Build a call to .parse_formula() using the NSE arguments from ivreg2().
