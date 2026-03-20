@@ -3,11 +3,7 @@
 # ============================================================================
 
 # --- Helpers and data ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-wp_data_path <- file.path(fixture_dir, "wp_ck_data.csv")
+wp_data_path <- fixture_path("wp_ck_data.csv")
 if (file.exists(wp_data_path)) {
   wp <- read.csv(wp_data_path)
 }
@@ -17,29 +13,12 @@ read_ck_vcov <- function(path) {
   as.matrix(read.csv(path))
 }
 
-# Helper: compare VCV matrices element-wise
-expect_vcov_match <- function(V_r, V_stata, tol = stata_tol$vcov, label = "") {
-  V_r <- unname(as.matrix(V_r))
-  V_stata <- unname(as.matrix(V_stata))
-  P <- nrow(V_stata)
-  for (i in seq_len(P)) {
-    for (j in seq_len(P)) {
-      expect_equal(
-        V_r[i, j], V_stata[i, j],
-        tolerance = tol,
-        info = paste0(label, " VCV[", i, ",", j, "]")
-      )
-    }
-  }
-}
-
 # Helper: load fixture and compare a cluster+kernel fit
 check_ck_fixture <- function(fit, prefix, suffix, check_vcov = TRUE,
                              check_diag = TRUE) {
-  coef_path <- file.path(fixture_dir, paste0(prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- file.path(fixture_dir, paste0(prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- file.path(fixture_dir,
-                         paste0(prefix, "_diagnostics_", suffix, ".csv"))
+  coef_path <- fixture_path(paste0(prefix, "_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0(prefix, "_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0(prefix, "_diagnostics_", suffix, ".csv"))
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   stata_coef <- read.csv(coef_path, stringsAsFactors = FALSE)

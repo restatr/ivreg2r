@@ -5,32 +5,23 @@
 # Wald F-test of H0: all slope coefficients = 0.
 # Structural tests (OLS cross-check, edge cases) + Stata fixture tests.
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-read_diagnostics <- function(path) {
-  read.csv(path)
-}
-
 # --- Load datasets ---
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
 
-sim_multi_path <- file.path(fixture_dir, "sim_multi_endo_data.csv")
+sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
 }
 
-sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+sim_noconst_path <- fixture_path("sim_no_constant_data.csv")
 if (file.exists(sim_noconst_path)) {
   sim_noconst <- read.csv(sim_noconst_path)
 }
 
-sim_cluster_path <- file.path(fixture_dir, "sim_cluster_data.csv")
+sim_cluster_path <- fixture_path("sim_cluster_data.csv")
 if (file.exists(sim_cluster_path)) {
   sim_cluster <- read.csv(sim_cluster_path)
 }
@@ -141,8 +132,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = FALSE, suffix = "hc1"),
   list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("card_just_id_diagnostics_", vce_combo$suffix, ".csv")
   )
   label <- paste("card_just_id", vce_combo$suffix)
@@ -165,8 +155,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = FALSE, suffix = "hc1"),
   list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("card_overid_diagnostics_", vce_combo$suffix, ".csv")
   )
   label <- paste("card_overid", vce_combo$suffix)
@@ -189,8 +178,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = FALSE, suffix = "hc1"),
   list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("sim_multi_endo_diagnostics_", vce_combo$suffix, ".csv")
   )
   label <- paste("sim_multi_endo", vce_combo$suffix)
@@ -214,8 +202,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = FALSE, suffix = "hc1"),
   list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("sim_no_constant_diagnostics_", vce_combo$suffix, ".csv")
   )
   label <- paste("sim_no_constant", vce_combo$suffix)
@@ -242,8 +229,7 @@ for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = ~cluster_id,   suffix = "cl"),
   list(vcov = "iid",  small = TRUE,  clusters = ~cluster_id,   suffix = "cl_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("sim_cluster_diagnostics_", vce_combo$suffix, ".csv")
   )
   label <- paste("sim_cluster", vce_combo$suffix)
@@ -270,8 +256,7 @@ for (vce_combo in list(
   list(vcov = "iid",  small = FALSE, clusters = ~smsa66,    suffix = "cl"),
   list(vcov = "iid",  small = TRUE,  clusters = ~smsa66,    suffix = "cl_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("card_just_id_weighted_diagnostics_", vce_combo$suffix, ".csv")
   )
   label <- paste("card_just_id_weighted", vce_combo$suffix)

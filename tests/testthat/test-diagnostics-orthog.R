@@ -6,27 +6,22 @@
 # Difference-of-Sargan (IID) or difference-of-J (robust/cluster) statistic.
 # Verifies against Stata ivreg2 fixtures (e(cstat), e(cstatp), e(cstatdf)).
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
 read_orthog_fixture <- function(path) {
   read.csv(path, check.names = FALSE)
 }
 
 # --- Load datasets ---
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
 
-sim_cluster_path <- file.path(fixture_dir, "sim_cluster_data.csv")
+sim_cluster_path <- fixture_path("sim_cluster_data.csv")
 if (file.exists(sim_cluster_path)) {
   sim_cluster <- read.csv(sim_cluster_path)
 }
 
-sim_twoway_path <- file.path(fixture_dir, "sim_twoway_data.csv")
+sim_twoway_path <- fixture_path("sim_twoway_data.csv")
 if (file.exists(sim_twoway_path)) {
   sim_twoway <- read.csv(sim_twoway_path)
 }
@@ -222,8 +217,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = FALSE, suffix = "hc1"),
   list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("card_orthog1_orthog_", vce_combo$suffix, ".csv")
   )
   label <- paste("card_orthog1", vce_combo$suffix)
@@ -242,7 +236,7 @@ for (vce_combo in list(
 # ============================================================================
 
 test_that("Orthog with all excluded IVs gives stat=0 (underidentified restricted)", {
-  fixture_file <- file.path(fixture_dir, "card_orthog2_orthog_iid.csv")
+  fixture_file <- fixture_path("card_orthog2_orthog_iid.csv")
   skip_if(!file.exists(card_path), "card data not found")
   skip_if(!file.exists(fixture_file), "fixture not found")
 
@@ -264,8 +258,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = FALSE, suffix = "hc1"),
   list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("card_orthog1_dof_orthog_", vce_combo$suffix, ".csv")
   )
   label <- paste("card_orthog1_dof", vce_combo$suffix)
@@ -288,8 +281,7 @@ for (vce_combo in list(
   list(small = FALSE, suffix = "cl"),
   list(small = TRUE,  suffix = "cl_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("sim_cluster_orthog1_orthog_", vce_combo$suffix, ".csv")
   )
   label <- paste("sim_cluster_orthog1", vce_combo$suffix)
@@ -312,8 +304,7 @@ for (vce_combo in list(
   list(small = FALSE, suffix = "cl2"),
   list(small = TRUE,  suffix = "cl2_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("sim_twoway_orthog1_orthog_", vce_combo$suffix, ".csv")
   )
   label <- paste("sim_twoway_orthog1", vce_combo$suffix)

@@ -7,40 +7,10 @@
 # "hc1_small" were generated with `, robust small` (with N/(N-K) correction).
 
 # --- Helper: load Card data and fixtures ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
-}
-
-# Helper: read VCV fixture and convert Stata names to R names
-read_vcov_fixture <- function(path) {
-  fixture <- read.csv(path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-  vcov_cols <- grep("^vcov_", names(fixture), value = TRUE)
-  V <- as.matrix(fixture[, vcov_cols])
-  rownames(V) <- r_names
-  col_stata <- sub("^vcov_", "", vcov_cols)
-  colnames(V) <- ifelse(col_stata == "_cons", "(Intercept)", col_stata)
-  V
-}
-
-# Helper: compare VCV matrices element-wise
-expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
-  shared <- intersect(rownames(V_r), rownames(V_stata))
-  for (rn in shared) {
-    for (cn in shared) {
-      expect_equal(
-        V_r[rn, cn], V_stata[rn, cn],
-        tolerance = tol,
-        info = paste("VCV mismatch:", rn, cn)
-      )
-    }
-  }
 }
 
 # ============================================================================
@@ -49,7 +19,7 @@ expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
 
 test_that("2SLS robust VCV matches Stata card_just_id robust fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- file.path(fixture_dir, "card_just_id_vcov_hc1.csv")
+  vcov_path <- fixture_path("card_just_id_vcov_hc1.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -63,7 +33,7 @@ test_that("2SLS robust VCV matches Stata card_just_id robust fixture", {
 
 test_that("2SLS robust+small VCV matches Stata card_just_id robust small fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- file.path(fixture_dir, "card_just_id_vcov_hc1_small.csv")
+  vcov_path <- fixture_path("card_just_id_vcov_hc1_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -77,7 +47,7 @@ test_that("2SLS robust+small VCV matches Stata card_just_id robust small fixture
 
 test_that("2SLS robust VCV matches Stata card_overid robust fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- file.path(fixture_dir, "card_overid_vcov_hc1.csv")
+  vcov_path <- fixture_path("card_overid_vcov_hc1.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -91,7 +61,7 @@ test_that("2SLS robust VCV matches Stata card_overid robust fixture", {
 
 test_that("2SLS robust+small VCV matches Stata card_overid robust small fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- file.path(fixture_dir, "card_overid_vcov_hc1_small.csv")
+  vcov_path <- fixture_path("card_overid_vcov_hc1_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -208,14 +178,14 @@ test_that("robust VCV is symmetric", {
 # sim_no_constant: robust VCV (noconstant model)
 # ============================================================================
 
-sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+sim_noconst_path <- fixture_path("sim_no_constant_data.csv")
 if (file.exists(sim_noconst_path)) {
   sim_noconst <- read.csv(sim_noconst_path)
 }
 
 test_that("2SLS robust VCV matches Stata sim_no_constant robust fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  vcov_path <- file.path(fixture_dir, "sim_no_constant_vcov_hc1.csv")
+  vcov_path <- fixture_path("sim_no_constant_vcov_hc1.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")
@@ -224,7 +194,7 @@ test_that("2SLS robust VCV matches Stata sim_no_constant robust fixture", {
 
 test_that("2SLS robust+small VCV matches Stata sim_no_constant robust small fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  vcov_path <- file.path(fixture_dir, "sim_no_constant_vcov_hc1_small.csv")
+  vcov_path <- fixture_path("sim_no_constant_vcov_hc1_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst,

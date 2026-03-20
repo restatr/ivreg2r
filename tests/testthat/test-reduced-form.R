@@ -4,18 +4,15 @@
 
 # --- Fixture loading helpers ---
 
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
 load_rf_fixture <- function(prefix, suffix) {
-  path <- file.path(fixture_dir, paste0(prefix, "_rf_", suffix, ".csv"))
+  path <- fixture_path(paste0(prefix, "_rf_", suffix, ".csv"))
   if (!file.exists(path)) return(NULL)
   fix <- read.csv(path, stringsAsFactors = FALSE)
   fix$term[fix$term == "_cons"] <- "(Intercept)"
   fix
 }
 load_system_fixture <- function(prefix, suffix) {
-  path <- file.path(fixture_dir, paste0(prefix, "_system_", suffix, ".csv"))
+  path <- fixture_path(paste0(prefix, "_system_", suffix, ".csv"))
   if (!file.exists(path)) return(NULL)
   fix <- read.csv(path, stringsAsFactors = FALSE)
   fix$term[fix$term == "_cons"] <- "(Intercept)"
@@ -25,12 +22,12 @@ load_system_fixture <- function(prefix, suffix) {
 # --- Shared data ---
 data(card, package = "ivreg2r")
 
-sim_multi_path <- file.path(fixture_dir, "sim_multi_endo_data.csv")
+sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi_endo <- read.csv(sim_multi_path, stringsAsFactors = FALSE)
 }
 
-sim_cluster_path <- file.path(fixture_dir, "sim_cluster_data.csv")
+sim_cluster_path <- fixture_path("sim_cluster_data.csv")
 if (file.exists(sim_cluster_path)) {
   sim_cluster <- read.csv(sim_cluster_path, stringsAsFactors = FALSE)
 }

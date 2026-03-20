@@ -3,23 +3,6 @@
 # Ticket K2
 # ============================================================================
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-read_vcov_fixture <- function(path) {
-  fixture <- read.csv(path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-  vcov_cols <- grep("^vcov_", names(fixture), value = TRUE)
-  V <- as.matrix(fixture[, vcov_cols])
-  rownames(V) <- r_names
-  col_stata <- sub("^vcov_", "", vcov_cols)
-  colnames(V) <- ifelse(col_stata == "_cons", "(Intercept)", col_stata)
-  V
-}
-
 read_coef_fixture <- function(path) {
   d <- read.csv(path)
   nms <- ifelse(d$term == "_cons", "(Intercept)", d$term)
@@ -38,7 +21,7 @@ read_firststage_fixture <- function(path) {
 }
 
 # --- Load Card data ---
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
@@ -252,10 +235,10 @@ test_that("weight_type='aweight' IV is identical to omitting it", {
 test_fweight_config <- function(fixture_prefix, suffix, card_data,
                                 vcov_arg, small_arg, cluster_arg,
                                 overid = FALSE) {
-  coef_path <- file.path(fixture_dir, paste0(fixture_prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- file.path(fixture_dir, paste0(fixture_prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- file.path(fixture_dir, paste0(fixture_prefix, "_diagnostics_", suffix, ".csv"))
-  fs_path   <- file.path(fixture_dir, paste0(fixture_prefix, "_firststage_", suffix, ".csv"))
+  coef_path <- fixture_path(paste0(fixture_prefix, "_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0(fixture_prefix, "_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0(fixture_prefix, "_diagnostics_", suffix, ".csv"))
+  fs_path   <- fixture_path(paste0(fixture_prefix, "_firststage_", suffix, ".csv"))
 
   skip_if(!file.exists(coef_path))
 
@@ -446,10 +429,10 @@ test_that("fweight overid: cl_small matches Stata", {
 test_pweight_config <- function(fixture_prefix, suffix, card_data,
                                 vcov_arg, small_arg, cluster_arg,
                                 overid = FALSE) {
-  coef_path <- file.path(fixture_dir, paste0(fixture_prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- file.path(fixture_dir, paste0(fixture_prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- file.path(fixture_dir, paste0(fixture_prefix, "_diagnostics_", suffix, ".csv"))
-  fs_path   <- file.path(fixture_dir, paste0(fixture_prefix, "_firststage_", suffix, ".csv"))
+  coef_path <- fixture_path(paste0(fixture_prefix, "_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0(fixture_prefix, "_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0(fixture_prefix, "_diagnostics_", suffix, ".csv"))
+  fs_path   <- fixture_path(paste0(fixture_prefix, "_firststage_", suffix, ".csv"))
 
   skip_if(!file.exists(coef_path))
 
@@ -593,10 +576,10 @@ test_that("pweight overid: cl_small matches Stata", {
 test_aweight_overid_config <- function(suffix, card_data,
                                        vcov_arg, small_arg, cluster_arg) {
   prefix <- "card_aweight_overid"
-  coef_path <- file.path(fixture_dir, paste0(prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- file.path(fixture_dir, paste0(prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- file.path(fixture_dir, paste0(prefix, "_diagnostics_", suffix, ".csv"))
-  fs_path   <- file.path(fixture_dir, paste0(prefix, "_firststage_", suffix, ".csv"))
+  coef_path <- fixture_path(paste0(prefix, "_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0(prefix, "_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0(prefix, "_diagnostics_", suffix, ".csv"))
+  fs_path   <- fixture_path(paste0(prefix, "_firststage_", suffix, ".csv"))
 
   skip_if(!file.exists(coef_path))
 

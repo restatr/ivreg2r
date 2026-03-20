@@ -3,11 +3,8 @@
 # ============================================================================
 
 # --- Helper: load Card data and fixtures ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
-sim_multi_endo_path <- file.path(fixture_dir, "sim_multi_endo_data.csv")
+card_path <- fixture_path("card_data.csv")
+sim_multi_endo_path <- fixture_path("sim_multi_endo_data.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
@@ -78,12 +75,12 @@ compare_diagnostics <- function(fit, fixture_path, tol_stat = stata_tol$stat,
 
 test_that("LIML overid coefficients match Stata (iid)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(file.path(fixture_dir, "card_liml_overid_coef_iid.csv")),
+  skip_if(!file.exists(fixture_path("card_liml_overid_coef_iid.csv")),
           "LIML fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml")
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_iid.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coef_iid.csv"))
 })
 
 test_that("LIML overid VCV matches Stata (iid)", {
@@ -91,7 +88,7 @@ test_that("LIML overid VCV matches Stata (iid)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml")
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_iid.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_vcov_iid.csv"))
 })
 
 test_that("LIML overid diagnostics match Stata (iid)", {
@@ -99,7 +96,7 @@ test_that("LIML overid diagnostics match Stata (iid)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml")
-  diag <- read.csv(file.path(fixture_dir, "card_liml_overid_diagnostics_iid.csv"))
+  diag <- read.csv(fixture_path("card_liml_overid_diagnostics_iid.csv"))
 
   # Lambda
   expect_equal(fit$lambda, diag$lambda, tolerance = stata_tol$coef,
@@ -108,7 +105,7 @@ test_that("LIML overid diagnostics match Stata (iid)", {
   expect_equal(fit$kclass_value, diag$kclass, tolerance = stata_tol$coef,
                info = "kclass mismatch")
   # Sigma, RSS
-  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_iid.csv"))
+  compare_diagnostics(fit, fixture_path("card_liml_overid_diagnostics_iid.csv"))
   # Sargan (uses LIML residuals)
   expect_equal(fit$diagnostics$overid$stat, diag$sargan, tolerance = stata_tol$stat,
                info = "Sargan mismatch with LIML residuals")
@@ -119,9 +116,9 @@ test_that("LIML overid matches Stata (iid, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_iid_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_iid_small.csv"))
-  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_iid_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coef_iid_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_vcov_iid_small.csv"))
+  compare_diagnostics(fit, fixture_path("card_liml_overid_diagnostics_iid_small.csv"))
 })
 
 
@@ -154,10 +151,10 @@ test_that("LIML justid matches Stata fixture", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, method = "liml")
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_justid_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("card_liml_justid_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("card_liml_justid_vcov_iid.csv"))
 
-  diag <- read.csv(file.path(fixture_dir, "card_liml_justid_diagnostics_iid.csv"))
+  diag <- read.csv(fixture_path("card_liml_justid_diagnostics_iid.csv"))
   expect_equal(fit$lambda, diag$lambda, tolerance = stata_tol$coef)
   expect_equal(fit$kclass_value, diag$kclass, tolerance = stata_tol$coef)
 })
@@ -172,10 +169,10 @@ test_that("Fuller(1) matches Stata (iid)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 1)
-  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("card_fuller1_overid_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("card_fuller1_overid_vcov_iid.csv"))
 
-  diag <- read.csv(file.path(fixture_dir, "card_fuller1_overid_diagnostics_iid.csv"))
+  diag <- read.csv(fixture_path("card_fuller1_overid_diagnostics_iid.csv"))
   expect_equal(fit$lambda, diag$lambda, tolerance = stata_tol$coef,
                info = "lambda mismatch")
   expect_equal(fit$kclass_value, diag$kclass, tolerance = stata_tol$coef,
@@ -189,8 +186,8 @@ test_that("Fuller(1) matches Stata (iid, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 1, small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_iid_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_iid_small.csv"))
+  compare_coefs(fit, fixture_path("card_fuller1_overid_coef_iid_small.csv"))
+  compare_vcov(fit, fixture_path("card_fuller1_overid_vcov_iid_small.csv"))
 })
 
 test_that("Fuller(4) matches Stata (iid)", {
@@ -198,10 +195,10 @@ test_that("Fuller(4) matches Stata (iid)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 4)
-  compare_coefs(fit, file.path(fixture_dir, "card_fuller4_overid_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_fuller4_overid_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("card_fuller4_overid_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("card_fuller4_overid_vcov_iid.csv"))
 
-  diag <- read.csv(file.path(fixture_dir, "card_fuller4_overid_diagnostics_iid.csv"))
+  diag <- read.csv(fixture_path("card_fuller4_overid_diagnostics_iid.csv"))
   expect_equal(fit$kclass_value, diag$kclass, tolerance = stata_tol$coef)
   expect_equal(fit$fuller_parameter, 4)
 })
@@ -211,7 +208,7 @@ test_that("Fuller(4) matches Stata (iid, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 4, small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_fuller4_overid_coef_iid_small.csv"))
+  compare_coefs(fit, fixture_path("card_fuller4_overid_coef_iid_small.csv"))
 })
 
 
@@ -224,8 +221,8 @@ test_that("kclass(0.5) matches Stata (iid)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, kclass = 0.5)
-  compare_coefs(fit, file.path(fixture_dir, "card_kclass_half_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_kclass_half_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("card_kclass_half_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("card_kclass_half_vcov_iid.csv"))
 
   expect_equal(fit$method, "kclass")
   expect_equal(fit$kclass_value, 0.5)
@@ -237,8 +234,8 @@ test_that("kclass(0.5) matches Stata (iid, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, kclass = 0.5, small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_kclass_half_coef_iid_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_kclass_half_vcov_iid_small.csv"))
+  compare_coefs(fit, fixture_path("card_kclass_half_coef_iid_small.csv"))
+  compare_vcov(fit, fixture_path("card_kclass_half_vcov_iid_small.csv"))
 })
 
 
@@ -266,8 +263,8 @@ test_that("kclass(1) matches Stata kclass(1) fixture", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, kclass = 1)
-  compare_coefs(fit, file.path(fixture_dir, "card_kclass_1_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_kclass_1_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("card_kclass_1_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("card_kclass_1_vcov_iid.csv"))
 })
 
 
@@ -297,10 +294,10 @@ test_that("Multi-endogenous LIML matches Stata (iid)", {
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                 data = sim_multi_endo, method = "liml")
-  compare_coefs(fit, file.path(fixture_dir, "sim_multi_endo_liml_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "sim_multi_endo_liml_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("sim_multi_endo_liml_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("sim_multi_endo_liml_vcov_iid.csv"))
 
-  diag <- read.csv(file.path(fixture_dir, "sim_multi_endo_liml_diagnostics_iid.csv"))
+  diag <- read.csv(fixture_path("sim_multi_endo_liml_diagnostics_iid.csv"))
   expect_equal(fit$lambda, diag$lambda, tolerance = stata_tol$coef,
                info = "multi-endo lambda mismatch")
   expect_equal(fit$kclass_value, diag$kclass, tolerance = stata_tol$coef,
@@ -312,8 +309,8 @@ test_that("Multi-endogenous LIML matches Stata (iid, small=TRUE)", {
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                 data = sim_multi_endo, method = "liml", small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "sim_multi_endo_liml_coef_iid_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "sim_multi_endo_liml_vcov_iid_small.csv"))
+  compare_coefs(fit, fixture_path("sim_multi_endo_liml_coef_iid_small.csv"))
+  compare_vcov(fit, fixture_path("sim_multi_endo_liml_vcov_iid_small.csv"))
 })
 
 test_that("Multi-endogenous Fuller(1) matches Stata (iid)", {
@@ -321,10 +318,10 @@ test_that("Multi-endogenous Fuller(1) matches Stata (iid)", {
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                 data = sim_multi_endo, fuller = 1)
-  compare_coefs(fit, file.path(fixture_dir, "sim_multi_endo_fuller1_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "sim_multi_endo_fuller1_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("sim_multi_endo_fuller1_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("sim_multi_endo_fuller1_vcov_iid.csv"))
 
-  diag <- read.csv(file.path(fixture_dir, "sim_multi_endo_fuller1_diagnostics_iid.csv"))
+  diag <- read.csv(fixture_path("sim_multi_endo_fuller1_diagnostics_iid.csv"))
   expect_equal(fit$kclass_value, diag$kclass, tolerance = stata_tol$coef)
   expect_equal(fit$lambda, diag$lambda, tolerance = stata_tol$coef)
 })
@@ -339,10 +336,10 @@ test_that("Weighted LIML matches Stata (iid)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, weights = weight, method = "liml")
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_weighted_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_weighted_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("card_liml_weighted_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("card_liml_weighted_vcov_iid.csv"))
 
-  diag <- read.csv(file.path(fixture_dir, "card_liml_weighted_diagnostics_iid.csv"))
+  diag <- read.csv(fixture_path("card_liml_weighted_diagnostics_iid.csv"))
   expect_equal(fit$lambda, diag$lambda, tolerance = stata_tol$coef,
                info = "weighted lambda mismatch")
   expect_equal(fit$sigma, diag$rmse, tolerance = stata_tol$coef,
@@ -354,8 +351,8 @@ test_that("Weighted LIML matches Stata (iid, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, weights = weight, method = "liml", small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_weighted_coef_iid_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_weighted_vcov_iid_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_weighted_coef_iid_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_weighted_vcov_iid_small.csv"))
 })
 
 
@@ -663,8 +660,8 @@ test_that("2SLS results unchanged after LIML addition", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card)
-  compare_coefs(fit, file.path(fixture_dir, "card_overid_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_overid_vcov_iid.csv"))
+  compare_coefs(fit, fixture_path("card_overid_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("card_overid_vcov_iid.csv"))
 })
 
 test_that("OLS results unchanged after LIML addition", {
@@ -683,14 +680,14 @@ test_that("OLS results unchanged after LIML addition", {
 
 test_that("LIML overid matches Stata (HC0)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(file.path(fixture_dir, "card_liml_overid_coef_hc1.csv")),
+  skip_if(!file.exists(fixture_path("card_liml_overid_coef_hc1.csv")),
           "LIML robust fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", vcov = "robust")
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_hc1.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_hc1.csv"))
-  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_hc1.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coef_hc1.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_vcov_hc1.csv"))
+  compare_diagnostics(fit, fixture_path("card_liml_overid_diagnostics_hc1.csv"))
 })
 
 test_that("LIML overid matches Stata (HC1, small=TRUE)", {
@@ -698,9 +695,9 @@ test_that("LIML overid matches Stata (HC1, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", vcov = "robust", small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_hc1_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_hc1_small.csv"))
-  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_hc1_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coef_hc1_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_vcov_hc1_small.csv"))
+  compare_diagnostics(fit, fixture_path("card_liml_overid_diagnostics_hc1_small.csv"))
 })
 
 
@@ -710,7 +707,7 @@ test_that("LIML overid matches Stata (HC1, small=TRUE)", {
 
 test_that("LIML overid matches Stata (cluster, small=FALSE)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(file.path(fixture_dir, "card_liml_overid_coef_cl.csv")),
+  skip_if(!file.exists(fixture_path("card_liml_overid_coef_cl.csv")),
           "LIML cluster fixture not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
@@ -718,9 +715,9 @@ test_that("LIML overid matches Stata (cluster, small=FALSE)", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66)
   )
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_cl.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_cl.csv"))
-  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_cl.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coef_cl.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_vcov_cl.csv"))
+  compare_diagnostics(fit, fixture_path("card_liml_overid_diagnostics_cl.csv"))
 })
 
 test_that("LIML overid matches Stata (cluster, small=TRUE)", {
@@ -731,9 +728,9 @@ test_that("LIML overid matches Stata (cluster, small=TRUE)", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66, small = TRUE)
   )
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coef_cl_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_vcov_cl_small.csv"))
-  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_diagnostics_cl_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coef_cl_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_vcov_cl_small.csv"))
+  compare_diagnostics(fit, fixture_path("card_liml_overid_diagnostics_cl_small.csv"))
 })
 
 
@@ -743,14 +740,14 @@ test_that("LIML overid matches Stata (cluster, small=TRUE)", {
 
 test_that("LIML overid COVIV matches Stata (iid)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(file.path(fixture_dir, "card_liml_overid_coviv_coef_iid.csv")),
+  skip_if(!file.exists(fixture_path("card_liml_overid_coviv_coef_iid.csv")),
           "LIML COVIV fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", coviv = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_iid.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_iid.csv"))
-  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_coviv_diagnostics_iid.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coviv_coef_iid.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_coviv_vcov_iid.csv"))
+  compare_diagnostics(fit, fixture_path("card_liml_overid_coviv_diagnostics_iid.csv"))
 })
 
 test_that("LIML overid COVIV matches Stata (iid, small=TRUE)", {
@@ -758,9 +755,9 @@ test_that("LIML overid COVIV matches Stata (iid, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", coviv = TRUE, small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_iid_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_iid_small.csv"))
-  compare_diagnostics(fit, file.path(fixture_dir, "card_liml_overid_coviv_diagnostics_iid_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coviv_coef_iid_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_coviv_vcov_iid_small.csv"))
+  compare_diagnostics(fit, fixture_path("card_liml_overid_coviv_diagnostics_iid_small.csv"))
 })
 
 test_that("LIML overid COVIV matches Stata (HC0)", {
@@ -768,8 +765,8 @@ test_that("LIML overid COVIV matches Stata (HC0)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", vcov = "robust", coviv = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_hc1.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_hc1.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coviv_coef_hc1.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_coviv_vcov_hc1.csv"))
 })
 
 test_that("LIML overid COVIV matches Stata (HC1, small=TRUE)", {
@@ -777,8 +774,8 @@ test_that("LIML overid COVIV matches Stata (HC1, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", vcov = "robust", small = TRUE, coviv = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_hc1_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_hc1_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coviv_coef_hc1_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_coviv_vcov_hc1_small.csv"))
 })
 
 test_that("LIML overid COVIV matches Stata (cluster, small=FALSE)", {
@@ -789,8 +786,8 @@ test_that("LIML overid COVIV matches Stata (cluster, small=FALSE)", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66, coviv = TRUE)
   )
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_cl.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_cl.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coviv_coef_cl.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_coviv_vcov_cl.csv"))
 })
 
 test_that("LIML overid COVIV matches Stata (cluster, small=TRUE)", {
@@ -801,8 +798,8 @@ test_that("LIML overid COVIV matches Stata (cluster, small=TRUE)", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", clusters = ~smsa66, small = TRUE, coviv = TRUE)
   )
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_overid_coviv_coef_cl_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_overid_coviv_vcov_cl_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_overid_coviv_coef_cl_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_overid_coviv_vcov_cl_small.csv"))
 })
 
 
@@ -869,13 +866,13 @@ test_that("COVIV appears in glance output", {
 
 test_that("LIML justid matches Stata (HC0)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(file.path(fixture_dir, "card_liml_justid_coef_hc1.csv")),
+  skip_if(!file.exists(fixture_path("card_liml_justid_coef_hc1.csv")),
           "LIML justid robust fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, method = "liml", vcov = "robust")
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_hc1.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_justid_vcov_hc1.csv"))
+  compare_coefs(fit, fixture_path("card_liml_justid_coef_hc1.csv"))
+  compare_vcov(fit, fixture_path("card_liml_justid_vcov_hc1.csv"))
 })
 
 test_that("LIML justid matches Stata (HC1, small=TRUE)", {
@@ -883,8 +880,8 @@ test_that("LIML justid matches Stata (HC1, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, method = "liml", vcov = "robust", small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_hc1_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_justid_vcov_hc1_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_justid_coef_hc1_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_justid_vcov_hc1_small.csv"))
 })
 
 test_that("LIML justid matches Stata (cluster)", {
@@ -895,7 +892,7 @@ test_that("LIML justid matches Stata (cluster)", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, method = "liml", clusters = ~smsa66)
   )
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_cl.csv"))
+  compare_coefs(fit, fixture_path("card_liml_justid_coef_cl.csv"))
   # VCV comparison omitted: the just-identified Card model with expersq has
   # tiny VCV entries (~1e-11) where the pre-existing R-vs-Stata gap (~5e-8
   # absolute) exceeds 1e-6 relative. The behavioral check below verifies the
@@ -910,7 +907,7 @@ test_that("LIML justid matches Stata (cluster, small=TRUE)", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, method = "liml", clusters = ~smsa66, small = TRUE)
   )
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_justid_coef_cl_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_justid_coef_cl_small.csv"))
   # VCV comparison omitted for the same reason as above.
 })
 
@@ -943,13 +940,13 @@ test_that("LIML justid robust VCV equals 2SLS robust VCV", {
 
 test_that("Fuller(1) matches Stata (HC0)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(file.path(fixture_dir, "card_fuller1_overid_coef_hc1.csv")),
+  skip_if(!file.exists(fixture_path("card_fuller1_overid_coef_hc1.csv")),
           "Fuller robust fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 1, vcov = "robust")
-  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_hc1.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_hc1.csv"))
+  compare_coefs(fit, fixture_path("card_fuller1_overid_coef_hc1.csv"))
+  compare_vcov(fit, fixture_path("card_fuller1_overid_vcov_hc1.csv"))
 })
 
 test_that("Fuller(1) matches Stata (HC1, small=TRUE)", {
@@ -957,8 +954,8 @@ test_that("Fuller(1) matches Stata (HC1, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 1, vcov = "robust", small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_hc1_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_hc1_small.csv"))
+  compare_coefs(fit, fixture_path("card_fuller1_overid_coef_hc1_small.csv"))
+  compare_vcov(fit, fixture_path("card_fuller1_overid_vcov_hc1_small.csv"))
 })
 
 test_that("Fuller(1) matches Stata (cluster)", {
@@ -969,8 +966,8 @@ test_that("Fuller(1) matches Stata (cluster)", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, fuller = 1, clusters = ~smsa66)
   )
-  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_cl.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_cl.csv"))
+  compare_coefs(fit, fixture_path("card_fuller1_overid_coef_cl.csv"))
+  compare_vcov(fit, fixture_path("card_fuller1_overid_vcov_cl.csv"))
 })
 
 test_that("Fuller(1) matches Stata (cluster, small=TRUE)", {
@@ -981,8 +978,8 @@ test_that("Fuller(1) matches Stata (cluster, small=TRUE)", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, fuller = 1, clusters = ~smsa66, small = TRUE)
   )
-  compare_coefs(fit, file.path(fixture_dir, "card_fuller1_overid_coef_cl_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_fuller1_overid_vcov_cl_small.csv"))
+  compare_coefs(fit, fixture_path("card_fuller1_overid_coef_cl_small.csv"))
+  compare_vcov(fit, fixture_path("card_fuller1_overid_vcov_cl_small.csv"))
 })
 
 
@@ -992,13 +989,13 @@ test_that("Fuller(1) matches Stata (cluster, small=TRUE)", {
 
 test_that("kclass(0.5) matches Stata (HC0)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(file.path(fixture_dir, "card_kclass_half_coef_hc1.csv")),
+  skip_if(!file.exists(fixture_path("card_kclass_half_coef_hc1.csv")),
           "kclass robust fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, kclass = 0.5, vcov = "robust")
-  compare_coefs(fit, file.path(fixture_dir, "card_kclass_half_coef_hc1.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_kclass_half_vcov_hc1.csv"))
+  compare_coefs(fit, fixture_path("card_kclass_half_coef_hc1.csv"))
+  compare_vcov(fit, fixture_path("card_kclass_half_vcov_hc1.csv"))
 })
 
 test_that("kclass(0.5) matches Stata (HC1, small=TRUE)", {
@@ -1006,8 +1003,8 @@ test_that("kclass(0.5) matches Stata (HC1, small=TRUE)", {
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, kclass = 0.5, vcov = "robust", small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_kclass_half_coef_hc1_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_kclass_half_vcov_hc1_small.csv"))
+  compare_coefs(fit, fixture_path("card_kclass_half_coef_hc1_small.csv"))
+  compare_vcov(fit, fixture_path("card_kclass_half_vcov_hc1_small.csv"))
 })
 
 
@@ -1017,13 +1014,13 @@ test_that("kclass(0.5) matches Stata (HC1, small=TRUE)", {
 
 test_that("Weighted LIML matches Stata (HC0)", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(file.path(fixture_dir, "card_liml_weighted_coef_hc1.csv")),
+  skip_if(!file.exists(fixture_path("card_liml_weighted_coef_hc1.csv")),
           "Weighted LIML robust fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, weights = weight, method = "liml", vcov = "robust")
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_weighted_coef_hc1.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_weighted_vcov_hc1.csv"))
+  compare_coefs(fit, fixture_path("card_liml_weighted_coef_hc1.csv"))
+  compare_vcov(fit, fixture_path("card_liml_weighted_vcov_hc1.csv"))
 })
 
 test_that("Weighted LIML matches Stata (HC1, small=TRUE)", {
@@ -1032,8 +1029,8 @@ test_that("Weighted LIML matches Stata (HC1, small=TRUE)", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, weights = weight, method = "liml", vcov = "robust",
                 small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "card_liml_weighted_coef_hc1_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "card_liml_weighted_vcov_hc1_small.csv"))
+  compare_coefs(fit, fixture_path("card_liml_weighted_coef_hc1_small.csv"))
+  compare_vcov(fit, fixture_path("card_liml_weighted_vcov_hc1_small.csv"))
 })
 
 
@@ -1043,13 +1040,13 @@ test_that("Weighted LIML matches Stata (HC1, small=TRUE)", {
 
 test_that("Multi-endogenous LIML matches Stata (HC0)", {
   skip_if(!file.exists(sim_multi_endo_path), "Simulated data not found")
-  skip_if(!file.exists(file.path(fixture_dir, "sim_multi_endo_liml_coef_hc1.csv")),
+  skip_if(!file.exists(fixture_path("sim_multi_endo_liml_coef_hc1.csv")),
           "Multi-endo LIML robust fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                 data = sim_multi_endo, method = "liml", vcov = "robust")
-  compare_coefs(fit, file.path(fixture_dir, "sim_multi_endo_liml_coef_hc1.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "sim_multi_endo_liml_vcov_hc1.csv"))
+  compare_coefs(fit, fixture_path("sim_multi_endo_liml_coef_hc1.csv"))
+  compare_vcov(fit, fixture_path("sim_multi_endo_liml_vcov_hc1.csv"))
 })
 
 test_that("Multi-endogenous LIML matches Stata (HC1, small=TRUE)", {
@@ -1058,8 +1055,8 @@ test_that("Multi-endogenous LIML matches Stata (HC1, small=TRUE)", {
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                 data = sim_multi_endo, method = "liml", vcov = "robust",
                 small = TRUE)
-  compare_coefs(fit, file.path(fixture_dir, "sim_multi_endo_liml_coef_hc1_small.csv"))
-  compare_vcov(fit, file.path(fixture_dir, "sim_multi_endo_liml_vcov_hc1_small.csv"))
+  compare_coefs(fit, fixture_path("sim_multi_endo_liml_coef_hc1_small.csv"))
+  compare_vcov(fit, fixture_path("sim_multi_endo_liml_vcov_hc1_small.csv"))
 })
 
 
@@ -1105,7 +1102,7 @@ test_that("AR LIML overid: LIML overid IID matches Stata", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml")
   compare_ar_liml_overid(
-    fit, file.path(fixture_dir, "card_liml_overid_diagnostics_iid.csv")
+    fit, fixture_path("card_liml_overid_diagnostics_iid.csv")
   )
 })
 
@@ -1115,7 +1112,7 @@ test_that("AR LIML overid: LIML overid IID small matches Stata", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", small = TRUE)
   compare_ar_liml_overid(
-    fit, file.path(fixture_dir, "card_liml_overid_diagnostics_iid_small.csv")
+    fit, fixture_path("card_liml_overid_diagnostics_iid_small.csv")
   )
 })
 
@@ -1125,7 +1122,7 @@ test_that("AR LIML overid: exactly-identified LIML returns zero-stat placeholder
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, method = "liml")
   compare_ar_liml_overid(
-    fit, file.path(fixture_dir, "card_liml_justid_diagnostics_iid.csv")
+    fit, fixture_path("card_liml_justid_diagnostics_iid.csv")
   )
 })
 
@@ -1135,7 +1132,7 @@ test_that("AR LIML overid: Fuller overid IID matches Stata (same lambda)", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 1)
   compare_ar_liml_overid(
-    fit, file.path(fixture_dir, "card_fuller1_overid_diagnostics_iid.csv")
+    fit, fixture_path("card_fuller1_overid_diagnostics_iid.csv")
   )
 })
 
@@ -1145,7 +1142,7 @@ test_that("AR LIML overid: Fuller(4) overid IID matches Stata", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 4)
   compare_ar_liml_overid(
-    fit, file.path(fixture_dir, "card_fuller4_overid_diagnostics_iid.csv")
+    fit, fixture_path("card_fuller4_overid_diagnostics_iid.csv")
   )
 })
 
@@ -1155,7 +1152,7 @@ test_that("AR LIML overid: multi-endogenous LIML IID matches Stata", {
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                 data = sim_multi_endo, method = "liml")
   compare_ar_liml_overid(
-    fit, file.path(fixture_dir, "sim_multi_endo_liml_diagnostics_iid.csv")
+    fit, fixture_path("sim_multi_endo_liml_diagnostics_iid.csv")
   )
 })
 
@@ -1208,7 +1205,7 @@ test_that("AR LIML overid: weighted LIML IID matches Stata", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", weights = weight)
   compare_ar_liml_overid(
-    fit, file.path(fixture_dir, "card_liml_weighted_diagnostics_iid.csv")
+    fit, fixture_path("card_liml_weighted_diagnostics_iid.csv")
   )
 })
 

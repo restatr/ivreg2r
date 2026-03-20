@@ -3,12 +3,8 @@
 # ============================================================================
 
 # --- Helpers and data ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-hac_data_path <- file.path(fixture_dir, "ts_hac_data.csv")
-gap_data_path <- file.path(fixture_dir, "ts_gap_hac_data.csv")
+hac_data_path <- fixture_path("ts_hac_data.csv")
+gap_data_path <- fixture_path("ts_gap_hac_data.csv")
 
 if (file.exists(hac_data_path)) {
   ts_data <- read.csv(hac_data_path)
@@ -22,29 +18,12 @@ read_hac_vcov <- function(path) {
   as.matrix(read.csv(path))
 }
 
-# Helper: compare VCV matrices element-wise (both unnamed numeric matrices)
-expect_vcov_match <- function(V_r, V_stata, tol = stata_tol$vcov, label = "") {
-  V_r <- unname(as.matrix(V_r))
-  V_stata <- unname(as.matrix(V_stata))
-  P <- nrow(V_stata)
-  for (i in seq_len(P)) {
-    for (j in seq_len(P)) {
-      expect_equal(
-        V_r[i, j], V_stata[i, j],
-        tolerance = tol,
-        info = paste0(label, " VCV[", i, ",", j, "]")
-      )
-    }
-  }
-}
-
 # Helper: load fixture and compare a HAC/AC fit
 check_hac_fixture <- function(fit, prefix, suffix, check_vcov = TRUE,
                               check_diag = TRUE) {
-  coef_path <- file.path(fixture_dir, paste0(prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- file.path(fixture_dir, paste0(prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- file.path(fixture_dir,
-                         paste0(prefix, "_diagnostics_", suffix, ".csv"))
+  coef_path <- fixture_path(paste0(prefix, "_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0(prefix, "_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0(prefix, "_diagnostics_", suffix, ".csv"))
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   stata_coef <- read.csv(coef_path, stringsAsFactors = FALSE)
@@ -664,7 +643,7 @@ test_that("bw = 'auto' caps to max_bw with warning for short series", {
 
 # Helper: read auto-bw fixture bandwidth value
 read_autobiw <- function(prefix, suffix) {
-  path <- file.path(fixture_dir, paste0(prefix, "_bw_", suffix, ".csv"))
+  path <- fixture_path(paste0(prefix, "_bw_", suffix, ".csv"))
   if (!file.exists(path)) return(NA_real_)
   as.numeric(read.csv(path)$bw)
 }
@@ -704,7 +683,7 @@ test_that("HAC auto QS bandwidth matches Stata", {
                info = "auto QS bw")
   # Use stat tolerance for VCV/SEs (fractional bw noise cascades through
   # spectral window → ~1e-6 VCV differences, at the vcov tolerance boundary)
-  coef_path <- file.path(fixture_dir, "ts_hac_coef_auto_qs.csv")
+  coef_path <- fixture_path("ts_hac_coef_auto_qs.csv")
   stata_coef <- read.csv(coef_path, stringsAsFactors = FALSE)
   stata_coef$term[stata_coef$term == "_cons"] <- "(Intercept)"
   r_names <- names(coef(fit))

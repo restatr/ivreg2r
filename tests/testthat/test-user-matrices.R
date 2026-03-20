@@ -3,17 +3,10 @@
 # ============================================================================
 
 # --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
-}
-
-read_vcov_fixture <- function(path) {
-  as.matrix(read.csv(path))
 }
 
 # Stata's instrument order for the Card overid model is:
@@ -289,7 +282,7 @@ test_that("just-identified: wmatrix + gmm2s equals standard gmm2s", {
 
 test_that("wmatrix identity robust: coefs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_ident_coef_robust.csv")
+  fixture_path <- fixture_path("card_overid_wmat_ident_coef_robust.csv")
   skip_if(!file.exists(fixture_path), "wmatrix fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -314,7 +307,7 @@ test_that("wmatrix identity robust: coefs match Stata", {
 
 test_that("wmatrix identity robust: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_ident_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_wmat_ident_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path), "wmatrix diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -337,7 +330,7 @@ test_that("wmatrix identity robust: diagnostics match Stata", {
 
 test_that("wmatrix identity robust: VCV matches Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_ident_vcov_robust.csv")
+  fixture_path <- fixture_path("card_overid_wmat_ident_vcov_robust.csv")
   skip_if(!file.exists(fixture_path), "wmatrix VCV fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -363,7 +356,7 @@ test_that("wmatrix identity robust: VCV matches Stata", {
 
 test_that("wmatrix identity robust small: coefs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_ident_coef_robust_small.csv")
+  fixture_path <- fixture_path("card_overid_wmat_ident_coef_robust_small.csv")
   skip_if(!file.exists(fixture_path), "wmatrix robust_small fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -388,7 +381,7 @@ test_that("wmatrix identity robust small: coefs match Stata", {
 
 test_that("wmatrix identity robust small: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_ident_diagnostics_robust_small.csv")
+  fixture_path <- fixture_path("card_overid_wmat_ident_diagnostics_robust_small.csv")
   skip_if(!file.exists(fixture_path), "wmatrix robust_small diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -408,8 +401,8 @@ test_that("wmatrix identity robust small: diagnostics match Stata", {
 
 test_that("smatrix robust: coefs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_smat_coef_robust.csv")
-  s_path <- file.path(fixture_dir, "card_overid_smat_S_robust.csv")
+  fixture_path <- fixture_path("card_overid_smat_coef_robust.csv")
+  s_path <- fixture_path("card_overid_smat_S_robust.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
           "smatrix fixture not found")
 
@@ -438,8 +431,8 @@ test_that("smatrix robust: coefs match Stata", {
 
 test_that("smatrix robust: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_smat_diagnostics_robust.csv")
-  s_path <- file.path(fixture_dir, "card_overid_smat_S_robust.csv")
+  fixture_path <- fixture_path("card_overid_smat_diagnostics_robust.csv")
+  s_path <- fixture_path("card_overid_smat_S_robust.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
           "smatrix diagnostics fixture not found")
 
@@ -464,7 +457,7 @@ test_that("smatrix robust: diagnostics match Stata", {
 
 test_that("wmatrix + gmm2s robust: coefs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_gmm2s_coef_robust.csv")
+  fixture_path <- fixture_path("card_overid_wmat_gmm2s_coef_robust.csv")
   skip_if(!file.exists(fixture_path), "wmat_gmm2s fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -489,7 +482,7 @@ test_that("wmatrix + gmm2s robust: coefs match Stata", {
 
 test_that("wmatrix + gmm2s robust: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_gmm2s_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_wmat_gmm2s_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path), "wmat_gmm2s diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -517,7 +510,7 @@ test_that("wmatrix from IID robust: runs without error", {
   # number is expected. We verify the code runs without error and produces
   # the correct method classification.
   skip_if(!file.exists(card_path), "Card dataset not found")
-  w_path <- file.path(fixture_dir, "card_overid_wmat_from_iid_W.csv")
+  w_path <- fixture_path("card_overid_wmat_from_iid_W.csv")
   skip_if(!file.exists(w_path), "wmat_from_iid fixture not found")
 
   W_iid <- load_stata_matrix(w_path, stata_z_order_overid, r_z_order_overid)
@@ -535,8 +528,8 @@ test_that("wmatrix from IID robust: runs without error", {
 
 test_that("smatrix just-identified robust: coefs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_justid_smat_coef_robust.csv")
-  s_path <- file.path(fixture_dir, "card_justid_smat_S_robust.csv")
+  fixture_path <- fixture_path("card_justid_smat_coef_robust.csv")
+  s_path <- fixture_path("card_justid_smat_S_robust.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
           "smatrix justid fixture not found")
 
@@ -564,7 +557,7 @@ test_that("smatrix just-identified robust: coefs match Stata", {
 
 test_that("wmatrix identity cluster: coefs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_ident_coef_cluster.csv")
+  fixture_path <- fixture_path("card_overid_wmat_ident_coef_cluster.csv")
   skip_if(!file.exists(fixture_path), "wmatrix cluster fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -594,8 +587,8 @@ test_that("wmatrix identity cluster: coefs match Stata", {
 
 test_that("smatrix cluster: coefs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_smat_coef_cluster.csv")
-  s_path <- file.path(fixture_dir, "card_overid_smat_S_cluster.csv")
+  fixture_path <- fixture_path("card_overid_smat_coef_cluster.csv")
+  s_path <- fixture_path("card_overid_smat_S_cluster.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
           "smatrix cluster fixture not found")
 
@@ -628,8 +621,8 @@ test_that("smatrix cluster: coefs match Stata", {
 
 test_that("wmatrix + smatrix robust: coefs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_wmat_smat_coef_robust.csv")
-  s_path <- file.path(fixture_dir, "card_overid_wmat_smat_S_robust.csv")
+  fixture_path <- fixture_path("card_overid_wmat_smat_coef_robust.csv")
+  s_path <- fixture_path("card_overid_wmat_smat_S_robust.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
           "wmat_smat fixture not found")
 

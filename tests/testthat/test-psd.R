@@ -3,10 +3,7 @@
 # ============================================================================
 
 # --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)

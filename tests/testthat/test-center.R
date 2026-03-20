@@ -3,17 +3,10 @@
 # ============================================================================
 
 # --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
-}
-
-read_vcov_fixture <- function(path) {
-  as.matrix(read.csv(path))
 }
 
 # CUE tolerance (optimization noise; centering changes the GMM objective,
@@ -253,7 +246,7 @@ test_that("glance includes center column", {
 
 test_that("HC0 + center: coefficients and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_hc0.csv")
+  fp <- fixture_path("card_overid_coef_center_hc0.csv")
   skip_if(!file.exists(fp), "HC0 center fixture not found")
 
   fit <- ivreg2(
@@ -265,8 +258,8 @@ test_that("HC0 + center: coefficients and SEs match Stata", {
 
 test_that("HC0 + center: VCV matches Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- file.path(fixture_dir, "card_overid_vcov_center_hc0.csv")
-  cp <- file.path(fixture_dir, "card_overid_coef_center_hc0.csv")
+  vp <- fixture_path("card_overid_vcov_center_hc0.csv")
+  cp <- fixture_path("card_overid_coef_center_hc0.csv")
   skip_if(!file.exists(vp), "HC0 center VCV fixture not found")
 
   fit <- ivreg2(
@@ -278,7 +271,7 @@ test_that("HC0 + center: VCV matches Stata", {
 
 test_that("HC0 + center: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- file.path(fixture_dir, "card_overid_diagnostics_center_hc0.csv")
+  dp <- fixture_path("card_overid_diagnostics_center_hc0.csv")
   skip_if(!file.exists(dp), "HC0 center diag fixture not found")
 
   fit <- ivreg2(
@@ -295,7 +288,7 @@ test_that("HC0 + center: diagnostics match Stata", {
 
 test_that("HC1 + small + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_hc1_small.csv")
+  fp <- fixture_path("card_overid_coef_center_hc1_small.csv")
   skip_if(!file.exists(fp), "HC1 small center fixture not found")
 
   fit <- ivreg2(
@@ -307,8 +300,8 @@ test_that("HC1 + small + center: coefs and SEs match Stata", {
 
 test_that("HC1 + small + center: VCV matches Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- file.path(fixture_dir, "card_overid_vcov_center_hc1_small.csv")
-  cp <- file.path(fixture_dir, "card_overid_coef_center_hc1_small.csv")
+  vp <- fixture_path("card_overid_vcov_center_hc1_small.csv")
+  cp <- fixture_path("card_overid_coef_center_hc1_small.csv")
   skip_if(!file.exists(vp), "HC1 small center VCV fixture not found")
 
   fit <- ivreg2(
@@ -325,7 +318,7 @@ test_that("HC1 + small + center: VCV matches Stata", {
 
 test_that("Cluster + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_cl.csv")
+  fp <- fixture_path("card_overid_coef_center_cl.csv")
   skip_if(!file.exists(fp), "Cluster center fixture not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
@@ -338,8 +331,8 @@ test_that("Cluster + center: coefs and SEs match Stata", {
 
 test_that("Cluster + center: VCV matches Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- file.path(fixture_dir, "card_overid_vcov_center_cl.csv")
-  cp <- file.path(fixture_dir, "card_overid_coef_center_cl.csv")
+  vp <- fixture_path("card_overid_vcov_center_cl.csv")
+  cp <- fixture_path("card_overid_coef_center_cl.csv")
   skip_if(!file.exists(vp), "Cluster center VCV fixture not found")
 
   fit <- muffle_rank_warnings(ivreg2(
@@ -351,7 +344,7 @@ test_that("Cluster + center: VCV matches Stata", {
 
 test_that("Cluster + center: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- file.path(fixture_dir, "card_overid_diagnostics_center_cl.csv")
+  dp <- fixture_path("card_overid_diagnostics_center_cl.csv")
   skip_if(!file.exists(dp), "Cluster center diag fixture not found")
 
   fit <- muffle_rank_warnings(ivreg2(
@@ -368,7 +361,7 @@ test_that("Cluster + center: diagnostics match Stata", {
 
 test_that("Cluster + small + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_cl_small.csv")
+  fp <- fixture_path("card_overid_coef_center_cl_small.csv")
   skip_if(!file.exists(fp), "Cluster small center fixture not found")
 
   fit <- muffle_rank_warnings(ivreg2(
@@ -385,7 +378,7 @@ test_that("Cluster + small + center: coefs and SEs match Stata", {
 
 test_that("Just-identified HC0 + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_justid_coef_center_hc0.csv")
+  fp <- fixture_path("card_justid_coef_center_hc0.csv")
   skip_if(!file.exists(fp), "Just-id center fixture not found")
 
   fit <- ivreg2(
@@ -402,7 +395,7 @@ test_that("Just-identified HC0 + center: coefs and SEs match Stata", {
 
 test_that("GMM2S HC0 + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_gmm2s_hc0.csv")
+  fp <- fixture_path("card_overid_coef_center_gmm2s_hc0.csv")
   skip_if(!file.exists(fp), "GMM2S HC0 center fixture not found")
 
   fit <- ivreg2(
@@ -414,8 +407,8 @@ test_that("GMM2S HC0 + center: coefs and SEs match Stata", {
 
 test_that("GMM2S HC0 + center: VCV matches Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- file.path(fixture_dir, "card_overid_vcov_center_gmm2s_hc0.csv")
-  cp <- file.path(fixture_dir, "card_overid_coef_center_gmm2s_hc0.csv")
+  vp <- fixture_path("card_overid_vcov_center_gmm2s_hc0.csv")
+  cp <- fixture_path("card_overid_coef_center_gmm2s_hc0.csv")
   skip_if(!file.exists(vp), "GMM2S HC0 center VCV fixture not found")
 
   fit <- ivreg2(
@@ -427,7 +420,7 @@ test_that("GMM2S HC0 + center: VCV matches Stata", {
 
 test_that("GMM2S HC0 + center: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- file.path(fixture_dir, "card_overid_diagnostics_center_gmm2s_hc0.csv")
+  dp <- fixture_path("card_overid_diagnostics_center_gmm2s_hc0.csv")
   skip_if(!file.exists(dp), "GMM2S HC0 center diag fixture not found")
 
   fit <- ivreg2(
@@ -444,7 +437,7 @@ test_that("GMM2S HC0 + center: diagnostics match Stata", {
 
 test_that("GMM2S cluster + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_gmm2s_cl.csv")
+  fp <- fixture_path("card_overid_coef_center_gmm2s_cl.csv")
   skip_if(!file.exists(fp), "GMM2S cluster center fixture not found")
 
   fit <- ivreg2(
@@ -456,7 +449,7 @@ test_that("GMM2S cluster + center: coefs and SEs match Stata", {
 
 test_that("GMM2S cluster + center: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- file.path(fixture_dir, "card_overid_diagnostics_center_gmm2s_cl.csv")
+  dp <- fixture_path("card_overid_diagnostics_center_gmm2s_cl.csv")
   skip_if(!file.exists(dp), "GMM2S cluster center diag fixture not found")
 
   fit <- ivreg2(
@@ -473,7 +466,7 @@ test_that("GMM2S cluster + center: diagnostics match Stata", {
 
 test_that("CUE HC0 + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_cue_hc0.csv")
+  fp <- fixture_path("card_overid_coef_center_cue_hc0.csv")
   skip_if(!file.exists(fp), "CUE HC0 center fixture not found")
 
   fit <- ivreg2(
@@ -485,7 +478,7 @@ test_that("CUE HC0 + center: coefs and SEs match Stata", {
 
 test_that("CUE HC0 + center: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- file.path(fixture_dir, "card_overid_diagnostics_center_cue_hc0.csv")
+  dp <- fixture_path("card_overid_diagnostics_center_cue_hc0.csv")
   skip_if(!file.exists(dp), "CUE HC0 center diag fixture not found")
 
   fit <- ivreg2(
@@ -502,7 +495,7 @@ test_that("CUE HC0 + center: diagnostics match Stata", {
 
 test_that("CUE cluster + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_cue_cl.csv")
+  fp <- fixture_path("card_overid_coef_center_cue_cl.csv")
   skip_if(!file.exists(fp), "CUE cluster center fixture not found")
 
   expect_warning(
@@ -522,7 +515,7 @@ test_that("CUE cluster + center: coefs and SEs match Stata", {
 
 test_that("Endogeneity test + center: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- file.path(fixture_dir, "card_overid_diagnostics_center_endog.csv")
+  dp <- fixture_path("card_overid_diagnostics_center_endog.csv")
   skip_if(!file.exists(dp), "Endogeneity center fixture not found")
 
   fit <- ivreg2(
@@ -539,7 +532,7 @@ test_that("Endogeneity test + center: diagnostics match Stata", {
 
 test_that("Orthogonality test + center: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- file.path(fixture_dir, "card_overid_diagnostics_center_orthog.csv")
+  dp <- fixture_path("card_overid_diagnostics_center_orthog.csv")
   skip_if(!file.exists(dp), "Orthogonality center fixture not found")
 
   fixture <- read.csv(dp)
@@ -563,7 +556,7 @@ test_that("Orthogonality test + center: diagnostics match Stata", {
 
 test_that("dofminus + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_dofminus.csv")
+  fp <- fixture_path("card_overid_coef_center_dofminus.csv")
   skip_if(!file.exists(fp), "dofminus center fixture not found")
 
   fit <- ivreg2(
@@ -580,7 +573,7 @@ test_that("dofminus + center: coefs and SEs match Stata", {
 
 test_that("HAC Bartlett + center: coefs and SEs match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- file.path(fixture_dir, "card_overid_coef_center_hac_bartlett.csv")
+  fp <- fixture_path("card_overid_coef_center_hac_bartlett.csv")
   skip_if(!file.exists(fp), "HAC center fixture not found")
 
   card_ts <- card
@@ -596,8 +589,8 @@ test_that("HAC Bartlett + center: coefs and SEs match Stata", {
 
 test_that("HAC Bartlett + center: VCV matches Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- file.path(fixture_dir, "card_overid_vcov_center_hac_bartlett.csv")
-  cp <- file.path(fixture_dir, "card_overid_coef_center_hac_bartlett.csv")
+  vp <- fixture_path("card_overid_vcov_center_hac_bartlett.csv")
+  cp <- fixture_path("card_overid_coef_center_hac_bartlett.csv")
   skip_if(!file.exists(vp), "HAC center VCV fixture not found")
 
   card_ts <- card
@@ -613,7 +606,7 @@ test_that("HAC Bartlett + center: VCV matches Stata", {
 
 test_that("HAC Bartlett + center: diagnostics match Stata", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- file.path(fixture_dir, "card_overid_diagnostics_center_hac_bartlett.csv")
+  dp <- fixture_path("card_overid_diagnostics_center_hac_bartlett.csv")
   skip_if(!file.exists(dp), "HAC center diag fixture not found")
 
   card_ts <- card

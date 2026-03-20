@@ -3,16 +3,10 @@
 # ============================================================================
 
 # --- Helper: load Card data ---
-card_path <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures", "card_data.csv"
-)
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
-
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
 
 
 # ============================================================================
@@ -71,7 +65,7 @@ test_that("tidy conf.level = 0.99 produces wider CIs than 0.95", {
 
 test_that("tidy IV estimates/SEs match Stata fixtures (card_just_id iid)", {
   skip_if_not(file.exists(card_path), "Card data not available")
-  coef_path <- file.path(fixture_dir, "card_just_id_coef_iid.csv")
+  coef_path <- fixture_path("card_just_id_coef_iid.csv")
   skip_if_not(file.exists(coef_path), "Stata fixture not available")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -185,7 +179,7 @@ test_that("glance IV just-identified iid: weak_id_stat present, overid NA", {
 
 test_that("glance IV just-identified iid: weak_id_stat matches Stata CD F", {
   skip_if_not(file.exists(card_path), "Card data not available")
-  diag_path <- file.path(fixture_dir, "card_just_id_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_just_id_diagnostics_iid.csv")
   skip_if_not(file.exists(diag_path), "Stata fixture not available")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,

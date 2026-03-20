@@ -3,17 +3,10 @@
 # ============================================================================
 
 # --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
-}
-
-read_vcov_fixture <- function(path) {
-  as.matrix(read.csv(path))
 }
 
 # Helper: compare coefficients and SEs against fixture
@@ -145,16 +138,16 @@ test_that("partial(black south smsa) matches Stata — IID", {
 
   # Coefficients and SEs
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_basic_coef_iid.csv"))
+    fixture_path("card_partial_basic_coef_iid.csv"))
 
   # VCV
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_basic_vcov_iid.csv"),
-    file.path(fixture_dir, "card_partial_basic_coef_iid.csv"))
+    fixture_path("card_partial_basic_vcov_iid.csv"),
+    fixture_path("card_partial_basic_coef_iid.csv"))
 
   # Diagnostics
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_basic_diagnostics_iid.csv"))
+    fixture_path("card_partial_basic_diagnostics_iid.csv"))
 
   # Metadata
   expect_equal(fit$partial_ct, 4L)
@@ -181,9 +174,9 @@ test_that("partial(black south smsa) matches Stata — IID small", {
                 small = TRUE)
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_basic_coef_iid_small.csv"))
+    fixture_path("card_partial_basic_coef_iid_small.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_basic_diagnostics_iid_small.csv"))
+    fixture_path("card_partial_basic_diagnostics_iid_small.csv"))
 })
 
 
@@ -197,13 +190,13 @@ test_that("partial(_cons) matches Stata — IID", {
     data = card, partial = "_cons"))
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_cons_coef_iid.csv"))
+    fixture_path("card_partial_cons_coef_iid.csv"))
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_cons_vcov_iid.csv"),
-    file.path(fixture_dir, "card_partial_cons_coef_iid.csv"))
+    fixture_path("card_partial_cons_vcov_iid.csv"),
+    fixture_path("card_partial_cons_coef_iid.csv"))
 
   diag_fix <- read.csv(
-    file.path(fixture_dir, "card_partial_cons_diagnostics_iid.csv"))
+    fixture_path("card_partial_cons_diagnostics_iid.csv"))
   expect_equal(fit$partial_ct, as.integer(diag_fix$partial_ct))
   expect_true(fit$partialcons)
 
@@ -240,7 +233,7 @@ test_that("partial(_all) matches Stata — IID", {
     data = card, partial = "_all"))
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_all_coef_iid.csv"))
+    fixture_path("card_partial_all_coef_iid.csv"))
 
   # Only endogenous variable(s) remain
   expect_equal(length(coef(fit)), 1L)
@@ -259,12 +252,12 @@ test_that("weighted partial matches Stata — IID", {
                 partial = c("black", "south", "smsa"))
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_weighted_coef_iid.csv"))
+    fixture_path("card_partial_weighted_coef_iid.csv"))
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_weighted_vcov_iid.csv"),
-    file.path(fixture_dir, "card_partial_weighted_coef_iid.csv"))
+    fixture_path("card_partial_weighted_vcov_iid.csv"),
+    fixture_path("card_partial_weighted_coef_iid.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_weighted_diagnostics_iid.csv"))
+    fixture_path("card_partial_weighted_diagnostics_iid.csv"))
 })
 
 
@@ -282,9 +275,9 @@ test_that("nopartialsmall suppresses sdofminus increment — IID", {
   expect_equal(fit$partial_ct, 4L)  # count unchanged; only sdofminus suppressed
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_nosmall_coef_iid.csv"))
+    fixture_path("card_partial_nosmall_coef_iid.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_nosmall_diagnostics_iid.csv"))
+    fixture_path("card_partial_nosmall_diagnostics_iid.csv"))
 })
 
 test_that("nopartialsmall matches Stata — IID small", {
@@ -295,9 +288,9 @@ test_that("nopartialsmall matches Stata — IID small", {
                 nopartialsmall = TRUE, small = TRUE)
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_nosmall_coef_iid_small.csv"))
+    fixture_path("card_partial_nosmall_coef_iid_small.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_nosmall_diagnostics_iid_small.csv"))
+    fixture_path("card_partial_nosmall_diagnostics_iid_small.csv"))
 })
 
 
@@ -310,12 +303,12 @@ test_that("OLS partial matches Stata — IID", {
                 data = card, partial = c("black", "south"))
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_ols_coef_iid.csv"))
+    fixture_path("card_partial_ols_coef_iid.csv"))
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_ols_vcov_iid.csv"),
-    file.path(fixture_dir, "card_partial_ols_coef_iid.csv"))
+    fixture_path("card_partial_ols_vcov_iid.csv"),
+    fixture_path("card_partial_ols_coef_iid.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_ols_diagnostics_iid.csv"))
+    fixture_path("card_partial_ols_diagnostics_iid.csv"))
 })
 
 
@@ -330,12 +323,12 @@ test_that("LIML + partial matches Stata — IID", {
                 method = "liml")
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_liml_coef_iid.csv"))
+    fixture_path("card_partial_liml_coef_iid.csv"))
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_liml_vcov_iid.csv"),
-    file.path(fixture_dir, "card_partial_liml_coef_iid.csv"))
+    fixture_path("card_partial_liml_vcov_iid.csv"),
+    fixture_path("card_partial_liml_coef_iid.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_liml_diagnostics_iid.csv"))
+    fixture_path("card_partial_liml_diagnostics_iid.csv"))
 })
 
 
@@ -350,12 +343,12 @@ test_that("GMM2S + partial matches Stata — robust", {
                 method = "gmm2s", vcov = "robust")
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_gmm2s_coef_robust.csv"))
+    fixture_path("card_partial_gmm2s_coef_robust.csv"))
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_gmm2s_vcov_robust.csv"),
-    file.path(fixture_dir, "card_partial_gmm2s_coef_robust.csv"))
+    fixture_path("card_partial_gmm2s_vcov_robust.csv"),
+    fixture_path("card_partial_gmm2s_coef_robust.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_gmm2s_diagnostics_robust.csv"))
+    fixture_path("card_partial_gmm2s_diagnostics_robust.csv"))
 })
 
 
@@ -370,12 +363,12 @@ test_that("robust partial matches Stata — HC0", {
                 vcov = "robust")
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_robust_coef_hc0.csv"))
+    fixture_path("card_partial_robust_coef_hc0.csv"))
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_robust_vcov_hc0.csv"),
-    file.path(fixture_dir, "card_partial_robust_coef_hc0.csv"))
+    fixture_path("card_partial_robust_vcov_hc0.csv"),
+    fixture_path("card_partial_robust_coef_hc0.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_robust_diagnostics_hc0.csv"))
+    fixture_path("card_partial_robust_diagnostics_hc0.csv"))
 })
 
 test_that("robust small partial matches Stata — HC1 small", {
@@ -386,12 +379,12 @@ test_that("robust small partial matches Stata — HC1 small", {
                 vcov = "robust", small = TRUE)
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_robust_coef_hc1_small.csv"))
+    fixture_path("card_partial_robust_coef_hc1_small.csv"))
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_robust_vcov_hc1_small.csv"),
-    file.path(fixture_dir, "card_partial_robust_coef_hc1_small.csv"))
+    fixture_path("card_partial_robust_vcov_hc1_small.csv"),
+    fixture_path("card_partial_robust_coef_hc1_small.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_robust_diagnostics_hc1_small.csv"))
+    fixture_path("card_partial_robust_diagnostics_hc1_small.csv"))
 })
 
 
@@ -406,12 +399,12 @@ test_that("cluster partial matches Stata — CL", {
     clusters = ~smsa66))
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_cluster_coef_cl.csv"))
+    fixture_path("card_partial_cluster_coef_cl.csv"))
   check_vcov_fixture(fit,
-    file.path(fixture_dir, "card_partial_cluster_vcov_cl.csv"),
-    file.path(fixture_dir, "card_partial_cluster_coef_cl.csv"))
+    fixture_path("card_partial_cluster_vcov_cl.csv"),
+    fixture_path("card_partial_cluster_coef_cl.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_cluster_diagnostics_cl.csv"))
+    fixture_path("card_partial_cluster_diagnostics_cl.csv"))
 })
 
 test_that("cluster small partial matches Stata — CL small", {
@@ -422,9 +415,9 @@ test_that("cluster small partial matches Stata — CL small", {
     clusters = ~smsa66, small = TRUE))
 
   check_coef_fixture(fit,
-    file.path(fixture_dir, "card_partial_cluster_coef_cl_small.csv"))
+    fixture_path("card_partial_cluster_coef_cl_small.csv"))
   check_diag_fixture(fit,
-    file.path(fixture_dir, "card_partial_cluster_diagnostics_cl_small.csv"))
+    fixture_path("card_partial_cluster_diagnostics_cl_small.csv"))
 })
 
 

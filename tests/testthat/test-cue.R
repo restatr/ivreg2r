@@ -3,17 +3,10 @@
 # ============================================================================
 
 # --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
-}
-
-read_vcov_fixture <- function(path) {
-  as.matrix(read.csv(path))
 }
 
 # CUE involves nonlinear optimization, which adds a layer of numerical noise
@@ -35,7 +28,7 @@ cue_tol <- list(
 
 test_that("CUE IID coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_coef_iid.csv")
+  fixture_path <- fixture_path("card_overid_cue_coef_iid.csv")
   skip_if(!file.exists(fixture_path), "CUE IID fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -60,8 +53,8 @@ test_that("CUE IID coefficients match Stata fixture", {
 
 test_that("CUE IID VCV matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_vcov_iid.csv")
-  coef_path <- file.path(fixture_dir, "card_overid_cue_coef_iid.csv")
+  fixture_path <- fixture_path("card_overid_cue_vcov_iid.csv")
+  coef_path <- fixture_path("card_overid_cue_coef_iid.csv")
   skip_if(!file.exists(fixture_path), "CUE IID VCV fixture not found")
   skip_if(!file.exists(coef_path), "CUE IID coef fixture not found")
 
@@ -87,7 +80,7 @@ test_that("CUE IID VCV matches Stata fixture", {
 
 test_that("CUE IID diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_diagnostics_iid.csv")
+  fixture_path <- fixture_path("card_overid_cue_diagnostics_iid.csv")
   skip_if(!file.exists(fixture_path), "CUE IID diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -123,7 +116,7 @@ test_that("CUE IID diagnostics match Stata fixture", {
 
 test_that("CUE IID small coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_coef_iid_small.csv")
+  fixture_path <- fixture_path("card_overid_cue_coef_iid_small.csv")
   skip_if(!file.exists(fixture_path), "CUE IID small fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -148,7 +141,7 @@ test_that("CUE IID small coefficients match Stata fixture", {
 
 test_that("CUE IID small diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_diagnostics_iid_small.csv")
+  fixture_path <- fixture_path("card_overid_cue_diagnostics_iid_small.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -166,7 +159,7 @@ test_that("CUE IID small diagnostics match Stata fixture", {
 
 test_that("CUE robust coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_coef_robust.csv")
+  fixture_path <- fixture_path("card_overid_cue_coef_robust.csv")
   skip_if(!file.exists(fixture_path), "CUE robust fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -191,8 +184,8 @@ test_that("CUE robust coefficients match Stata fixture", {
 
 test_that("CUE robust VCV matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_vcov_robust.csv")
-  coef_path <- file.path(fixture_dir, "card_overid_cue_coef_robust.csv")
+  fixture_path <- fixture_path("card_overid_cue_vcov_robust.csv")
+  coef_path <- fixture_path("card_overid_cue_coef_robust.csv")
   skip_if(!file.exists(fixture_path))
   skip_if(!file.exists(coef_path))
 
@@ -217,7 +210,7 @@ test_that("CUE robust VCV matches Stata fixture", {
 
 test_that("CUE robust diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_cue_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -244,7 +237,7 @@ test_that("CUE robust diagnostics match Stata fixture", {
 
 test_that("CUE robust small coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_coef_robust_small.csv")
+  fixture_path <- fixture_path("card_overid_cue_coef_robust_small.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -273,7 +266,7 @@ test_that("CUE robust small coefficients match Stata fixture", {
 
 test_that("CUE cluster coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_coef_cluster.csv")
+  fixture_path <- fixture_path("card_overid_cue_coef_cluster.csv")
   skip_if(!file.exists(fixture_path))
 
   expect_warning(
@@ -301,7 +294,7 @@ test_that("CUE cluster coefficients match Stata fixture", {
 
 test_that("CUE cluster diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_diagnostics_cluster.csv")
+  fixture_path <- fixture_path("card_overid_cue_diagnostics_cluster.csv")
   skip_if(!file.exists(fixture_path))
 
   expect_warning(
@@ -318,7 +311,7 @@ test_that("CUE cluster diagnostics match Stata fixture", {
 
 test_that("CUE cluster small coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_coef_cluster_small.csv")
+  fixture_path <- fixture_path("card_overid_cue_coef_cluster_small.csv")
   skip_if(!file.exists(fixture_path))
 
   expect_warning(
@@ -362,7 +355,7 @@ test_that("CUE equals 2SLS for exactly-identified model", {
 
 test_that("CUE just-identified coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_justid_cue_coef_robust.csv")
+  fixture_path <- fixture_path("card_justid_cue_coef_robust.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -474,7 +467,7 @@ test_that("CUE populates identification diagnostics", {
 
 test_that("CUE endog test matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_endog_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_cue_endog_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -493,7 +486,7 @@ test_that("CUE endog test matches Stata fixture", {
 
 test_that("CUE orthog test matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_orthog_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_cue_orthog_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -510,7 +503,7 @@ test_that("CUE orthog test matches Stata fixture", {
 
 test_that("Weighted CUE coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_weighted_coef_aw_robust.csv")
+  fixture_path <- fixture_path("card_overid_cue_weighted_coef_aw_robust.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -539,7 +532,7 @@ test_that("Weighted CUE coefficients match Stata fixture", {
 
 test_that("CUE dofminus coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_dofminus_coef_robust.csv")
+  fixture_path <- fixture_path("card_overid_cue_dofminus_coef_robust.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -564,7 +557,7 @@ test_that("CUE dofminus coefficients match Stata fixture", {
 
 test_that("CUE dofminus diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_cue_dofminus_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_cue_dofminus_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path))
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -579,9 +572,9 @@ test_that("CUE dofminus diagnostics match Stata fixture", {
 # ============================================================================
 
 test_that("HAC CUE coefficients match Stata fixture", {
-  ts_data_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  ts_data_path <- fixture_path("ts_gmm_data.csv")
   skip_if(!file.exists(ts_data_path), "TS GMM dataset not found")
-  fixture_path <- file.path(fixture_dir, "ts_cue_coef_hac_bartlett_bw3.csv")
+  fixture_path <- fixture_path("ts_cue_coef_hac_bartlett_bw3.csv")
   skip_if(!file.exists(fixture_path), "HAC CUE fixture not found")
 
   ts_data <- read.csv(ts_data_path)
@@ -607,9 +600,9 @@ test_that("HAC CUE coefficients match Stata fixture", {
 })
 
 test_that("HAC CUE diagnostics match Stata fixture", {
-  ts_data_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  ts_data_path <- fixture_path("ts_gmm_data.csv")
   skip_if(!file.exists(ts_data_path), "TS GMM dataset not found")
-  fixture_path <- file.path(fixture_dir, "ts_cue_diagnostics_hac_bartlett_bw3.csv")
+  fixture_path <- fixture_path("ts_cue_diagnostics_hac_bartlett_bw3.csv")
   skip_if(!file.exists(fixture_path))
 
   ts_data <- read.csv(ts_data_path)
@@ -644,8 +637,8 @@ test_that("b0 mode produces coefficients equal to b0", {
 
 test_that("b0 mode J(b0) matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_b0_diagnostics_robust.csv")
-  b0_path <- file.path(fixture_dir, "card_overid_b0_vector.csv")
+  fixture_path <- fixture_path("card_overid_b0_diagnostics_robust.csv")
+  b0_path <- fixture_path("card_overid_b0_vector.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(b0_path))
 
   b0_fixture <- read.csv(b0_path)

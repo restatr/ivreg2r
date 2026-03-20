@@ -8,14 +8,6 @@
 # Verifies against Stata ivreg2 fixtures and pure R unit tests.
 
 # --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-read_diagnostics <- function(path) {
-  read.csv(path, check.names = FALSE)
-}
-
 read_firststage <- function(path) {
   read.csv(path, check.names = FALSE)
 }
@@ -24,34 +16,9 @@ get_fs_value <- function(fixture, stat, endo_name) {
   as.numeric(fixture[fixture$statistic == stat, endo_name])
 }
 
-read_vcov_fixture <- function(path) {
-  fixture <- read.csv(path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-  vcov_cols <- grep("^vcov_", names(fixture), value = TRUE)
-  V <- as.matrix(fixture[, vcov_cols])
-  rownames(V) <- r_names
-  col_stata <- sub("^vcov_", "", vcov_cols)
-  colnames(V) <- ifelse(col_stata == "_cons", "(Intercept)", col_stata)
-  V
-}
-
-expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
-  shared <- intersect(rownames(V_r), rownames(V_stata))
-  for (rn in shared) {
-    for (cn in shared) {
-      expect_equal(
-        V_r[rn, cn], V_stata[rn, cn],
-        tolerance = tol,
-        info = paste("VCV mismatch:", rn, cn)
-      )
-    }
-  }
-}
-
 
 # --- Load dataset ---
-intonly_path <- file.path(fixture_dir, "sim_intercept_only_data.csv")
+intonly_path <- fixture_path("sim_intercept_only_data.csv")
 if (file.exists(intonly_path)) {
   sim_intonly <- read.csv(intonly_path)
 }
@@ -63,7 +30,7 @@ if (file.exists(intonly_path)) {
 
 test_that("coefficients match Stata sim_intercept_only iid fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  coef_path <- file.path(fixture_dir, "sim_intercept_only_coef_iid.csv")
+  coef_path <- fixture_path("sim_intercept_only_coef_iid.csv")
   skip_if(!file.exists(coef_path), "coefficient fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -84,7 +51,7 @@ test_that("coefficients match Stata sim_intercept_only iid fixture", {
 
 test_that("coefficients match Stata sim_intercept_only iid_small fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  coef_path <- file.path(fixture_dir, "sim_intercept_only_coef_iid_small.csv")
+  coef_path <- fixture_path("sim_intercept_only_coef_iid_small.csv")
   skip_if(!file.exists(coef_path), "coefficient fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly, small = TRUE)
@@ -108,7 +75,7 @@ test_that("coefficients match Stata sim_intercept_only iid_small fixture", {
 
 test_that("IID VCV matches Stata sim_intercept_only fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  vcov_path <- file.path(fixture_dir, "sim_intercept_only_vcov_iid.csv")
+  vcov_path <- fixture_path("sim_intercept_only_vcov_iid.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -117,7 +84,7 @@ test_that("IID VCV matches Stata sim_intercept_only fixture", {
 
 test_that("HC0 VCV matches Stata sim_intercept_only robust fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  vcov_path <- file.path(fixture_dir, "sim_intercept_only_vcov_hc1.csv")
+  vcov_path <- fixture_path("sim_intercept_only_vcov_hc1.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly, vcov = "robust")
@@ -126,7 +93,7 @@ test_that("HC0 VCV matches Stata sim_intercept_only robust fixture", {
 
 test_that("robust+small VCV matches Stata sim_intercept_only robust small fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  vcov_path <- file.path(fixture_dir, "sim_intercept_only_vcov_hc1_small.csv")
+  vcov_path <- fixture_path("sim_intercept_only_vcov_hc1_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly,
@@ -141,7 +108,7 @@ test_that("robust+small VCV matches Stata sim_intercept_only robust small fixtur
 
 test_that("Sargan stat matches Stata sim_intercept_only iid fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -157,7 +124,7 @@ test_that("Sargan stat matches Stata sim_intercept_only iid fixture", {
 
 test_that("Hansen J stat matches Stata sim_intercept_only hc1 fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly, vcov = "robust")
@@ -178,7 +145,7 @@ test_that("Hansen J stat matches Stata sim_intercept_only hc1 fixture", {
 
 test_that("Anderson LM matches Stata sim_intercept_only iid fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -193,7 +160,7 @@ test_that("Anderson LM matches Stata sim_intercept_only iid fixture", {
 
 test_that("Cragg-Donald F matches Stata sim_intercept_only iid fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -205,7 +172,7 @@ test_that("Cragg-Donald F matches Stata sim_intercept_only iid fixture", {
 
 test_that("KP rk LM matches Stata sim_intercept_only hc1 fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly, vcov = "robust")
@@ -220,7 +187,7 @@ test_that("KP rk LM matches Stata sim_intercept_only hc1 fixture", {
 
 test_that("KP rk Wald F matches Stata sim_intercept_only hc1 fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly, vcov = "robust")
@@ -272,8 +239,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = FALSE, suffix = "hc1"),
   list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("sim_intercept_only_diagnostics_", vce_combo$suffix, ".csv")
   )
   label <- paste("sim_intercept_only", vce_combo$suffix)
@@ -321,8 +287,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = FALSE, suffix = "hc1"),
   list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("sim_intercept_only_diagnostics_", vce_combo$suffix, ".csv")
   )
   label <- paste("sim_intercept_only", vce_combo$suffix)
@@ -342,7 +307,7 @@ for (vce_combo in list(
 
 test_that("first-stage F matches Stata sim_intercept_only iid fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  fs_path <- file.path(fixture_dir, "sim_intercept_only_firststage_iid.csv")
+  fs_path <- fixture_path("sim_intercept_only_firststage_iid.csv")
   skip_if(!file.exists(fs_path), "firststage fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -361,7 +326,7 @@ test_that("first-stage F matches Stata sim_intercept_only iid fixture", {
 
 test_that("first-stage F matches Stata sim_intercept_only hc1 fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  fs_path <- file.path(fixture_dir, "sim_intercept_only_firststage_hc1.csv")
+  fs_path <- fixture_path("sim_intercept_only_firststage_hc1.csv")
   skip_if(!file.exists(fs_path), "firststage fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly, vcov = "robust")
@@ -379,7 +344,7 @@ test_that("first-stage F matches Stata sim_intercept_only hc1 fixture", {
 
 test_that("model F matches Stata sim_intercept_only iid fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -393,7 +358,7 @@ test_that("model F matches Stata sim_intercept_only iid fixture", {
 
 test_that("model F matches Stata sim_intercept_only hc1 fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly, vcov = "robust")
@@ -410,7 +375,7 @@ test_that("model F matches Stata sim_intercept_only hc1 fixture", {
 
 test_that("R² matches Stata sim_intercept_only iid fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -429,7 +394,7 @@ test_that("R² matches Stata sim_intercept_only iid fixture", {
 
 test_that("endogeneity test matches Stata sim_intercept_only iid fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly)
@@ -444,7 +409,7 @@ test_that("endogeneity test matches Stata sim_intercept_only iid fixture", {
 
 test_that("endogeneity test matches Stata sim_intercept_only hc1 fixture", {
   skip_if(!file.exists(intonly_path), "sim_intercept_only data not found")
-  diag_path <- file.path(fixture_dir, "sim_intercept_only_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_intercept_only_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 1 | endo1 | z1 + z2, data = sim_intonly, vcov = "robust")

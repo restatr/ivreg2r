@@ -3,12 +3,9 @@
 # ============================================================================
 
 # --- Helper: load Card data and fixtures ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
-coef_path <- file.path(fixture_dir, "card_just_id_coef_iid.csv")
-vcov_path <- file.path(fixture_dir, "card_just_id_vcov_iid.csv")
+card_path <- fixture_path("card_data.csv")
+coef_path <- fixture_path("card_just_id_coef_iid.csv")
+vcov_path <- fixture_path("card_just_id_vcov_iid.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
@@ -277,14 +274,14 @@ test_that("2SLS small=TRUE uses N-K denominator", {
 # sim_no_constant: y ~ 0 + x1 | endo1 | z1+z2 (noconstant)
 # ============================================================================
 
-sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+sim_noconst_path <- fixture_path("sim_no_constant_data.csv")
 if (file.exists(sim_noconst_path)) {
   sim_noconst <- read.csv(sim_noconst_path)
 }
 
 test_that("2SLS coefficients match Stata sim_no_constant iid fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  noconst_coef_path <- file.path(fixture_dir, "sim_no_constant_coef_iid.csv")
+  noconst_coef_path <- fixture_path("sim_no_constant_coef_iid.csv")
   skip_if(!file.exists(noconst_coef_path), "Coefficient fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
@@ -312,7 +309,7 @@ test_that("no-constant model has no intercept in coef()", {
 
 test_that("2SLS vcov matches Stata sim_no_constant iid fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  noconst_vcov_path <- file.path(fixture_dir, "sim_no_constant_vcov_iid.csv")
+  noconst_vcov_path <- fixture_path("sim_no_constant_vcov_iid.csv")
   skip_if(!file.exists(noconst_vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)

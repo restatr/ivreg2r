@@ -6,26 +6,21 @@
 # 2SLS residuals.
 
 # --- Helpers and data ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-hac_data_path <- file.path(fixture_dir, "ts_hac_data.csv")
+hac_data_path <- fixture_path("ts_hac_data.csv")
 if (file.exists(hac_data_path)) {
   ts_data <- read.csv(hac_data_path)
 }
 
 read_autobiw <- function(prefix, suffix) {
-  path <- file.path(fixture_dir, paste0(prefix, "_bw_", suffix, ".csv"))
+  path <- fixture_path(paste0(prefix, "_bw_", suffix, ".csv"))
   if (!file.exists(path)) return(NA_real_)
   as.numeric(read.csv(path)$bw)
 }
 
 check_fixture <- function(fit, prefix, suffix) {
-  coef_path <- file.path(fixture_dir, paste0(prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- file.path(fixture_dir, paste0(prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- file.path(fixture_dir,
-                         paste0(prefix, "_diagnostics_", suffix, ".csv"))
+  coef_path <- fixture_path(paste0(prefix, "_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0(prefix, "_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0(prefix, "_diagnostics_", suffix, ".csv"))
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   stata_coef <- read.csv(coef_path, stringsAsFactors = FALSE)

@@ -6,38 +6,8 @@
 # `cluster()` option (no small-sample correction). Fixtures named "cl_small"
 # were generated with `cluster() small` (with (N-1)/(N-K) * M/(M-1) correction).
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-read_vcov_fixture <- function(path) {
-  fixture <- read.csv(path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-  vcov_cols <- grep("^vcov_", names(fixture), value = TRUE)
-  V <- as.matrix(fixture[, vcov_cols])
-  rownames(V) <- r_names
-  col_stata <- sub("^vcov_", "", vcov_cols)
-  colnames(V) <- ifelse(col_stata == "_cons", "(Intercept)", col_stata)
-  V
-}
-
-expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
-  shared <- intersect(rownames(V_r), rownames(V_stata))
-  for (rn in shared) {
-    for (cn in shared) {
-      expect_equal(
-        V_r[rn, cn], V_stata[rn, cn],
-        tolerance = tol,
-        info = paste("VCV mismatch:", rn, cn)
-      )
-    }
-  }
-}
-
 # --- Load sim_cluster data ---
-sim_path <- file.path(fixture_dir, "sim_cluster_data.csv")
+sim_path <- fixture_path("sim_cluster_data.csv")
 if (file.exists(sim_path)) {
   sim_cluster <- read.csv(sim_path)
 }
@@ -49,7 +19,7 @@ if (file.exists(sim_path)) {
 
 test_that("2SLS cluster VCV matches Stata sim_cluster cl fixture", {
   skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  vcov_path <- file.path(fixture_dir, "sim_cluster_vcov_cl.csv")
+  vcov_path <- fixture_path("sim_cluster_vcov_cl.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -64,7 +34,7 @@ test_that("2SLS cluster VCV matches Stata sim_cluster cl fixture", {
 
 test_that("2SLS cluster VCV matches Stata sim_cluster cl_small fixture", {
   skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  vcov_path <- file.path(fixture_dir, "sim_cluster_vcov_cl_small.csv")
+  vcov_path <- fixture_path("sim_cluster_vcov_cl_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -79,7 +49,7 @@ test_that("2SLS cluster VCV matches Stata sim_cluster cl_small fixture", {
 
 test_that("2SLS cluster SEs match Stata sim_cluster cl fixture", {
   skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  coef_path <- file.path(fixture_dir, "sim_cluster_coef_cl.csv")
+  coef_path <- fixture_path("sim_cluster_coef_cl.csv")
   skip_if(!file.exists(coef_path), "Coef fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -104,7 +74,7 @@ test_that("2SLS cluster SEs match Stata sim_cluster cl fixture", {
 
 test_that("2SLS cluster SEs match Stata sim_cluster cl_small fixture", {
   skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  coef_path <- file.path(fixture_dir, "sim_cluster_coef_cl_small.csv")
+  coef_path <- fixture_path("sim_cluster_coef_cl_small.csv")
   skip_if(!file.exists(coef_path), "Coef fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,

@@ -3,20 +3,10 @@
 # ============================================================================
 
 # --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
-}
-
-read_vcov_fixture <- function(path) {
-  fixture <- read.csv(path)
-  # The VCV fixture has columns v1, v2, ..., vK — no term column
-  V <- as.matrix(fixture)
-  V
 }
 
 # ============================================================================
@@ -39,7 +29,7 @@ test_that("GMM2S IID matches 2SLS coefficients (algebraic equivalence)", {
 
 test_that("GMM2S IID coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_coef_iid.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_coef_iid.csv")
   skip_if(!file.exists(fixture_path), "GMM2S IID fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -64,7 +54,7 @@ test_that("GMM2S IID coefficients match Stata fixture", {
 
 test_that("GMM2S IID diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_diagnostics_iid.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_diagnostics_iid.csv")
   skip_if(!file.exists(fixture_path), "GMM2S IID diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -104,7 +94,7 @@ test_that("GMM2S IID diagnostics match Stata fixture", {
 
 test_that("GMM2S robust coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_coef_robust.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_coef_robust.csv")
   skip_if(!file.exists(fixture_path), "GMM2S robust fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -143,7 +133,7 @@ test_that("GMM2S robust coefficients differ from 2SLS", {
 
 test_that("GMM2S robust diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path), "GMM2S robust diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -185,7 +175,7 @@ test_that("GMM2S robust diagnostics match Stata fixture", {
 
 test_that("GMM2S robust small coefficients match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_coef_robust_small.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_coef_robust_small.csv")
   skip_if(!file.exists(fixture_path), "GMM2S robust small fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -211,7 +201,7 @@ test_that("GMM2S robust small coefficients match Stata fixture", {
 
 test_that("GMM2S robust small diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_diagnostics_robust_small.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_diagnostics_robust_small.csv")
   skip_if(!file.exists(fixture_path), "GMM2S robust small diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -230,7 +220,7 @@ test_that("GMM2S robust small diagnostics match Stata fixture", {
 
 test_that("GMM2S IID small SEs match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_coef_iid_small.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_coef_iid_small.csv")
   skip_if(!file.exists(fixture_path), "GMM2S IID small fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -255,7 +245,7 @@ test_that("GMM2S IID small SEs match Stata fixture", {
 
 test_that("GMM2S cluster coefficients and SEs match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_coef_cluster.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_coef_cluster.csv")
   skip_if(!file.exists(fixture_path), "GMM2S cluster fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -280,7 +270,7 @@ test_that("GMM2S cluster coefficients and SEs match Stata fixture", {
 
 test_that("GMM2S cluster diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_diagnostics_cluster.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_diagnostics_cluster.csv")
   skip_if(!file.exists(fixture_path), "GMM2S cluster diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -298,7 +288,7 @@ test_that("GMM2S cluster diagnostics match Stata fixture", {
 
 test_that("GMM2S cluster small SEs match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_coef_cluster_small.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_coef_cluster_small.csv")
   skip_if(!file.exists(fixture_path), "GMM2S cluster small fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -335,7 +325,7 @@ test_that("Just-identified GMM2S equals 2SLS coefficients", {
 
 test_that("Just-identified GMM2S matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_justid_gmm2s_coef_robust.csv")
+  fixture_path <- fixture_path("card_justid_gmm2s_coef_robust.csv")
   skip_if(!file.exists(fixture_path), "GMM2S justid fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -371,7 +361,7 @@ test_that("Just-identified GMM2S J stat is zero", {
 
 test_that("GMM2S aweight robust matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_weighted_coef_aw_robust.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_weighted_coef_aw_robust.csv")
   skip_if(!file.exists(fixture_path), "GMM2S aweight fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -396,7 +386,7 @@ test_that("GMM2S aweight robust matches Stata fixture", {
 
 test_that("GMM2S aweight cluster matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_weighted_coef_aw_cluster.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_weighted_coef_aw_cluster.csv")
   skip_if(!file.exists(fixture_path), "GMM2S aweight cluster fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -421,7 +411,7 @@ test_that("GMM2S aweight cluster matches Stata fixture", {
 
 test_that("GMM2S pweight robust matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_weighted_coef_pw_robust.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_weighted_coef_pw_robust.csv")
   skip_if(!file.exists(fixture_path), "GMM2S pweight fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -451,7 +441,7 @@ test_that("GMM2S pweight robust matches Stata fixture", {
 
 test_that("GMM2S dofminus matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_dofminus_coef_robust.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_dofminus_coef_robust.csv")
   skip_if(!file.exists(fixture_path), "GMM2S dofminus fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -476,7 +466,7 @@ test_that("GMM2S dofminus matches Stata fixture", {
 
 test_that("GMM2S dofminus diagnostics match Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_dofminus_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_dofminus_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path), "GMM2S dofminus diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -497,9 +487,9 @@ test_that("GMM2S dofminus diagnostics match Stata fixture", {
 # ============================================================================
 
 test_that("GMM2S HAC Bartlett bw=3 matches Stata fixture", {
-  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  ts_path <- fixture_path("ts_gmm_data.csv")
   skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  fixture_path <- file.path(fixture_dir, "ts_gmm2s_coef_hac_bartlett_bw3.csv")
+  fixture_path <- fixture_path("ts_gmm2s_coef_hac_bartlett_bw3.csv")
   skip_if(!file.exists(fixture_path), "GMM2S HAC fixture not found")
 
   ts_data <- read.csv(ts_path)
@@ -525,9 +515,9 @@ test_that("GMM2S HAC Bartlett bw=3 matches Stata fixture", {
 })
 
 test_that("GMM2S HAC diagnostics match Stata fixture", {
-  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  ts_path <- fixture_path("ts_gmm_data.csv")
   skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  fixture_path <- file.path(fixture_dir, "ts_gmm2s_diagnostics_hac_bartlett_bw3.csv")
+  fixture_path <- fixture_path("ts_gmm2s_diagnostics_hac_bartlett_bw3.csv")
   skip_if(!file.exists(fixture_path), "GMM2S HAC diagnostics fixture not found")
 
   ts_data <- read.csv(ts_path)
@@ -548,9 +538,9 @@ test_that("GMM2S HAC diagnostics match Stata fixture", {
 # ============================================================================
 
 test_that("GMM2S AC Bartlett bw=3 coefficients match Stata fixture", {
-  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  ts_path <- fixture_path("ts_gmm_data.csv")
   skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  fixture_path <- file.path(fixture_dir, "ts_gmm2s_coef_ac_bartlett_bw3.csv")
+  fixture_path <- fixture_path("ts_gmm2s_coef_ac_bartlett_bw3.csv")
   skip_if(!file.exists(fixture_path), "GMM2S AC fixture not found")
 
   ts_data <- read.csv(ts_path)
@@ -576,9 +566,9 @@ test_that("GMM2S AC Bartlett bw=3 coefficients match Stata fixture", {
 })
 
 test_that("GMM2S AC Bartlett bw=3 diagnostics match Stata fixture", {
-  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  ts_path <- fixture_path("ts_gmm_data.csv")
   skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  fixture_path <- file.path(fixture_dir, "ts_gmm2s_diagnostics_ac_bartlett_bw3.csv")
+  fixture_path <- fixture_path("ts_gmm2s_diagnostics_ac_bartlett_bw3.csv")
   skip_if(!file.exists(fixture_path), "GMM2S AC diagnostics fixture not found")
 
   ts_data <- read.csv(ts_path)
@@ -599,7 +589,7 @@ test_that("GMM2S AC Bartlett bw=3 diagnostics match Stata fixture", {
 
 test_that("GMM2S endogeneity test matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- file.path(fixture_dir, "card_overid_gmm2s_endog_diagnostics_robust.csv")
+  fixture_path <- fixture_path("card_overid_gmm2s_endog_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path), "GMM2S endog fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -621,8 +611,8 @@ test_that("GMM2S endogeneity test matches Stata fixture", {
 
 test_that("GMM2S robust VCV matches Stata fixture", {
   skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- file.path(fixture_dir, "card_overid_gmm2s_vcov_robust.csv")
-  coef_path <- file.path(fixture_dir, "card_overid_gmm2s_coef_robust.csv")
+  vcov_path <- fixture_path("card_overid_gmm2s_vcov_robust.csv")
+  coef_path <- fixture_path("card_overid_gmm2s_coef_robust.csv")
   skip_if(!file.exists(vcov_path), "GMM2S VCV fixture not found")
   skip_if(!file.exists(coef_path), "GMM2S coef fixture not found")
 
@@ -655,10 +645,10 @@ test_that("GMM2S robust VCV matches Stata fixture", {
 
 
 test_that("GMM2S HAC VCV matches Stata fixture", {
-  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  ts_path <- fixture_path("ts_gmm_data.csv")
   skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  vcov_path <- file.path(fixture_dir, "ts_gmm2s_vcov_hac_bartlett_bw3.csv")
-  coef_path <- file.path(fixture_dir, "ts_gmm2s_coef_hac_bartlett_bw3.csv")
+  vcov_path <- fixture_path("ts_gmm2s_vcov_hac_bartlett_bw3.csv")
+  coef_path <- fixture_path("ts_gmm2s_coef_hac_bartlett_bw3.csv")
   skip_if(!file.exists(vcov_path), "GMM2S HAC VCV fixture not found")
   skip_if(!file.exists(coef_path), "GMM2S HAC coef fixture not found")
 
@@ -686,10 +676,10 @@ test_that("GMM2S HAC VCV matches Stata fixture", {
 })
 
 test_that("GMM2S AC VCV matches Stata fixture", {
-  ts_path <- file.path(fixture_dir, "ts_gmm_data.csv")
+  ts_path <- fixture_path("ts_gmm_data.csv")
   skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  vcov_path <- file.path(fixture_dir, "ts_gmm2s_vcov_ac_bartlett_bw3.csv")
-  coef_path <- file.path(fixture_dir, "ts_gmm2s_coef_ac_bartlett_bw3.csv")
+  vcov_path <- fixture_path("ts_gmm2s_vcov_ac_bartlett_bw3.csv")
+  coef_path <- fixture_path("ts_gmm2s_coef_ac_bartlett_bw3.csv")
   skip_if(!file.exists(vcov_path), "GMM2S AC VCV fixture not found")
   skip_if(!file.exists(coef_path), "GMM2S AC coef fixture not found")
 

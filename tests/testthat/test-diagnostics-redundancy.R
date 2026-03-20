@@ -7,27 +7,22 @@
 # KP rk LM test of H0: rank=0. Verifies against Stata ivreg2 fixtures
 # (e(redstat), e(redp), e(reddf)).
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
 read_redundancy_fixture <- function(path) {
   read.csv(path, check.names = FALSE)
 }
 
 # --- Load datasets ---
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
 
-sim_multi_endo_path <- file.path(fixture_dir, "sim_multi_endo_data.csv")
+sim_multi_endo_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_endo_path)) {
   sim_multi_endo <- read.csv(sim_multi_endo_path)
 }
 
-ts_hac_path <- file.path(fixture_dir, "ts_hac_data.csv")
+ts_hac_path <- fixture_path("ts_hac_data.csv")
 if (file.exists(ts_hac_path)) {
   ts_hac <- read.csv(ts_hac_path)
 }
@@ -253,8 +248,7 @@ for (vce_combo in list(
   list(vcov = "robust",  small = TRUE,  clusters = NULL, suffix = "nearc2_hc1_small"),
   list(vcov = "robust",  small = FALSE, clusters = ~smsa, suffix = "nearc2_cluster")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("card_overid_redundancy_", vce_combo$suffix, ".csv")
   )
   label <- paste("card_overid", vce_combo$suffix)
@@ -276,7 +270,7 @@ for (vce_combo in list(
 # ============================================================================
 
 test_that("redundant(nearc4) IID matches Stata", {
-  fixture_file <- file.path(fixture_dir, "card_overid_redundancy_nearc4_iid.csv")
+  fixture_file <- fixture_path("card_overid_redundancy_nearc4_iid.csv")
   skip_if(!file.exists(card_path), "card data not found")
   skip_if(!file.exists(fixture_file), "fixture not found")
 
@@ -296,7 +290,7 @@ test_that("redundant(nearc4) IID matches Stata", {
 # ============================================================================
 
 test_that("redundant(nearc2 nearc4) IID matches Stata", {
-  fixture_file <- file.path(fixture_dir, "card_overid_redundancy_both_iid.csv")
+  fixture_file <- fixture_path("card_overid_redundancy_both_iid.csv")
   skip_if(!file.exists(card_path), "card data not found")
   skip_if(!file.exists(fixture_file), "fixture not found")
 
@@ -319,8 +313,7 @@ for (vce_combo in list(
   list(vcov = "iid",  clusters = NULL,   suffix = "nearc2_iid"),
   list(vcov = "robust",  clusters = ~smsa,  suffix = "nearc2_cluster")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("card_overid_dof_redundancy_", vce_combo$suffix, ".csv")
   )
   label <- paste("card_overid_dof", vce_combo$suffix)
@@ -343,7 +336,7 @@ for (vce_combo in list(
 # ============================================================================
 
 test_that("redundant(nearc2) aweight IID matches Stata", {
-  fixture_file <- file.path(fixture_dir, "card_overid_aw_redundancy_nearc2_iid.csv")
+  fixture_file <- fixture_path("card_overid_aw_redundancy_nearc2_iid.csv")
   skip_if(!file.exists(card_path), "card data not found")
   skip_if(!file.exists(fixture_file), "fixture not found")
 
@@ -363,7 +356,7 @@ test_that("redundant(nearc2) aweight IID matches Stata", {
 # ============================================================================
 
 test_that("redundant(nearc2) gmm2s robust matches Stata", {
-  fixture_file <- file.path(fixture_dir, "card_overid_gmm_redundancy_nearc2_robust.csv")
+  fixture_file <- fixture_path("card_overid_gmm_redundancy_nearc2_robust.csv")
   skip_if(!file.exists(card_path), "card data not found")
   skip_if(!file.exists(fixture_file), "fixture not found")
 
@@ -388,8 +381,7 @@ for (vce_combo in list(
   list(vcov = "iid", suffix = "z1_iid"),
   list(vcov = "robust", suffix = "z1_hc1")
 )) {
-  fixture_file <- file.path(
-    fixture_dir,
+  fixture_file <- fixture_path(
     paste0("sim_multi_endo_redundancy_", vce_combo$suffix, ".csv")
   )
   label <- paste("sim_multi_endo", vce_combo$suffix)
@@ -408,7 +400,7 @@ for (vce_combo in list(
 # ============================================================================
 
 test_that("redundant(z1 z2) multi-endo IID matches Stata", {
-  fixture_file <- file.path(fixture_dir, "sim_multi_endo_redundancy_z1z2_iid.csv")
+  fixture_file <- fixture_path("sim_multi_endo_redundancy_z1z2_iid.csv")
   skip_if(!file.exists(sim_multi_endo_path), "sim_multi_endo data not found")
   skip_if(!file.exists(fixture_file), "fixture not found")
 
@@ -429,7 +421,7 @@ test_that("redundant(z1 z2) multi-endo IID matches Stata", {
 # ============================================================================
 
 test_that("redundant(z1) HAC Bartlett bw=3 matches Stata", {
-  fixture_file <- file.path(fixture_dir, "ts_hac_redundancy_z1_bartlett_bw3.csv")
+  fixture_file <- fixture_path("ts_hac_redundancy_z1_bartlett_bw3.csv")
   skip_if(!file.exists(ts_hac_path), "ts_hac data not found")
   skip_if(!file.exists(fixture_file), "fixture not found")
 

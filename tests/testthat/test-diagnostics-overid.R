@@ -5,22 +5,13 @@
 # Sargan (IID) and Hansen J (robust/cluster) overidentification tests.
 # Verifies against Stata ivreg2 fixtures.
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-read_diagnostics <- function(path) {
-  read.csv(path)
-}
-
 # --- Load datasets ---
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
 
-sim_path <- file.path(fixture_dir, "sim_cluster_data.csv")
+sim_path <- fixture_path("sim_cluster_data.csv")
 if (file.exists(sim_path)) {
   sim_cluster <- read.csv(sim_path)
 }
@@ -32,7 +23,7 @@ if (file.exists(sim_path)) {
 
 test_that("Sargan stat matches Stata card_overid iid fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_overid_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_overid_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -54,7 +45,7 @@ test_that("Sargan stat matches Stata card_overid iid fixture", {
 
 test_that("Sargan stat matches Stata card_overid iid_small fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_overid_diagnostics_iid_small.csv")
+  diag_path <- fixture_path("card_overid_diagnostics_iid_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -84,7 +75,7 @@ test_that("small does not change Sargan statistic", {
 
 test_that("Hansen J stat matches Stata card_overid hc1 fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_overid_diagnostics_hc1.csv")
+  diag_path <- fixture_path("card_overid_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -101,7 +92,7 @@ test_that("Hansen J stat matches Stata card_overid hc1 fixture", {
 
 test_that("Hansen J stat matches Stata card_overid hc1_small fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_overid_diagnostics_hc1_small.csv")
+  diag_path <- fixture_path("card_overid_diagnostics_hc1_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -131,7 +122,7 @@ test_that("small does not change Hansen J statistic (HC)", {
 
 test_that("Hansen J stat matches Stata sim_cluster cl fixture", {
   skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  diag_path <- file.path(fixture_dir, "sim_cluster_diagnostics_cl.csv")
+  diag_path <- fixture_path("sim_cluster_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -148,7 +139,7 @@ test_that("Hansen J stat matches Stata sim_cluster cl fixture", {
 
 test_that("Hansen J stat matches Stata sim_cluster cl_small fixture", {
   skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  diag_path <- file.path(fixture_dir, "sim_cluster_diagnostics_cl_small.csv")
+  diag_path <- fixture_path("sim_cluster_diagnostics_cl_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -178,7 +169,7 @@ test_that("small does not change Hansen J statistic (cluster)", {
 
 test_that("exactly identified IID model has stat=0, df=0, p=NA", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_just_id_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -193,7 +184,7 @@ test_that("exactly identified IID model has stat=0, df=0, p=NA", {
 
 test_that("exactly identified HC model has stat=0, df=0, p=NA", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_diagnostics_hc1.csv")
+  diag_path <- fixture_path("card_just_id_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -237,14 +228,14 @@ test_that("HC0 and HC1 produce identical Hansen J statistic", {
 # sim_no_constant: y ~ 0 + x1 | endo1 | z1+z2 (noconstant, overid_df=1)
 # ============================================================================
 
-sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+sim_noconst_path <- fixture_path("sim_no_constant_data.csv")
 if (file.exists(sim_noconst_path)) {
   sim_noconst <- read.csv(sim_noconst_path)
 }
 
 test_that("Sargan stat matches Stata sim_no_constant iid fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
@@ -260,7 +251,7 @@ test_that("Sargan stat matches Stata sim_no_constant iid fixture", {
 
 test_that("Sargan stat matches Stata sim_no_constant iid_small fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_iid_small.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_iid_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, small = TRUE)
@@ -274,7 +265,7 @@ test_that("Sargan stat matches Stata sim_no_constant iid_small fixture", {
 
 test_that("Hansen J stat matches Stata sim_no_constant hc1 fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")
@@ -290,7 +281,7 @@ test_that("Hansen J stat matches Stata sim_no_constant hc1 fixture", {
 
 test_that("Hansen J stat matches Stata sim_no_constant hc1_small fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1_small.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_hc1_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst,
@@ -322,14 +313,14 @@ test_that("small does not change overid statistic (sim_no_constant)", {
 # sim_multi_endo: y ~ x1+x2 | endo1+endo2 | z1+z2+z3+z4 (overid_df=2)
 # ============================================================================
 
-sim_multi_path <- file.path(fixture_dir, "sim_multi_endo_data.csv")
+sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
 }
 
 test_that("Sargan stat matches Stata sim_multi_endo iid fixture", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
-  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_multi_endo_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
@@ -346,7 +337,7 @@ test_that("Sargan stat matches Stata sim_multi_endo iid fixture", {
 
 test_that("Sargan stat matches Stata sim_multi_endo iid_small fixture", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
-  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_iid_small.csv")
+  diag_path <- fixture_path("sim_multi_endo_diagnostics_iid_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
@@ -361,7 +352,7 @@ test_that("Sargan stat matches Stata sim_multi_endo iid_small fixture", {
 
 test_that("Hansen J stat matches Stata sim_multi_endo hc1 fixture", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
-  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_multi_endo_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
@@ -378,7 +369,7 @@ test_that("Hansen J stat matches Stata sim_multi_endo hc1 fixture", {
 
 test_that("Hansen J stat matches Stata sim_multi_endo hc1_small fixture", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
-  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_hc1_small.csv")
+  diag_path <- fixture_path("sim_multi_endo_diagnostics_hc1_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,

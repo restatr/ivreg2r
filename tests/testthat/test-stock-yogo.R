@@ -6,16 +6,12 @@
 # diagnostics$weak_id_sy is populated correctly by ivreg2().
 
 # --- Load datasets ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
 
-sim_multi_path <- file.path(fixture_dir, "sim_multi_endo_data.csv")
+sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
 }

@@ -6,27 +6,18 @@
 # (robust/cluster) underidentification and weak identification tests.
 # Verifies against Stata ivreg2 fixtures.
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-read_diagnostics <- function(path) {
-  read.csv(path)
-}
-
 # --- Load datasets ---
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
 
-sim_multi_path <- file.path(fixture_dir, "sim_multi_endo_data.csv")
+sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
 }
 
-sim_cluster_path <- file.path(fixture_dir, "sim_cluster_data.csv")
+sim_cluster_path <- fixture_path("sim_cluster_data.csv")
 if (file.exists(sim_cluster_path)) {
   sim_cluster <- read.csv(sim_cluster_path)
 }
@@ -38,7 +29,7 @@ if (file.exists(sim_cluster_path)) {
 
 test_that("Anderson LM matches Stata card_just_id iid fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_just_id_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -56,7 +47,7 @@ test_that("Anderson LM matches Stata card_just_id iid fixture", {
 
 test_that("Anderson LM matches Stata card_overid iid fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_overid_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_overid_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -72,7 +63,7 @@ test_that("Anderson LM matches Stata card_overid iid fixture", {
 
 test_that("Anderson LM matches Stata sim_multi_endo iid fixture", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
-  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_multi_endo_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
@@ -93,7 +84,7 @@ test_that("Anderson LM matches Stata sim_multi_endo iid fixture", {
 
 test_that("Cragg-Donald F matches Stata card_just_id iid fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_just_id_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -108,7 +99,7 @@ test_that("Cragg-Donald F matches Stata card_just_id iid fixture", {
 
 test_that("Cragg-Donald F matches Stata card_overid iid fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_overid_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_overid_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -121,7 +112,7 @@ test_that("Cragg-Donald F matches Stata card_overid iid fixture", {
 
 test_that("Cragg-Donald F matches Stata sim_multi_endo iid fixture", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
-  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_multi_endo_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
@@ -139,7 +130,7 @@ test_that("Cragg-Donald F matches Stata sim_multi_endo iid fixture", {
 
 test_that("KP rk LM matches Stata card_just_id hc1 fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_diagnostics_hc1.csv")
+  diag_path <- fixture_path("card_just_id_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -157,7 +148,7 @@ test_that("KP rk LM matches Stata card_just_id hc1 fixture", {
 
 test_that("KP rk LM matches Stata card_overid hc1 fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_overid_diagnostics_hc1.csv")
+  diag_path <- fixture_path("card_overid_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -173,7 +164,7 @@ test_that("KP rk LM matches Stata card_overid hc1 fixture", {
 
 test_that("KP rk LM matches Stata sim_multi_endo hc1 fixture", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
-  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_multi_endo_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
@@ -194,7 +185,7 @@ test_that("KP rk LM matches Stata sim_multi_endo hc1 fixture", {
 
 test_that("KP rk Wald F matches Stata card_just_id hc1 fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_diagnostics_hc1.csv")
+  diag_path <- fixture_path("card_just_id_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -209,7 +200,7 @@ test_that("KP rk Wald F matches Stata card_just_id hc1 fixture", {
 
 test_that("KP rk Wald F matches Stata card_overid hc1 fixture", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_overid_diagnostics_hc1.csv")
+  diag_path <- fixture_path("card_overid_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -222,7 +213,7 @@ test_that("KP rk Wald F matches Stata card_overid hc1 fixture", {
 
 test_that("KP rk Wald F matches Stata sim_multi_endo hc1 fixture", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
-  diag_path <- file.path(fixture_dir, "sim_multi_endo_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_multi_endo_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
@@ -240,7 +231,7 @@ test_that("KP rk Wald F matches Stata sim_multi_endo hc1 fixture", {
 
 test_that("KP rk LM matches Stata sim_cluster cl fixture", {
   skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
-  diag_path <- file.path(fixture_dir, "sim_cluster_diagnostics_cl.csv")
+  diag_path <- fixture_path("sim_cluster_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -263,7 +254,7 @@ test_that("KP rk LM matches Stata sim_cluster cl fixture", {
 
 test_that("KP rk Wald F matches Stata sim_cluster cl fixture", {
   skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
-  diag_path <- file.path(fixture_dir, "sim_cluster_diagnostics_cl.csv")
+  diag_path <- fixture_path("sim_cluster_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -281,7 +272,7 @@ test_that("KP rk Wald F matches Stata sim_cluster cl fixture", {
 
 test_that("Cragg-Donald F present alongside KP stats (HC1)", {
   skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_diagnostics_hc1.csv")
+  diag_path <- fixture_path("card_just_id_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -296,7 +287,7 @@ test_that("Cragg-Donald F present alongside KP stats (HC1)", {
 
 test_that("Cragg-Donald F present alongside KP stats (cluster)", {
   skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
-  diag_path <- file.path(fixture_dir, "sim_cluster_diagnostics_cl.csv")
+  diag_path <- fixture_path("sim_cluster_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -432,14 +423,14 @@ test_that("Cragg-Donald F is identical across VCE types", {
 # sim_no_constant: y ~ 0 + x1 | endo1 | z1+z2 (noconstant)
 # ============================================================================
 
-sim_noconst_path <- file.path(fixture_dir, "sim_no_constant_data.csv")
+sim_noconst_path <- fixture_path("sim_no_constant_data.csv")
 if (file.exists(sim_noconst_path)) {
   sim_noconst <- read.csv(sim_noconst_path)
 }
 
 test_that("Anderson LM matches Stata sim_no_constant iid fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
@@ -454,7 +445,7 @@ test_that("Anderson LM matches Stata sim_no_constant iid fixture", {
 
 test_that("Cragg-Donald F matches Stata sim_no_constant iid fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_iid.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst)
@@ -466,7 +457,7 @@ test_that("Cragg-Donald F matches Stata sim_no_constant iid fixture", {
 
 test_that("KP rk LM matches Stata sim_no_constant hc1 fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")
@@ -481,7 +472,7 @@ test_that("KP rk LM matches Stata sim_no_constant hc1 fixture", {
 
 test_that("KP rk Wald F matches Stata sim_no_constant hc1 fixture", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")
@@ -502,7 +493,7 @@ test_that("small does not change id stats (sim_no_constant)", {
 
 test_that("Cragg-Donald F present alongside KP stats sim_no_constant (HC1)", {
   skip_if(!file.exists(sim_noconst_path), "sim_no_constant data not found")
-  diag_path <- file.path(fixture_dir, "sim_no_constant_diagnostics_hc1.csv")
+  diag_path <- fixture_path("sim_no_constant_diagnostics_hc1.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
   fit <- ivreg2(y ~ 0 + x1 | endo1 | z1 + z2, data = sim_noconst, vcov = "robust")

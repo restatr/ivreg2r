@@ -2,25 +2,8 @@
 # Tests: Analytic Weights (Ticket C3)
 # ============================================================================
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-read_vcov_fixture <- function(path) {
-  fixture <- read.csv(path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-  vcov_cols <- grep("^vcov_", names(fixture), value = TRUE)
-  V <- as.matrix(fixture[, vcov_cols])
-  rownames(V) <- r_names
-  col_stata <- sub("^vcov_", "", vcov_cols)
-  colnames(V) <- ifelse(col_stata == "_cons", "(Intercept)", col_stata)
-  V
-}
-
 # --- Load Card data ---
-card_path <- file.path(fixture_dir, "card_data.csv")
+card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
@@ -98,7 +81,7 @@ test_that("weighted OLS robust+small VCV matches sandwich::vcovHC(type='HC1')", 
 
 test_that("weighted 2SLS coefficients match Stata fixture (iid)", {
   skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_iid.csv")
+  coef_path <- fixture_path("card_just_id_weighted_coef_iid.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -118,7 +101,7 @@ test_that("weighted 2SLS coefficients match Stata fixture (iid)", {
 
 test_that("weighted 2SLS SEs match Stata fixture (iid, small=FALSE)", {
   skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_iid.csv")
+  coef_path <- fixture_path("card_just_id_weighted_coef_iid.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -138,7 +121,7 @@ test_that("weighted 2SLS SEs match Stata fixture (iid, small=FALSE)", {
 
 test_that("weighted 2SLS SEs match Stata fixture (iid, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_iid_small.csv")
+  coef_path <- fixture_path("card_just_id_weighted_coef_iid_small.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -163,7 +146,7 @@ test_that("weighted 2SLS SEs match Stata fixture (iid, small=TRUE)", {
 
 test_that("weighted 2SLS SEs match Stata fixture (robust/HC0, small=FALSE)", {
   skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_hc1.csv")
+  coef_path <- fixture_path("card_just_id_weighted_coef_hc1.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -183,7 +166,7 @@ test_that("weighted 2SLS SEs match Stata fixture (robust/HC0, small=FALSE)", {
 
 test_that("weighted 2SLS SEs match Stata fixture (robust/HC1, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_hc1_small.csv")
+  coef_path <- fixture_path("card_just_id_weighted_coef_hc1_small.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -208,7 +191,7 @@ test_that("weighted 2SLS SEs match Stata fixture (robust/HC1, small=TRUE)", {
 
 test_that("weighted 2SLS SEs match Stata fixture (cluster, small=FALSE)", {
   skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_cl.csv")
+  coef_path <- fixture_path("card_just_id_weighted_coef_cl.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
@@ -231,7 +214,7 @@ test_that("weighted 2SLS SEs match Stata fixture (cluster, small=FALSE)", {
 
 test_that("weighted 2SLS SEs match Stata fixture (cluster, small=TRUE)", {
   skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- file.path(fixture_dir, "card_just_id_weighted_coef_cl_small.csv")
+  coef_path <- fixture_path("card_just_id_weighted_coef_cl_small.csv")
   skip_if(!file.exists(coef_path), "Fixture not found")
 
   # M=2 clusters → expected rank-deficient diagnostics
@@ -260,7 +243,7 @@ test_that("weighted 2SLS SEs match Stata fixture (cluster, small=TRUE)", {
 
 test_that("weighted 2SLS VCV matches Stata fixture (iid)", {
   skip_if(!file.exists(card_path), "Card data not found")
-  vcov_path <- file.path(fixture_dir, "card_just_id_weighted_vcov_iid.csv")
+  vcov_path <- fixture_path("card_just_id_weighted_vcov_iid.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -285,7 +268,7 @@ test_that("weighted 2SLS VCV matches Stata fixture (iid)", {
 
 test_that("weighted 2SLS sigma matches Stata RMSE fixture", {
   skip_if(!file.exists(card_path), "Card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_weighted_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_just_id_weighted_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -296,7 +279,7 @@ test_that("weighted 2SLS sigma matches Stata RMSE fixture", {
 
 test_that("weighted 2SLS RSS matches Stata RSS fixture", {
   skip_if(!file.exists(card_path), "Card data not found")
-  diag_path <- file.path(fixture_dir, "card_just_id_weighted_diagnostics_iid.csv")
+  diag_path <- fixture_path("card_just_id_weighted_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,

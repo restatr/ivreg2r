@@ -11,11 +11,8 @@
 #   - df.residual
 
 # --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-card_path <- file.path(fixture_dir, "card_data.csv")
-sim_path  <- file.path(fixture_dir, "sim_cluster_data.csv")
+card_path <- fixture_path("card_data.csv")
+sim_path  <- fixture_path("sim_cluster_data.csv")
 
 if (file.exists(card_path)) card <- read.csv(card_path)
 if (file.exists(sim_path))  sim_cluster <- read.csv(sim_path)
@@ -61,7 +58,7 @@ test_that("dofminus=0 sdofminus=0 is identical to default", {
 for (cfg in vce_configs) {
   test_that(paste0("dofminus coefs match Stata: card_just_id ", cfg$suffix), {
     skip_if(!file.exists(card_path), "card data not found")
-    coef_path <- file.path(fixture_dir,
+    coef_path <- fixture_path(
                            paste0("card_just_id_dofminus_coef_", cfg$suffix, ".csv"))
     skip_if(!file.exists(coef_path), "fixture not found")
 
@@ -97,7 +94,7 @@ for (cfg in vce_configs) {
 for (cfg in vce_configs) {
   test_that(paste0("dofminus VCV matches Stata: card_just_id ", cfg$suffix), {
     skip_if(!file.exists(card_path), "card data not found")
-    vcov_path <- file.path(fixture_dir,
+    vcov_path <- fixture_path(
                            paste0("card_just_id_dofminus_vcov_", cfg$suffix, ".csv"))
     skip_if(!file.exists(vcov_path), "fixture not found")
 
@@ -137,7 +134,7 @@ for (cfg in vce_configs) {
 for (cfg in vce_configs) {
   test_that(paste0("dofminus diagnostics match Stata: card_just_id ", cfg$suffix), {
     skip_if(!file.exists(card_path), "card data not found")
-    diag_path <- file.path(fixture_dir,
+    diag_path <- fixture_path(
                            paste0("card_just_id_dofminus_diagnostics_", cfg$suffix, ".csv"))
     skip_if(!file.exists(diag_path), "fixture not found")
 
@@ -216,7 +213,7 @@ for (cfg in vce_configs) {
 for (cfg in vce_configs) {
   test_that(paste0("dofminus first-stage matches Stata: card_just_id ", cfg$suffix), {
     skip_if(!file.exists(card_path), "card data not found")
-    fs_path <- file.path(fixture_dir,
+    fs_path <- fixture_path(
                          paste0("card_just_id_dofminus_firststage_", cfg$suffix, ".csv"))
     skip_if(!file.exists(fs_path), "fixture not found")
 
@@ -295,7 +292,7 @@ for (cfg in vce_configs) {
 for (cfg in vce_configs) {
   test_that(paste0("dofminus diagnostics match Stata: card_overid ", cfg$suffix), {
     skip_if(!file.exists(card_path), "card data not found")
-    diag_path <- file.path(fixture_dir,
+    diag_path <- fixture_path(
                            paste0("card_overid_dofminus_diagnostics_", cfg$suffix, ".csv"))
     skip_if(!file.exists(diag_path), "fixture not found")
 
@@ -366,7 +363,7 @@ for (cfg in vce_configs) {
 for (cfg in vce_configs) {
   test_that(paste0("dofminus coefs match Stata: sim_cluster ", cfg$suffix), {
     skip_if(!file.exists(sim_path), "sim_cluster data not found")
-    coef_path <- file.path(fixture_dir,
+    coef_path <- fixture_path(
                            paste0("sim_cluster_dofminus_coef_", cfg$suffix, ".csv"))
     skip_if(!file.exists(coef_path), "fixture not found")
 
@@ -395,7 +392,7 @@ for (cfg in vce_configs) {
 for (cfg in vce_configs) {
   test_that(paste0("dofminus diagnostics match Stata: sim_cluster ", cfg$suffix), {
     skip_if(!file.exists(sim_path), "sim_cluster data not found")
-    diag_path <- file.path(fixture_dir,
+    diag_path <- fixture_path(
                            paste0("sim_cluster_dofminus_diagnostics_", cfg$suffix, ".csv"))
     skip_if(!file.exists(diag_path), "fixture not found")
 

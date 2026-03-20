@@ -6,38 +6,8 @@
 # V_twoway = V_c1 + V_c2 - V_intersection
 # Effective cluster count M = min(M1, M2) per Stata convention.
 
-# --- Helpers ---
-fixture_dir <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures"
-)
-
-read_vcov_fixture <- function(path) {
-  fixture <- read.csv(path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-  vcov_cols <- grep("^vcov_", names(fixture), value = TRUE)
-  V <- as.matrix(fixture[, vcov_cols])
-  rownames(V) <- r_names
-  col_stata <- sub("^vcov_", "", vcov_cols)
-  colnames(V) <- ifelse(col_stata == "_cons", "(Intercept)", col_stata)
-  V
-}
-
-expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
-  shared <- intersect(rownames(V_r), rownames(V_stata))
-  for (rn in shared) {
-    for (cn in shared) {
-      expect_equal(
-        V_r[rn, cn], V_stata[rn, cn],
-        tolerance = tol,
-        info = paste("VCV mismatch:", rn, cn)
-      )
-    }
-  }
-}
-
 # --- Load sim_twoway data ---
-sim_path <- file.path(fixture_dir, "sim_twoway_data.csv")
+sim_path <- fixture_path("sim_twoway_data.csv")
 if (file.exists(sim_path)) {
   sim_twoway <- read.csv(sim_path)
 }
@@ -49,7 +19,7 @@ if (file.exists(sim_path)) {
 
 test_that("2SLS two-way cluster VCV matches Stata cl2 fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  vcov_path <- file.path(fixture_dir, "sim_twoway_vcov_cl2.csv")
+  vcov_path <- fixture_path("sim_twoway_vcov_cl2.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -59,7 +29,7 @@ test_that("2SLS two-way cluster VCV matches Stata cl2 fixture", {
 
 test_that("2SLS two-way cluster SEs match Stata cl2 fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  coef_path <- file.path(fixture_dir, "sim_twoway_coef_cl2.csv")
+  coef_path <- fixture_path("sim_twoway_coef_cl2.csv")
   skip_if(!file.exists(coef_path), "Coef fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -79,7 +49,7 @@ test_that("2SLS two-way cluster SEs match Stata cl2 fixture", {
 
 test_that("2SLS two-way cluster coefficients match Stata cl2 fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  coef_path <- file.path(fixture_dir, "sim_twoway_coef_cl2.csv")
+  coef_path <- fixture_path("sim_twoway_coef_cl2.csv")
   skip_if(!file.exists(coef_path), "Coef fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -104,7 +74,7 @@ test_that("2SLS two-way cluster coefficients match Stata cl2 fixture", {
 
 test_that("2SLS two-way cluster VCV matches Stata cl2_small fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  vcov_path <- file.path(fixture_dir, "sim_twoway_vcov_cl2_small.csv")
+  vcov_path <- fixture_path("sim_twoway_vcov_cl2_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -115,7 +85,7 @@ test_that("2SLS two-way cluster VCV matches Stata cl2_small fixture", {
 
 test_that("2SLS two-way cluster SEs match Stata cl2_small fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  coef_path <- file.path(fixture_dir, "sim_twoway_coef_cl2_small.csv")
+  coef_path <- fixture_path("sim_twoway_coef_cl2_small.csv")
   skip_if(!file.exists(coef_path), "Coef fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -141,7 +111,7 @@ test_that("2SLS two-way cluster SEs match Stata cl2_small fixture", {
 
 test_that("two-way cluster diagnostics match Stata cl2 fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  diag_path <- file.path(fixture_dir, "sim_twoway_diagnostics_cl2.csv")
+  diag_path <- fixture_path("sim_twoway_diagnostics_cl2.csv")
   skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -195,7 +165,7 @@ test_that("two-way cluster diagnostics match Stata cl2 fixture", {
 
 test_that("two-way cluster diagnostics match Stata cl2_small fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  diag_path <- file.path(fixture_dir, "sim_twoway_diagnostics_cl2_small.csv")
+  diag_path <- fixture_path("sim_twoway_diagnostics_cl2_small.csv")
   skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -221,7 +191,7 @@ test_that("two-way cluster diagnostics match Stata cl2_small fixture", {
 
 test_that("two-way cluster first-stage F matches Stata cl2 fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  fs_path <- file.path(fixture_dir, "sim_twoway_firststage_cl2.csv")
+  fs_path <- fixture_path("sim_twoway_firststage_cl2.csv")
   skip_if(!file.exists(fs_path), "First-stage fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -241,7 +211,7 @@ test_that("two-way cluster first-stage F matches Stata cl2 fixture", {
 
 test_that("OLS two-way cluster VCV matches Stata cl2_ols fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  vcov_path <- file.path(fixture_dir, "sim_twoway_vcov_cl2_ols.csv")
+  vcov_path <- fixture_path("sim_twoway_vcov_cl2_ols.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 + endo1,
@@ -251,7 +221,7 @@ test_that("OLS two-way cluster VCV matches Stata cl2_ols fixture", {
 
 test_that("OLS two-way cluster VCV matches Stata cl2_ols_small fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  vcov_path <- file.path(fixture_dir, "sim_twoway_vcov_cl2_ols_small.csv")
+  vcov_path <- fixture_path("sim_twoway_vcov_cl2_ols_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 + endo1,
@@ -267,7 +237,7 @@ test_that("OLS two-way cluster VCV matches Stata cl2_ols_small fixture", {
 
 test_that("weighted 2SLS two-way cluster VCV matches Stata cl2_wt fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  vcov_path <- file.path(fixture_dir, "sim_twoway_vcov_cl2_wt.csv")
+  vcov_path <- fixture_path("sim_twoway_vcov_cl2_wt.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -278,7 +248,7 @@ test_that("weighted 2SLS two-way cluster VCV matches Stata cl2_wt fixture", {
 
 test_that("weighted 2SLS two-way cluster VCV matches Stata cl2_wt_small fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  vcov_path <- file.path(fixture_dir, "sim_twoway_vcov_cl2_wt_small.csv")
+  vcov_path <- fixture_path("sim_twoway_vcov_cl2_wt_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -289,7 +259,7 @@ test_that("weighted 2SLS two-way cluster VCV matches Stata cl2_wt_small fixture"
 
 test_that("weighted two-way cluster diagnostics match Stata cl2_wt fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  diag_path <- file.path(fixture_dir, "sim_twoway_diagnostics_cl2_wt.csv")
+  diag_path <- fixture_path("sim_twoway_diagnostics_cl2_wt.csv")
   skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -313,7 +283,7 @@ test_that("weighted two-way cluster diagnostics match Stata cl2_wt fixture", {
 
 test_that("two-way cluster with dofminus VCV matches Stata cl2_dof fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  vcov_path <- file.path(fixture_dir, "sim_twoway_vcov_cl2_dof.csv")
+  vcov_path <- fixture_path("sim_twoway_vcov_cl2_dof.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -324,7 +294,7 @@ test_that("two-way cluster with dofminus VCV matches Stata cl2_dof fixture", {
 
 test_that("two-way cluster with dofminus VCV matches Stata cl2_dof_small fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  vcov_path <- file.path(fixture_dir, "sim_twoway_vcov_cl2_dof_small.csv")
+  vcov_path <- fixture_path("sim_twoway_vcov_cl2_dof_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
@@ -335,7 +305,7 @@ test_that("two-way cluster with dofminus VCV matches Stata cl2_dof_small fixture
 
 test_that("two-way cluster dofminus diagnostics match Stata cl2_dof fixture", {
   skip_if(!file.exists(sim_path), "sim_twoway data not found")
-  diag_path <- file.path(fixture_dir, "sim_twoway_diagnostics_cl2_dof.csv")
+  diag_path <- fixture_path("sim_twoway_diagnostics_cl2_dof.csv")
   skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
 
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
