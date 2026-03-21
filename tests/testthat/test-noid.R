@@ -127,6 +127,13 @@ test_that("noid = TRUE + redundant skips redundancy test silently", {
   expect_null(fit$diagnostics$redundancy)
 })
 
+test_that("noid = TRUE + invalid redundant still errors (validation unconditional)", {
+  expect_error(
+    do.call(ivreg2, c(base_args, list(noid = TRUE, redundant = "not_a_var"))),
+    "not in the excluded instrument list"
+  )
+})
+
 # ============================================================================
 # noid stored on object
 # ============================================================================

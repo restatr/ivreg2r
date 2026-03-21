@@ -1374,29 +1374,31 @@
       )
     }
 
-    # Redundancy test (P1)
-    if (!noid && !is.null(redundant) && length(redundant) > 0L) {
+    # Redundancy test (P1) — validate names unconditionally, compute only if !noid
+    if (!is.null(redundant) && length(redundant) > 0L) {
       bad <- setdiff(redundant, parsed$excluded_names)
       if (length(bad) > 0L) {
         stop("`redundant` contains variables not in the excluded instrument list: ",
              paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
       }
-      redundant_cols <- .expand_terms_to_colnames(
-        redundant, parsed$excluded_names, parsed$excluded_colnames,
-        parsed$excluded_assign
-      )
-      diagnostics$redundancy <- .compute_redundancy_test(
-        X = parsed$X, Z = parsed$Z,
-        weights = parsed$weights, cluster_vec = cluster_vec,
-        vcov_type = effective_vcov_type,
-        N = parsed$N, K1 = parsed$K1,
-        endo_colnames = parsed$endo_colnames,
-        excluded_colnames = parsed$excluded_colnames,
-        redundant_vars = redundant_cols, dofminus = dofminus,
-        weight_type = weight_type,
-        kernel = kernel, bw = bw, time_index = time_index,
-        center = center, psd = psd
-      )
+      if (!noid) {
+        redundant_cols <- .expand_terms_to_colnames(
+          redundant, parsed$excluded_names, parsed$excluded_colnames,
+          parsed$excluded_assign
+        )
+        diagnostics$redundancy <- .compute_redundancy_test(
+          X = parsed$X, Z = parsed$Z,
+          weights = parsed$weights, cluster_vec = cluster_vec,
+          vcov_type = effective_vcov_type,
+          N = parsed$N, K1 = parsed$K1,
+          endo_colnames = parsed$endo_colnames,
+          excluded_colnames = parsed$excluded_colnames,
+          redundant_vars = redundant_cols, dofminus = dofminus,
+          weight_type = weight_type,
+          kernel = kernel, bw = bw, time_index = time_index,
+          center = center, psd = psd
+        )
+      }
     }
 
     }  # end of if (is.null(b0)) — identification diagnostics block
