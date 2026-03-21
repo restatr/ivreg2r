@@ -1,0 +1,118 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# ivreg2r
+
+Instrumental variables and GMM estimation for R with built-in diagnostics,
+designed to reproduce Stata's
+[`ivreg2`](https://ideas.repec.org/c/boc/bocode/s425401.html) output
+(Baum, Schaffer & Stillman, 2003, 2007).
+
+> **Note:** This package is not yet on CRAN. It is an independent
+> reimplementation, not affiliated with or endorsed by the original
+> `ivreg2` authors. Version 0.1.0. Requires R >= 4.4.0.
+
+## Installation
+
+```r
+# install.packages("devtools")
+devtools::install_github("restatr/ivreg2r")
+```
+
+## Example
+
+```{r example}
+library(ivreg2r)
+data(card)
+
+fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa + married |
+                educ | nearc2 + nearc4,
+              data = card, vcov = "robust", small = TRUE)
+summary(fit)
+```
+
+Extract results programmatically with broom:
+
+```{r broom}
+tidy(fit)
+```
+
+## Formula syntax
+
+Three-part formula: `y ~ exogenous | endogenous | excluded_instruments`.
+Each variable appears once; exogenous regressors are automatically included
+as instruments.
+
+| Part | Contents | Example |
+|------|----------|---------|
+| LHS | Dependent variable | `lwage` |
+| 1st RHS | Exogenous regressors | `exper + expersq + black + south` |
+| 2nd RHS | Endogenous regressors | `educ` |
+| 3rd RHS | Excluded instruments | `nearc2 + nearc4` |
+
+A one-part formula (`y ~ x1 + x2`) estimates OLS.
+
+## Features
+
+**Estimators:** OLS, 2SLS, LIML, Fuller, k-class, two-step efficient GMM, CUE
+
+**Standard errors:** classical, robust, one- and two-way clustering, HAC/AC
+(8 kernels), Kiefer, Driscoll-Kraay, cluster+kernel
+
+**Diagnostics:** weak identification (Kleibergen-Paap rk, Cragg-Donald,
+Stock-Yogo critical values), underidentification, overidentification
+(Sargan, Hansen J), endogeneity, first-stage F/partial R-squared,
+Anderson-Rubin, Stock-Wright S, orthogonality, redundancy
+
+**Integration:** `tidy()`, `glance()`, `augment()` via
+[broom](https://broom.tidymodels.org/)
+
+All estimators and diagnostics are tested against Stata `ivreg2` benchmarks.
+
+## Stata migration
+
+Common translations (see `vignette("introduction")` for the
+[full table](https://restatr.github.io/ivreg2r/articles/introduction.html#stata-migration-quick-reference)
+and
+[intentional differences](https://restatr.github.io/ivreg2r/articles/introduction.html#intentional-differences-from-stata)):
+
+| Stata | R (`ivreg2r`) |
+|-------|---------------|
+| `ivreg2 y x (endo = z1 z2)` | `ivreg2(y ~ x \| endo \| z1 + z2, data = d)` |
+| `ivreg2 ..., robust` | `ivreg2(..., vcov = "robust")` |
+| `ivreg2 ..., robust small` | `ivreg2(..., vcov = "robust", small = TRUE)` |
+| `ivreg2 ..., cluster(g)` | `ivreg2(..., clusters = ~ g)` |
+| `ivreg2 ..., cluster(g) small` | `ivreg2(..., clusters = ~ g, small = TRUE)` |
+| `ivreg2 ..., liml` | `ivreg2(..., method = "liml")` |
+| `ivreg2 ..., gmm2s` | `ivreg2(..., method = "gmm2s")` |
+
+## Learn more
+
+- `vignette("introduction")` --- OLS, 2SLS, diagnostics, robust/cluster
+  SEs, weights, broom integration, Stata migration reference
+- `vignette("advanced-iv")` --- LIML, Fuller, k-class, COVIV, two-way
+  clustering, reduced-form, model comparison
+- `vignette("time-series-gmm")` --- HAC/AC, Kiefer, Driscoll-Kraay, GMM,
+  CUE, partialling, user matrices
+
+## Citation
+
+```{r citation, comment = ""}
+citation("ivreg2r")
+```
+
+## License
+
+MIT
