@@ -55,6 +55,7 @@
   wmatrix = NULL,
   smatrix = NULL,
   b0 = NULL,
+  noid = FALSE,
   cue_convergence = NULL,
   cue_message = NULL,
   kernel = NULL,

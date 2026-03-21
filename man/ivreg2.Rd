@@ -32,6 +32,7 @@ ivreg2(
   wmatrix = NULL,
   smatrix = NULL,
   b0 = NULL,
+  noid = FALSE,
   partial = NULL,
   nopartialsmall = FALSE,
   center = FALSE,
@@ -232,6 +233,13 @@ reordered to match model matrix columns; unnamed vectors are used
 as-is in model matrix column order.
 Incompatible with \code{method = "gmm2s"}, \code{"liml"}, \code{kclass}, \code{fuller},
 and \code{wmatrix}.}
+
+\item{noid}{Logical: if \code{TRUE}, suppress computation of underidentification,
+weak identification, and redundancy test statistics. Overidentification,
+Anderson-Rubin, Stock-Wright, endogeneity, and first-stage diagnostics
+are still computed. Default \code{FALSE}. Useful for speeding up simulation
+loops where rank-based identification tests are expensive.
+Equivalent to Stata's \code{noid} option.}
 
 \item{partial}{Character vector: exogenous regressors to partial out
 via Frisch-Waugh-Lovell projection before estimation. Coefficients on

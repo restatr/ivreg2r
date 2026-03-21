@@ -21,6 +21,7 @@
                                           kiefer, dkraay, wmatrix, smatrix,
                                           b0, partial, nopartialsmall,
                                           center, psd, reduced_form,
+                                          noid,
                                           model_flag, x_flag, y_flag) {
 
   # --- Validate vcov ---
@@ -97,6 +98,10 @@
 
   if (!is.logical(center) || length(center) != 1L || is.na(center)) {
     stop("`center` must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  if (!is.logical(noid) || length(noid) != 1L || is.na(noid)) {
+    stop("`noid` must be TRUE or FALSE.", call. = FALSE)
   }
 
   # --- Validate psd ---
@@ -365,6 +370,7 @@
     reduced_form = reduced_form,
     kclass = kclass, fuller = fuller, b0 = b0,
     wmatrix = wmatrix, smatrix = smatrix,
+    noid = noid,
     model_flag = model_flag, x_flag = x_flag, y_flag = y_flag
   )
 }
@@ -1159,6 +1165,7 @@
   reduced_form <- opts$reduced_form
   ivar <- opts$ivar
   b0 <- opts$b0
+  noid <- opts$noid
 
   sdofminus   <- prep$sdofminus
   cluster_vec <- prep$cluster_vec
@@ -1226,38 +1233,39 @@
       )
     }
 
-    # Identification tests (D2)
-    id_vcov_type <- if (isTRUE(kiefer)) "iid" else effective_vcov_type
-    id_kernel    <- if (isTRUE(kiefer)) NULL else kernel
-    id_tests <- .compute_id_tests(
-      X = parsed$X, Z = parsed$Z, y = parsed$y,
-      residuals = fit$residuals, weights = parsed$weights,
-      cluster_vec = cluster_vec, vcov_type = id_vcov_type,
-      N = parsed$N, K = parsed$K, L = parsed$L,
-      K1 = parsed$K1, L1 = parsed$L1, M = M,
-      endo_names = parsed$endo_colnames,
-      excluded_names = parsed$excluded_colnames,
-      has_intercept = parsed$has_intercept,
-      dofminus = dofminus, sdofminus = sdofminus,
-      weight_type = weight_type,
-      kernel = id_kernel, bw = bw, time_index = time_index,
-      psd = psd
-    )
-    diagnostics$underid        <- id_tests$underid
-    diagnostics$weak_id        <- id_tests$weak_id
-    diagnostics$weak_id_robust <- id_tests$weak_id_robust
+    # Identification tests (D2) + Stock-Yogo critical values (D3)
+    if (!noid) {
+      id_vcov_type <- if (isTRUE(kiefer)) "iid" else effective_vcov_type
+      id_kernel    <- if (isTRUE(kiefer)) NULL else kernel
+      id_tests <- .compute_id_tests(
+        X = parsed$X, Z = parsed$Z, y = parsed$y,
+        residuals = fit$residuals, weights = parsed$weights,
+        cluster_vec = cluster_vec, vcov_type = id_vcov_type,
+        N = parsed$N, K = parsed$K, L = parsed$L,
+        K1 = parsed$K1, L1 = parsed$L1, M = M,
+        endo_names = parsed$endo_colnames,
+        excluded_names = parsed$excluded_colnames,
+        has_intercept = parsed$has_intercept,
+        dofminus = dofminus, sdofminus = sdofminus,
+        weight_type = weight_type,
+        kernel = id_kernel, bw = bw, time_index = time_index,
+        psd = psd
+      )
+      diagnostics$underid        <- id_tests$underid
+      diagnostics$weak_id        <- id_tests$weak_id
+      diagnostics$weak_id_robust <- id_tests$weak_id_robust
 
-    # Stock-Yogo critical values (D3)
-    sy_method <- if (method %in% c("gmm2s", "gmmw")) {
-      "2sls"
-    } else if (method == "cue") {
-      "liml"
-    } else {
-      method
+      sy_method <- if (method %in% c("gmm2s", "gmmw")) {
+        "2sls"
+      } else if (method == "cue") {
+        "liml"
+      } else {
+        method
+      }
+      diagnostics$weak_id_sy <- .stock_yogo_lookup(
+        parsed$K1, parsed$L1, method = sy_method, fuller = fuller
+      )
     }
-    diagnostics$weak_id_sy <- .stock_yogo_lookup(
-      parsed$K1, parsed$L1, method = sy_method, fuller = fuller
-    )
 
     # First-stage diagnostics (E1)
     first_stage <- .compute_first_stage(
@@ -1367,7 +1375,7 @@
     }
 
     # Redundancy test (P1)
-    if (!is.null(redundant) && length(redundant) > 0L) {
+    if (!noid && !is.null(redundant) && length(redundant) > 0L) {
       bad <- setdiff(redundant, parsed$excluded_names)
       if (length(bad) > 0L) {
         stop("`redundant` contains variables not in the excluded instrument list: ",
@@ -1618,6 +1626,12 @@
 #'   as-is in model matrix column order.
 #'   Incompatible with `method = "gmm2s"`, `"liml"`, `kclass`, `fuller`,
 #'   and `wmatrix`.
+#' @param noid Logical: if `TRUE`, suppress computation of underidentification,
+#'   weak identification, and redundancy test statistics. Overidentification,
+#'   Anderson-Rubin, Stock-Wright, endogeneity, and first-stage diagnostics
+#'   are still computed. Default `FALSE`. Useful for speeding up simulation
+#'   loops where rank-based identification tests are expensive.
+#'   Equivalent to Stata's `noid` option.
 #' @param partial Character vector: exogenous regressors to partial out
 #'   via Frisch-Waugh-Lovell projection before estimation. Coefficients on
 #'   partialled variables are not recoverable and are not reported.
@@ -1742,6 +1756,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    kiefer = FALSE, dkraay = NULL,
                    wmatrix = NULL, smatrix = NULL,
                    b0 = NULL,
+                   noid = FALSE,
                    partial = NULL,
                    nopartialsmall = FALSE,
                    center = FALSE,
@@ -1762,6 +1777,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     wmatrix = wmatrix, smatrix = smatrix, b0 = b0,
     partial = partial, nopartialsmall = nopartialsmall,
     center = center, psd = psd, reduced_form = reduced_form,
+    noid = noid,
     model_flag = model, x_flag = x, y_flag = y
   )
   # Unpack options needed in ivreg2() scope (for .new_ivreg2() assembly).
@@ -1904,6 +1920,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     wmatrix           = wmatrix,
     smatrix           = smatrix,
     b0                = b0,
+    noid              = noid,
     cue_convergence   = fit$convergence,   # NULL for non-CUE
     cue_message       = fit$cue_message,   # NULL for non-CUE
     kernel            = kernel,
