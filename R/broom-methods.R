@@ -103,14 +103,15 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
 #' @param ... Additional arguments (ignored).
 #' @return A single-row [tibble::tibble()].
 #'
-#'   **Always present** (26 columns):
+#'   **Always present** (33 columns):
 #'   `r.squared`, `adj.r.squared`, `sigma`, `statistic`, `p.value`, `df`,
 #'   `df.residual`, `nobs`, `vcov_type`, `small`, `weight_type`, `method`,
 #'   `lambda`, `kclass_value`, `fuller_parameter`, `coviv`, `center`, `psd`,
 #'   `kernel`, `bw`, `kiefer`, `dkraay`, `n_clusters1`, `n_clusters2`,
-#'   `cue_convergence`, `partial_ct`.
+#'   `cue_convergence`, `partial_ct`,
+#'   `yy`, `yyc`, `rankxx`, `rankzz`, `condxx`, `condzz`, `ll`.
 #'
-#'   **When `diagnostics = TRUE`** (default, 22 additional columns):
+#'   **When `diagnostics = TRUE`** (default, 24 additional columns):
 #'   `weak_id_stat`, `weak_id_robust_stat`,
 #'   `underid_stat`, `underid_p`,
 #'   `overid_stat`, `overid_p`,
@@ -120,7 +121,8 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
 #'   `stock_wright_stat`, `stock_wright_p`, `stock_wright_df`,
 #'   `orthog_stat`, `orthog_p`,
 #'   `redundancy_stat`, `redundancy_p`,
-#'   `rf_f_stat`, `rf_f_p`.
+#'   `rf_f_stat`, `rf_f_p`,
+#'   `ccev_min`, `cdev_min`.
 #'
 #' @details
 #' \code{glance()} always returns the same columns for a given value of the
@@ -215,6 +217,15 @@ glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
     partial_ct         = x$partial_ct %||% 0L
   )
 
+  # Model-level stored results (always present, not test statistics)
+  out$yy                 <- x$yy %||% NA_real_
+  out$yyc                <- x$yyc %||% NA_real_
+  out$rankxx             <- x$rank %||% NA_integer_
+  out$rankzz             <- x$rankzz %||% NA_integer_
+  out$condxx             <- x$condxx %||% NA_real_
+  out$condzz             <- x$condzz %||% NA_real_
+  out$ll                 <- x$ll %||% NA_real_
+
   if (diagnostics) {
     out$weak_id_stat       <- .safe_diag(diag, "weak_id", "stat")
     out$weak_id_robust_stat <- .safe_diag(diag, "weak_id_robust", "stat")
@@ -244,13 +255,6 @@ glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
                                     x$reduced_form$mode == "rf") {
                                x$reduced_form$f_p %||% NA_real_
                              } else NA_real_
-    out$yy                 <- x$yy %||% NA_real_
-    out$yyc                <- x$yyc %||% NA_real_
-    out$rankxx             <- x$rank %||% NA_integer_
-    out$rankzz             <- x$rankzz %||% NA_integer_
-    out$condxx             <- x$condxx %||% NA_real_
-    out$condzz             <- x$condzz %||% NA_real_
-    out$ll                 <- x$ll %||% NA_real_
     out$ccev_min           <- if (!is.null(diag$ccev)) min(diag$ccev) else NA_real_
     out$cdev_min           <- if (!is.null(diag$cdev)) min(diag$cdev) else NA_real_
   }

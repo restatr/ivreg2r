@@ -106,6 +106,8 @@ test_that("glance OLS has correct column names", {
                       "n_clusters1", "n_clusters2",
                       "cue_convergence",
                       "partial_ct",
+                      "yy", "yyc", "rankxx", "rankzz",
+                      "condxx", "condzz", "ll",
                       "weak_id_stat", "weak_id_robust_stat",
                       "underid_stat", "underid_p",
                       "overid_stat", "overid_p",
@@ -118,8 +120,6 @@ test_that("glance OLS has correct column names", {
                       "orthog_stat", "orthog_p",
                       "redundancy_stat", "redundancy_p",
                       "rf_f_stat", "rf_f_p",
-                      "yy", "yyc", "rankxx", "rankzz",
-                      "condxx", "condzz", "ll",
                       "ccev_min", "cdev_min")
   expect_named(gl, expected_names)
 })
@@ -312,8 +312,12 @@ test_that("glance diagnostics = FALSE returns compact tibble", {
   gl <- glance(fit, diagnostics = FALSE)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 26L)
-  # Diagnostic columns should be absent
+  expect_equal(ncol(gl), 33L)
+  # Model-level stored results should be present
+  expect_true("yy" %in% names(gl))
+  expect_true("ll" %in% names(gl))
+  expect_true("condxx" %in% names(gl))
+  # Diagnostic test columns should be absent
   diag_cols <- c("weak_id_stat", "weak_id_robust_stat",
                  "underid_stat", "underid_p",
                  "overid_stat", "overid_p",
