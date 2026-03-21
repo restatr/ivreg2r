@@ -1929,7 +1929,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     }
     condzz <- kappa(ZZ, exact = TRUE)
   } else {
-    condzz <- NULL
+    # OLS: Z = X, so condzz = condxx (matches Stata behavior)
+    condzz <- condxx
   }
 
   # Gaussian log-likelihood (Stata line 2009)
@@ -2017,7 +2018,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     partialcons       = partialcons,
     yy                = fit$tss_u,
     yyc               = fit$tss_c,
-    rankzz            = if (parsed$is_iv) parsed$L else NULL,
+    rankzz            = if (parsed$is_iv) parsed$L else fit$rank,
     condxx            = condxx,
     condzz            = condzz,
     ll                = ll,

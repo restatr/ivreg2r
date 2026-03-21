@@ -154,9 +154,9 @@ test_that("stored results match Stata: OLS", {
   expect_equal(fit$yy, fx$yy, tolerance = stata_tol$coef)
   expect_equal(fit$yyc, fx$yyc, tolerance = stata_tol$coef)
   expect_identical(fit$rank, as.integer(fx$rankxx))
-  expect_null(fit$rankzz)
+  expect_identical(fit$rankzz, as.integer(fx$rankzz))
   expect_equal(fit$condxx, fx$condxx, tolerance = stata_tol$coef)
-  expect_null(fit$condzz)
+  expect_equal(fit$condzz, fx$condzz, tolerance = stata_tol$coef)
   expect_equal(fit$ll, fx$ll, tolerance = stata_tol$coef)
   # OLS: no ccev/cdev
   expect_null(fit$diagnostics$ccev)
@@ -200,12 +200,12 @@ test_that("glance includes new stored results columns", {
   expect_false(is.na(gl$cdev_min))
 })
 
-test_that("glance condzz is NA for OLS", {
+test_that("glance OLS has condzz = condxx and ccev/cdev are NA", {
   data(card)
   fit <- ivreg2(lwage ~ educ + exper, data = card)
   gl <- glance(fit, diagnostics = TRUE)
-  expect_true(is.na(gl$condzz))
-  expect_true(is.na(gl$rankzz))
+  expect_equal(gl$condzz, gl$condxx)
+  expect_equal(gl$rankzz, gl$rankxx)
   expect_true(is.na(gl$ccev_min))
   expect_true(is.na(gl$cdev_min))
 })
