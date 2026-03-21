@@ -135,6 +135,37 @@ test_that("noid = TRUE + invalid redundant still errors (validation unconditiona
 })
 
 # ============================================================================
+# b0 + invalid argument names still error (validation outside b0 gate)
+# ============================================================================
+
+test_that("b0 + invalid redundant still errors", {
+  fit_base <- do.call(ivreg2, c(base_args, list(noid = FALSE)))
+  b0_vec <- coef(fit_base)
+  expect_error(
+    do.call(ivreg2, c(base_args, list(b0 = b0_vec, redundant = "not_a_var"))),
+    "not in the excluded instrument list"
+  )
+})
+
+test_that("b0 + invalid endog still errors", {
+  fit_base <- do.call(ivreg2, c(base_args, list(noid = FALSE)))
+  b0_vec <- coef(fit_base)
+  expect_error(
+    do.call(ivreg2, c(base_args, list(b0 = b0_vec, endog = "not_a_var"))),
+    "not in the endogenous list"
+  )
+})
+
+test_that("b0 + invalid orthog still errors", {
+  fit_base <- do.call(ivreg2, c(base_args, list(noid = FALSE)))
+  b0_vec <- coef(fit_base)
+  expect_error(
+    do.call(ivreg2, c(base_args, list(b0 = b0_vec, orthog = "not_a_var"))),
+    "not in the instrument list"
+  )
+})
+
+# ============================================================================
 # noid stored on object
 # ============================================================================
 

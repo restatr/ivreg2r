@@ -1222,6 +1222,55 @@
     )
     }
 
+    # --- Validate endog/orthog/redundant names unconditionally ---
+    # (Stata validates at lines 480-531, before any b0/noid gating)
+    endog_cols <- NULL
+    if (!is.null(endog)) {
+      bad <- setdiff(endog, parsed$endo_names)
+      if (length(bad) > 0L) {
+        stop("`endog` contains variables not in the endogenous list: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+      endog_cols <- .expand_terms_to_colnames(
+        endog, parsed$endo_names, parsed$endo_colnames, parsed$endo_assign
+      )
+    }
+
+    orthog_cols <- NULL
+    if (!is.null(orthog) && length(orthog) > 0L) {
+      valid_terms <- c(parsed$excluded_names, parsed$exog_term_labels)
+      bad <- setdiff(orthog, valid_terms)
+      if (length(bad) > 0L) {
+        stop("`orthog` contains variables not in the instrument list: ",
+             paste0("'", bad, "'", collapse = ", "),
+             ". Must be excluded or exogenous instruments (not endogenous ",
+             "regressors or the intercept).", call. = FALSE)
+      }
+      orthog_in_excl <- intersect(orthog, parsed$excluded_names)
+      orthog_in_exog <- intersect(orthog, parsed$exog_term_labels)
+      orthog_cols <- c(
+        .expand_terms_to_colnames(orthog_in_excl, parsed$excluded_names,
+                                   parsed$excluded_colnames,
+                                   parsed$excluded_assign),
+        .expand_terms_to_colnames(orthog_in_exog, parsed$exog_term_labels,
+                                   parsed$exog_colnames, parsed$exog_assign)
+      )
+      partialled_out <- setdiff(orthog_cols, colnames(parsed$Z))
+      if (length(partialled_out) > 0L) {
+        stop("Cannot test orthogonality of variables that were partialled out: ",
+             paste0("'", partialled_out, "'", collapse = ", "),
+             ". Remove these from `orthog` or `partial`.", call. = FALSE)
+      }
+    }
+
+    if (!is.null(redundant) && length(redundant) > 0L) {
+      bad <- setdiff(redundant, parsed$excluded_names)
+      if (length(bad) > 0L) {
+        stop("`redundant` contains variables not in the excluded instrument list: ",
+             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
+      }
+    }
+
     # b0 suppresses all identification diagnostics (Stata line 3819)
     if (is.null(b0)) {
 
@@ -1311,17 +1360,6 @@
     )
 
     # Endogeneity test / C-statistic (E4)
-    endog_cols <- NULL
-    if (!is.null(endog)) {
-      bad <- setdiff(endog, parsed$endo_names)
-      if (length(bad) > 0L) {
-        stop("`endog` contains variables not in the endogenous list: ",
-             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
-      }
-      endog_cols <- .expand_terms_to_colnames(
-        endog, parsed$endo_names, parsed$endo_colnames, parsed$endo_assign
-      )
-    }
     diagnostics$endogeneity <- .compute_endogeneity_test(
       Z = parsed$Z, X = parsed$X, y = parsed$y,
       residuals = fit$residuals, rss = fit$rss,
@@ -1336,30 +1374,7 @@
     )
 
     # Orthogonality test (J1)
-    if (!is.null(orthog) && length(orthog) > 0L) {
-      valid_terms <- c(parsed$excluded_names, parsed$exog_term_labels)
-      bad <- setdiff(orthog, valid_terms)
-      if (length(bad) > 0L) {
-        stop("`orthog` contains variables not in the instrument list: ",
-             paste0("'", bad, "'", collapse = ", "),
-             ". Must be excluded or exogenous instruments (not endogenous ",
-             "regressors or the intercept).", call. = FALSE)
-      }
-      orthog_in_excl <- intersect(orthog, parsed$excluded_names)
-      orthog_in_exog <- intersect(orthog, parsed$exog_term_labels)
-      orthog_cols <- c(
-        .expand_terms_to_colnames(orthog_in_excl, parsed$excluded_names,
-                                   parsed$excluded_colnames,
-                                   parsed$excluded_assign),
-        .expand_terms_to_colnames(orthog_in_exog, parsed$exog_term_labels,
-                                   parsed$exog_colnames, parsed$exog_assign)
-      )
-      partialled_out <- setdiff(orthog_cols, colnames(parsed$Z))
-      if (length(partialled_out) > 0L) {
-        stop("Cannot test orthogonality of variables that were partialled out: ",
-             paste0("'", partialled_out, "'", collapse = ", "),
-             ". Remove these from `orthog` or `partial`.", call. = FALSE)
-      }
+    if (!is.null(orthog_cols) && length(orthog_cols) > 0L) {
       diagnostics$orthog <- .compute_orthog_test(
         Z = parsed$Z, X = parsed$X, y = parsed$y,
         residuals = fit$residuals, rss = fit$rss,
@@ -1374,31 +1389,24 @@
       )
     }
 
-    # Redundancy test (P1) — validate names unconditionally, compute only if !noid
-    if (!is.null(redundant) && length(redundant) > 0L) {
-      bad <- setdiff(redundant, parsed$excluded_names)
-      if (length(bad) > 0L) {
-        stop("`redundant` contains variables not in the excluded instrument list: ",
-             paste0("'", bad, "'", collapse = ", "), ".", call. = FALSE)
-      }
-      if (!noid) {
-        redundant_cols <- .expand_terms_to_colnames(
-          redundant, parsed$excluded_names, parsed$excluded_colnames,
-          parsed$excluded_assign
-        )
-        diagnostics$redundancy <- .compute_redundancy_test(
-          X = parsed$X, Z = parsed$Z,
-          weights = parsed$weights, cluster_vec = cluster_vec,
-          vcov_type = effective_vcov_type,
-          N = parsed$N, K1 = parsed$K1,
-          endo_colnames = parsed$endo_colnames,
-          excluded_colnames = parsed$excluded_colnames,
-          redundant_vars = redundant_cols, dofminus = dofminus,
-          weight_type = weight_type,
-          kernel = kernel, bw = bw, time_index = time_index,
-          center = center, psd = psd
-        )
-      }
+    # Redundancy test (P1) — computation only if !noid (validation already done above)
+    if (!noid && !is.null(redundant) && length(redundant) > 0L) {
+      redundant_cols <- .expand_terms_to_colnames(
+        redundant, parsed$excluded_names, parsed$excluded_colnames,
+        parsed$excluded_assign
+      )
+      diagnostics$redundancy <- .compute_redundancy_test(
+        X = parsed$X, Z = parsed$Z,
+        weights = parsed$weights, cluster_vec = cluster_vec,
+        vcov_type = effective_vcov_type,
+        N = parsed$N, K1 = parsed$K1,
+        endo_colnames = parsed$endo_colnames,
+        excluded_colnames = parsed$excluded_colnames,
+        redundant_vars = redundant_cols, dofminus = dofminus,
+        weight_type = weight_type,
+        kernel = kernel, bw = bw, time_index = time_index,
+        center = center, psd = psd
+      )
     }
 
     }  # end of if (is.null(b0)) — identification diagnostics block
