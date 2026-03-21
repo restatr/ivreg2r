@@ -162,8 +162,9 @@ adjustment. Subtracted from the residual degrees of freedom alongside K
 partialling out regressors. Equivalent to Stata's \code{sdofminus()} option.}
 
 \item{weight_type}{Character: type of weights. One of \code{"aweight"}
-(analytic weights, default), \code{"fweight"} (frequency weights), or
-\code{"pweight"} (probability/sampling weights).
+(analytic weights, default), \code{"fweight"} (frequency weights),
+\code{"pweight"} (probability/sampling weights), or \code{"iweight"}
+(importance weights).
 
 \strong{aweight}: Normalized to sum to N. Standard for WLS.
 
@@ -171,7 +172,12 @@ partialling out regressors. Equivalent to Stata's \code{sdofminus()} option.}
 HC meat uses \code{w * e^2} (linear, not quadratic).
 
 \strong{pweight}: Normalized to sum to N. Forces robust VCE
-(overrides \code{vcov = "iid"} to \code{"robust"}).}
+(overrides \code{vcov = "iid"} to \code{"robust"}).
+
+\strong{iweight}: Not normalized; N is redefined as \code{sum(weights)} (float).
+All intermediate calculations use float N; posted \code{nobs} and \code{df.residual}
+use \code{floor(N)}. Restricted to IID VCE only — incompatible with robust,
+cluster, HAC, and GMM estimation.}
 
 \item{kernel}{Character: kernel function for HAC/AC standard errors.
 One of \code{"bartlett"}, \code{"parzen"}, \code{"truncated"}, \code{"tukey-hanning"},

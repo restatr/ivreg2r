@@ -85,10 +85,10 @@
   dofminus <- as.integer(dofminus)
   sdofminus <- as.integer(sdofminus)
 
-  valid_wt <- c("aweight", "fweight", "pweight")
+  valid_wt <- c("aweight", "fweight", "pweight", "iweight")
   if (!is.character(weight_type) || length(weight_type) != 1L ||
       !weight_type %in% valid_wt) {
-    stop('`weight_type` must be one of "aweight", "fweight", or "pweight".',
+    stop('`weight_type` must be one of "aweight", "fweight", "pweight", or "iweight".',
          call. = FALSE)
   }
 
@@ -185,6 +185,18 @@
   if (weight_type == "pweight" && vcov == "iid" && is.null(clusters)) {
     message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".')
     vcov <- "robust"
+  }
+
+  # iweight restricts to IID VCE only (Stata: ivreg2.ado lines 343-347)
+  if (weight_type == "iweight") {
+    if (vcov != "iid")
+      stop("iweights not allowed with robust or HAC VCE.", call. = FALSE)
+    if (!is.null(clusters))
+      stop("iweights not allowed with cluster VCE.", call. = FALSE)
+    if (!is.null(kernel))
+      stop("iweights not allowed with kernel-based VCE.", call. = FALSE)
+    if (method %in% c("gmm2s", "cue"))
+      stop("iweights not allowed with GMM estimation.", call. = FALSE)
   }
 
   # --- Validate bw / tvar / ivar ---
@@ -464,32 +476,39 @@
   n_physical <- parsed$N
   if (!is.null(w_raw)) {
     if (weight_type == "fweight") {
-      # fweight: no normalization; N = sum(w)
+      # fweight: no normalization; N = sum(w) as integer
       parsed$weights <- w_raw
       N_eff <- sum(w_raw)
       if (N_eff > .Machine$integer.max)
         stop("Sum of frequency weights exceeds integer limit.", call. = FALSE)
       parsed$N <- as.integer(round(N_eff))
+    } else if (weight_type == "iweight") {
+      # iweight: no normalization; N = sum(w) as FLOAT (Stata v3.0.00+)
+      # All intermediate calculations (sigma, R², F) use float N.
+      # floor(N) applied only to posted nobs and df_r.
+      parsed$weights <- w_raw
+      parsed$N <- sum(w_raw)
     } else {
       # aweight/pweight: normalize to sum = N (Stata convention)
       parsed$weights <- w_raw * (parsed$N / sum(w_raw))
     }
   }
 
-  # Re-validate dofminus against (possibly updated) N for fweight
-  if (weight_type == "fweight" && !is.null(w_raw)) {
-    if (dofminus >= parsed$N) {
-      stop("`dofminus` (", dofminus, ") must be less than N (", parsed$N, ").",
+  # Re-validate dofminus against (possibly updated) N for fweight/iweight
+  if (weight_type %in% c("fweight", "iweight") && !is.null(w_raw)) {
+    N_check <- if (weight_type == "iweight") floor(parsed$N) else parsed$N
+    if (dofminus >= N_check) {
+      stop("`dofminus` (", dofminus, ") must be less than N (", N_check, ").",
            call. = FALSE)
     }
-    if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
+    if (N_check - parsed$K - dofminus - sdofminus <= 0L) {
       stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
-           parsed$N - parsed$K - dofminus - sdofminus,
+           N_check - parsed$K - dofminus - sdofminus,
            " (must be > 0).", call. = FALSE)
     }
-    if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
+    if (parsed$is_iv && N_check - parsed$L - dofminus - sdofminus <= 0L) {
       stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
-           parsed$N - parsed$L - dofminus - sdofminus,
+           N_check - parsed$L - dofminus - sdofminus,
            " (must be > 0).", call. = FALSE)
     }
   }
@@ -1529,8 +1548,9 @@
 #' @param small Logical: if `TRUE`, use small-sample corrections
 #'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
 #' @param weight_type Character: type of weights. One of `"aweight"`
-#'   (analytic weights, default), `"fweight"` (frequency weights), or
-#'   `"pweight"` (probability/sampling weights).
+#'   (analytic weights, default), `"fweight"` (frequency weights),
+#'   `"pweight"` (probability/sampling weights), or `"iweight"`
+#'   (importance weights).
 #'
 #'   **aweight**: Normalized to sum to N. Standard for WLS.
 #'
@@ -1539,6 +1559,11 @@
 #'
 #'   **pweight**: Normalized to sum to N. Forces robust VCE
 #'   (overrides `vcov = "iid"` to `"robust"`).
+#'
+#'   **iweight**: Not normalized; N is redefined as `sum(weights)` (float).
+#'   All intermediate calculations use float N; posted `nobs` and `df.residual`
+#'   use `floor(N)`. Restricted to IID VCE only — incompatible with robust,
+#'   cluster, HAC, and GMM estimation.
 #' @param dofminus Non-negative integer: large-sample degrees-of-freedom
 #'   adjustment. Subtracted from N in large-sample variance formulas
 #'   (e.g., sigma = rss/(N-dofminus)). Useful when fixed effects have been
@@ -1906,7 +1931,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     call          = cl,
     formula       = parsed$formula,
     terms         = parsed$terms,
-    nobs          = parsed$N,
+    nobs          = if (weight_type == "iweight") as.integer(floor(parsed$N)) else parsed$N,
     vcov_type     = effective_vcov_type,
     small         = small,
     dofminus      = dofminus,
@@ -1918,7 +1943,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     na.action     = parsed$na.action,
     weights       = w_raw,
     weight_type   = weight_type,
-    n_physical    = if (weight_type == "fweight") n_physical else NULL,
+    n_physical    = if (weight_type %in% c("fweight", "iweight")) n_physical else NULL,
     endogenous    = parsed$endo_names,
     endo_colnames = parsed$endo_colnames,
     instruments   = parsed$excluded_names,
