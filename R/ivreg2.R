@@ -187,18 +187,6 @@
     vcov <- "robust"
   }
 
-  # iweight restricts to IID VCE only (Stata: ivreg2.ado lines 343-347)
-  if (weight_type == "iweight") {
-    if (vcov != "iid")
-      stop("iweights not allowed with robust or HAC VCE.", call. = FALSE)
-    if (!is.null(clusters))
-      stop("iweights not allowed with cluster VCE.", call. = FALSE)
-    if (!is.null(kernel))
-      stop("iweights not allowed with kernel-based VCE.", call. = FALSE)
-    if (method %in% c("gmm2s", "cue"))
-      stop("iweights not allowed with GMM estimation.", call. = FALSE)
-  }
-
   # --- Validate bw / tvar / ivar ---
   if (!is.null(bw) && is.null(kernel)) {
     # bw specified without kernel: default to Bartlett
@@ -252,6 +240,24 @@
     stop("`method` must be a single character string.", call. = FALSE)
   }
   method <- tolower(method)
+
+  # iweight restricts to IID VCE only (Stata: ivreg2.ado lines 343-347)
+  # Placed after tolower(method) and bw/kernel routing so all promotions
+  # have already happened.
+  if (weight_type == "iweight") {
+    if (!is.null(clusters))
+      stop("iweights not allowed with cluster VCE.", call. = FALSE)
+    if (!is.null(kernel) || !is.null(bw))
+      stop("iweights not allowed with kernel-based VCE.", call. = FALSE)
+    if (method %in% c("gmm2s", "cue"))
+      stop("iweights not allowed with GMM estimation.", call. = FALSE)
+    if (!is.null(wmatrix))
+      stop("iweights not allowed with GMM estimation (`wmatrix`).", call. = FALSE)
+    if (!is.null(smatrix))
+      stop("iweights not allowed with GMM estimation (`smatrix`).", call. = FALSE)
+    if (vcov != "iid")
+      stop("iweights not allowed with robust or HAC VCE.", call. = FALSE)
+  }
 
   # --- Validate b0 (type checks) ---
   if (!is.null(b0)) {

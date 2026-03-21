@@ -61,7 +61,7 @@ test_that("iweight blocks kernel-based VCE", {
     ivreg2(mpg ~ wt + hp, data = d, weights = w,
            weight_type = "iweight", kernel = "bartlett", bw = 3,
            tvar = "gear"),
-    "iweights not allowed with kernel"
+    "iweights not allowed"
   )
 })
 
@@ -69,9 +69,47 @@ test_that("iweight blocks GMM estimation", {
   skip_if(!file.exists(card_path))
   expect_error(
     ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
-           weights = wage, weight_type = "iweight", method = "gmm2s",
-           vcov = "robust"),
-    "iweights not allowed"
+           weights = wage, weight_type = "iweight", method = "gmm2s"),
+    "iweights not allowed with GMM"
+  )
+})
+
+test_that("iweight blocks GMM via mixed-case method", {
+  skip_if(!file.exists(card_path))
+  expect_error(
+    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
+           weights = wage, weight_type = "iweight", method = "GMM2S"),
+    "iweights not allowed with GMM"
+  )
+})
+
+test_that("iweight blocks bw without kernel", {
+  d <- mtcars
+  d$w <- runif(nrow(d), 1, 5)
+  expect_error(
+    ivreg2(mpg ~ wt + hp, data = d, weights = w,
+           weight_type = "iweight", bw = 3, tvar = "gear"),
+    "iweights not allowed with kernel"
+  )
+})
+
+test_that("iweight blocks smatrix", {
+  skip_if(!file.exists(card_path))
+  S <- diag(5)
+  expect_error(
+    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
+           weights = wage, weight_type = "iweight", smatrix = S),
+    "iweights not allowed.*smatrix"
+  )
+})
+
+test_that("iweight blocks wmatrix", {
+  skip_if(!file.exists(card_path))
+  W <- diag(5)
+  expect_error(
+    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
+           weights = wage, weight_type = "iweight", wmatrix = W),
+    "iweights not allowed.*wmatrix"
   )
 })
 
