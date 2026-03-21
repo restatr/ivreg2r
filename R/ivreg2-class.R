@@ -791,18 +791,6 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     cat("Excluded instruments: ", paste(x$instruments, collapse = ", "), "\n")
   }
 
-  # --- Condition numbers ---
-  if (!is.null(x$condxx)) {
-    cat("Number of regressors (K):  ", x$rank, "\n")
-    cat("Condition number (X'WX):   ", formatC(x$condxx, digits = 4, format = "g"),
-        "\n")
-  }
-  if (!is.null(x$condzz)) {
-    cat("Number of instruments (L): ", x$rankzz, "\n")
-    cat("Condition number (Z'WZ):   ", formatC(x$condzz, digits = 4, format = "g"),
-        "\n")
-  }
-
   # --- Partial footer ---
   if (!is.null(x$partial_ct) && x$partial_ct > 0L) {
     partial_display <- x$partial_names
