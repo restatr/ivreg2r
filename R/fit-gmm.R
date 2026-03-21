@@ -177,7 +177,9 @@
     j_df          = as.integer(overid_df),
     j_p           = j_p,
     omega         = Omega,
-    method        = "gmm2s"
+    method        = "gmm2s",
+    tss_u         = tss_u,
+    tss_c         = tss_c
   )
 }
 
@@ -370,7 +372,9 @@
     j_df          = as.integer(overid_df),
     j_p           = j_p,
     omega         = Omega,
-    method        = "gmmw"
+    method        = "gmmw",
+    tss_u         = tss_u,
+    tss_c         = tss_c
   )
 }
 
@@ -650,6 +654,8 @@
     omega         = Omega,
     convergence   = as.integer(convergence),
     cue_message   = cue_message,
-    method        = "cue"
+    method        = "cue",
+    tss_u         = tss_u,
+    tss_c         = tss_c
   )
 }

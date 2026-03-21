@@ -197,7 +197,9 @@
     lambda        = lambda,
     kclass_value  = k,
     method        = method,
-    fuller_param  = fuller
+    fuller_param  = fuller,
+    tss_u         = tss_u,
+    tss_c         = tss_c
   )
 }
 

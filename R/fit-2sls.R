@@ -117,6 +117,8 @@
     r2c           = r2c,
     mss           = mss,
     bread         = XtPX_inv,
-    X_hat         = X_hat
+    X_hat         = X_hat,
+    tss_u         = tss_u,
+    tss_c         = tss_c
   )
 }

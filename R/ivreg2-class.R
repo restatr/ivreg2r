@@ -114,6 +114,10 @@ NULL
                          partial_ct = 0L,
                          partial_names = character(0),
                          partialcons = FALSE,
+                         yy = NULL, yyc = NULL,
+                         rankzz = NULL,
+                         condxx = NULL, condzz = NULL,
+                         ll = NULL,
                          contrasts = NULL, xlevels = NULL,
                          model = NULL, x = NULL, y = NULL) {
   structure(
@@ -182,6 +186,12 @@ NULL
       partial_ct     = partial_ct,
       partial_names  = partial_names,
       partialcons    = partialcons,
+      yy             = yy,
+      yyc            = yyc,
+      rankzz         = rankzz,
+      condxx         = condxx,
+      condzz         = condzz,
+      ll             = ll,
       contrasts      = contrasts,
       xlevels        = xlevels,
       model          = model,
@@ -779,6 +789,18 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
       cat("Included instruments: ", paste(incl, collapse = ", "), "\n")
     }
     cat("Excluded instruments: ", paste(x$instruments, collapse = ", "), "\n")
+  }
+
+  # --- Condition numbers ---
+  if (!is.null(x$condxx)) {
+    cat("Number of regressors (K):  ", x$rank, "\n")
+    cat("Condition number (X'WX):   ", formatC(x$condxx, digits = 4, format = "g"),
+        "\n")
+  }
+  if (!is.null(x$condzz)) {
+    cat("Number of instruments (L): ", x$rankzz, "\n")
+    cat("Condition number (Z'WZ):   ", formatC(x$condzz, digits = 4, format = "g"),
+        "\n")
   }
 
   # --- Partial footer ---

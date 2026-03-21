@@ -1330,6 +1330,8 @@
       diagnostics$underid        <- id_tests$underid
       diagnostics$weak_id        <- id_tests$weak_id
       diagnostics$weak_id_robust <- id_tests$weak_id_robust
+      diagnostics$ccev           <- id_tests$ccev
+      diagnostics$cdev           <- id_tests$cdev
 
       sy_method <- if (method %in% c("gmm2s", "gmmw")) {
         "2sls"
@@ -1909,6 +1911,31 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     parsed$Z <- parsed$Z[unsort_order, , drop = FALSE]
   }
 
+  # --- 5e. Compute additional stored results (R2) ---
+  # Condition numbers: Stata's cond(XX) = max(eigenvalue)/min(eigenvalue)
+  # which equals kappa(XX, exact = TRUE) in R.
+  if (is.null(parsed$weights)) {
+    XX <- crossprod(parsed$X)
+  } else {
+    XX <- crossprod(sqrt(parsed$weights) * parsed$X)
+  }
+  condxx <- kappa(XX, exact = TRUE)
+
+  if (parsed$is_iv) {
+    if (is.null(parsed$weights)) {
+      ZZ <- crossprod(parsed$Z)
+    } else {
+      ZZ <- crossprod(sqrt(parsed$weights) * parsed$Z)
+    }
+    condzz <- kappa(ZZ, exact = TRUE)
+  } else {
+    condzz <- NULL
+  }
+
+  # Gaussian log-likelihood (Stata line 2009)
+  ll <- -0.5 * (parsed$N * log(2 * pi) + parsed$N * log(fit$rss / parsed$N) +
+                 parsed$N)
+
   # --- 6. Assemble return object ---
   # Determine effective method for the return object
   est_method <- if (method == "gmmw") {
@@ -1988,6 +2015,12 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     partial_ct        = partial_ct,
     partial_names     = partial_names,
     partialcons       = partialcons,
+    yy                = fit$tss_u,
+    yyc               = fit$tss_c,
+    rankzz            = if (parsed$is_iv) parsed$L else NULL,
+    condxx            = condxx,
+    condzz            = condzz,
+    ll                = ll,
     model         = if (model) parsed$model_frame else NULL,
     x             = if (x) list(X = parsed$X, Z = parsed$Z) else NULL,
     y             = if (y) parsed$y else NULL

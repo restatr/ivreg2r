@@ -244,6 +244,15 @@ glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
                                     x$reduced_form$mode == "rf") {
                                x$reduced_form$f_p %||% NA_real_
                              } else NA_real_
+    out$yy                 <- x$yy %||% NA_real_
+    out$yyc                <- x$yyc %||% NA_real_
+    out$rankxx             <- x$rank %||% NA_integer_
+    out$rankzz             <- x$rankzz %||% NA_integer_
+    out$condxx             <- x$condxx %||% NA_real_
+    out$condzz             <- x$condzz %||% NA_real_
+    out$ll                 <- x$ll %||% NA_real_
+    out$ccev_min           <- if (!is.null(diag$ccev)) min(diag$ccev) else NA_real_
+    out$cdev_min           <- if (!is.null(diag$cdev)) min(diag$cdev) else NA_real_
   }
 
   out

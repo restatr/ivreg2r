@@ -431,6 +431,10 @@
       ))
     }
 
+    # --- Squared canonical correlations and Poskitt-Skeels eigenvalues ---
+    ccev <- cc_result$eval
+    cdev <- ccev / (1 - ccev)
+
     # --- Always compute Cragg-Donald F ---
     weak_id <- .cragg_donald_f(cc_result, N, L, L1,
                                 dofminus = dofminus, sdofminus = sdofminus)
@@ -445,7 +449,9 @@
       return(list(
         underid        = underid,
         weak_id        = weak_id,
-        weak_id_robust = NULL
+        weak_id_robust = NULL,
+        ccev           = ccev,
+        cdev           = cdev
       ))
     }
 
@@ -527,7 +533,9 @@
     list(
       underid        = underid,
       weak_id        = weak_id,
-      weak_id_robust = weak_id_robust
+      weak_id_robust = weak_id_robust,
+      ccev           = ccev,
+      cdev           = cdev
     )
 
   }, error = function(e) {

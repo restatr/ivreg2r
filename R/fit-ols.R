@@ -95,6 +95,8 @@
     r2u           = r2u,
     r2c           = r2c,
     mss           = mss,
-    bread         = XtX_inv
+    bread         = XtX_inv,
+    tss_u         = tss_u,
+    tss_c         = tss_c
   )
 }
