@@ -4,7 +4,7 @@
 \alias{predict.ivreg2}
 \title{Predict from an ivreg2 model}
 \usage{
-\method{predict}{ivreg2}(object, newdata, na.action = stats::na.pass, ...)
+\method{predict}{ivreg2}(object, newdata, se.fit = FALSE, na.action = stats::na.pass, ...)
 }
 \arguments{
 \item{object}{An object of class \code{"ivreg2"}.}
@@ -12,12 +12,20 @@
 \item{newdata}{An optional data frame for prediction. If omitted, fitted
 values from the original data are returned.}
 
+\item{se.fit}{Logical: if \code{TRUE}, return prediction standard errors
+alongside fitted values. Standard errors are computed as
+\verb{sqrt(diag(X V X'))} where \code{V = vcov(object)}, so they reflect the
+VCE used at estimation time (IID, robust, cluster, HAC, etc.).
+Not available after partialling (matching Stata's \verb{predict, stdp}).}
+
 \item{na.action}{Function for handling \code{NA}s in \code{newdata}.}
 
 \item{...}{Additional arguments (ignored).}
 }
 \value{
-Numeric vector of predicted values.
+When \code{se.fit = FALSE} (default), a numeric vector of predicted
+values. When \code{se.fit = TRUE}, a list with components \code{fit} (predicted
+values) and \code{se.fit} (standard errors of prediction).
 }
 \description{
 Predict from an ivreg2 model

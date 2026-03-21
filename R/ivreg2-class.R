@@ -352,12 +352,24 @@ confint.ivreg2 <- function(object, parm, level = 0.95, ...) {
 #' @param object An object of class `"ivreg2"`.
 #' @param newdata An optional data frame for prediction. If omitted, fitted
 #'   values from the original data are returned.
+#' @param se.fit Logical: if `TRUE`, return prediction standard errors
+#'   alongside fitted values. Standard errors are computed as
+#'   `sqrt(diag(X V X'))` where `V = vcov(object)`, so they reflect the
+#'   VCE used at estimation time (IID, robust, cluster, HAC, etc.).
+#'   Not available after partialling (matching Stata's `predict, stdp`).
 #' @param na.action Function for handling `NA`s in `newdata`.
 #' @param ... Additional arguments (ignored).
-#' @return Numeric vector of predicted values.
+#' @return When `se.fit = FALSE` (default), a numeric vector of predicted
+#'   values. When `se.fit = TRUE`, a list with components `fit` (predicted
+#'   values) and `se.fit` (standard errors of prediction).
 #' @export
-predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
+predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
+                            na.action = stats::na.pass, ...) {
   if (!is.null(object$partial_ct) && object$partial_ct > 0L) {
+    if (se.fit) {
+      stop("Prediction standard errors not available after partialling.",
+           call. = FALSE)
+    }
     if (!missing(newdata)) {
       stop("Cannot predict on new data after partialling: coefficients on ",
            "partialled variables are unknown.", call. = FALSE)
@@ -367,7 +379,15 @@ predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
     return(object$fitted.values)
   }
   if (missing(newdata)) {
-    return(object$fitted.values)
+    fitted <- object$fitted.values
+    if (se.fit) {
+      X <- .predict_model_matrix(object)
+      se_pred <- .compute_se_fit(X, vcov(object))
+      na_act <- object$na.action
+      return(list(fit = stats::napredict(na_act, fitted),
+                  se.fit = stats::napredict(na_act, se_pred)))
+    }
+    return(fitted)
   }
   tt <- object$terms$regressors
   mf <- stats::model.frame(stats::delete.response(tt), newdata,
@@ -386,7 +406,44 @@ predict.ivreg2 <- function(object, newdata, na.action = stats::na.pass, ...) {
   # model.matrix may regenerate columns dropped for collinearity;
   # use only columns that have corresponding coefficients
   common <- intersect(colnames(X), names(cf))
-  drop(X[, common, drop = FALSE] %*% cf[common])
+  fitted <- drop(X[, common, drop = FALSE] %*% cf[common])
+  if (se.fit) {
+    se_pred <- .compute_se_fit(X[, common, drop = FALSE], vcov(object)[common, common])
+    return(list(fit = fitted, se.fit = se_pred))
+  }
+  fitted
+}
+
+#' Compute prediction standard errors (vectorized)
+#' @param X Model matrix (N x p).
+#' @param V VCV matrix (p x p).
+#' @return Numeric vector of length N.
+#' @keywords internal
+#' @noRd
+.compute_se_fit <- function(X, V) {
+  # sqrt(rowSums((X %*% V) * X)) — no full N×N outer product
+  var_pred <- rowSums((X %*% V) * X)
+  unname(sqrt(pmax(var_pred, 0)))
+}
+
+#' Reconstruct model matrix for prediction from fitted model
+#' @keywords internal
+#' @noRd
+.predict_model_matrix <- function(object) {
+  if (!is.null(object$x)) {
+    X <- object$x$X
+  } else if (!is.null(object$model)) {
+    tt <- object$terms$regressors
+    reg_vars <- rownames(attr(tt, "factors"))
+    reg_contrasts <- object$contrasts[intersect(names(object$contrasts), reg_vars)]
+    X <- stats::model.matrix(tt, object$model, contrasts.arg = reg_contrasts)
+  } else {
+    stop("not enough information in fitted model to compute prediction SEs;\n",
+         "refit with `model = TRUE` or `x = TRUE`", call. = FALSE)
+  }
+  cf <- coef(object)
+  common <- intersect(colnames(X), names(cf))
+  X[, common, drop = FALSE]
 }
 
 
