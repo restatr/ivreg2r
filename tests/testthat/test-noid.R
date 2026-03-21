@@ -165,6 +165,30 @@ test_that("b0 + invalid orthog still errors", {
   )
 })
 
+test_that("b0 + orthog + partial does not error (orthog suppressed by b0)", {
+  # Regression test: partialled_out check must not fire when b0 suppresses orthog
+  fit_base <- ivreg2(lwage ~ exper + expersq + black + south + smsa + smsa66 |
+                       educ | nearc4 + nearc2, data = card, partial = "smsa")
+  b0_vec <- coef(fit_base)
+  expect_no_error(
+    ivreg2(lwage ~ exper + expersq + black + south + smsa + smsa66 |
+             educ | nearc4 + nearc2, data = card,
+           partial = "smsa", orthog = "smsa", b0 = b0_vec)
+  )
+})
+
+test_that("b0 + partial does not warn about CUE FWL invariance", {
+  # b0 evaluates at fixed values — no optimization, so FWL warning doesn't apply
+  fit_base <- ivreg2(lwage ~ exper + expersq + black + south + smsa + smsa66 |
+                       educ | nearc4 + nearc2, data = card, partial = "smsa")
+  b0_vec <- coef(fit_base)
+  expect_no_warning(
+    ivreg2(lwage ~ exper + expersq + black + south + smsa + smsa66 |
+             educ | nearc4 + nearc2, data = card,
+           partial = "smsa", b0 = b0_vec)
+  )
+})
+
 # ============================================================================
 # noid stored on object
 # ============================================================================

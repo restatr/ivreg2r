@@ -318,7 +318,7 @@
   if (method == "cue" && !is.null(smatrix)) {
     stop("Cannot specify `smatrix` with `method = \"cue\"`.", call. = FALSE)
   }
-  if (method == "cue" && !is.null(partial)) {
+  if (method == "cue" && !is.null(partial) && is.null(b0)) {
     warning("FWL invariance does not hold for CUE: results with `partial` may ",
             "differ from the equivalent unpartialled specification ",
             "(Baum, Schaffer & Stillman, 2007, p. 484).", call. = FALSE)
@@ -1255,12 +1255,6 @@
         .expand_terms_to_colnames(orthog_in_exog, parsed$exog_term_labels,
                                    parsed$exog_colnames, parsed$exog_assign)
       )
-      partialled_out <- setdiff(orthog_cols, colnames(parsed$Z))
-      if (length(partialled_out) > 0L) {
-        stop("Cannot test orthogonality of variables that were partialled out: ",
-             paste0("'", partialled_out, "'", collapse = ", "),
-             ". Remove these from `orthog` or `partial`.", call. = FALSE)
-      }
     }
 
     if (!is.null(redundant) && length(redundant) > 0L) {
@@ -1375,6 +1369,12 @@
 
     # Orthogonality test (J1)
     if (!is.null(orthog_cols) && length(orthog_cols) > 0L) {
+      partialled_out <- setdiff(orthog_cols, colnames(parsed$Z))
+      if (length(partialled_out) > 0L) {
+        stop("Cannot test orthogonality of variables that were partialled out: ",
+             paste0("'", partialled_out, "'", collapse = ", "),
+             ". Remove these from `orthog` or `partial`.", call. = FALSE)
+      }
       diagnostics$orthog <- .compute_orthog_test(
         Z = parsed$Z, X = parsed$X, y = parsed$y,
         residuals = fit$residuals, rss = fit$rss,
