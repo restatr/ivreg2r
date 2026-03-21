@@ -15,5 +15,7 @@
 Numeric vector of residuals.
 }
 \description{
-Extract residuals from an ivreg2 object
+Respects \code{na.action}: when the model was fit with \code{na.exclude},
+\code{NA}s are reinserted at the omitted row positions so the result
+aligns with the original data frame (matching base R's \code{residuals.lm}).
 }

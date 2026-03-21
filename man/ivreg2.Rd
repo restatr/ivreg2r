@@ -62,7 +62,12 @@ Coefficients, SEs, and the VCV matrix are identical to \code{lm()} for OLS.}
 
 \item{subset}{Optional subset expression (evaluated in \code{data}).}
 
-\item{na.action}{Function for handling \code{NA}s (default \link{na.omit}).}
+\item{na.action}{Function for handling \code{NA}s (default \link{na.omit}).
+Use \link{na.exclude} to drop incomplete cases during estimation but
+reinsert \code{NA}s at the omitted positions in \code{\link[=fitted]{fitted()}}, \code{\link[=residuals]{residuals()}},
+and \code{\link[=predict]{predict()}} output, so results align with the original data frame.
+Stata drops missing observations silently (equivalent to \link{na.omit})
+and has no analogue of \link{na.exclude}.}
 
 \item{vcov}{Character: covariance type. One of \code{"iid"} (classical),
 \code{"robust"} (White heteroskedasticity-robust), \code{"HAC"}

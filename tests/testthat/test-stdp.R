@@ -287,17 +287,60 @@ test_that("se.fit errors when model and x not stored", {
 
 
 # ==========================================================================
-# na.exclude consistency: se.fit=TRUE fit matches se.fit=FALSE
+# na.exclude: NAs reinserted at omitted positions, matching predict.lm
 # ==========================================================================
-test_that("se.fit=TRUE fit matches predict(fit) under na.exclude", {
+test_that("na.exclude reinserts NAs in predict, fitted, residuals", {
   dat <- mtcars
   dat$mpg[c(3, 7)] <- NA
   fit <- ivreg2(mpg ~ wt + hp, data = dat, na.action = na.exclude,
                 small = TRUE, model = TRUE)
+  lm_fit <- lm(mpg ~ wt + hp, data = dat, na.action = na.exclude)
+
+  # All observation-level extractors return length = nrow(original data)
+  expect_equal(length(fitted(fit)), nrow(dat))
+  expect_equal(length(residuals(fit)), nrow(dat))
+  expect_equal(length(predict(fit)), nrow(dat))
+
+  # NAs at the omitted positions
+  expect_true(is.na(fitted(fit)[3]))
+  expect_true(is.na(fitted(fit)[7]))
+  expect_true(is.na(residuals(fit)[3]))
+  expect_true(is.na(residuals(fit)[7]))
+  expect_true(is.na(predict(fit)[3]))
+  expect_true(is.na(predict(fit)[7]))
+
+  # Non-NA values match lm
+  expect_equal(fitted(fit), fitted(lm_fit), tolerance = 1e-12)
+  expect_equal(residuals(fit), residuals(lm_fit), tolerance = 1e-12)
+  expect_equal(predict(fit), predict(lm_fit), tolerance = 1e-12)
+})
+
+test_that("se.fit=TRUE reinserts NAs under na.exclude", {
+  dat <- mtcars
+  dat$mpg[c(3, 7)] <- NA
+  fit <- ivreg2(mpg ~ wt + hp, data = dat, na.action = na.exclude,
+                small = TRUE, model = TRUE)
+
   pred_plain <- predict(fit)
   pred_se <- predict(fit, se.fit = TRUE)
-  expect_equal(length(pred_se$fit), length(pred_plain))
+
+  # fit and se.fit both have NAs at positions 3 and 7
+  expect_equal(length(pred_se$fit), nrow(dat))
+  expect_equal(length(pred_se$se.fit), nrow(dat))
   expect_equal(pred_se$fit, pred_plain)
-  expect_equal(length(pred_se$se.fit), nobs(fit))
-  expect_true(all(pred_se$se.fit >= 0))
+  expect_true(is.na(pred_se$se.fit[3]))
+  expect_true(is.na(pred_se$se.fit[7]))
+  expect_true(all(pred_se$se.fit[-c(3, 7)] >= 0))
+})
+
+test_that("na.omit (default) returns complete-case vectors", {
+  dat <- mtcars
+  dat$mpg[c(3, 7)] <- NA
+  fit <- ivreg2(mpg ~ wt + hp, data = dat, small = TRUE)
+
+  # Default na.omit: no reinsertion, length = nobs
+  expect_equal(length(fitted(fit)), nobs(fit))
+  expect_equal(length(residuals(fit)), nobs(fit))
+  expect_equal(length(predict(fit)), nobs(fit))
+  expect_false(anyNA(fitted(fit)))
 })

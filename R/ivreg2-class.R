@@ -255,12 +255,16 @@ vcov.ivreg2 <- function(object, ...) {
 # --------------------------------------------------------------------------
 #' Extract residuals from an ivreg2 object
 #'
+#' Respects `na.action`: when the model was fit with `na.exclude`,
+#' `NA`s are reinserted at the omitted row positions so the result
+#' aligns with the original data frame (matching base R's `residuals.lm`).
+#'
 #' @param object An object of class `"ivreg2"`.
 #' @param ... Additional arguments (ignored).
 #' @return Numeric vector of residuals.
 #' @export
 residuals.ivreg2 <- function(object, ...) {
-  object$residuals
+  stats::naresid(object$na.action, object$residuals)
 }
 
 
@@ -269,12 +273,16 @@ residuals.ivreg2 <- function(object, ...) {
 # --------------------------------------------------------------------------
 #' Extract fitted values from an ivreg2 object
 #'
+#' Respects `na.action`: when the model was fit with `na.exclude`,
+#' `NA`s are reinserted at the omitted row positions so the result
+#' aligns with the original data frame (matching base R's `fitted.lm`).
+#'
 #' @param object An object of class `"ivreg2"`.
 #' @param ... Additional arguments (ignored).
 #' @return Numeric vector of fitted values.
 #' @export
 fitted.ivreg2 <- function(object, ...) {
-  object$fitted.values
+  stats::napredict(object$na.action, object$fitted.values)
 }
 
 
@@ -376,14 +384,16 @@ predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
     }
     message("Note: fitted values reflect only non-partialled regressors. ",
             "Residuals equal full-model residuals (FWL theorem).")
-    return(object$fitted.values)
+    return(stats::napredict(object$na.action, object$fitted.values))
   }
   if (missing(newdata)) {
-    fitted <- object$fitted.values
+    na_act <- object$na.action
+    fitted <- stats::napredict(na_act, object$fitted.values)
     if (se.fit) {
       X <- .predict_model_matrix(object)
       se_pred <- .compute_se_fit(X, vcov(object))
-      return(list(fit = fitted, se.fit = se_pred))
+      return(list(fit = fitted,
+                  se.fit = stats::napredict(na_act, se_pred)))
     }
     return(fitted)
   }

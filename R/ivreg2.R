@@ -1488,6 +1488,11 @@
 #'   Coefficients, SEs, and the VCV matrix are identical to `lm()` for OLS.
 #' @param subset Optional subset expression (evaluated in `data`).
 #' @param na.action Function for handling `NA`s (default [na.omit]).
+#'   Use [na.exclude] to drop incomplete cases during estimation but
+#'   reinsert `NA`s at the omitted positions in [fitted()], [residuals()],
+#'   and [predict()] output, so results align with the original data frame.
+#'   Stata drops missing observations silently (equivalent to [na.omit])
+#'   and has no analogue of [na.exclude].
 #' @param vcov Character: covariance type. One of `"iid"` (classical),
 #'   `"robust"` (White heteroskedasticity-robust), `"HAC"`
 #'   (heteroskedasticity and autocorrelation consistent), or `"AC"`
