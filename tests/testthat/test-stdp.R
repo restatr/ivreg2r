@@ -284,3 +284,20 @@ test_that("se.fit errors when model and x not stored", {
                 data = card, model = FALSE, x = FALSE)
   expect_error(predict(fit, se.fit = TRUE), "refit")
 })
+
+
+# ==========================================================================
+# na.exclude consistency: se.fit=TRUE fit matches se.fit=FALSE
+# ==========================================================================
+test_that("se.fit=TRUE fit matches predict(fit) under na.exclude", {
+  dat <- mtcars
+  dat$mpg[c(3, 7)] <- NA
+  fit <- ivreg2(mpg ~ wt + hp, data = dat, na.action = na.exclude,
+                small = TRUE, model = TRUE)
+  pred_plain <- predict(fit)
+  pred_se <- predict(fit, se.fit = TRUE)
+  expect_equal(length(pred_se$fit), length(pred_plain))
+  expect_equal(pred_se$fit, pred_plain)
+  expect_equal(length(pred_se$se.fit), nobs(fit))
+  expect_true(all(pred_se$se.fit >= 0))
+})

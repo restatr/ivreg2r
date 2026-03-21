@@ -383,9 +383,7 @@ predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
     if (se.fit) {
       X <- .predict_model_matrix(object)
       se_pred <- .compute_se_fit(X, vcov(object))
-      na_act <- object$na.action
-      return(list(fit = stats::napredict(na_act, fitted),
-                  se.fit = stats::napredict(na_act, se_pred)))
+      return(list(fit = fitted, se.fit = se_pred))
     }
     return(fitted)
   }
