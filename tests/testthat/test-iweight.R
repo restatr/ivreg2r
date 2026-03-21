@@ -118,13 +118,26 @@ test_that("iweight revalidates fuller against weighted N", {
   # fuller must be validated against the weighted N, not the physical row count.
   d <- data.frame(y = rnorm(50), x = rnorm(50), z = rnorm(50),
                   endo = rnorm(50), w = rep(0.1, 50))
-  # sum(w) = 5, L = 2 (z + intercept), so N - L = 3. fuller = 4 is invalid.
-  # But physical N = 50, so N - L = 48 would pass the pre-weight check.
+  # sum(w) = 5, L = 3 (intercept + x + z), so N - L = 2. fuller = 4 is invalid.
+  # But physical N = 50, so N - L = 47 would pass the pre-weight check.
   expect_error(
     ivreg2(y ~ x | endo | z, data = d, weights = w,
            weight_type = "iweight", method = "liml", fuller = 4),
     "fuller.*must be less than N - L"
   )
+})
+
+test_that("iweight fuller uses float N, not floor(N)", {
+  # Discriminating test: sum(w) = 5.5 (non-integer), L = 3.
+  # float N - L = 2.5; floor(N) - L = 2.
+  # fuller = 2 is valid under float N (2 < 2.5) but would be
+  # spuriously rejected under floor(N) (2 >= 2).
+  set.seed(42)
+  d <- data.frame(y = rnorm(100), x = rnorm(100), z = rnorm(100),
+                  endo = rnorm(100), w = rep(0.055, 100))
+  fit <- ivreg2(y ~ x | endo | z, data = d, weights = w,
+                weight_type = "iweight", method = "liml", fuller = 2)
+  expect_s3_class(fit, "ivreg2")
 })
 
 test_that("iweight does not require integer weights", {
