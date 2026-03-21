@@ -113,6 +113,20 @@ test_that("iweight blocks wmatrix", {
   )
 })
 
+test_that("iweight revalidates fuller against weighted N", {
+  # With small fractional weights, sum(w) can be much less than nrow.
+  # fuller must be validated against the weighted N, not the physical row count.
+  d <- data.frame(y = rnorm(50), x = rnorm(50), z = rnorm(50),
+                  endo = rnorm(50), w = rep(0.1, 50))
+  # sum(w) = 5, L = 2 (z + intercept), so N - L = 3. fuller = 4 is invalid.
+  # But physical N = 50, so N - L = 48 would pass the pre-weight check.
+  expect_error(
+    ivreg2(y ~ x | endo | z, data = d, weights = w,
+           weight_type = "iweight", method = "liml", fuller = 4),
+    "fuller.*must be less than N - L"
+  )
+})
+
 test_that("iweight does not require integer weights", {
   d <- mtcars
   d$w <- runif(nrow(d), 0.5, 5.5)  # non-integer

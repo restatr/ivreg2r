@@ -500,7 +500,8 @@
     }
   }
 
-  # Re-validate dofminus against (possibly updated) N for fweight/iweight
+  # Re-validate dofminus and fuller against (possibly updated) N for
+  # fweight/iweight, which redefine parsed$N after the initial validation.
   if (weight_type %in% c("fweight", "iweight") && !is.null(w_raw)) {
     N_check <- if (weight_type == "iweight") floor(parsed$N) else parsed$N
     if (dofminus >= N_check) {
@@ -516,6 +517,13 @@
       stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
            N_check - parsed$L - dofminus - sdofminus,
            " (must be > 0).", call. = FALSE)
+    }
+    # Re-validate fuller against weighted N (Stata validates inside Mata
+    # using the already-weighted N; our pre-weight check at line ~447 uses
+    # the physical row count).
+    if (fuller > 0 && parsed$is_iv && fuller >= (parsed$N - parsed$L)) {
+      stop("`fuller` (", fuller, ") must be less than N - L (",
+           parsed$N - parsed$L, ").", call. = FALSE)
     }
   }
 
