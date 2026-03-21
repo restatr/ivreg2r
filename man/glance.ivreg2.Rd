@@ -18,14 +18,15 @@ Follows the same convention as broom's \code{glance.ivreg()}.}
 \value{
 A single-row \code{\link[tibble:tibble]{tibble::tibble()}}.
 
-\strong{Always present} (26 columns):
+\strong{Always present} (33 columns):
 \code{r.squared}, \code{adj.r.squared}, \code{sigma}, \code{statistic}, \code{p.value}, \code{df},
 \code{df.residual}, \code{nobs}, \code{vcov_type}, \code{small}, \code{weight_type}, \code{method},
 \code{lambda}, \code{kclass_value}, \code{fuller_parameter}, \code{coviv}, \code{center}, \code{psd},
 \code{kernel}, \code{bw}, \code{kiefer}, \code{dkraay}, \code{n_clusters1}, \code{n_clusters2},
-\code{cue_convergence}, \code{partial_ct}.
+\code{cue_convergence}, \code{partial_ct},
+\code{yy}, \code{yyc}, \code{rankxx}, \code{rankzz}, \code{condxx}, \code{condzz}, \code{ll}.
 
-\strong{When \code{diagnostics = TRUE}} (default, 22 additional columns):
+\strong{When \code{diagnostics = TRUE}} (default, 24 additional columns):
 \code{weak_id_stat}, \code{weak_id_robust_stat},
 \code{underid_stat}, \code{underid_p},
 \code{overid_stat}, \code{overid_p},
@@ -35,7 +36,8 @@ A single-row \code{\link[tibble:tibble]{tibble::tibble()}}.
 \code{stock_wright_stat}, \code{stock_wright_p}, \code{stock_wright_df},
 \code{orthog_stat}, \code{orthog_p},
 \code{redundancy_stat}, \code{redundancy_p},
-\code{rf_f_stat}, \code{rf_f_p}.
+\code{rf_f_stat}, \code{rf_f_p},
+\code{ccev_min}, \code{cdev_min}.
 }
 \description{
 Returns a single-row tibble of model-level summary statistics and
