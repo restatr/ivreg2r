@@ -18,7 +18,9 @@
   center = FALSE,
   psd = NULL,
   vcov_type = "HAC",
-  ZwZ = NULL
+  ZwZ = NULL,
+  sw = FALSE,
+  ivar_vec = NULL
 )
 }
 \arguments{

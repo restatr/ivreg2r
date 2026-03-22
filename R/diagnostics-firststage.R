@@ -48,7 +48,8 @@
                                   weight_type = "aweight",
                                   kernel = NULL, bw = NULL,
                                   time_index = NULL,
-                                  center = FALSE) {
+                                  center = FALSE,
+                                  sw = FALSE, ivar_vec = NULL) {
 
   # --- A4: Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -151,6 +152,10 @@
       } else if (!is.null(kernel)) {
         meat <- .hac_meat(Z, resid_j, time_index, kernel, bw,
                           weights, weight_type, center = center)
+      } else if (isTRUE(sw)) {
+        eZmean <- if (center) .sw_eZmean(Z, resid_j, N, weights, weight_type) else NULL
+        meat <- .sw_meat(Z, resid_j, ivar_vec, N, weights, weight_type,
+                          center = center, eZmean = eZmean) * N
       } else {
         meat <- .hc_meat(Z, resid_j, weights, weight_type, center = center)
       }
@@ -167,7 +172,8 @@
 
       # Omega normalization: HC omega divides by (N-dofminus) in Stata,
       # our raw sandwich is unscaled. Cluster omega uses N (no adjustment).
-      if (!is.na(wald_j) && is.null(cluster_vec)) {
+      # SW meat already includes proper normalization (* N above).
+      if (!is.na(wald_j) && is.null(cluster_vec) && !isTRUE(sw)) {
         wald_j <- wald_j * (N - dofminus) / N
       }
     }
@@ -364,6 +370,10 @@
           } else if (!is.null(kernel)) {
             meat <- .hac_meat(Z, resid_aux, time_index, kernel, bw,
                               weights, weight_type, center = center)
+          } else if (isTRUE(sw)) {
+            eZmean <- if (center) .sw_eZmean(Z, resid_aux, N, weights, weight_type) else NULL
+            meat <- .sw_meat(Z, resid_aux, ivar_vec, N, weights, weight_type,
+                              center = center, eZmean = eZmean) * N
           } else {
             meat <- .hc_meat(Z, resid_aux, weights, weight_type,
                              center = center)
@@ -381,7 +391,8 @@
           }, error = function(e) NA_real_)
 
           # Omega normalization (HC: Stata divides by N-dofminus, not N)
-          if (!is.na(wald_sw) && is.null(cluster_vec)) {
+          # SW meat already includes proper normalization (* N above).
+          if (!is.na(wald_sw) && is.null(cluster_vec) && !isTRUE(sw)) {
             wald_sw <- wald_sw * (N - dofminus) / N
           }
         }

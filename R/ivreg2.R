@@ -21,7 +21,7 @@
                                           kiefer, dkraay, wmatrix, smatrix,
                                           b0, partial, nopartialsmall,
                                           center, psd, reduced_form,
-                                          first_stage, noid,
+                                          first_stage, noid, sw,
                                           model_flag, x_flag, y_flag) {
 
   # --- Validate vcov ---
@@ -264,6 +264,38 @@
       stop("iweights not allowed with robust or HAC VCE.", call. = FALSE)
   }
 
+  # --- Validate sw ---
+  if (!is.logical(sw) || length(sw) != 1L || is.na(sw)) {
+    stop("`sw` must be TRUE or FALSE.", call. = FALSE)
+  }
+  if (isTRUE(sw)) {
+    if (is.null(ivar)) {
+      stop("Stock-Watson VCE requires panel data (`ivar`).", call. = FALSE)
+    }
+    if (!is.null(clusters)) {
+      stop("Stock-Watson VCE not supported with clustering.", call. = FALSE)
+    }
+    if (!is.null(kernel) || !is.null(bw)) {
+      stop("Stock-Watson VCE not supported with kernel-based VCE.", call. = FALSE)
+    }
+    if (isTRUE(kiefer)) {
+      stop("Stock-Watson VCE not supported with Kiefer VCE.", call. = FALSE)
+    }
+    if (!is.null(dkraay)) {
+      stop("Stock-Watson VCE not supported with Driscoll-Kraay VCE.", call. = FALSE)
+    }
+    if (weight_type == "fweight") {
+      stop("fweights not supported with Stock-Watson VCE.", call. = FALSE)
+    }
+    if (weight_type == "iweight") {
+      stop("iweights not supported with Stock-Watson VCE.", call. = FALSE)
+    }
+    # SW forces robust VCE (Stata ivreg2.ado line 3758)
+    if (vcov == "iid") {
+      vcov <- "robust"
+    }
+  }
+
   # --- Validate b0 (type checks) ---
   if (!is.null(b0)) {
     if (!is.numeric(b0) || !is.null(dim(b0)))
@@ -394,7 +426,7 @@
     first_stage_flag = first_stage,
     kclass = kclass, fuller = fuller, b0 = b0,
     wmatrix = wmatrix, smatrix = smatrix,
-    noid = noid,
+    noid = noid, sw = sw,
     model_flag = model_flag, x_flag = x_flag, y_flag = y_flag
   )
 }
@@ -841,6 +873,19 @@
     }
   }
 
+  # --- Extract ivar_vec for SW (when kernel is not used, ivar_vec not yet built) ---
+  sw_ivar_vec <- NULL
+  if (isTRUE(opts$sw) && !is.null(ivar)) {
+    mf_rows_sw <- match(rownames(parsed$model_frame), rownames(data))
+    if (!ivar %in% names(data)) {
+      stop("Panel variable '", ivar, "' not found in data.", call. = FALSE)
+    }
+    sw_ivar_vec <- data[[ivar]][mf_rows_sw]
+    if (anyNA(sw_ivar_vec)) {
+      stop("Panel variable '", ivar, "' contains NA values.", call. = FALSE)
+    }
+  }
+
   list(
     parsed = parsed, sdofminus = sdofminus, b0 = b0,
     cluster_vec = cluster_vec, cluster_var_name = cluster_var_name,
@@ -848,7 +893,7 @@
     time_index = time_index, unsort_order = unsort_order,
     partial_ct = partial_ct, partial_names = partial_names,
     partialcons = partialcons, n_physical = n_physical, w_raw = w_raw,
-    bw = bw
+    bw = bw, ivar_vec = sw_ivar_vec
   )
 }
 
@@ -951,6 +996,8 @@
     gmm_center <- center
     gmm_psd <- psd
     gmm_vcov_type <- vcov
+    gmm_sw <- isTRUE(opts$sw)
+    gmm_ivar_vec <- prep$ivar_vec
     if (vcov == "AC") {
       if (!is.null(parsed$weights)) {
         gmm_ZwZ <- crossprod(parsed$Z, parsed$weights * parsed$Z)
@@ -978,7 +1025,8 @@
                        dofminus = gmm_dm, weight_type = gmm_wt,
                        kernel = gmm_k, bw = gmm_bw, time_index = gmm_ti,
                        center = gmm_center, psd = gmm_psd,
-                       vcov_type = gmm_vcov_type, ZwZ = gmm_ZwZ)
+                       vcov_type = gmm_vcov_type, ZwZ = gmm_ZwZ,
+                       sw = gmm_sw, ivar_vec = gmm_ivar_vec)
       }
     }
   }
@@ -1118,12 +1166,21 @@
     colnames(fit$vcov) <- rownames(fit$vcov) <- names(fit$coefficients)
   }
 
-  if (!is.null(cluster_vec) || vcov %in% c("robust", "HAC", "AC")) {
+  if (isTRUE(opts$sw) || !is.null(cluster_vec) ||
+      vcov %in% c("robust", "HAC", "AC")) {
     X_hat_vcov <- if (parsed$is_iv) fit$X_hat else parsed$X
     resid_vcov <- fit$residuals
   }
 
-  if (!is.null(cluster_vec) && !is.null(kernel)) {
+  if (isTRUE(opts$sw)) {
+    fit$vcov <- .compute_sw_vcov(
+      bread = bread_vcov, X_hat = X_hat_vcov, resid = resid_vcov,
+      ivar_vec = prep$ivar_vec, N = parsed$N, K = parsed$K,
+      small = small, dofminus = dofminus, sdofminus = sdofminus,
+      weights = parsed$weights, weight_type = weight_type,
+      center = center, psd = psd
+    )
+  } else if (!is.null(cluster_vec) && !is.null(kernel)) {
     is_twoway <- is.list(cluster_vec)
     fit$vcov <- .compute_cluster_kernel_vcov(
       bread = bread_vcov, X_hat = X_hat_vcov, resid = resid_vcov,
@@ -1211,6 +1268,8 @@
   cluster_vec <- prep$cluster_vec
   time_index  <- prep$time_index
   M           <- prep$M
+  sw_flag     <- isTRUE(opts$sw)
+  ivar_vec    <- prep$ivar_vec
 
   # Derive effective VCE type
   effective_vcov_type <- if (!is.null(cluster_vec)) {
@@ -1258,7 +1317,8 @@
       overid_df = parsed$overid_df, dofminus = dofminus,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
-      center = center, psd = psd
+      center = center, psd = psd,
+      sw = sw_flag, ivar_vec = ivar_vec
     )
     }
 
@@ -1365,7 +1425,8 @@
       dofminus = dofminus, sdofminus = sdofminus,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
-      center = center
+      center = center,
+      sw = sw_flag, ivar_vec = ivar_vec
     )
 
     # Anderson-Rubin test (E3)
@@ -1380,7 +1441,8 @@
       dofminus = dofminus, sdofminus = sdofminus,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
-      center = center
+      center = center,
+      sw = sw_flag, ivar_vec = ivar_vec
     )
 
     # Stock-Wright S statistic (J2)
@@ -1392,7 +1454,8 @@
       endo_names = parsed$endo_colnames, dofminus = dofminus,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
-      center = center, psd = psd
+      center = center, psd = psd,
+      sw = sw_flag, ivar_vec = ivar_vec
     )
 
     # Endogeneity test / C-statistic (E4)
@@ -1406,7 +1469,8 @@
       endog_vars = endog_cols, dofminus = dofminus,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
-      psd = psd
+      psd = psd,
+      sw = sw_flag, ivar_vec = ivar_vec
     )
 
     # Orthogonality test (J1)
@@ -1427,7 +1491,8 @@
         weight_type = weight_type,
         kernel = kernel, bw = bw, time_index = time_index,
         center = center, psd = psd,
-        omega = fit$omega
+        omega = fit$omega,
+        sw = sw_flag, ivar_vec = ivar_vec
       )
     }
 
@@ -1482,7 +1547,9 @@
       kernel         = kernel,
       bw             = bw,
       time_index     = time_index,
-      center         = center
+      center         = center,
+      sw             = sw_flag,
+      ivar_vec       = ivar_vec
     )
   }
 
@@ -1761,6 +1828,11 @@
 #'   with their absolute values (Stock & Watson 2008). A warning is emitted
 #'   when negative eigenvalues are detected and corrected.
 #'   Equivalent to Stata's `psd0` and `psda` options.
+#' @param sw Logical: if `TRUE`, compute the Stock-Watson (2008,
+#'   Econometrica) panel-robust VCE. Requires panel data (`ivar`).
+#'   Incompatible with clustering, HAC kernels, kiefer, dkraay,
+#'   fweights, and iweights. Forces `vcov = "robust"` automatically.
+#'   Equivalent to Stata's `sw` option (labeled "BETA VERSION" in Stata).
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
@@ -1853,6 +1925,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    nopartialsmall = FALSE,
                    center = FALSE,
                    psd = NULL,
+                   sw = FALSE,
                    reduced_form = "none",
                    first_stage = FALSE,
                    model = TRUE, x = FALSE, y = TRUE) {
@@ -1870,7 +1943,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     wmatrix = wmatrix, smatrix = smatrix, b0 = b0,
     partial = partial, nopartialsmall = nopartialsmall,
     center = center, psd = psd, reduced_form = reduced_form,
-    first_stage = first_stage, noid = noid,
+    first_stage = first_stage, noid = noid, sw = sw,
     model_flag = model, x_flag = x, y_flag = y
   )
   # Unpack options needed in ivreg2() scope (for .new_ivreg2() assembly).
@@ -2061,6 +2134,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     ivar              = ivar,
     center            = center,
     psd               = psd,
+    sw                = isTRUE(opts$sw),
     partial_ct        = partial_ct,
     partial_names     = partial_names,
     partialcons       = partialcons,

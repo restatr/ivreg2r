@@ -27,7 +27,9 @@
   kernel = NULL,
   bw = NULL,
   time_index = NULL,
-  center = FALSE
+  center = FALSE,
+  sw = FALSE,
+  ivar_vec = NULL
 )
 }
 \arguments{

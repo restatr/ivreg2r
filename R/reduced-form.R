@@ -44,7 +44,8 @@
                                    weight_type = "aweight",
                                    kernel = NULL, bw = NULL,
                                    time_index = NULL,
-                                   center = FALSE) {
+                                   center = FALSE,
+                                   sw = FALSE, ivar_vec = NULL) {
 
   # --- A. Common setup ---
   excl_idx <- match(excluded_names, colnames(Z))
@@ -100,7 +101,8 @@
       excl_idx = excl_idx, L1 = L1,
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
-      center = center
+      center = center,
+      sw = sw, ivar_vec = ivar_vec
     )
     colnames(vcov_rf$vcov) <- rownames(vcov_rf$vcov) <- colnames(Z)
 
@@ -191,6 +193,33 @@
           scores_stacked <- sweep(scores_stacked, 2L, gbar)
         }
         meat <- .hac_scores_meat(scores_stacked, time_index, kernel, bw)
+      } else if (isTRUE(sw)) {
+        # SW path: build per-equation SW meat blocks (diagonal)
+        # and cross-equation blocks via panel loop
+        meat <- matrix(0, n_eq * L, n_eq * L)
+        panels <- split(seq_len(N), ivar_vec)
+        # Pre-compute centering means per equation if needed
+        eZmeans <- if (center) {
+          lapply(seq_len(n_eq), function(jj) {
+            .sw_eZmean(Z, rf_resid[, jj], N, weights, weight_type)
+          })
+        } else {
+          NULL
+        }
+        for (i in seq_len(n_eq)) {
+          ri <- ((i - 1L) * L + 1L):(i * L)
+          for (j in seq(i, n_eq)) {
+            rj <- ((j - 1L) * L + 1L):(j * L)
+            # Cross-equation SW meat via panel loop
+            block <- .sw_cross_meat(Z, rf_resid[, i], rf_resid[, j],
+                                     panels, N, weights, weight_type,
+                                     center,
+                                     if (center) eZmeans[[i]] else NULL,
+                                     if (center) eZmeans[[j]] else NULL)
+            meat[ri, rj] <- block * N
+            if (i != j) meat[rj, ri] <- t(block) * N
+          }
+        }
       } else {
         # HC path: meat blocks are Z' diag(wv_ij) Z where
         # wv_ij depends on weight type (see .hc_meat)
@@ -338,7 +367,8 @@
                                 weight_type = "aweight",
                                 kernel = NULL, bw = NULL,
                                 time_index = NULL,
-                                center = FALSE) {
+                                center = FALSE,
+                                sw = FALSE, ivar_vec = NULL) {
   if (vcov_type == "iid") {
     # Classical: sigma2 * (Z'WZ)^{-1}
     rss <- if (is.null(weights)) {
@@ -357,6 +387,10 @@
     } else if (!is.null(kernel)) {
       meat <- .hac_meat(Z, resid, time_index, kernel, bw,
                         weights, weight_type, center = center)
+    } else if (isTRUE(sw)) {
+      eZmean <- if (center) .sw_eZmean(Z, resid, N, weights, weight_type) else NULL
+      meat <- .sw_meat(Z, resid, ivar_vec, N, weights, weight_type,
+                        center = center, eZmean = eZmean) * N
     } else {
       meat <- .hc_meat(Z, resid, weights, weight_type, center = center)
     }

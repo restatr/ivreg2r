@@ -224,6 +224,7 @@ glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
     bw                 = x$bw %||% NA_real_,
     kiefer             = isTRUE(x$kiefer),
     dkraay             = x$dkraay %||% NA_real_,
+    sw                 = isTRUE(x$sw),
     n_clusters1        = x$n_clusters1 %||% NA_integer_,
     n_clusters2        = x$n_clusters2 %||% NA_integer_,
     cue_convergence    = x$cue_convergence %||% NA_integer_,

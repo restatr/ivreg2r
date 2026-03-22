@@ -37,6 +37,7 @@ ivreg2(
   nopartialsmall = FALSE,
   center = FALSE,
   psd = NULL,
+  sw = FALSE,
   reduced_form = "none",
   first_stage = FALSE,
   model = TRUE,
@@ -300,6 +301,12 @@ eigenvalues (Politis 2007). \code{"psda"} replaces negative eigenvalues
 with their absolute values (Stock & Watson 2008). A warning is emitted
 when negative eigenvalues are detected and corrected.
 Equivalent to Stata's \code{psd0} and \code{psda} options.}
+
+\item{sw}{Logical: if \code{TRUE}, compute the Stock-Watson (2008,
+Econometrica) panel-robust VCE. Requires panel data (\code{ivar}).
+Incompatible with clustering, HAC kernels, kiefer, dkraay,
+fweights, and iweights. Forces \code{vcov = "robust"} automatically.
+Equivalent to Stata's \code{sw} option (labeled "BETA VERSION" in Stata).}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression

@@ -91,7 +91,7 @@ test_that("glance OLS returns 1-row tibble with expected columns", {
   gl <- glance(fit)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 57L)
+  expect_equal(ncol(gl), 58L)
 })
 
 test_that("glance OLS has correct column names", {
@@ -102,7 +102,7 @@ test_that("glance OLS has correct column names", {
                       "small", "weight_type",
                       "method", "lambda", "kclass_value", "fuller_parameter",
                       "coviv", "center", "psd", "kernel", "bw",
-                      "kiefer", "dkraay",
+                      "kiefer", "dkraay", "sw",
                       "n_clusters1", "n_clusters2",
                       "cue_convergence",
                       "partial_ct",
@@ -312,7 +312,7 @@ test_that("glance diagnostics = FALSE returns compact tibble", {
   gl <- glance(fit, diagnostics = FALSE)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 33L)
+  expect_equal(ncol(gl), 34L)
   # Model-level stored results should be present
   expect_true("yy" %in% names(gl))
   expect_true("ll" %in% names(gl))

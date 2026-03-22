@@ -40,7 +40,8 @@
                                   kernel = NULL, bw = NULL,
                                   time_index = NULL,
                                   center = FALSE, psd = NULL,
-                                  omega = NULL) {
+                                  omega = NULL,
+                                  sw = FALSE, ivar_vec = NULL) {
   q <- length(orthog_vars)
 
   # --- Build restricted instrument matrix (remove tested columns) ---
@@ -79,7 +80,8 @@
                                   dofminus = dofminus, weight_type = weight_type,
                                   kernel = kernel, bw = bw,
                                   time_index = time_index,
-                                  center = center, psd = psd)
+                                  center = center, psd = psd,
+                                  sw = sw, ivar_vec = ivar_vec)
   }
 
   # --- J_full: J statistic of full model ---

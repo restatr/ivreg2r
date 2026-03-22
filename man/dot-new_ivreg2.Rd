@@ -67,6 +67,7 @@
   ivar = NULL,
   center = FALSE,
   psd = NULL,
+  sw = FALSE,
   partial_ct = 0L,
   partial_names = character(0),
   partialcons = FALSE,

@@ -45,7 +45,8 @@
                             dofminus = 0L, weight_type = "aweight",
                             kernel = NULL, bw = NULL, time_index = NULL,
                             center = FALSE, psd = NULL,
-                            vcov_type = "HAC", ZwZ = NULL) {
+                            vcov_type = "HAC", ZwZ = NULL,
+                            sw = FALSE, ivar_vec = NULL) {
   if (!is.null(cluster_vec) && !is.null(kernel)) {
     # Cluster + kernel (DK or Thompson)
     if (is.list(cluster_vec)) {
@@ -80,6 +81,15 @@
     meat <- .hac_meat(Z, residuals, time_index, kernel, bw,
                       weights, weight_type, center = center)
     Omega <- meat / (N - dofminus)
+  } else if (isTRUE(sw)) {
+    # Stock-Watson path — own normalization, returns shat directly
+    eZmean <- if (center) {
+      .sw_eZmean(Z, residuals, N, weights, weight_type)
+    } else {
+      NULL
+    }
+    Omega <- .sw_meat(Z, residuals, ivar_vec, N, weights, weight_type,
+                       center = center, eZmean = eZmean)
   } else {
     # HC path — divisor is N - dofminus (Stata livreg2.do line 326)
     Omega <- .hc_meat(Z, residuals, weights, weight_type,
@@ -232,11 +242,13 @@
                            N, K, L, overid_df, dofminus = 0L,
                            weight_type = "aweight",
                            kernel = NULL, bw = NULL, time_index = NULL,
-                           center = FALSE, psd = NULL) {
+                           center = FALSE, psd = NULL,
+                           sw = FALSE, ivar_vec = NULL) {
   Omega <- .compute_omega(Z, residuals, weights, cluster_vec, N,
                            dofminus = dofminus, weight_type = weight_type,
                            kernel = kernel, bw = bw, time_index = time_index,
-                           center = center, psd = psd)
+                           center = center, psd = psd,
+                           sw = sw, ivar_vec = ivar_vec)
   J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
 
   if (is.na(J)) {
@@ -285,7 +297,8 @@
                                    weight_type = "aweight",
                                    kernel = NULL, bw = NULL,
                                    time_index = NULL,
-                                   center = FALSE, psd = NULL) {
+                                   center = FALSE, psd = NULL,
+                                   sw = FALSE, ivar_vec = NULL) {
   # 1. Extract X2 (included exogenous regressors)
   endo_idx <- match(endo_names, colnames(X))
   exog_idx <- setdiff(seq_len(ncol(X)), endo_idx)
@@ -332,12 +345,13 @@
       Omega <- sigma2_0 * ZWZ / N
     }
   } else {
-    # HC/CL/HAC: heteroskedasticity-robust omega
+    # HC/CL/HAC/SW: heteroskedasticity-robust omega
     Omega <- .compute_omega(Z, e, weights, cluster_vec, N,
                              dofminus = dofminus, weight_type = weight_type,
                              kernel = kernel, bw = bw,
                              time_index = time_index,
-                             center = center, psd = psd)
+                             center = center, psd = psd,
+                             sw = sw, ivar_vec = ivar_vec)
   }
 
   # 5. S = N * gbar' * Omega^{-1} * gbar
@@ -394,7 +408,8 @@
                                  weight_type = "aweight",
                                  kernel = NULL, bw = NULL,
                                  time_index = NULL,
-                                 center = FALSE, psd = NULL) {
+                                 center = FALSE, psd = NULL,
+                                 sw = FALSE, ivar_vec = NULL) {
   if (!is_iv) return(NULL)
 
   if (overid_df == 0L) {
@@ -428,12 +443,13 @@
     p <- stats::pchisq(J, df = overid_df, lower.tail = FALSE)
     list(stat = J, p = p, df = overid_df, test_name = "Sargan")
   } else {
-    # HC/CL/HAC: Hansen J with robust omega
+    # HC/CL/HAC/SW: Hansen J with robust omega
     .hansen_j_test(Z, X, y, residuals, weights, cluster_vec,
                    N, K, L, overid_df, dofminus = dofminus,
                    weight_type = weight_type,
                    kernel = kernel, bw = bw, time_index = time_index,
-                   center = center, psd = psd)
+                   center = center, psd = psd,
+                   sw = sw, ivar_vec = ivar_vec)
   }
 }
 

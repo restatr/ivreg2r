@@ -40,7 +40,8 @@
                                      weight_type = "aweight",
                                      kernel = NULL, bw = NULL,
                                      time_index = NULL,
-                                     center = FALSE) {
+                                     center = FALSE,
+                                     sw = FALSE, ivar_vec = NULL) {
 
   # --- A. Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -99,6 +100,10 @@
     } else if (!is.null(kernel)) {
       meat <- .hac_meat(Z, rf_resid, time_index, kernel, bw,
                         weights, weight_type, center = center)
+    } else if (isTRUE(sw)) {
+      eZmean <- if (center) .sw_eZmean(Z, rf_resid, N, weights, weight_type) else NULL
+      meat <- .sw_meat(Z, rf_resid, ivar_vec, N, weights, weight_type,
+                        center = center, eZmean = eZmean) * N
     } else {
       meat <- .hc_meat(Z, rf_resid, weights, weight_type, center = center)
     }
@@ -129,7 +134,7 @@
   # For IID, sigma2_y already absorbs the dofminus factor.
   # For cluster, Stata's omega divides by N (no dofminus), so no adjustment.
   # For HC (non-cluster): scale Wald by (N-dofminus)/N to match Stata.
-  if (!is.na(wald) && vcov_type != "iid" && is.null(cluster_vec)) {
+  if (!is.na(wald) && vcov_type != "iid" && is.null(cluster_vec) && !isTRUE(sw)) {
     wald <- wald * (N - dofminus) / N
   }
 

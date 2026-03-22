@@ -112,6 +112,7 @@ NULL
                          ivar = NULL,
                          center = FALSE,
                          psd = NULL,
+                         sw = FALSE,
                          partial_ct = 0L,
                          partial_names = character(0),
                          partialcons = FALSE,
@@ -185,6 +186,7 @@ NULL
       ivar           = ivar,
       center         = center,
       psd            = psd,
+      sw             = sw,
       partial_ct     = partial_ct,
       partial_names  = partial_names,
       partialcons    = partialcons,
@@ -683,7 +685,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   cat("VCV type:    ", .vcov_description(x$vcov_type, x$small,
                                          x$kernel, x$bw,
                                          x$kiefer, x$dkraay,
-                                         x$psd), "\n")
+                                         x$psd, x$sw), "\n")
   # GMM2S efficiency subtitle (Stata lines 2203-2204)
   # gmmw uses different subtitle (Stata line 2206)
   if (!is.null(x$method) && x$method %in% c("gmm2s", "cue")) {
@@ -847,7 +849,18 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
 #' @keywords internal
 #' @noRd
 .vcov_description <- function(vcov_type, small, kernel = NULL, bw = NULL,
-                               kiefer = FALSE, dkraay = NULL, psd = NULL) {
+                               kiefer = FALSE, dkraay = NULL, psd = NULL,
+                               sw = FALSE) {
+  if (isTRUE(sw)) {
+    base <- "Stock-Watson heteroskedastic-robust"
+    if (small && vcov_type != "iid") {
+      base <- paste0(base, ", small-sample corrected")
+    }
+    if (!is.null(psd)) {
+      base <- paste0(base, " (", psd, ")")
+    }
+    return(base)
+  }
   base <- switch(vcov_type,
     "iid" = "Classical (iid)",
     "robust" = "Robust",
