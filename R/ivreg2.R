@@ -21,7 +21,7 @@
                                           kiefer, dkraay, wmatrix, smatrix,
                                           b0, partial, nopartialsmall,
                                           center, psd, reduced_form,
-                                          noid,
+                                          first_stage, noid,
                                           model_flag, x_flag, y_flag) {
 
   # --- Validate vcov ---
@@ -123,6 +123,11 @@
       !reduced_form %in% valid_rf) {
     stop('`reduced_form` must be one of "none", "rf", or "system".',
          call. = FALSE)
+  }
+
+  if (!is.logical(first_stage) || length(first_stage) != 1L ||
+      is.na(first_stage)) {
+    stop("`first_stage` must be TRUE or FALSE.", call. = FALSE)
   }
 
   # --- Normalize kernel name early (before kiefer/dkraay checks) ---
@@ -386,6 +391,7 @@
     weight_type = weight_type, center = center, psd = psd,
     partial = partial, nopartialsmall = nopartialsmall,
     reduced_form = reduced_form,
+    first_stage_flag = first_stage,
     kclass = kclass, fuller = fuller, b0 = b0,
     wmatrix = wmatrix, smatrix = smatrix,
     noid = noid,
@@ -1199,6 +1205,7 @@
   ivar <- opts$ivar
   b0 <- opts$b0
   noid <- opts$noid
+  first_stage_flag <- opts$first_stage_flag
 
   sdofminus   <- prep$sdofminus
   cluster_vec <- prep$cluster_vec
@@ -1479,6 +1486,29 @@
     )
   }
 
+  # Build extractable first-stage model objects (Ticket S1)
+  first_stage_models <- NULL
+  if (first_stage_flag && parsed$is_iv && !is.null(first_stage)) {
+    first_stage_models <- .build_first_stage_models(
+      fs_results   = first_stage,
+      Z            = parsed$Z,
+      weights      = parsed$weights,
+      cluster_vec  = cluster_vec,
+      vcov_type    = effective_vcov_type,
+      N            = parsed$N,
+      L            = parsed$L,
+      M            = M,
+      dofminus     = dofminus,
+      sdofminus    = sdofminus,
+      weight_type  = weight_type,
+      kernel       = kernel,
+      bw           = bw,
+      time_index   = time_index,
+      center       = center,
+      cluster_var  = prep$cluster_var_name
+    )
+  }
+
   # Model F-test
   model_f_result <- .compute_model_f(
     coefficients  = fit$coefficients,
@@ -1495,6 +1525,7 @@
 
   list(
     diagnostics = diagnostics, first_stage = first_stage,
+    first_stage_models = first_stage_models,
     reduced_form_result = reduced_form_result,
     model_f_result = model_f_result,
     effective_vcov_type = effective_vcov_type, center = center
@@ -1735,6 +1766,11 @@
 #'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
 #'   y + all endogenous variables regressed on Z, with cross-equation VCV
 #'   (equivalent to Stata's `savesfirst`). Silently ignored for OLS models.
+#' @param first_stage Logical: if `TRUE`, store extractable first-stage
+#'   regression objects on the fitted model. Access them via
+#'   [first_stage()]. Each object supports [coef()], [vcov()],
+#'   [summary()], [tidy()], and [glance()]. Equivalent to Stata's
+#'   `savefirst` option. Default `FALSE`. Silently ignored for OLS models.
 #' @param model Logical: if `TRUE` (default), store the model frame in the
 #'   return object.
 #' @param x Logical: if `TRUE`, store model matrices (`X`, `Z`) in the
@@ -1818,6 +1854,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
                    center = FALSE,
                    psd = NULL,
                    reduced_form = "none",
+                   first_stage = FALSE,
                    model = TRUE, x = FALSE, y = TRUE) {
 
   # --- 1. Capture call ---
@@ -1833,7 +1870,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     wmatrix = wmatrix, smatrix = smatrix, b0 = b0,
     partial = partial, nopartialsmall = nopartialsmall,
     center = center, psd = psd, reduced_form = reduced_form,
-    noid = noid,
+    first_stage = first_stage, noid = noid,
     model_flag = model, x_flag = x, y_flag = y
   )
   # Unpack options needed in ivreg2() scope (for .new_ivreg2() assembly).
@@ -1895,6 +1932,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   diag_result <- .compute_diagnostics(fit, parsed, prep, opts, method, bw)
   diagnostics         <- diag_result$diagnostics
   first_stage         <- diag_result$first_stage
+  first_stage_models  <- diag_result$first_stage_models
   reduced_form_result <- diag_result$reduced_form_result
   model_f_result      <- diag_result$model_f_result
   effective_vcov_type <- diag_result$effective_vcov_type
@@ -1969,6 +2007,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     model_f_df2   = model_f_result$model_f_df2,
     diagnostics   = diagnostics,
     first_stage   = first_stage,
+    first_stage_models = first_stage_models,
     reduced_form  = reduced_form_result,
     call          = cl,
     formula       = parsed$formula,

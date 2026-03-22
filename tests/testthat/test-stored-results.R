@@ -65,7 +65,7 @@ test_that("stored results match Stata: 2SLS overidentified robust", {
 test_that("stored results match Stata: 2SLS overid cluster", {
   data(card)
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
-                data = card, clusters = ~smsa)
+                data = card, clusters = ~age)
   fx <- read_sr_fixture("overid_cluster")
 
   expect_equal(fit$yy, fx$yy, tolerance = stata_tol$coef)

@@ -70,7 +70,7 @@ file close fh
 * ==========================================================================
 * Config 3: 2SLS overidentified with clustering
 * ==========================================================================
-ivreg2 lwage exper expersq black south (educ = nearc4 nearc2), cluster(smsa)
+ivreg2 lwage exper expersq black south (educ = nearc4 nearc2), cluster(age)
 
 mat ccev_vec = e(ccev)
 mat cdev_vec = e(cdev)

@@ -38,6 +38,7 @@ ivreg2(
   center = FALSE,
   psd = NULL,
   reduced_form = "none",
+  first_stage = FALSE,
   model = TRUE,
   x = FALSE,
   y = TRUE
@@ -305,6 +306,12 @@ Equivalent to Stata's \code{psd0} and \code{psda} options.}
 (equivalent to Stata's \code{saverf}). \code{"system"} stores the full system of
 y + all endogenous variables regressed on Z, with cross-equation VCV
 (equivalent to Stata's \code{savesfirst}). Silently ignored for OLS models.}
+
+\item{first_stage}{Logical: if \code{TRUE}, store extractable first-stage
+regression objects on the fitted model. Access them via
+\code{\link[=first_stage]{first_stage()}}. Each object supports \code{\link[=coef]{coef()}}, \code{\link[=vcov]{vcov()}},
+\code{\link[=summary]{summary()}}, \code{\link[=tidy]{tidy()}}, and \code{\link[=glance]{glance()}}. Equivalent to Stata's
+\code{savefirst} option. Default \code{FALSE}. Silently ignored for OLS models.}
 
 \item{model}{Logical: if \code{TRUE} (default), store the model frame in the
 return object.}

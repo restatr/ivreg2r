@@ -24,6 +24,7 @@
   model_f_df2 = NULL,
   diagnostics = NULL,
   first_stage = NULL,
+  first_stage_models = NULL,
   reduced_form = NULL,
   call,
   formula,
