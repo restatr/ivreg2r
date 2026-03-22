@@ -42,6 +42,10 @@ generics::augment
 #' @param x An object of class `"ivreg2"`.
 #' @param conf.int Logical: include confidence intervals? Default `TRUE`.
 #' @param conf.level Confidence level for intervals. Default `0.95`.
+#' @param exponentiate Logical: exponentiate the coefficient estimates and
+#'   confidence interval bounds? Default `FALSE`. Useful for log-linear models
+#'   where `exp(estimate)` gives a multiplicative effect. Standard errors remain
+#'   on the original (log) scale, following broom convention.
 #' @param ... Additional arguments (ignored).
 #' @return A [tibble::tibble()] with columns `term`, `estimate`, `std.error`,
 #'   `statistic`, `p.value`, and optionally `conf.low`, `conf.high`.
@@ -51,6 +55,7 @@ generics::augment
 #'               educ | nearc4, data = card, vcov = "robust")
 #' tidy(fit)
 #' tidy(fit, conf.int = FALSE)
+#' tidy(fit, exponentiate = TRUE)
 #'
 #' \donttest{
 #' # Compare 2SLS and LIML side-by-side
@@ -63,7 +68,8 @@ generics::augment
 #' comparison[comparison$term == "educ", c("method", "estimate", "std.error")]
 #' }
 #' @export
-tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
+tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95,
+                         exponentiate = FALSE, ...) {
   cf <- coef(x)
   se <- sqrt(diag(vcov(x)))
   stat <- cf / se
@@ -83,6 +89,13 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
     ci <- confint(x, level = conf.level)
     out$conf.low  <- unname(ci[, 1L])
     out$conf.high <- unname(ci[, 2L])
+  }
+  if (exponentiate) {
+    out$estimate <- exp(out$estimate)
+    if (conf.int) {
+      out$conf.low  <- exp(out$conf.low)
+      out$conf.high <- exp(out$conf.high)
+    }
   }
   out
 }

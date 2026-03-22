@@ -27,6 +27,7 @@ Imports:
 Suggests:
     ivreg,
     knitr,
+    modelsummary,
     rmarkdown,
     sandwich,
     testthat (>= 3.0.0)

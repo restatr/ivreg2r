@@ -68,6 +68,8 @@ test_that("first_stage returns correct class and structure", {
 # ============================================================================
 
 test_that("first_stage matches Stata (overidentified, IID)", {
+  skip_if_not(file.exists(fixture_path("fs_overid_iid_coef.csv")),
+              "Stata fixture not available")
   data(card, package = "ivreg2r")
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc4 + nearc2, data = card, first_stage = TRUE)
@@ -87,6 +89,8 @@ test_that("first_stage matches Stata (overidentified, IID)", {
 })
 
 test_that("first_stage matches Stata (overidentified, robust)", {
+  skip_if_not(file.exists(fixture_path("fs_overid_robust_vcov.csv")),
+              "Stata fixture not available")
   data(card, package = "ivreg2r")
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc4 + nearc2, data = card, vcov = "robust",
@@ -102,6 +106,8 @@ test_that("first_stage matches Stata (overidentified, robust)", {
 })
 
 test_that("first_stage matches Stata (overidentified, cluster age M=11)", {
+  skip_if_not(file.exists(fixture_path("fs_overid_cluster_vcov.csv")),
+              "Stata fixture not available")
   data(card, package = "ivreg2r")
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc4 + nearc2, data = card, clusters = ~age,
@@ -120,6 +126,8 @@ test_that("first_stage matches Stata (overidentified, cluster age M=11)", {
 })
 
 test_that("first_stage matches Stata (just-identified, robust)", {
+  skip_if_not(file.exists(fixture_path("fs_just_robust_coef.csv")),
+              "Stata fixture not available")
   data(card, package = "ivreg2r")
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc4, data = card, vcov = "robust",
@@ -139,6 +147,8 @@ test_that("first_stage matches Stata (just-identified, robust)", {
 })
 
 test_that("first_stage matches Stata (weighted, IID)", {
+  skip_if_not(file.exists(fixture_path("fs_overid_aw_iid_coef.csv")),
+              "Stata fixture not available")
   data(card, package = "ivreg2r")
   card$aw <- seq_len(nrow(card))
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
@@ -159,6 +169,8 @@ test_that("first_stage matches Stata (weighted, IID)", {
 })
 
 test_that("first_stage matches Stata (weighted, robust)", {
+  skip_if_not(file.exists(fixture_path("fs_overid_aw_robust_coef.csv")),
+              "Stata fixture not available")
   data(card, package = "ivreg2r")
   card$aw <- seq_len(nrow(card))
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
@@ -179,6 +191,8 @@ test_that("first_stage matches Stata (weighted, robust)", {
 })
 
 test_that("LIML first-stage matches IID (same OLS first-stage)", {
+  skip_if_not(file.exists(fixture_path("fs_overid_liml_coef.csv")),
+              "Stata fixture not available")
   data(card, package = "ivreg2r")
   fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                   educ | nearc4 + nearc2, data = card, method = "liml",

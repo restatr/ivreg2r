@@ -355,6 +355,87 @@ test_that("glance diagnostics = FALSE retains model-fit columns", {
 # glance() — small column
 # ============================================================================
 
+# ============================================================================
+# tidy() — exponentiate
+# ============================================================================
+
+test_that("tidy exponentiate = TRUE exponentiates estimates", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  td_raw <- tidy(fit, conf.int = FALSE)
+  td_exp <- tidy(fit, conf.int = FALSE, exponentiate = TRUE)
+  expect_equal(td_exp$estimate, exp(td_raw$estimate))
+})
+
+test_that("tidy exponentiate = TRUE exponentiates conf.low and conf.high", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  td_raw <- tidy(fit)
+  td_exp <- tidy(fit, exponentiate = TRUE)
+  expect_equal(td_exp$conf.low, exp(td_raw$conf.low))
+  expect_equal(td_exp$conf.high, exp(td_raw$conf.high))
+})
+
+test_that("tidy exponentiate = TRUE does NOT transform std.error", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  td_raw <- tidy(fit, conf.int = FALSE)
+  td_exp <- tidy(fit, conf.int = FALSE, exponentiate = TRUE)
+  expect_equal(td_exp$std.error, td_raw$std.error)
+})
+
+test_that("tidy exponentiate = FALSE (default) is unchanged", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  td_default <- tidy(fit)
+  td_false <- tidy(fit, exponentiate = FALSE)
+  expect_identical(td_default, td_false)
+})
+
+test_that("tidy exponentiate = TRUE works with conf.int = FALSE", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  td_exp <- tidy(fit, conf.int = FALSE, exponentiate = TRUE)
+  expect_false("conf.low" %in% names(td_exp))
+  expect_false("conf.high" %in% names(td_exp))
+  td_raw <- tidy(fit, conf.int = FALSE)
+  expect_equal(td_exp$estimate, exp(td_raw$estimate))
+})
+
+
+# ============================================================================
+# modelsummary integration
+# ============================================================================
+
+test_that("modelsummary works with a single ivreg2 object", {
+  skip_if_not_installed("modelsummary")
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  out <- modelsummary::modelsummary(fit, output = "data.frame")
+  expect_s3_class(out, "data.frame")
+  expect_true(nrow(out) > 0L)
+})
+
+test_that("modelsummary works with a named list of models", {
+  skip_if_not_installed("modelsummary")
+  fit1 <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  fit2 <- ivreg2(mpg ~ wt + hp + disp, data = mtcars, small = TRUE)
+  out <- modelsummary::modelsummary(
+    list("Model 1" = fit1, "Model 2" = fit2), output = "data.frame"
+  )
+  expect_s3_class(out, "data.frame")
+  expect_true(nrow(out) > 0L)
+})
+
+test_that("modelsummary works with IV model", {
+  skip_if_not_installed("modelsummary")
+  skip_if_not(file.exists(card_path), "Card data not available")
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card, vcov = "robust")
+  out <- modelsummary::modelsummary(fit, output = "data.frame")
+  expect_s3_class(out, "data.frame")
+  expect_true(nrow(out) > 0L)
+})
+
+
+# ============================================================================
+# glance() — small column
+# ============================================================================
+
 test_that("glance includes small column matching fit$small", {
   fit_small <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
   fit_large <- ivreg2(mpg ~ wt + hp, data = mtcars, small = FALSE)

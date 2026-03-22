@@ -4,7 +4,7 @@
 \alias{tidy.ivreg2}
 \title{Tidy an ivreg2 object}
 \usage{
-\method{tidy}{ivreg2}(x, conf.int = TRUE, conf.level = 0.95, ...)
+\method{tidy}{ivreg2}(x, conf.int = TRUE, conf.level = 0.95, exponentiate = FALSE, ...)
 }
 \arguments{
 \item{x}{An object of class \code{"ivreg2"}.}
@@ -12,6 +12,11 @@
 \item{conf.int}{Logical: include confidence intervals? Default \code{TRUE}.}
 
 \item{conf.level}{Confidence level for intervals. Default \code{0.95}.}
+
+\item{exponentiate}{Logical: exponentiate the coefficient estimates and
+confidence interval bounds? Default \code{FALSE}. Useful for log-linear models
+where \code{exp(estimate)} gives a multiplicative effect. Standard errors remain
+on the original (log) scale, following broom convention.}
 
 \item{...}{Additional arguments (ignored).}
 }
@@ -29,6 +34,7 @@ fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
               educ | nearc4, data = card, vcov = "robust")
 tidy(fit)
 tidy(fit, conf.int = FALSE)
+tidy(fit, exponentiate = TRUE)
 
 \donttest{
 # Compare 2SLS and LIML side-by-side

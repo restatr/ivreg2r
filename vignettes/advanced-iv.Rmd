@@ -514,6 +514,63 @@ diag_table <- do.call(rbind, lapply(names(models), function(nm) {
 diag_table[, c("model", "method", "r.squared", "sigma", "nobs")]
 ```
 
+## Publication tables with modelsummary
+
+The [`modelsummary`](https://modelsummary.com/) package produces
+publication-quality regression tables from any model with `tidy()` and
+`glance()` methods. `ivreg2r` objects work out of the box.
+
+```{r modelsummary-setup, eval = requireNamespace("modelsummary", quietly = TRUE)}
+library(modelsummary)
+```
+
+### Basic table
+
+```{r ms-basic, eval = requireNamespace("modelsummary", quietly = TRUE)}
+modelsummary(fit_2sls, output = "markdown")
+```
+
+### Side-by-side comparison
+
+Compare OLS, 2SLS, and LIML in a single table:
+
+```{r ms-compare, eval = requireNamespace("modelsummary", quietly = TRUE)}
+models <- list(
+  "OLS"  = ivreg2(lwage ~ exper + expersq + educ, data = mroz_work),
+  "2SLS" = fit_2sls,
+  "LIML" = fit_liml
+)
+modelsummary(models, output = "markdown",
+             gof_map = c("nobs", "r.squared", "adj.r.squared", "sigma"))
+```
+
+### Exponentiated coefficients
+
+For log-linear models, `exponentiate = TRUE` reports multiplicative effects
+(`exp(beta)`). Standard errors remain on the log scale, following broom
+convention:
+
+```{r ms-exponentiate, eval = requireNamespace("modelsummary", quietly = TRUE)}
+modelsummary(fit_2sls, output = "markdown", exponentiate = TRUE)
+```
+
+### Customizing output
+
+Rename coefficients and select specific goodness-of-fit statistics:
+
+```{r ms-custom, eval = requireNamespace("modelsummary", quietly = TRUE)}
+modelsummary(
+  list("2SLS" = fit_2sls, "LIML" = fit_liml),
+  output = "markdown",
+  coef_rename = c(educ = "Education", exper = "Experience",
+                  expersq = "Experience²"),
+  gof_map = c("nobs", "r.squared", "sigma", "weak_id_stat")
+)
+```
+
+`modelsummary` supports many output formats including LaTeX, HTML, Word, and
+gt tables. See `?modelsummary::modelsummary` for the full list.
+
 ## Stata migration
 
 For a comprehensive Stata-to-R translation table covering all features (basic
