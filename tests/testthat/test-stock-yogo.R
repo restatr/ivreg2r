@@ -334,6 +334,29 @@ test_that("ivreg2 fuller=1 stores Fuller bias tables", {
   expect_false("LIML size" %in% types)
 })
 
+test_that("CUE dispatches to LIML size distortion tables", {
+  # Matches Stata: CUE uses LIML size tables (ivreg2.ado line 3363)
+  sy_cue <- .stock_yogo_lookup(K1 = 1, L1 = 5, method = "cue")
+  sy_liml <- .stock_yogo_lookup(K1 = 1, L1 = 5, method = "liml")
+  expect_equal(sy_cue, sy_liml)
+  expect_true("LIML size" %in% sy_cue$type)
+  expect_false("IV relative bias" %in% sy_cue$type)
+  expect_false("IV size" %in% sy_cue$type)
+})
+
+test_that("K1=3 returns NULL for non-IV-bias tables", {
+  # Stock-Yogo (2005) only published K1=3 for IV relative bias
+  expect_null(.stock_yogo_lookup(K1 = 3, L1 = 10, method = "liml"))
+  expect_null(.stock_yogo_lookup(K1 = 3, L1 = 10, method = "cue"))
+  expect_null(.stock_yogo_lookup(K1 = 3, L1 = 10, method = "liml", fuller = 1))
+
+  # IV bias tables do have K1=3
+  sy <- .stock_yogo_lookup(K1 = 3, L1 = 10, method = "2sls")
+  expect_true("IV relative bias" %in% sy$type)
+  # But IV size stops at K1=2
+  expect_false("IV size" %in% sy$type)
+})
+
 test_that("ivreg2 kclass=0.5 has NULL Stock-Yogo", {
   skip_if(!file.exists(card_path), "card data not found")
 

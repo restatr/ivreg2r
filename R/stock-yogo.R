@@ -57,7 +57,7 @@
       "20%" = sy_ivsize20, "25%" = sy_ivsize25
     ), "IV size", 2L)
 
-  } else if (method == "liml" && fuller == 0) {
+  } else if (method %in% c("liml", "cue") && fuller == 0) {
     # LIML size distortion tables (K1 <= 2)
     .add_rows(list(
       "10%" = sy_limlsize10, "15%" = sy_limlsize15,
