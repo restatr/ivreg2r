@@ -1947,6 +1947,15 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     parsed$y <- parsed$y[unsort_order]
     parsed$X <- parsed$X[unsort_order, , drop = FALSE]
     parsed$Z <- parsed$Z[unsort_order, , drop = FALSE]
+    # Also unsort first-stage model residuals/fitted values
+    if (!is.null(first_stage_models)) {
+      for (nm in names(first_stage_models)) {
+        first_stage_models[[nm]]$residuals <-
+          first_stage_models[[nm]]$residuals[unsort_order]
+        first_stage_models[[nm]]$fitted.values <-
+          first_stage_models[[nm]]$fitted.values[unsort_order]
+      }
+    }
   }
 
   # --- 5e. Compute additional stored results (R2) ---

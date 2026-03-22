@@ -287,7 +287,13 @@ glance.ivreg2_first_stage <- function(x, ...) {
   }
   ZtWZ_inv <- chol2inv(chol(ZtWZ))
 
-  df_resid <- as.integer(N - L - dofminus - sdofminus)
+  # Clustered models use M-1 as residual df (matching main model and Stata's
+  # ereturn display behavior). Non-clustered uses N - L - dofminus - sdofminus.
+  df_resid <- if (!is.null(cluster_vec)) {
+    as.integer(M - 1L)
+  } else {
+    as.integer(N - L - dofminus - sdofminus)
+  }
 
   # Determine if cluster+kernel (Thompson two-way) — needs special meat path
   has_cluster_kernel <- !is.null(cluster_vec) && !is.null(kernel)

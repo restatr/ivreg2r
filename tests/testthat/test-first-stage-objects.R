@@ -113,7 +113,9 @@ test_that("first_stage matches Stata (overidentified, cluster age M=11)", {
 
   expect_vcov_equal(vcov(fs), stata_vcov, tol = stata_tol$vcov)
   expect_equal(fs$sigma, stata_sc$rmse, tolerance = stata_tol$coef)
-  expect_equal(fs$df.residual, as.integer(stata_sc$df_r))
+  # Stata stores df_r = N-L-dofminus-sdofminus even for clustered models,
+  # but its display engine caps at M-1. Our df.residual = M-1 for clustered.
+  expect_equal(fs$df.residual, as.integer(stata_sc$N_clust) - 1L)
   expect_equal(fs$n_clusters, as.integer(stata_sc$N_clust))
 })
 
@@ -253,6 +255,66 @@ test_that("confint() works for first-stage objects", {
 
   ci2 <- confint(fs, parm = "nearc4")
   expect_equal(nrow(ci2), 1L)
+})
+
+
+# ============================================================================
+# Tests: Codex review bug fixes
+# ============================================================================
+
+test_that("clustered first-stage df.residual is M-1, not N-L", {
+  data(card, package = "ivreg2r")
+  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+                  educ | nearc4 + nearc2, data = card, clusters = ~age,
+                  first_stage = TRUE)
+  fs <- first_stage(fit)$educ
+
+  # M=11 clusters on age, so df.residual should be M-1 = 10
+  expect_equal(fs$df.residual, 10L)
+
+  # summary/tidy/confint should use df=10, not df=3002
+  s <- summary(fs)
+  # t-value for intercept with df=10 should give larger p-value than df=3002
+  # (this is a sanity check, not a parity test)
+  p_from_summary <- s$coef_table["(Intercept)", "Pr(>|t|)"]
+  p_if_wrong_df <- 2 * pt(-abs(s$coef_table["(Intercept)", "t value"]),
+                           df = 3002)
+  expect_true(p_from_summary > p_if_wrong_df)
+
+  # confint should be wider with df=10 than df=3002
+  ci <- confint(fs, parm = "(Intercept)")
+  ci_width <- ci[1, 2] - ci[1, 1]
+  # With df=3002 the CI would be narrower
+  crit_wrong <- qt(0.025, df = 3002)
+  se_intercept <- sqrt(vcov(fs)["(Intercept)", "(Intercept)"])
+  width_wrong <- -2 * crit_wrong * se_intercept
+  expect_true(ci_width > width_wrong)
+})
+
+test_that("HAC first-stage residuals are in original row order", {
+  data(phillips, package = "ivreg2r")
+  # Deliberately shuffle row order so sorted != original
+  set.seed(42)
+  phillips_shuffled <- phillips[sample(nrow(phillips)), ]
+
+  fit <- ivreg2(cinf ~ unem | inf_1 | inf_2,
+                data = phillips_shuffled, vcov = "HAC",
+                kernel = "bartlett", bw = 3,
+                tvar = "year",
+                first_stage = TRUE)
+  fs <- first_stage(fit)$inf_1
+
+  # First-stage residuals + fitted should sum to the endogenous variable
+  # in the correct (shuffled) row order. Use the model frame to get the
+  # observations actually used (after NA removal).
+  mf <- model.frame(fit)
+  inf1_used <- mf$inf_1
+  recon <- unname(fitted(fs) + residuals(fs))
+  expect_equal(recon, inf1_used, tolerance = 1e-10)
+
+  # Also verify alignment with main model residuals (both should be
+  # in original row order)
+  expect_equal(length(residuals(fs)), length(residuals(fit)))
 })
 
 
