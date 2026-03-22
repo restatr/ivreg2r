@@ -209,7 +209,8 @@ confint.ivreg2_first_stage <- function(object, parm, level = 0.95, ...) {
 # --------------------------------------------------------------------------
 
 #' @export
-tidy.ivreg2_first_stage <- function(x, conf.int = TRUE, conf.level = 0.95, ...) {
+tidy.ivreg2_first_stage <- function(x, conf.int = TRUE, conf.level = 0.95,
+                                     exponentiate = FALSE, ...) {
   cf <- coef(x)
   se <- sqrt(diag(vcov(x)))
   stat <- cf / se
@@ -225,6 +226,13 @@ tidy.ivreg2_first_stage <- function(x, conf.int = TRUE, conf.level = 0.95, ...) 
     ci <- confint(x, level = conf.level)
     out$conf.low  <- unname(ci[, 1L])
     out$conf.high <- unname(ci[, 2L])
+  }
+  if (exponentiate) {
+    out$estimate <- exp(out$estimate)
+    if (conf.int) {
+      out$conf.low  <- exp(out$conf.low)
+      out$conf.high <- exp(out$conf.high)
+    }
   }
   out
 }

@@ -235,6 +235,20 @@ test_that("tidy() and glance() work for first-stage objects", {
   expect_true("partial_r2" %in% names(gl))
 })
 
+test_that("tidy(exponentiate = TRUE) works for first-stage objects", {
+  data(card, package = "ivreg2r")
+  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
+                  educ | nearc4 + nearc2, data = card, first_stage = TRUE)
+  fs <- first_stage(fit)$educ
+
+  td_raw <- tidy(fs, conf.int = TRUE)
+  td_exp <- tidy(fs, conf.int = TRUE, exponentiate = TRUE)
+  expect_equal(td_exp$estimate, exp(td_raw$estimate))
+  expect_equal(td_exp$conf.low, exp(td_raw$conf.low))
+  expect_equal(td_exp$conf.high, exp(td_raw$conf.high))
+  expect_equal(td_exp$std.error, td_raw$std.error)
+})
+
 
 # ============================================================================
 # Tests: print and summary
