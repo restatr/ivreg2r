@@ -1,5 +1,6 @@
 ^data-raw$
-^tests/stata-benchmarks$
+^tests/stata-benchmarks/[^/]*\.do$
+^tests/stata-benchmarks/[^/]*\.log$
 ^tests/audit-tolerances\.R$
 ^cran-comments\.md$
 ^LICENSE\.md$
