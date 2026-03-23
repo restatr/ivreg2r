@@ -1230,8 +1230,11 @@
 
   }  # end of non-GMM VCV block
 
-  # PSD correction on final VCV
-  fit$vcov <- .psd_correct(fit$vcov, psd)
+  # PSD correction on final VCV (SW applies PSD to the meat instead,
+  # because B * psd_correct(S) * B != psd_correct(B * S * B) in general)
+  if (!isTRUE(opts$sw)) {
+    fit$vcov <- .psd_correct(fit$vcov, psd)
+  }
 
   fit
 }
