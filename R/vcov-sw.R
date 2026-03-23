@@ -159,7 +159,11 @@
   shat <- shat / (N - N_panels)
   bhat <- bhat / N_panels
   shat <- shat - bhat
-  (shat + t(shat)) / 2
+  # No forced symmetrization here: when center=TRUE with different
+  # per-equation means (eZmean_i != eZmean_j), the cross-equation block
+  # is genuinely non-symmetric. The caller places block at (i,j) and
+  # t(block) at (j,i), which ensures the full stacked matrix is symmetric.
+  shat
 }
 
 
