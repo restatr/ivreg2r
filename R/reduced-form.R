@@ -218,11 +218,15 @@
                                      center,
                                      if (center) eZmeans[[i]] else NULL,
                                      if (center) eZmeans[[j]] else NULL)
-            block <- .psd_correct(block, psd)
             meat[ri, rj] <- block * N
             if (i != j) meat[rj, ri] <- t(block) * N
           }
         }
+        # PSD correction on the full stacked meat, not per-block.
+        # Cross-equation blocks are not required to be PSD on their own;
+        # only the assembled system matrix must be. Matches Stata
+        # (livreg2.do:607-617 applies PSD to complete shat).
+        meat <- .psd_correct(meat, psd)
       } else {
         # HC path: meat blocks are Z' diag(wv_ij) Z where
         # wv_ij depends on weight type (see .hc_meat)
