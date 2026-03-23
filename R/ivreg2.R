@@ -1429,7 +1429,8 @@
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
       center = center,
-      sw = sw_flag, ivar_vec = ivar_vec
+      sw = sw_flag, ivar_vec = ivar_vec,
+      psd = psd
     )
 
     # Anderson-Rubin test (E3)
@@ -1445,7 +1446,8 @@
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
       center = center,
-      sw = sw_flag, ivar_vec = ivar_vec
+      sw = sw_flag, ivar_vec = ivar_vec,
+      psd = psd
     )
 
     # Stock-Wright S statistic (J2)
@@ -1552,7 +1554,8 @@
       time_index     = time_index,
       center         = center,
       sw             = sw_flag,
-      ivar_vec       = ivar_vec
+      ivar_vec       = ivar_vec,
+      psd            = psd
     )
   }
 

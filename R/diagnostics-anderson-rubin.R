@@ -41,7 +41,8 @@
                                      kernel = NULL, bw = NULL,
                                      time_index = NULL,
                                      center = FALSE,
-                                     sw = FALSE, ivar_vec = NULL) {
+                                     sw = FALSE, ivar_vec = NULL,
+                                     psd = NULL) {
 
   # --- A. Index vectors ---
   endo_idx <- match(endo_names, colnames(X))
@@ -102,8 +103,10 @@
                         weights, weight_type, center = center)
     } else if (isTRUE(sw)) {
       eZmean <- if (center) .sw_eZmean(Z, rf_resid, N, weights, weight_type) else NULL
-      meat <- .sw_meat(Z, rf_resid, ivar_vec, N, weights, weight_type,
-                        center = center, eZmean = eZmean) * N
+      sw_shat <- .sw_meat(Z, rf_resid, ivar_vec, N, weights, weight_type,
+                           center = center, eZmean = eZmean)
+      sw_shat <- .psd_correct(sw_shat, psd)
+      meat <- sw_shat * N
     } else {
       meat <- .hc_meat(Z, rf_resid, weights, weight_type, center = center)
     }

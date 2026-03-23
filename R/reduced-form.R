@@ -45,7 +45,8 @@
                                    kernel = NULL, bw = NULL,
                                    time_index = NULL,
                                    center = FALSE,
-                                   sw = FALSE, ivar_vec = NULL) {
+                                   sw = FALSE, ivar_vec = NULL,
+                                   psd = NULL) {
 
   # --- A. Common setup ---
   excl_idx <- match(excluded_names, colnames(Z))
@@ -102,7 +103,8 @@
       weight_type = weight_type,
       kernel = kernel, bw = bw, time_index = time_index,
       center = center,
-      sw = sw, ivar_vec = ivar_vec
+      sw = sw, ivar_vec = ivar_vec,
+      psd = psd
     )
     colnames(vcov_rf$vcov) <- rownames(vcov_rf$vcov) <- colnames(Z)
 
@@ -216,6 +218,7 @@
                                      center,
                                      if (center) eZmeans[[i]] else NULL,
                                      if (center) eZmeans[[j]] else NULL)
+            block <- .psd_correct(block, psd)
             meat[ri, rj] <- block * N
             if (i != j) meat[rj, ri] <- t(block) * N
           }
@@ -368,7 +371,8 @@
                                 kernel = NULL, bw = NULL,
                                 time_index = NULL,
                                 center = FALSE,
-                                sw = FALSE, ivar_vec = NULL) {
+                                sw = FALSE, ivar_vec = NULL,
+                                psd = NULL) {
   if (vcov_type == "iid") {
     # Classical: sigma2 * (Z'WZ)^{-1}
     rss <- if (is.null(weights)) {
@@ -389,8 +393,10 @@
                         weights, weight_type, center = center)
     } else if (isTRUE(sw)) {
       eZmean <- if (center) .sw_eZmean(Z, resid, N, weights, weight_type) else NULL
-      meat <- .sw_meat(Z, resid, ivar_vec, N, weights, weight_type,
-                        center = center, eZmean = eZmean) * N
+      sw_shat <- .sw_meat(Z, resid, ivar_vec, N, weights, weight_type,
+                           center = center, eZmean = eZmean)
+      sw_shat <- .psd_correct(sw_shat, psd)
+      meat <- sw_shat * N
     } else {
       meat <- .hc_meat(Z, resid, weights, weight_type, center = center)
     }
