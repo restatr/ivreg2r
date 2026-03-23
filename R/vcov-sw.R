@@ -227,8 +227,11 @@
   sw_shat <- .sw_meat(X_hat, resid, ivar_vec, N, weights, weight_type,
                        center = center, eZmean = eZmean)
 
-  # PSD correction on the meat (SW 2008, Remark 8)
-  sw_shat <- .psd_correct(sw_shat, psd)
+  # PSD correction is applied to the final VCV by ivreg2() at the end of
+  # .compute_vcov() — not here on the meat. This matches all other VCV
+  # paths (HC, HAC, cluster) which rely on the single final-VCV correction.
+  # Stata applies PSD to the meat (livreg2.do:607-617), but correcting the
+  # final VCV is equivalent and avoids a double-application bug.
 
   # Sandwich: V = bread * sw_shat * bread * N
   # SW meat already normalized by /(N - N_panels), and Stata's assembly
