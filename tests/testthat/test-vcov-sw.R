@@ -293,6 +293,39 @@ test_that("SW + cue matches Stata", {
 })
 
 # ============================================================================
+# SW + center + reduced_form = "system" (cross-equation blocks)
+# ============================================================================
+
+test_that("SW + center + system RF produces symmetric system VCV", {
+  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+                sw = TRUE, ivar = "nr", center = TRUE,
+                reduced_form = "system")
+  rf <- fit$reduced_form
+  expect_equal(rf$mode, "system")
+  # System VCV must be symmetric
+  expect_true(isSymmetric(rf$vcov, tol = sqrt(.Machine$double.eps)))
+  # Dimensions: (1 + K1) equations * L instruments
+  n_eq <- 1L + length(fit$endogenous)
+  L <- fit$rankzz
+  expect_equal(nrow(rf$vcov), n_eq * L)
+})
+
+test_that("SW + center + system RF matches non-center up to centering effect", {
+  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
+  fit_c <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+                  sw = TRUE, ivar = "nr", center = TRUE,
+                  reduced_form = "system")
+  fit_nc <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+                   sw = TRUE, ivar = "nr", center = FALSE,
+                   reduced_form = "system")
+  # Both should produce valid system VCVs with same dimensions
+  expect_equal(dim(fit_c$reduced_form$vcov), dim(fit_nc$reduced_form$vcov))
+  # Coefficients identical (centering only affects VCV, not point estimates)
+  expect_equal(coef(fit_c), coef(fit_nc))
+})
+
+# ============================================================================
 # Metadata tests
 # ============================================================================
 
