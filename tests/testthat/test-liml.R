@@ -139,11 +139,10 @@ test_that("LIML exactly-identified: lambda=1, matches 2SLS", {
   expect_equal(fit_liml$lambda, 1.0)
   expect_equal(fit_liml$kclass_value, 1.0)
 
-  # Coefficients must match 2SLS (near machine precision; different
-  # computation paths — cross-product vs QR — give ~1e-11 differences)
-  expect_equal(coef(fit_liml), coef(fit_2sls), tolerance = 1e-10)
-  expect_equal(vcov(fit_liml), vcov(fit_2sls), tolerance = 1e-10)
-  expect_equal(fit_liml$sigma, fit_2sls$sigma, tolerance = 1e-10)
+  # Bit-identical to 2SLS: plain just-id LIML short-circuits in .fit_kclass()
+  expect_equal(coef(fit_liml), coef(fit_2sls))
+  expect_equal(vcov(fit_liml), vcov(fit_2sls))
+  expect_equal(fit_liml$sigma, fit_2sls$sigma)
 })
 
 test_that("LIML justid matches Stata fixture", {
@@ -919,7 +918,7 @@ test_that("LIML justid robust VCV equals 2SLS robust VCV", {
                      data = card, method = "liml", vcov = "robust")
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                      data = card, vcov = "robust")
-  expect_equal(vcov(fit_liml), vcov(fit_2sls), tolerance = 1e-10)
+  expect_equal(vcov(fit_liml), vcov(fit_2sls))
 
   # Cluster (M=2 clusters → expected rank-deficient diagnostics)
   fit_liml_cl <- muffle_rank_warnings(
@@ -930,7 +929,7 @@ test_that("LIML justid robust VCV equals 2SLS robust VCV", {
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
            data = card, clusters = ~smsa66)
   )
-  expect_equal(vcov(fit_liml_cl), vcov(fit_2sls_cl), tolerance = 1e-10)
+  expect_equal(vcov(fit_liml_cl), vcov(fit_2sls_cl))
 })
 
 

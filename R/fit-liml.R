@@ -39,6 +39,21 @@
   has_intercept <- parsed$has_intercept
   w <- parsed$weights
 
+  # Plain just-identified LIML is mathematically equal to 2SLS (k = lambda = 1).
+  # Short-circuit so the result is bit-identical to .fit_2sls() rather than
+  # drifting at ulp scale through a different solve path.
+  if (method == "liml" && L == K &&
+      (is.null(fuller) || fuller == 0) && is.null(kclass)) {
+    fit_2sls <- .fit_2sls(parsed, small = small,
+                          dofminus = dofminus, sdofminus = sdofminus)
+    fit_2sls$bread_kclass <- fit_2sls$bread
+    fit_2sls$lambda <- 1.0
+    fit_2sls$kclass_value <- 1.0
+    fit_2sls$method <- "liml"
+    fit_2sls$fuller_param <- 0
+    return(fit_2sls)
+  }
+
   # --- Stage 1: project X onto column space of Z (same as 2SLS) ---
   if (is.null(w)) {
     lm_Z <- lm.fit(Z, X)

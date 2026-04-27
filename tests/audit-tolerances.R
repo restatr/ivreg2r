@@ -249,6 +249,9 @@ cat("Running model configurations...\n\n")
 .audit_model("cue_overid_cluster",
   ivreg2(f_overid, data = card, method = "cue", clusters = ~smsa66),
   "card_overid_cue", "cluster")
+.audit_model("cue_overid_weighted_aw_robust",
+  ivreg2(f_overid, data = card, method = "cue", weights = age, vcov = "robust"),
+  "card_overid_cue_weighted", "aw_robust")
 
 # --- Center ---
 .audit_model("center_hc0",
