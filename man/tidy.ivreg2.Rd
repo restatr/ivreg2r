@@ -29,17 +29,19 @@ Constructs a tibble summarizing coefficient estimates, standard errors,
 test statistics, and p-values.
 }
 \examples{
-data(card)
-fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
-              educ | nearc4, data = card, vcov = "robust")
+data(mroz)
+mroz_work <- subset(mroz, inlf == 1)
+fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+              data = mroz_work, vcov = "robust")
 tidy(fit)
 tidy(fit, conf.int = FALSE)
 tidy(fit, exponentiate = TRUE)
 
 \donttest{
 # Compare 2SLS and LIML side-by-side
-fit_liml <- ivreg2(log(wage) ~ exper + expersq + black + south |
-                    educ | nearc4 + nearc2, data = card, method = "liml")
+fit_liml <- ivreg2(lwage ~ exper + expersq | educ |
+                     age + kidslt6 + kidsge6,
+                   data = mroz_work, method = "liml")
 comparison <- rbind(
   cbind(method = "2SLS", tidy(fit)),
   cbind(method = "LIML", tidy(fit_liml))

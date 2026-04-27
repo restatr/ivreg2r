@@ -71,9 +71,10 @@ or \code{redundant} was specified.
 Set \code{diagnostics = FALSE} for a compact summary without test statistics.
 }
 \examples{
-data(card)
-fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
-              educ | nearc4 + nearc2, data = card, vcov = "robust")
+data(mroz)
+mroz_work <- subset(mroz, inlf == 1)
+fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+              data = mroz_work, vcov = "robust")
 
 # Full output with diagnostics
 glance(fit)
@@ -87,8 +88,8 @@ glance(fit)[, c("weak_id_stat", "weak_id_robust_stat")]
 
 \donttest{
 # Compare Sargan (IID) vs Hansen J (robust)
-fit_iid <- ivreg2(log(wage) ~ exper + expersq + black + south |
-                   educ | nearc4 + nearc2, data = card)
+fit_iid <- ivreg2(lwage ~ exper + expersq | educ |
+                    age + kidslt6 + kidsge6, data = mroz_work)
 data.frame(
   vcov = c("iid", "robust"),
   overid = c(glance(fit_iid)$overid_stat, glance(fit)$overid_stat),

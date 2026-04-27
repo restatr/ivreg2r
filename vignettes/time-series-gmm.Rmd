@@ -68,13 +68,15 @@ produces AC and combining `robust` with `bw` produces HAC.
 
 ```{r hac-bartlett}
 fit_hac <- ivreg2(cinf ~ unem, data = phil,
-                  vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year")
+                  vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year",
+                  small = TRUE)
 summary(fit_hac)
 ```
 
-The Bartlett kernel applies linearly declining weights to autocovariances up
-to lag `bw - 1`. This is the Newey-West (1987) estimator and is the most
-common choice in applied work.
+This is the canonical HAC specification from Stata's `ivreg2` help file
+(line 1511). The Bartlett kernel applies linearly declining weights to
+autocovariances up to lag `bw - 1`; combined with `vcov = "robust"`, this
+is the Newey-West (1987) HAC estimator.
 
 ### Choosing a kernel
 
@@ -82,17 +84,18 @@ common choice in applied work.
 
 | Kernel | Weights | Guaranteed PSD? | Typical use |
 |--------|---------|-----------------|-------------|
-| Bartlett | Linear decline | Yes | Default choice; Newey-West |
+| Bartlett | Linear decline | Yes | Default choice; Newey-West HAC |
 | Parzen | Piecewise cubic | Yes | Smoother than Bartlett |
-| Quadratic Spectral | $\sin/\cos$ based | No | Optimal MSE rate |
+| Quadratic Spectral | $\sin/\cos$ based | Yes | Andrews (1991) |
 | Truncated | Uniform up to lag | No | All lags equally weighted; Kiefer equivalence |
 | Tukey-Hanning | Cosine taper | No | Standard spectral window |
 | Tukey-Hamming | Cosine taper | No | Variant of Hanning |
 | Daniell | $\sin(x)/x$ | No | Spectral analysis |
 | Tent | Triangular | No | Simple triangular window |
 
-Only Bartlett and Parzen guarantee a positive semi-definite covariance estimate.
-For other kernels, use the `psd` option if negative eigenvalues arise.
+Bartlett, Parzen, and Quadratic Spectral guarantee a positive semi-definite
+covariance estimate (Andrews 1991). For the other kernels, use the `psd`
+option if negative eigenvalues arise.
 
 ```{r hac-kernels}
 fit_qs <- ivreg2(cinf ~ unem, data = phil,
@@ -157,10 +160,10 @@ options.
 
 ### Kiefer VCE
 
-Kiefer (1980) VCE assumes conditionally homoskedastic errors (across all
-observations --- both across individuals and across time) but allows arbitrary
-within-panel serial correlation. It is equivalent to AC VCE with a truncated
-kernel where the bandwidth equals T (all within-panel lags equally weighted):
+Kiefer (1980) VCE assumes conditional homoskedasticity across all observations
+but allows arbitrary intra-group (within-panel) serial correlation. It is
+equivalent to AC VCE with a truncated kernel where the bandwidth equals T
+(all within-panel lags equally weighted):
 
 ```{r kiefer}
 fit_kiefer <- ivreg2(
@@ -170,8 +173,9 @@ fit_kiefer <- ivreg2(
 )
 ```
 
-Use Kiefer when you believe the cross-sectional units are homogeneous but
-want to allow for arbitrary within-unit serial correlation.
+Use Kiefer when conditional homoskedasticity is plausible but you want to
+allow for arbitrary within-unit serial correlation. If heteroskedasticity is
+also a concern, use Driscoll-Kraay or cluster+kernel instead.
 
 ### Driscoll-Kraay VCE
 
@@ -212,7 +216,7 @@ fit_ck <- ivreg2(
 )
 ```
 
-This uses the Cameron-Gelbach-Miller decomposition:
+This uses the Thompson (2011) decomposition:
 $V_{CK} = V_{cluster,i} + V_{kernel,t} - V_{HAC}$, where the third term is the
 observation-level HAC variance (the individual-time intersection).
 
@@ -319,8 +323,10 @@ For iterated GMM or custom weighting, you can supply your own weighting
 matrix (`wmatrix`) and/or long-run covariance matrix (`smatrix`):
 
 ```{r wmatrix, eval = FALSE}
-# Use identity weighting matrix (heterogeneous GMM)
-n_inst <- 10  # number of instruments including exogenous
+# The instrument matrix Z includes the exogenous regressors plus the
+# excluded instruments. For `lwage ~ exper + expersq | educ | nearc2 + nearc4`,
+# Z has 5 columns: intercept, exper, expersq, nearc2, nearc4.
+n_inst <- 5
 W <- diag(n_inst)
 fit_w <- ivreg2(
   lwage ~ exper + expersq | educ | nearc2 + nearc4,

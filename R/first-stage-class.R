@@ -21,10 +21,12 @@
 #' @return A named list of `ivreg2_first_stage` objects.
 #'
 #' @examples
-#' data(card)
-#' fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-#'                 educ | nearc4 + nearc2, data = card,
-#'                 vcov = "robust", first_stage = TRUE)
+#' # Mirrors Stata `ivreg2` help-file example (line 1325): the canonical
+#' # `savefirst` demonstration.
+#' data(mroz)
+#' mroz_work <- subset(mroz, inlf == 1)
+#' fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+#'               data = mroz_work, vcov = "robust", first_stage = TRUE)
 #' fs <- first_stage(fit)
 #' coef(fs$educ)
 #' summary(fs$educ)

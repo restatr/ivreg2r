@@ -50,17 +50,19 @@ generics::augment
 #' @return A [tibble::tibble()] with columns `term`, `estimate`, `std.error`,
 #'   `statistic`, `p.value`, and optionally `conf.low`, `conf.high`.
 #' @examples
-#' data(card)
-#' fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
-#'               educ | nearc4, data = card, vcov = "robust")
+#' data(mroz)
+#' mroz_work <- subset(mroz, inlf == 1)
+#' fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+#'               data = mroz_work, vcov = "robust")
 #' tidy(fit)
 #' tidy(fit, conf.int = FALSE)
 #' tidy(fit, exponentiate = TRUE)
 #'
 #' \donttest{
 #' # Compare 2SLS and LIML side-by-side
-#' fit_liml <- ivreg2(log(wage) ~ exper + expersq + black + south |
-#'                     educ | nearc4 + nearc2, data = card, method = "liml")
+#' fit_liml <- ivreg2(lwage ~ exper + expersq | educ |
+#'                      age + kidslt6 + kidsge6,
+#'                    data = mroz_work, method = "liml")
 #' comparison <- rbind(
 #'   cbind(method = "2SLS", tidy(fit)),
 #'   cbind(method = "LIML", tidy(fit_liml))
@@ -165,9 +167,10 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95,
 #' Set \code{diagnostics = FALSE} for a compact summary without test statistics.
 #'
 #' @examples
-#' data(card)
-#' fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
-#'               educ | nearc4 + nearc2, data = card, vcov = "robust")
+#' data(mroz)
+#' mroz_work <- subset(mroz, inlf == 1)
+#' fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+#'               data = mroz_work, vcov = "robust")
 #'
 #' # Full output with diagnostics
 #' glance(fit)
@@ -181,8 +184,8 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95,
 #'
 #' \donttest{
 #' # Compare Sargan (IID) vs Hansen J (robust)
-#' fit_iid <- ivreg2(log(wage) ~ exper + expersq + black + south |
-#'                    educ | nearc4 + nearc2, data = card)
+#' fit_iid <- ivreg2(lwage ~ exper + expersq | educ |
+#'                     age + kidslt6 + kidsge6, data = mroz_work)
 #' data.frame(
 #'   vcov = c("iid", "robust"),
 #'   overid = c(glance(fit_iid)$overid_stat, glance(fit)$overid_stat),
@@ -293,9 +296,10 @@ glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
 #' @return A [tibble::tibble()] with all original data columns plus `.fitted`
 #'   and `.resid`.
 #' @examples
-#' data(card)
-#' fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
-#'               educ | nearc4, data = card)
+#' data(mroz)
+#' mroz_work <- subset(mroz, inlf == 1)
+#' fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+#'               data = mroz_work)
 #' augment(fit) |> head()
 #'
 #' # Residuals vs fitted

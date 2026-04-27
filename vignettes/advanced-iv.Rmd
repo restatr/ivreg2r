@@ -46,7 +46,9 @@ The Mroz (1987) dataset contains 753 married white women from the 1975 Panel
 Study of Income Dynamics (PSID). Of these, 428 were working (`inlf == 1`) and
 have observed wages. This is a classic IV application: years of education
 (`educ`) is potentially endogenous in a wage equation due to ability bias, and
-parental education (`motheduc`, `fatheduc`) serves as instruments.
+age and the number of young children at home serve as instruments. This is
+the canonical specification used in Stata's `ivreg2` help file and originally
+introduced by Wooldridge (2002).
 
 ```{r mroz-subset}
 mroz_work <- subset(mroz, inlf == 1)
@@ -54,10 +56,11 @@ nrow(mroz_work)
 ```
 
 Our baseline specification regresses log wages on experience and its square
-(exogenous), with education instrumented by both parents' education:
+(exogenous), with education instrumented by `age`, `kidslt6` (children under
+6), and `kidsge6` (children 6-18):
 
 ```{r mroz-baseline}
-fit_2sls <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_2sls <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                    data = mroz_work)
 summary(fit_2sls)
 ```
@@ -77,7 +80,7 @@ especially when the degree of overidentification is small. Use
 `method = "liml"`:
 
 ```{r liml}
-fit_liml <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_liml <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                    data = mroz_work, method = "liml")
 summary(fit_liml)
 ```
@@ -91,25 +94,29 @@ values of `lambda` indicate potential weak instrument problems.
 Fuller's (1977) modified LIML uses `k = lambda - alpha / (N - L)` where `L`
 is the number of instruments (including exogenous regressors) and `alpha` is
 the Fuller parameter. Unlike LIML, Fuller's estimator has finite moments.
-Use `fuller = 1` for approximate mean-unbiasedness (to order 1/N) or
-`fuller = 4` to target approximate minimum MSE:
+The standard choice is `fuller = 1`, which Baum, Schaffer & Stillman (2007,
+p. 479) cite as "a good choice" for approximate mean-unbiasedness:
 
 ```{r fuller}
-fit_fuller1 <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_fuller1 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                       data = mroz_work, fuller = 1)
-fit_fuller4 <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
-                      data = mroz_work, fuller = 4)
 ```
 
 ### k-class estimation
 
 The k-class family nests OLS (`k = 0`), 2SLS (`k = 1`), and LIML
-(`k = lambda`) as special cases. You can specify an arbitrary `k` via the
-`kclass` parameter:
+(`k = lambda`) as special cases. The `kclass` parameter accepts an arbitrary
+`k`, but the documented non-trivial choice is Nagar's (1959) bias-adjusted
+estimator with `k = 1 + (L - K) / N`, where `L - K` is the number of
+overidentifying restrictions:
 
 ```{r kclass}
-fit_k05 <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
-                  data = mroz_work, kclass = 0.5)
+N  <- nrow(mroz_work)
+L  <- 5  # 2 exogenous + 1 const + 3 excluded instruments
+K  <- 4  # 2 exogenous + 1 const + 1 endogenous
+k_nagar <- 1 + (L - K) / N
+fit_nagar <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                    data = mroz_work, kclass = k_nagar)
 ```
 
 ### When to use LIML
@@ -132,7 +139,7 @@ cluster-robust VCE, COVIV changes the bread matrix but uses the same LIML
 residuals for the meat:
 
 ```{r coviv}
-fit_coviv <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_coviv <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     data = mroz_work, method = "liml", vcov = "robust",
                     small = TRUE, coviv = TRUE)
 ```
@@ -146,8 +153,7 @@ models <- list(
   "2SLS"      = fit_2sls,
   "LIML"      = fit_liml,
   "Fuller(1)" = fit_fuller1,
-  "Fuller(4)" = fit_fuller4,
-  "k=0.5"     = fit_k05
+  "Nagar"     = fit_nagar
 )
 comparison <- do.call(rbind, lapply(names(models), function(nm) {
   tbl <- tidy(models[[nm]])
@@ -197,30 +203,28 @@ The `orthog` argument tests whether a *subset* of instruments is exogenous,
 conditional on the remaining instruments being valid. This implements the
 difference-in-Sargan C-statistic (Hayashi, 2000).
 
-For example, to test whether `motheduc` is a valid instrument while
-maintaining `fatheduc`:
+For example, to test whether `kidslt6` is a valid instrument while
+maintaining `age` and `kidsge6`:
 
 ```{r orthog}
 fit_orthog <- ivreg2(
-  lwage ~ exper + expersq | educ | motheduc + fatheduc,
-  data = mroz_work, orthog = c("motheduc")
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+  data = mroz_work, orthog = c("kidslt6")
 )
 summary(fit_orthog)
 ```
 
-The null hypothesis is that `motheduc` satisfies the exclusion restriction,
-*given that `fatheduc` is a valid instrument*. Failure to reject is consistent
-with its validity. Note that removing `motheduc` leaves the model exactly
-identified, so the restricted Sargan/J is zero and the C-statistic equals
-the full-model overidentification statistic.
+The null hypothesis is that `kidslt6` satisfies the exclusion restriction,
+*given that `age` and `kidsge6` are valid instruments*. Failure to reject is
+consistent with its validity.
 
 The test also works with robust and cluster-robust standard errors, where it
 uses the Hansen J difference form:
 
 ```{r orthog-robust}
 fit_orthog_robust <- ivreg2(
-  lwage ~ exper + expersq | educ | motheduc + fatheduc,
-  data = mroz_work, orthog = c("motheduc"), vcov = "robust", small = TRUE
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+  data = mroz_work, orthog = c("kidslt6"), vcov = "robust", small = TRUE
 )
 glance(fit_orthog_robust)[, c("orthog_stat", "orthog_p")]
 ```
@@ -262,22 +266,25 @@ that the endogenous coefficients are zero).
 
 ### When instruments are genuinely weak
 
-To illustrate the value of weak-instrument-robust inference, consider an
-overambitious specification that treats both `educ` and `exper` as endogenous,
-instrumenting with `motheduc`, `fatheduc`, and `huseduc`:
+Baum, Schaffer & Stillman (2007, p. 492) illustrate the weak-instrument
+problem with the Griliches (1976) wage equation, where `iq` (a measure of
+ability) is instrumented by `age` and `mrt` (marital status). Both
+instruments are weakly correlated with `iq` and the resulting Cragg-Donald
+F statistic falls well below conventional thresholds:
 
 ```{r weak-instruments}
+data(griliches)
 fit_weak <- ivreg2(
-  lwage ~ expersq | educ + exper | motheduc + fatheduc + huseduc,
-  data = mroz_work, small = TRUE
+  lw ~ s + expr + tenure + rns + smsa | iq | age + mrt,
+  data = griliches
 )
 summary(fit_weak)
 ```
 
-Note the weak identification F statistic --- with multiple endogenous
-variables and marginal instruments, the Cragg-Donald F drops substantially.
-In such cases, the Stock-Wright S statistic provides more reliable inference
-than standard Wald tests on the 2SLS coefficients.
+Note the weak identification F statistic --- with these marginal instruments,
+the Cragg-Donald F drops well below Stock-Yogo critical values for 2SLS. In
+such cases, the Stock-Wright S statistic and the Anderson-Rubin test provide
+size-correct inference even when 2SLS Wald tests do not.
 
 ## Two-way clustering
 
@@ -349,7 +356,7 @@ structural estimates:
 
 ```{r rf}
 fit_rf <- ivreg2(
-  lwage ~ exper + expersq | educ | motheduc + fatheduc,
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
   data = mroz_work, reduced_form = "rf"
 )
 
@@ -370,7 +377,7 @@ variance-covariance matrix:
 
 ```{r rf-system}
 fit_system <- ivreg2(
-  lwage ~ exper + expersq | educ | motheduc + fatheduc,
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
   data = mroz_work, reduced_form = "system"
 )
 
@@ -392,7 +399,7 @@ Analytic weights (`weight_type = "aweight"`, the default) are the standard
 weighted least squares weights, normalized internally to sum to N:
 
 ```{r aweight}
-fit_aw <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_aw <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                  data = mroz_work, weights = hours, weight_type = "aweight")
 ```
 
@@ -406,7 +413,7 @@ representing `w` identical observations. The effective sample size becomes
 # Create an integer frequency weight for illustration
 mroz_work$fw <- as.integer(pmin(mroz_work$hours %/% 500, 5) + 1L)
 
-fit_fw <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_fw <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                  data = mroz_work, weights = fw, weight_type = "fweight")
 nobs(fit_fw)  # N = sum(fw), not nrow(mroz_work)
 ```
@@ -418,7 +425,7 @@ They automatically force robust standard errors regardless of the `vcov`
 argument:
 
 ```{r pweight}
-fit_pw <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_pw <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                  data = mroz_work, weights = hours, weight_type = "pweight")
 fit_pw$vcov_type  # forced to "robust"
 ```
@@ -435,10 +442,10 @@ without re-estimating:
   corrections)
 
 ```{r dofminus}
-fit_base <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_base <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                    data = mroz_work, small = TRUE)
 
-fit_dof <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
+fit_dof <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                   data = mroz_work, small = TRUE,
                   dofminus = 5, sdofminus = 2)
 

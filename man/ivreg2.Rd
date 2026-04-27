@@ -338,37 +338,37 @@ k-class with automatic diagnostic tests. Uses a three-part formula for IV:
 \code{y ~ exog | endo | instruments}.
 }
 \examples{
-data(card)
+data(mroz)
+mroz_work <- subset(mroz, inlf == 1)
 
 # --- Just-identified IV: return to schooling ---
-# Card (1995) instruments education with college proximity.
-# One instrument for one endogenous variable: no overid test possible,
-# so you must defend instrument validity on substantive grounds.
-fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                educ | nearc4, data = card)
+# Wooldridge (2002) instruments education with age and number of
+# children. With one instrument for one endogenous variable, no
+# overid test is possible; instrument validity must be defended on
+# substantive grounds.
+fit <- ivreg2(lwage ~ exper + expersq | educ | age,
+              data = mroz_work)
 summary(fit)
 
 # --- Overidentified IV: testing instrument validity ---
-# Adding nearc2 provides an overidentifying restriction.
-# Now the Sargan test can detect misspecification (invalid instruments).
-fit_overid <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                       educ | nearc4 + nearc2, data = card)
+# Adding kidslt6 and kidsge6 provides overidentifying restrictions.
+# The Sargan test can now detect misspecification.
+fit_overid <- ivreg2(lwage ~ exper + expersq | educ |
+                       age + kidslt6 + kidsge6, data = mroz_work)
 summary(fit_overid)
 
 # --- Robust standard errors ---
 # With heteroskedasticity, Kleibergen-Paap diagnostics replace
 # Anderson/Cragg-Donald, and Hansen J replaces Sargan.
-fit_robust <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                       educ | nearc4 + nearc2, data = card,
+fit_robust <- ivreg2(lwage ~ exper + expersq | educ |
+                       age + kidslt6 + kidsge6, data = mroz_work,
                        vcov = "robust")
 summary(fit_robust)
 
 \donttest{
 # --- LIML: reducing finite-sample bias ---
-# With weak instruments, 2SLS is biased toward OLS.
+# With weak instruments, 2SLS is biased toward OLS;
 # LIML is approximately median-unbiased.
-data(mroz)
-mroz_work <- subset(mroz, inlf == 1)
 fit_liml <- ivreg2(lwage ~ exper + expersq | educ |
                      age + kidslt6 + kidsge6, data = mroz_work,
                      method = "liml")
@@ -383,11 +383,12 @@ fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
 fit_endog$diagnostics$endogeneity
 
 # --- Clustering ---
-# Panel data: cluster on individual to account for
-# within-person correlation across time periods.
-data(wagepan)
-fit_cl <- ivreg2(lwage ~ hours + married + union,
-                  data = wagepan, clusters = ~nr, small = TRUE)
+# Griliches (1976) wage equation, cluster on year.
+# Matches Stata `ivreg2` help-file example (line 1250).
+data(griliches)
+fit_cl <- ivreg2(lw ~ s + expr + tenure + rns + smsa |
+                   iq | med + kww + age,
+                 data = griliches, clusters = ~year, small = TRUE)
 summary(fit_cl)
 }
 

@@ -24,9 +24,10 @@ Adds \code{.fitted} and \code{.resid} columns to the model frame (or user-suppli
 data).
 }
 \examples{
-data(card)
-fit <- ivreg2(log(wage) ~ exper + expersq + black + south |
-              educ | nearc4, data = card)
+data(mroz)
+mroz_work <- subset(mroz, inlf == 1)
+fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+              data = mroz_work)
 augment(fit) |> head()
 
 # Residuals vs fitted

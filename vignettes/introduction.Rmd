@@ -264,13 +264,15 @@ t-statistics and F-tests replace z-statistics and chi-squared tests.
 
 ### Cluster-robust standard errors
 
-When observations are correlated within groups (e.g., individuals in the same
-metropolitan area), use the `clusters` argument:
+When observations are correlated within groups (e.g., repeated observations
+on the same individual in panel data), use the `clusters` argument. Here we
+illustrate with the Wooldridge wage panel, clustering on individual:
 
 ```{r cluster}
+data(wagepan)
 fit_cluster <- ivreg2(
-  lwage ~ exper + expersq + black + south + smsa + married | educ | nearc4,
-  data = card, clusters = ~ smsa66, small = TRUE
+  lwage ~ educ + black + hisp + exper + expersq + married + union,
+  data = wagepan, clusters = ~ nr, small = TRUE
 )
 summary(fit_cluster)
 ```
@@ -302,12 +304,15 @@ For HAC, AC, Kiefer, and Driscoll-Kraay VCE options, see
 ## Weighted estimation
 
 Analytic weights (equivalent to Stata's `[aw=varname]`) are specified with the
-`weights` argument:
+`weights` argument. We illustrate with the Mroz data using hours worked as
+an analytic weight on a wage equation:
 
 ```{r weights}
+data(mroz)
+mroz_work <- subset(mroz, inlf == 1)
 fit_wt <- ivreg2(
-  lwage ~ exper + expersq + black + south + smsa + married | educ | nearc4,
-  data = card, weights = weight
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+  data = mroz_work, weights = hours
 )
 summary(fit_wt)
 ```
@@ -317,7 +322,8 @@ Coefficients, standard errors, and all test statistics are unaffected by weight
 scale.
 
 `ivreg2r` also supports frequency weights (`weight_type = "fweight"`) and
-probability/sampling weights (`weight_type = "pweight"`). See
+probability/sampling weights (`weight_type = "pweight"`). The latter forces
+robust standard errors regardless of the `vcov` setting. See
 `vignette("advanced-iv")` for details.
 
 ## Beyond 2SLS
