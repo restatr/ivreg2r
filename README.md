@@ -198,4 +198,5 @@ bibtex=TRUE)', 'toBibtex(.)', or set
 
 ## License
 
-MIT
+GPL-3. Adapted from the Stata package `ivreg2` by Christopher F Baum,
+Mark E Schaffer, and Steven Stillman, also distributed under GPL-3.
