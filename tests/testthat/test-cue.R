@@ -500,20 +500,24 @@ test_that("Weighted CUE coefficients match Stata fixture", {
   stata_names <- fixture$term
   r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
 
-  # CUE BFGS basin noise can produce ~1e-7 absolute drift on small-magnitude
-  # coefficients; relative-only tolerance blows up when |s| is small. Use
-  # max(rel * |s|, abs_floor) so the absolute floor takes over for tiny coefs.
+  # `black` (~0.017) is the only term where CUE BFGS basin noise (~1.6e-7
+  # absolute) breaches relative tolerance. Apply the absolute floor only to
+  # this term so detection stays tight on the other five (e.g., `expersq`
+  # at 1.77e-3 still catches sub-1e-8 absolute drifts via 5e-6 relative).
   for (i in seq_len(nrow(fixture))) {
     r_coef <- unname(coef(fit)[r_names[i]])
     s_coef <- fixture$estimate[i]
-    expect_lt(abs(r_coef - s_coef),
-              max(cue_tol$coef * abs(s_coef), 1e-6),
-              label = paste("Coef:", r_names[i]))
     r_se <- unname(sqrt(diag(vcov(fit)))[r_names[i]])
     s_se <- fixture$std_error[i]
-    expect_lt(abs(r_se - s_se),
-              max(cue_tol$se * abs(s_se), 1e-6),
-              label = paste("SE:", r_names[i]))
+    if (r_names[i] == "black") {
+      expect_lt(abs(r_coef - s_coef), 1e-6, label = "Coef: black")
+      expect_lt(abs(r_se   - s_se),   1e-6, label = "SE: black")
+    } else {
+      expect_equal(r_coef, s_coef, tolerance = cue_tol$coef,
+                   info = paste("Coef:", r_names[i]))
+      expect_equal(r_se,   s_se,   tolerance = cue_tol$se,
+                   info = paste("SE:",   r_names[i]))
+    }
   }
 })
 
