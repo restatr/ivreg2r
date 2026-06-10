@@ -3,6 +3,11 @@
 
 # ivreg2r
 
+<!-- badges: start -->
+
+[![R-CMD-check](https://github.com/restatr/ivreg2r/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/restatr/ivreg2r/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
 Instrumental variables and GMM estimation for R with built-in
 diagnostics, designed to reproduce Stata’s
 [`ivreg2`](https://ideas.repec.org/c/boc/bocode/s425401.html) output
