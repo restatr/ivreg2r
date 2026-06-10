@@ -185,11 +185,20 @@
     # DK clustering on tvar is handled after cluster construction
   }
 
-  # pweight forces robust VCE (Stata: [pw=weight] → robust)
-  # Must run BEFORE kernel routing so kernel + pweight + iid → HAC (not AC)
-  if (weight_type == "pweight" && vcov == "iid" && is.null(clusters)) {
-    message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".')
-    vcov <- "robust"
+  # pweight forces robust VCE (Stata: [pw=weight] → robust, unconditionally;
+  # ivreg2.ado lines 353-357 set the robust flag before any VCE routing, so
+  # [pw=] + bw() yields HAC and [pw=] + kiefer yields a heteroskedasticity-
+  # robust Kiefer VCE). Must run BEFORE kernel routing so kernel + pweight +
+  # iid → HAC (not AC), and must also promote an explicit (or kiefer-implied)
+  # "AC" to "HAC".
+  if (weight_type == "pweight" && is.null(clusters)) {
+    if (vcov == "iid") {
+      message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".')
+      vcov <- "robust"
+    } else if (vcov == "AC") {
+      message('pweight implies robust VCE; overriding vcov = "AC" to vcov = "HAC".')
+      vcov <- "HAC"
+    }
   }
 
   # --- Validate bw / tvar / ivar ---
@@ -1617,12 +1626,16 @@
 #' @param data A data frame containing the variables in the formula.
 #' @param weights Optional analytic weights expression (evaluated in `data`),
 #'   equivalent to Stata's `[aw=varname]`. Must be strictly positive.
-#'   Weights are normalized internally to sum to N, following Stata's
-#'   convention. This makes sigma (RMSE) scale-invariant: multiplying all
-#'   weights by a constant does not change sigma. Coefficients, standard
-#'   errors, and all test statistics are unaffected by scale.
+#'   For aweights and pweights, the weights are normalized internally to sum
+#'   to N, following Stata's convention. This makes sigma (RMSE)
+#'   scale-invariant for those types: multiplying all weights by a constant
+#'   changes no coefficients, standard errors, or test statistics. Frequency
+#'   and importance weights are *not* normalized --- they redefine N as
+#'   `sum(weights)` (see `weight_type`), so their scale matters by
+#'   construction.
 #'
-#'   **Note:** sigma will differ from [lm()]`(..., weights = w)` by a factor
+#'   **Note:** for aweights and pweights, sigma will differ from
+#'   [lm()]`(..., weights = w)` by a factor
 #'   of `sqrt(N / sum(w))` because `lm()` uses raw (unnormalized) weights.
 #'   Coefficients are identical to `lm()` for OLS; SEs and the VCV matrix
 #'   additionally match `lm()` when `small = TRUE` (the default
@@ -1846,10 +1859,10 @@
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`; Stata's `rf` option *displays* the
 #'   reduced form without storing it). `"system"` stores the full system of
-#'   y + all endogenous variables regressed on Z, with cross-equation VCV.
-#'   `"system"` has no single Stata equivalent; it combines the output of
-#'   `saverf` and `savefirst` in one object. Silently ignored for OLS
-#'   models.
+#'   y + all endogenous variables regressed on Z, with cross-equation VCV
+#'   (equivalent to Stata's `savesfirst`, an option present in `ivreg2.ado`
+#'   but absent from its help file; Stata's `sfirst` displays the system
+#'   without storing it). Silently ignored for OLS models.
 #' @param first_stage Logical: if `TRUE`, store extractable first-stage
 #'   regression objects on the fitted model. Access them via
 #'   [first_stage()]. Each object supports [coef()], [vcov()],

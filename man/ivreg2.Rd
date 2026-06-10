@@ -53,12 +53,16 @@ ivreg2(
 
 \item{weights}{Optional analytic weights expression (evaluated in \code{data}),
 equivalent to Stata's \verb{[aw=varname]}. Must be strictly positive.
-Weights are normalized internally to sum to N, following Stata's
-convention. This makes sigma (RMSE) scale-invariant: multiplying all
-weights by a constant does not change sigma. Coefficients, standard
-errors, and all test statistics are unaffected by scale.
+For aweights and pweights, the weights are normalized internally to sum
+to N, following Stata's convention. This makes sigma (RMSE)
+scale-invariant for those types: multiplying all weights by a constant
+changes no coefficients, standard errors, or test statistics. Frequency
+and importance weights are \emph{not} normalized --- they redefine N as
+\code{sum(weights)} (see \code{weight_type}), so their scale matters by
+construction.
 
-\strong{Note:} sigma will differ from \code{\link[=lm]{lm()}}\verb{(..., weights = w)} by a factor
+\strong{Note:} for aweights and pweights, sigma will differ from
+\code{\link[=lm]{lm()}}\verb{(..., weights = w)} by a factor
 of \code{sqrt(N / sum(w))} because \code{lm()} uses raw (unnormalized) weights.
 Coefficients are identical to \code{lm()} for OLS; SEs and the VCV matrix
 additionally match \code{lm()} when \code{small = TRUE} (the default
@@ -315,10 +319,10 @@ Equivalent to Stata's \code{sw} option (labeled "BETA VERSION" in Stata).}
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression
 (equivalent to Stata's \code{saverf}; Stata's \code{rf} option \emph{displays} the
 reduced form without storing it). \code{"system"} stores the full system of
-y + all endogenous variables regressed on Z, with cross-equation VCV.
-\code{"system"} has no single Stata equivalent; it combines the output of
-\code{saverf} and \code{savefirst} in one object. Silently ignored for OLS
-models.}
+y + all endogenous variables regressed on Z, with cross-equation VCV
+(equivalent to Stata's \code{savesfirst}, an option present in \code{ivreg2.ado}
+but absent from its help file; Stata's \code{sfirst} displays the system
+without storing it). Silently ignored for OLS models.}
 
 \item{first_stage}{Logical: if \code{TRUE}, store extractable first-stage
 regression objects on the fitted model. Access them via

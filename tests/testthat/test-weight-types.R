@@ -95,6 +95,38 @@ test_that("pweight + iid + small overrides to robust with message", {
   expect_equal(fit$vcov_type, "robust")
 })
 
+test_that("pweight + explicit AC promotes to HAC with message (Stata parity)", {
+  # Stata forces robust unconditionally for [pw=] (ivreg2.ado:353-357), so
+  # pw + kernel yields HAC even when the user asked for AC. Verified against
+  # Stata: educ SE matches to all printed digits (2026-06-10 session).
+  d <- mtcars
+  d$t <- seq_len(nrow(d))
+  expect_message(
+    fit <- ivreg2(mpg ~ wt + hp, data = d, weights = disp,
+                  weight_type = "pweight", vcov = "AC",
+                  kernel = "bartlett", bw = 3, tvar = "t"),
+    'pweight implies robust VCE'
+  )
+  expect_equal(fit$vcov_type, "HAC")
+})
+
+test_that("pweight + kiefer yields heteroskedasticity-robust Kiefer with message", {
+  # Stata: [pw=] + kiefer reports "robust to heteroskedasticity and
+  # within-cluster autocorrelation (Kiefer)"; our equivalent is the
+  # kiefer-implied AC promoted to HAC. Verified against Stata numerically.
+  d <- mtcars
+  d$id <- rep(1:8, each = 4)
+  d$t <- rep(1:4, times = 8)
+  expect_message(
+    fit <- ivreg2(mpg ~ wt + hp, data = d, weights = disp,
+                  weight_type = "pweight", kiefer = TRUE,
+                  tvar = "t", ivar = "id"),
+    'pweight implies robust VCE'
+  )
+  expect_equal(fit$vcov_type, "HAC")
+  expect_true(fit$kiefer)
+})
+
 test_that("pweight + cluster does not override vcov", {
   fit <- suppressMessages(
     ivreg2(mpg ~ wt + hp, data = mtcars, weights = disp,

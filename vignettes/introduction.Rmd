@@ -437,12 +437,15 @@ unweighted fit describes the sample.
 
 `ivreg2r` also supports analytic weights (the default `weight_type`,
 equivalent to Stata's `[aw=]`), frequency weights (`"fweight"`), and
-importance weights (`"iweight"`). Weights are internally normalized to sum to
-N where Stata does the same, so coefficients, standard errors, and all test
-statistics are unaffected by weight scale. One consequence of following
-Stata's convention: for weighted models, sigma (the Root MSE) differs from
-`lm()`'s by a factor of `sqrt(N / sum(w))`, because `lm()` uses raw weights.
-See `?ivreg2` for details on each weight type.
+importance weights (`"iweight"`). For aweights and pweights, the weights are
+normalized internally to sum to N (Stata's convention), so coefficients,
+standard errors, and all test statistics are unaffected by the scale of the
+weights; one consequence is that for these types sigma (the Root MSE)
+differs from `lm()`'s by a factor of `sqrt(N / sum(w))`, because `lm()` uses
+raw weights. Frequency and importance weights are *not* normalized --- they
+redefine the sample size as `sum(weights)`, so for them the scale of the
+weights matters by construction. See `?ivreg2` for details on each weight
+type.
 
 ## Beyond 2SLS
 
