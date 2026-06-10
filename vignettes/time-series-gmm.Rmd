@@ -385,11 +385,14 @@ convergence issues.
 ### Evaluating the CUE objective at a point
 
 Use `b0` to evaluate the CUE objective function at a specific parameter
-vector without optimization. The canonical use is Stock-Wright-style
-inference by hand: the help file (lines 1425--1449) evaluates the CUE
-objective on the Mroz data at a point that sets the endogenous coefficient
-(`educ`) to zero and the exogenous coefficients to their OLS values, then
-displays the objective value with `di e(j)`:
+vector without optimization. The canonical use is constructing the
+Stock-Wright (2000) S statistic by hand: the help file (lines 1425--1449)
+evaluates the CUE objective on the Mroz data at a point that sets the
+endogenous coefficient (`educ`) to zero and the exogenous coefficients to
+their OLS values --- fixing the exogenous coefficients at OLS is equivalent
+to partialling them out, so the resulting objective value *is* the
+Stock-Wright S statistic for H0: the `educ` coefficient is zero and the
+orthogonality conditions are valid. Stata displays it with `di e(j)`:
 
 ```{r b0}
 mroz_work <- subset(mroz, inlf == 1)
@@ -403,14 +406,15 @@ fit_b0 <- ivreg2(
 fit_b0$diagnostics$overid$stat  # the objective value, Stata's e(j)
 ```
 
-Calibrating this value against a chi-squared distribution requires care
-about degrees of freedom (the displayed value tests all L moment conditions
-at the fully specified point, not the L − K overidentifying restrictions),
-which is why we follow Stata in displaying the raw objective value. For
-ready-made weak-instrument-robust inference on the endogenous coefficients,
-use the Stock-Wright S statistic that `summary()` reports automatically
-(chi-squared with L1 = number-of-excluded-instruments degrees of freedom,
-exogenous regressors partialled out).
+You can confirm the identity against the Stock-Wright S statistic that
+`summary()` reports automatically for the regular (optimized) fit of the
+same model --- the two values agree exactly, and the correct reference
+distribution is chi-squared with L1 = `r length(fit_b0$instruments)`
+(number of excluded instruments) degrees of freedom. One caution: the
+p-value stored alongside the raw objective in `$overid$p` is calibrated
+against L − K overidentification degrees of freedom, which is *not* the
+right reference distribution for this use --- display the raw value, as
+Stata does, and take the S-statistic inference from `summary()`.
 
 (The canonical `b0` example is cross-sectional; the mechanism is identical
 under a kernel-based VCE. Evaluating the objective at a candidate optimum
@@ -506,7 +510,9 @@ are redundant if using them does not improve the asymptotic efficiency of
 the estimation (help-file lines 560--563), conditional on the model being
 identified by the remaining instruments. A rejection means the tested
 instruments are conditionally relevant --- they reduce the asymptotic
-variance of the estimates and are worth keeping.
+variance of the estimates and are worth keeping *provided their validity is
+maintained*; the redundancy test says nothing about whether they satisfy
+the exclusion restrictions.
 
 ### Centering moment conditions
 
