@@ -144,11 +144,27 @@ test_that("pweight + kiefer IV fit uses robust (KP) identification tests", {
            kiefer = TRUE, tvar = "tt", ivar = "id2")
   )
   expect_match(fit_pw$diagnostics$underid$test_name, "Kleibergen-Paap")
-  expect_false(is.null(fit_pw$diagnostics$weak_id_robust))
+  expect_true(is.finite(fit_pw$diagnostics$underid$stat))
+  expect_true(is.finite(fit_pw$diagnostics$weak_id_robust$stat))
+
+  # The dispatch contract is "robust, no kernel": the kiefer fit's id tests
+  # must coincide exactly with those of a plain robust pweight fit of the
+  # same model (Stata's ranktest receives only the robust flag under
+  # kiefer). This also rules out the NA error-fallback path, which shares
+  # the KP labels.
+  fit_rob <- suppressMessages(
+    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = d,
+           weights = weight, weight_type = "pweight", vcov = "robust")
+  )
+  expect_equal(fit_pw$diagnostics$underid$stat,
+               fit_rob$diagnostics$underid$stat)
+  expect_equal(fit_pw$diagnostics$weak_id_robust$stat,
+               fit_rob$diagnostics$weak_id_robust$stat)
 
   fit_plain <- ivreg2(lwage ~ exper + expersq | educ | nearc4, data = d,
                       kiefer = TRUE, tvar = "tt", ivar = "id2")
   expect_match(fit_plain$diagnostics$underid$test_name, "Anderson")
+  expect_true(is.finite(fit_plain$diagnostics$underid$stat))
   expect_null(fit_plain$diagnostics$weak_id_robust)
 })
 
