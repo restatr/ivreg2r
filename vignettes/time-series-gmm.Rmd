@@ -16,10 +16,10 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-When errors are autocorrelated, heteroskedastic across time, or correlated
-across individuals in a panel, the classical and HC-robust standard errors
-from `vignette("introduction")` are inconsistent. This vignette covers the
-tools `ivreg2r` provides for these settings:
+Heteroskedasticity-robust standard errors remain consistent under arbitrary
+heteroskedasticity, but neither they nor classical standard errors survive
+*autocorrelation* or *cross-sectional dependence* --- the settings this
+vignette is about. It covers the tools `ivreg2r` provides for them:
 
 - **HAC and AC standard errors** for time-series data
 - **Panel VCE options**: Kiefer, Driscoll-Kraay, and cluster+kernel
@@ -29,12 +29,17 @@ tools `ivreg2r` provides for these settings:
 - **Partialling out regressors** for high-dimensional fixed effects
 - **Additional options**: redundancy tests, moment centering, PSD corrections
 
-We use two datasets: the Phillips (1958) curve data (pure time series) and the
-Wooldridge wage panel.
+We use five datasets: the U.S. Phillips-curve data from Wooldridge (annual,
+1948--1996; pure time series), the Stock-Watson quarterly macro data used by
+Baum, Schaffer & Stillman (2007), the Mroz (1987) labor-supply data, the
+Card (1995) schooling data, and the Wooldridge wage panel.
 
 ```{r setup}
 library(ivreg2r)
 data(phillips)
+data(stockwatson)
+data(mroz)
+data(card)
 data(wagepan)
 ```
 
@@ -47,9 +52,15 @@ inflation and unemployment. A simple expectations-augmented Phillips curve
 regresses the change in inflation on unemployment:
 
 ```{r phillips-ols}
-phil <- na.omit(phillips)
-fit_iid <- ivreg2(cinf ~ unem, data = phil)
+fit_iid <- ivreg2(cinf ~ unem, data = phillips)
 ```
+
+Note that we pass the data frame as-is: `ivreg2()` drops incomplete cases
+per specification, exactly as Stata does, so each fit uses the largest
+estimation sample its own variables allow. (Running `na.omit()` on the whole
+data frame first would also drop rows whose only missing values are in
+*unused* lag columns --- here it would discard 1949 and silently change the
+canonical results below.)
 
 With time-series data, the errors are likely autocorrelated, making classical
 SEs inconsistent. HAC (heteroskedasticity and autocorrelation consistent)
@@ -67,16 +78,18 @@ serial correlation. This matches Stata's `ivreg2`, where `bw`/`kernel` alone
 produces AC and combining `robust` with `bw` produces HAC.
 
 ```{r hac-bartlett}
-fit_hac <- ivreg2(cinf ~ unem, data = phil,
+fit_hac <- ivreg2(cinf ~ unem, data = phillips,
                   vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year",
                   small = TRUE)
 summary(fit_hac)
 ```
 
 This is the canonical HAC specification from Stata's `ivreg2` help file
-(line 1511). The Bartlett kernel applies linearly declining weights to
-autocovariances up to lag `bw - 1`; combined with `vcov = "robust"`, this
-is the Newey-West (1987) HAC estimator.
+(line 1511), reproduced on the full N = `r nobs(fit_hac)` estimation sample.
+The Bartlett kernel applies linearly declining weights to autocovariances up
+to lag `bw - 1`; combined with `vcov = "robust"`, this is the Newey-West
+(1987) HAC estimator (the help file pairs the example with
+`newey cinf unem, lag(2)`).
 
 ### Choosing a kernel
 
@@ -91,42 +104,42 @@ is the Newey-West (1987) HAC estimator.
 | Tukey-Hanning | Cosine taper | No | Standard spectral window |
 | Tukey-Hamming | Cosine taper | No | Variant of Hanning |
 | Daniell | $\sin(x)/x$ | No | Spectral analysis |
-| Tent | Triangular | No | Simple triangular window |
+| Tent | Tent-shaped spectral window | No | Spectral analysis |
 
 Bartlett, Parzen, and Quadratic Spectral guarantee a positive semi-definite
 covariance estimate (Andrews 1991). For the other kernels, use the `psd`
 option if negative eigenvalues arise.
 
-```{r hac-kernels}
-fit_qs <- ivreg2(cinf ~ unem, data = phil,
-                 kernel = "qs", bw = 3, tvar = "year")
-```
-
 ### Automatic bandwidth
 
 Use `bw = "auto"` for the Newey-West (1994) plug-in bandwidth selector, which
 chooses the bandwidth from the data. This is available for Bartlett, Parzen,
-and Quadratic Spectral kernels:
+and Quadratic Spectral kernels. Pairing it with the Quadratic Spectral
+kernel replicates the help-file example at line 1504
+(`ivreg2 cinf unem, kernel(qs) bw(auto)`):
 
 ```{r hac-auto}
-fit_auto <- ivreg2(cinf ~ unem, data = phil,
-                   kernel = "bartlett", bw = "auto", tvar = "year")
+fit_auto <- ivreg2(cinf ~ unem, data = phillips,
+                   kernel = "qs", bw = "auto", tvar = "year")
 fit_auto$bw  # selected bandwidth
 ```
 
 ### HAC vs AC
 
 AC (autocorrelation consistent) standard errors assume homoskedasticity but
-allow for autocorrelation. Use `vcov = "AC"` explicitly:
+allow for autocorrelation. Use `vcov = "AC"` explicitly --- this is an exact
+replication of the help-file AC example at line 1501
+(`ivreg2 cinf unem, bw(3)`; Bartlett is Stata's default kernel):
 
 ```{r ac}
-fit_ac <- ivreg2(cinf ~ unem, data = phil,
+fit_ac <- ivreg2(cinf ~ unem, data = phillips,
                  vcov = "AC", kernel = "bartlett", bw = 3, tvar = "year")
 ```
 
 HAC allows both heteroskedasticity and autocorrelation; AC assumes
-homoskedastic errors with autocorrelation. AC is more efficient when
-homoskedasticity holds, at the cost of inconsistency if it does not.
+homoskedastic errors with autocorrelation. When homoskedasticity holds, the
+AC estimator may perform better in finite samples, at the cost of
+inconsistency if it does not.
 
 ### Kernel-based VCE with IV
 
@@ -137,19 +150,32 @@ instrument unemployment with its second lag, using HAC (adding
 ```{r hac-iv}
 fit_iv_hac <- ivreg2(
   cinf ~ unem_1 | unem | unem_2,
-  data = phil, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year"
+  data = phillips, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year"
 )
 summary(fit_iv_hac)
 ```
 
-All diagnostics (overidentification, identification, endogeneity) automatically
-adapt to the kernel-based VCE.
+The reported diagnostics automatically adapt to the kernel-based VCE: the
+identification tests become Kleibergen-Paap rk statistics and the
+endogeneity test becomes a difference in Hansen J statistics. (This
+particular model is exactly identified --- one excluded instrument for one
+endogenous regressor --- so the overidentification line reads "excluded";
+the overidentified Stock-Watson example below shows a kernel-based Hansen
+J in action.) Bear in mind that the Stock-Yogo critical values printed
+alongside the weak-identification statistic are tabulated for the
+Cragg-Donald statistic under i.i.d. errors; Baum, Schaffer & Stillman
+(2007, p. 490) advise applying them to the Kleibergen-Paap rk Wald F only
+with caution.
 
 > **Stata parity note:** The Kleibergen-Paap identification tests
-> (underidentification and weak identification) always use the Bartlett kernel
-> internally, regardless of the kernel specified for the VCE. This matches
-> Stata's `ivreg2`, where `ranktest` hard-codes the Bartlett kernel. The
-> overidentification test uses the user-specified kernel as expected.
+> (underidentification and weak identification) always use the Bartlett
+> kernel internally, regardless of the kernel specified for the VCE. This
+> matches the behavior of Stata's `ivreg2` --- not by design but by a quirk
+> in its plumbing: `ranktest` itself accepts a `kernel()` option
+> (ranktest.ado line 104), but `ivreg2.ado` captures only the bandwidth
+> (`s(bwopt)`) from its option parser and never the kernel (`s(kernopt)`),
+> so `ranktest` falls back to its Bartlett default. The overidentification
+> test uses the user-specified kernel as expected.
 
 ## Panel VCE options
 
@@ -162,8 +188,9 @@ options.
 
 Kiefer (1980) VCE assumes conditional homoskedasticity across all observations
 but allows arbitrary intra-group (within-panel) serial correlation. It is
-equivalent to AC VCE with a truncated kernel where the bandwidth equals T
-(all within-panel lags equally weighted):
+equivalent to AC VCE with a truncated kernel at bandwidth T − 1, which puts
+weight one on every lag available within a panel of length T (bandwidths
+beyond T − 1 are rejected, as in Stata):
 
 ```{r kiefer}
 fit_kiefer <- ivreg2(
@@ -191,8 +218,10 @@ fit_dk <- ivreg2(
 )
 ```
 
-The `dkraay` argument specifies the bandwidth (here, Bartlett with 3 lags).
-DK is robust to arbitrary cross-sectional dependence --- useful when common
+The `dkraay` argument specifies the bandwidth (here, Bartlett with bandwidth
+3, i.e. autocovariances up to 2 lags --- for the Bartlett kernel the number
+of lags is the bandwidth minus one). DK is robust to arbitrary
+cross-sectional dependence --- useful when common
 shocks (business cycles, policy changes) affect all individuals
 simultaneously. DK is equivalent to clustering on the time variable with a
 kernel (Bartlett by default; can be overridden with the `kernel` argument).
@@ -201,12 +230,11 @@ kernel (Bartlett by default; can be overridden with the `kernel` argument).
 a reasonably long time-series dimension for the asymptotics to apply. It is
 not appropriate for panels with very few time periods.
 
-### Cluster + kernel (Thompson)
+### Cluster + kernel
 
-Thompson (2011) two-way cluster+kernel VCE accounts for both within-panel
-correlation (via clustering on `ivar`) and cross-panel persistence (via a
-kernel applied to time-aggregated scores). Specify both `clusters` and
-`kernel`:
+Two-way cluster+kernel VCE accounts for both within-panel correlation (via
+clustering on `ivar`) and autocorrelated cross-panel shocks (via a kernel
+applied to time-aggregated scores). Specify both `clusters` and `kernel`:
 
 ```{r ck}
 fit_ck <- ivreg2(
@@ -216,9 +244,15 @@ fit_ck <- ivreg2(
 )
 ```
 
-This uses the Thompson (2011) decomposition:
-$V_{CK} = V_{cluster,i} + V_{kernel,t} - V_{HAC}$, where the third term is the
-observation-level HAC variance (the individual-time intersection).
+The variance decomposition is
+$V_{CK} = V_{cluster,i} + V_{kernel,t} - V_{HAC}$, where the third term is
+the observation-level HAC variance (the individual-time intersection),
+following the two-way structure of Cameron, Gelbach & Miller (2011) and
+Thompson (2011). Note that Thompson's specific proposal is this estimator
+with the *truncated* kernel, with the bandwidth chosen as the number of
+periods after which the common autocorrelated shocks can be ignored
+(help-file lines 237--246); the Bartlett variant shown here is a documented
+generalization rather than Thompson's own estimator.
 
 ### When to use which
 
@@ -241,11 +275,28 @@ to exploit overidentifying restrictions more efficiently than 2SLS under
 non-IID errors. When exactly identified, GMM2S and 2SLS produce identical
 coefficients.
 
+We follow the worked example of Baum, Schaffer & Stillman (2007, p. 476): a
+quarterly U.S. Phillips-curve equation from Stock & Watson's textbook
+dataset, with the change in inflation regressed on the unemployment rate,
+instrumented by lags of GDP growth, the T-bill rate, the exchange rate, and
+the T-bond rate. The errors are serially correlated, so the GMM weighting
+matrix is HAC (Bartlett kernel, bandwidth 5). First the 2SLS baseline:
+
+```{r sw-2sls}
+fit_sw_2sls <- ivreg2(
+  dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1,
+  data = stockwatson
+)
+tidy(fit_sw_2sls)[tidy(fit_sw_2sls)$term == "UR", ]
+```
+
+Then HAC two-step GMM:
+
 ```{r gmm2s}
 fit_gmm <- ivreg2(
-  cinf ~ unem_1 | unem | unem_2 + inf_2,
-  data = phil, method = "gmm2s",
-  kernel = "bartlett", bw = 3, tvar = "year"
+  dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1,
+  data = stockwatson, method = "gmm2s",
+  vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date"
 )
 summary(fit_gmm)
 ```
@@ -253,23 +304,36 @@ summary(fit_gmm)
 The first step estimates the model by 2SLS and computes the optimal weighting
 matrix from the residuals and the specified VCE type. The second step
 re-estimates using this optimal weighting. The Hansen J statistic tests the
-overidentifying restrictions.
+overidentifying restrictions. Replicating BSS's narrative: the iid 2SLS
+estimate of the unemployment coefficient is
+`r sprintf("%.3f", coef(fit_sw_2sls)["UR"])` and clearly significant, while the
+HAC-GMM estimate drops to `r sprintf("%.3f", coef(fit_gmm)["UR"])`
+(p = `r round(tidy(fit_gmm)$p.value[tidy(fit_gmm)$term == "UR"], 3)`) ---
+accounting for the serial correlation removes the apparent significance.
+
+Two finite-sample cautions before reaching for GMM2S by default. The optimal
+weighting matrix S is a function of fourth moments of the data, and
+estimating fourth moments well can require very large samples; the practical
+consequence is that efficient-GMM Wald tests tend to over-reject in finite
+samples (Baum, Schaffer & Stillman, 2003, Section 2.7, citing Hayashi 2000,
+p. 215). Performance also degrades as the instrument count grows relative to
+the sample (Baum, Schaffer & Stillman, 2007, p. 488). In small samples with
+modest overidentification, robust 2SLS may be preferable.
 
 ### GMM2S with robust/cluster VCE
 
-GMM2S works with all VCE types:
+GMM2S works with all VCE types --- here heteroskedasticity-robust (no
+kernel) on the Card schooling data:
 
 ```{r gmm2s-robust}
 fit_gmm_robust <- ivreg2(
-  lwage ~ exper + expersq + black + south + smsa + married |
+  lwage ~ exper + expersq + black + smsa + south + smsa66 +
+    reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669 |
     educ | nearc2 + nearc4,
   data = card, method = "gmm2s", vcov = "robust", small = TRUE
 )
+tidy(fit_gmm_robust)[tidy(fit_gmm_robust)$term == "educ", ]
 ```
-
-In practice, efficiency gains of GMM2S over 2SLS are modest for
-nearly-identified models (few overidentifying restrictions). The gains are
-larger when there are many instruments relative to endogenous variables.
 
 ## CUE estimation
 
@@ -277,74 +341,90 @@ larger when there are many instruments relative to endogenous variables.
 
 The Continuously-Updated Estimator (CUE) jointly optimizes the GMM objective
 over both the parameter vector and the weighting matrix. CUE is the GMM
-generalization of LIML to non-IID errors: under iid errors (no
-robust/cluster/kernel VCE), CUE and LIML with `coviv = TRUE` produce identical
-results to machine precision.
+generalization of LIML to non-IID errors: with the
+conditional-homoskedasticity (iid) weighting, CUE and LIML with
+`coviv = TRUE` are mathematically identical, and the computed results agree
+up to optimizer tolerance (CUE is found by numerical optimization).
+
+Continuing the Stock-Watson equation, this replicates Baum, Schaffer &
+Stillman (2007, Section 4.3, p. 480):
 
 ```{r cue}
 fit_cue <- ivreg2(
-  cinf ~ unem_1 | unem | unem_2 + inf_2,
-  data = phil, method = "cue",
-  kernel = "bartlett", bw = 3, tvar = "year"
+  dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1,
+  data = stockwatson, method = "cue",
+  vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date"
 )
 summary(fit_cue)
 ```
 
+This completes BSS's narrative arc for the unemployment coefficient: 2SLS
+`r sprintf("%.3f", coef(fit_sw_2sls)["UR"])` (significant) → HAC GMM2S
+`r sprintf("%.3f", coef(fit_gmm)["UR"])`
+(p = `r round(tidy(fit_gmm)$p.value[tidy(fit_gmm)$term == "UR"], 3)`) → CUE
+`r sprintf("%.3f", coef(fit_cue)["UR"])`
+(p = `r round(tidy(fit_cue)$p.value[tidy(fit_cue)$term == "UR"], 3)`), with
+the Hansen J statistic at `r round(fit_cue$diagnostics$overid$stat, 3)`
+(p = `r round(fit_cue$diagnostics$overid$p, 4)`).
+
 ### Practical caveats
 
-Like LIML, CUE may lack finite moments, particularly when the degree of
-overidentification is small. Its objective function can have
-multiple local optima. `ivreg2r` uses BFGS optimization with 2SLS starting
-values, followed by Nelder-Mead refinement. In rare cases the optimizer may
-not converge or may find a different basin than Stata's Newton-Raphson. The
-`b0` argument (see below) can help diagnose convergence issues.
+Like LIML, CUE has no finite moments of any order, regardless of the degree
+of overidentification, and its finite-sample distribution can have very
+heavy tails (Hansen, Heaton & Yaron, 1996). Its objective function can have
+multiple local optima, and BSS warn that CUE estimation "can be slow and
+problematic when the number of parameters to be estimated is substantial"
+(Baum, Schaffer & Stillman, 2007, p. 479). `ivreg2r` uses BFGS optimization
+followed by Nelder-Mead refinement, starting from the 2SLS estimates under
+iid weighting and from the two-step efficient GMM estimates under a
+robust/cluster/kernel VCE (matching Stata's documented behavior). In rare
+cases the optimizer may not converge or may find a different basin than
+Stata's Newton-Raphson. The `b0` argument (below) can help diagnose
+convergence issues.
 
 ### Evaluating the CUE objective at a point
 
 Use `b0` to evaluate the CUE objective function at a specific parameter
-vector without optimization. This is useful for GMM-distance tests or
-verifying convergence:
+vector without optimization. The canonical use is the Stock-Wright (2000) S
+statistic by hand: the help file (lines 1425--1449) evaluates the CUE
+objective on the Mroz data at a point that sets the endogenous coefficient
+(`educ`) to zero and the exogenous coefficients to their OLS values --- the
+resulting J is an LM-style test of that parameter point, robust to weak
+instruments:
 
-```{r b0, eval = FALSE}
-# Evaluate CUE J-statistic at 2SLS estimates
-b_2sls <- coef(ivreg2(cinf ~ unem_1 | unem | unem_2 + inf_2,
-                       data = phil))
+```{r b0}
+mroz_work <- subset(mroz, inlf == 1)
+ols_fit <- lm(lwage ~ exper + expersq, data = mroz_work)
+b0 <- c(educ = 0, coef(ols_fit))
+
 fit_b0 <- ivreg2(
-  cinf ~ unem_1 | unem | unem_2 + inf_2,
-  data = phil, method = "cue", b0 = b_2sls,
-  kernel = "bartlett", bw = 3, tvar = "year"
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+  data = mroz_work, vcov = "robust", b0 = b0
 )
-fit_b0$diagnostics$overid  # J at 2SLS point
+fit_b0$diagnostics$overid  # J at the hypothesized point
 ```
+
+(The canonical `b0` example is cross-sectional; the mechanism is identical
+under a kernel-based VCE. Evaluating the objective at a candidate optimum
+also remains a useful convergence check for CUE fits.)
 
 ## User-supplied W and S matrices
 
 For iterated GMM or custom weighting, you can supply your own weighting
-matrix (`wmatrix`) and/or long-run covariance matrix (`smatrix`):
+matrix (`wmatrix`, Stata's `wmatrix()`) and/or moment-covariance matrix
+(`smatrix`, Stata's `smatrix()`). When `wmatrix` is supplied alone, the VCV
+uses a sandwich formula with the user's W as bread and the estimated S as
+filling. When both are supplied, S is used directly for the VCV and
+J-statistic. When `wmatrix` is used with `method = "gmm2s"`, the user's W is
+used as the first-step weighting matrix.
 
-```{r wmatrix, eval = FALSE}
-# The instrument matrix Z includes the exogenous regressors plus the
-# excluded instruments. For `lwage ~ exper + expersq | educ | nearc2 + nearc4`,
-# Z has 5 columns: intercept, exper, expersq, nearc2, nearc4.
-n_inst <- 5
-W <- diag(n_inst)
-fit_w <- ivreg2(
-  lwage ~ exper + expersq | educ | nearc2 + nearc4,
-  data = card, wmatrix = W, vcov = "robust"
-)
-
-# Supply S matrix for VCV and J computation
-S <- fit_w$omega  # use the Omega from a previous estimation
-fit_ws <- ivreg2(
-  lwage ~ exper + expersq | educ | nearc2 + nearc4,
-  data = card, wmatrix = W, smatrix = S, vcov = "robust"
-)
-```
-
-When `wmatrix` is supplied alone, the VCV uses a sandwich formula with the
-user's W as bread and the estimated S as filling. When both are supplied, S
-is used directly for the VCV and J-statistic. When `wmatrix` is used with
-`method = "gmm2s"`, the user's W is used as the first-step weighting matrix.
+The canonical workflow (help-file lines 1156--1198) re-uses the estimated S
+and W from one fit in a subsequent estimation --- in Stata these are posted
+on the fitted model as `e(S)` and `e(W)`. `ivreg2r` does not yet export the
+estimated S and W matrices on the fitted object, so that round-trip cannot
+be demonstrated here; the export is planned for a future release. A matrix
+you construct yourself (with the 1/N normalization `smatrix` expects) works
+today.
 
 ## Partialling out regressors
 
@@ -378,7 +458,7 @@ beyond two steps.
 
 ```{r partial-cons}
 # Demean all variables (partial out the constant)
-fit_demean <- ivreg2(cinf ~ unem, data = phil, partial = "_cons")
+fit_demean <- ivreg2(cinf ~ unem, data = phillips, partial = "_cons")
 ```
 
 ### DoF adjustment
@@ -388,7 +468,7 @@ freedom consumed by the partialled-out variables. Use `nopartialsmall = TRUE`
 to suppress this adjustment:
 
 ```{r partial-nosmall, eval = FALSE}
-fit_np <- ivreg2(cinf ~ unem + unem_1, data = phil,
+fit_np <- ivreg2(cinf ~ unem + unem_1, data = phillips,
                  partial = "_cons", nopartialsmall = TRUE)
 ```
 
@@ -404,15 +484,20 @@ VCE:
 
 ```{r redundant}
 fit_red <- ivreg2(
-  lwage ~ exper + expersq + black + south + smsa + married |
+  lwage ~ exper + expersq + black + smsa + south + smsa66 +
+    reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669 |
     educ | nearc2 + nearc4,
   data = card, vcov = "robust", redundant = c("nearc2")
 )
 glance(fit_red)[, c("redundancy_stat", "redundancy_p")]
 ```
 
-The null hypothesis is that the specified instruments are redundant. Rejection
-means they contribute to identification.
+The null hypothesis is that the specified instruments are redundant.
+Redundancy is about *efficiency*, not identification: excluded instruments
+are redundant if using them does not improve the asymptotic efficiency of
+the estimation (help-file lines 560--563), conditional on the model being
+identified by the remaining instruments. A rejection means the tested
+instruments do add identifying information worth exploiting.
 
 ### Centering moment conditions
 
@@ -423,7 +508,8 @@ J-test:
 
 ```{r center}
 fit_cen <- ivreg2(
-  lwage ~ exper + expersq + black + south + smsa + married |
+  lwage ~ exper + expersq + black + smsa + south + smsa66 +
+    reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669 |
     educ | nearc2 + nearc4,
   data = card, method = "gmm2s", vcov = "robust", center = TRUE
 )
@@ -431,11 +517,20 @@ fit_cen <- ivreg2(
 
 ### PSD corrections
 
-When the estimated VCV matrix has negative eigenvalues (possible with
-cluster-kernel or DK VCE), `psd` applies a correction:
+Kernels outside the Bartlett/Parzen/Quadratic-Spectral family do not
+guarantee a positive semi-definite estimate of S, the covariance matrix of
+the orthogonality conditions that feeds both the VCE and the chi-squared
+diagnostics. When S has negative eigenvalues, `psd` applies an eigenvalue
+correction to it:
 
-- `psd = "psd0"`: set negative eigenvalues to zero.
-- `psd = "psda"`: replace negative eigenvalues with their absolute values.
+- `psd = "psd0"`: set negative eigenvalues to zero (Politis, 2007).
+- `psd = "psda"`: replace negative eigenvalues with their absolute values
+  (Stock & Watson, 2008, Remark 8).
+
+Note the example below can never trigger the correction: Driscoll-Kraay with
+the default Bartlett kernel is positive semi-definite by construction
+(Newey-West, 1987), so `psd` is shown purely for syntax. The option earns
+its keep with non-PSD kernels such as the truncated kernel.
 
 ```{r psd, eval = FALSE}
 fit_psd <- ivreg2(
@@ -447,18 +542,11 @@ fit_psd <- ivreg2(
 
 ### DoF adjustments
 
-When fixed effects or other controls have been partialled out manually (outside
-of `ivreg2()`), use `dofminus` and `sdofminus` to adjust degrees of freedom:
-
-- `dofminus`: subtracted from N in large-sample variance formulas.
-- `sdofminus`: subtracted from residual df alongside K in small-sample
-  corrections.
-
-```{r dofminus}
-fit_dof <- ivreg2(cinf ~ unem, data = phil,
-                  kernel = "bartlett", bw = 3, tvar = "year",
-                  dofminus = 2, small = TRUE)
-```
+When fixed effects or other controls have been partialled out manually
+(outside of `ivreg2()`), the `dofminus` and `sdofminus` arguments adjust the
+degrees of freedom. See the Degrees-of-freedom adjustments section of
+`vignette("advanced-iv")` for the full exposition, including a self-verifying
+Frisch-Waugh-Lovell demonstration of `sdofminus`.
 
 ## Estimator equivalences
 
@@ -467,14 +555,24 @@ which can be useful for verification and understanding:
 
 | Equivalence | Conditions |
 |-------------|------------|
-| LIML + COVIV = CUE | IID errors (no robust/cluster/kernel VCE) |
+| LIML + COVIV = CUE | Conditional-homoskedasticity (iid) weighting; agreement up to optimizer tolerance |
 | Driscoll-Kraay = cluster(time) + kernel | Same kernel and bandwidth |
-| Kiefer = truncated kernel at full bandwidth | Panel data, `bw = T` |
+| Kiefer = truncated kernel | Panel data, AC, `bw = T - 1` (all within-panel lags weighted one) |
 | LIML = 2SLS | Exactly identified |
 | GMM2S = 2SLS | Exactly identified |
 
 ## References
 
+- Andrews, D.W.K. (1991). "Heteroskedasticity and Autocorrelation Consistent
+  Covariance Matrix Estimation." *Econometrica*, 59(3), 817--858.
+- Baum, C.F., Schaffer, M.E., and Stillman, S. (2003). "Instrumental
+  Variables and GMM: Estimation and Testing." *Stata Journal*, 3(1), 1--31.
+- Baum, C.F., Schaffer, M.E., and Stillman, S. (2007). "Enhanced Routines for
+  Instrumental Variables/Generalized Method of Moments Estimation and
+  Testing." *Stata Journal*, 7(4), 465--506.
+- Cameron, A.C., Gelbach, J.B., and Miller, D.L. (2011). "Robust Inference
+  with Multiway Clustering." *Journal of Business & Economic Statistics*,
+  29(2), 238--249.
 - Driscoll, J.C. and Kraay, A.C. (1998). "Consistent Covariance Matrix
   Estimation with Spatially Dependent Panel Data." *Review of Economics and
   Statistics*, 80(4), 549--560.
@@ -483,19 +581,33 @@ which can be useful for verification and understanding:
 - Hansen, L.P., Heaton, J., and Yaron, A. (1996). "Finite-Sample Properties
   of Some Alternative GMM Estimators." *Journal of Business & Economic
   Statistics*, 14(3), 262--280.
+- Hayashi, F. (2000). *Econometrics*. Princeton University Press.
 - Kiefer, N.M. (1980). "Estimation of Fixed Effect Models for Time Series of
   Cross-Sections with Arbitrary Intertemporal Covariance." *Journal of
   Econometrics*, 14(2), 195--202.
+- Kleibergen, F. and Paap, R. (2006). "Generalized Reduced Rank Tests Using
+  the Singular Value Decomposition." *Journal of Econometrics*, 133(1),
+  97--126.
+- Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married
+  Women's Hours of Work to Economic and Statistical Assumptions."
+  *Econometrica*, 55(4), 765--799.
 - Newey, W.K. and West, K.D. (1987). "A Simple, Positive Semi-Definite,
   Heteroskedasticity and Autocorrelation Consistent Covariance Matrix."
   *Econometrica*, 55(3), 703--708.
 - Newey, W.K. and West, K.D. (1994). "Automatic Lag Selection in Covariance
   Matrix Estimation." *Review of Economic Studies*, 61(4), 631--653.
+- Politis, D.N. (2007). "Higher-Order Accurate, Positive Semi-Definite
+  Estimation of Large-Sample Covariance and Spectral Density Matrices."
+  Working paper, UC San Diego; published (2011) in *Econometric Theory*,
+  27(4), 703--744.
+- Stock, J.H. and Watson, M.W. (2008). "Heteroskedasticity-Robust Standard
+  Errors for Fixed Effects Panel Data Regression." *Econometrica*, 76(1),
+  155--174.
+- Stock, J.H. and Wright, J.H. (2000). "GMM with Weak Identification."
+  *Econometrica*, 68(5), 1055--1096.
 - Stock, J.H. and Yogo, M. (2005). "Testing for Weak Instruments in Linear IV
   Regression." In D.W.K. Andrews and J.H. Stock (Eds.), *Identification and
   Inference for Econometric Models: Essays in Honor of Thomas Rothenberg*.
   Cambridge University Press.
 - Thompson, S.B. (2011). "Simple Formulas for Standard Errors that Cluster by
   Both Firm and Time." *Journal of Financial Economics*, 99(1), 1--10.
-- Wooldridge, J.M. (2010). *Econometric Analysis of Cross Section and Panel
-  Data*, 2nd ed. MIT Press.

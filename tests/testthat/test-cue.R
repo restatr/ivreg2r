@@ -960,10 +960,10 @@ test_that("CUE method field is 'cue'", {
 })
 
 # ============================================================================
-# 20. CUE close to LIML for IID overidentified (asymptotic equivalence)
+# 20. CUE IID equals LIML (exact algebraic identity, up to optimizer tol)
 # ============================================================================
 
-test_that("CUE IID is close to LIML (asymptotic equivalence)", {
+test_that("CUE IID equals LIML up to optimizer tolerance", {
   skip_if(!file.exists(card_path), "Card dataset not found")
 
   fit_cue <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -971,9 +971,12 @@ test_that("CUE IID is close to LIML (asymptotic equivalence)", {
   fit_liml <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                      data = card, method = "liml")
 
-  # CUE and LIML should be close (asymptotically equivalent)
-  # Use a generous tolerance since they differ at finite samples
-  expect_equal(coef(fit_cue), coef(fit_liml), tolerance = 0.01)
+  # With the conditional-homoskedasticity weighting, CUE and LIML are the
+  # SAME estimator (exact algebraic identity, not asymptotic equivalence).
+  # The only slack is CUE's numerical optimizer: measured relative
+  # discrepancy on this spec is ~1.4e-6, so 1e-4 leaves ~70x margin while
+  # still catching a real formula or convergence regression.
+  expect_equal(coef(fit_cue), coef(fit_liml), tolerance = 1e-4)
 })
 
 # ============================================================================

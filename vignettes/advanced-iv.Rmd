@@ -463,9 +463,11 @@ documents semantics rather than fitting models; a worked sampling-weight
   Normalized internally to sum to N, so their scale is irrelevant.
 - **Frequency weights** (`"fweight"`) must be positive integers: each row
   stands for `w` identical observations, and the effective sample size
-  becomes `N = sum(weights)`, which enters every degrees-of-freedom
-  calculation. Fitting on deduplicated data with fweights is identical to
-  fitting on the fully expanded data.
+  becomes `N = sum(weights)`, which enters the N-based residual and
+  small-sample degrees-of-freedom calculations (cluster-based inference
+  still uses M − 1 degrees of freedom, where M is the number of clusters).
+  Fitting on deduplicated data with fweights is identical to fitting on the
+  fully expanded data.
 - **Probability weights** (`"pweight"`) are sampling/survey weights
   (inverse selection probabilities). They force a robust VCE regardless of
   the `vcov` argument, because the weights describe the sampling design
@@ -474,8 +476,10 @@ documents semantics rather than fitting models; a worked sampling-weight
 - **Importance weights** (`"iweight"`) have, in Stata's own description, no
   formal statistical definition --- each command defines how it treats them.
   In `ivreg2r` (as in `ivreg2`) they are not normalized, N becomes
-  `sum(weights)` as a floating-point number, and they are restricted to the
-  classical (iid) VCE --- no robust, cluster, kernel, or GMM combinations.
+  `sum(weights)` as a floating-point number (internal calculations use the
+  float; the reported `nobs` and residual df are floored to integers), and
+  they are restricted to the classical (iid) VCE --- no robust, cluster,
+  kernel, or GMM combinations.
 
 ## Degrees-of-freedom adjustments
 
