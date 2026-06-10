@@ -406,15 +406,27 @@ fit_b0 <- ivreg2(
 fit_b0$diagnostics$overid$stat  # the objective value, Stata's e(j)
 ```
 
-You can confirm the identity against the Stock-Wright S statistic that
-`summary()` reports automatically for the regular (optimized) fit of the
-same model --- the two values agree exactly, and the correct reference
-distribution is chi-squared with L1 = `r length(fit_b0$instruments)`
-(number of excluded instruments) degrees of freedom. One caution: the
-p-value stored alongside the raw objective in `$overid$p` is calibrated
-against L − K overidentification degrees of freedom, which is *not* the
-right reference distribution for this use --- display the raw value, as
-Stata does, and take the S-statistic inference from `summary()`.
+The identity is easy to confirm against the Stock-Wright S statistic that
+the regular (optimized) fit of the same model reports automatically:
+
+```{r b0-sw-identity}
+fit_reg <- ivreg2(
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+  data = mroz_work, vcov = "robust"
+)
+c(b0_objective  = fit_b0$diagnostics$overid$stat,
+  stock_wright_S = fit_reg$diagnostics$stock_wright$stat)
+```
+
+The correct reference distribution is chi-squared with
+L1 = `r length(fit_b0$instruments)` (number of excluded instruments)
+degrees of freedom, giving
+p = `r round(fit_reg$diagnostics$stock_wright$p, 4)`. One caution: the
+p-value stored alongside the raw objective in `fit_b0$diagnostics$overid$p`
+is calibrated against L − K overidentification degrees of freedom, which is
+*not* the right reference distribution for this use --- display the raw
+value, as Stata's `di e(j)` does, and take the S-statistic inference from
+the regular fit's summary.
 
 (The canonical `b0` example is cross-sectional; the mechanism is identical
 under a kernel-based VCE. Evaluating the objective at a candidate optimum
