@@ -26,8 +26,18 @@
 #'
 #' @examples
 #' data(phillips)
-#' # OLS Phillips curve with HAC standard errors
-#' fit <- ivreg2(cinf ~ unem, data = phillips,
-#'               kernel = "bartlett", bw = 3, tvar = "year")
-#' summary(fit)
+#' # OLS Phillips curve with AC standard errors: exact replication of the
+#' # Stata ivreg2 help-file example at line 1501 (`ivreg2 cinf unem, bw(3)`;
+#' # Bartlett is Stata's default kernel). Without vcov = "robust", a kernel
+#' # gives AC (autocorrelation-consistent) inference, not HAC.
+#' fit_ac <- ivreg2(cinf ~ unem, data = phillips,
+#'                  kernel = "bartlett", bw = 3, tvar = "year")
+#' summary(fit_ac)
+#'
+#' # Adding vcov = "robust" gives HAC (Newey-West), replicating the
+#' # help-file example at line 1511.
+#' fit_hac <- ivreg2(cinf ~ unem, data = phillips, vcov = "robust",
+#'                   kernel = "bartlett", bw = 3, tvar = "year",
+#'                   small = TRUE)
+#' summary(fit_hac)
 "phillips"

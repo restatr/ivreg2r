@@ -21,8 +21,10 @@
 #' @return A named list of `ivreg2_first_stage` objects.
 #'
 #' @examples
-#' # Mirrors Stata `ivreg2` help-file example (line 1325): the canonical
-#' # `savefirst` demonstration.
+#' # Mirrors the Stata `ivreg2` help-file example at line 1325, which
+#' # demonstrates the equivalence of the Kleibergen-Paap rk Wald F and the
+#' # first-stage F with a single endogenous regressor (and, in passing,
+#' # the `savefirst` option that `first_stage = TRUE` corresponds to).
 #' data(mroz)
 #' mroz_work <- subset(mroz, inlf == 1)
 #' fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
@@ -30,6 +32,9 @@
 #' fs <- first_stage(fit)
 #' coef(fs$educ)
 #' summary(fs$educ)
+#' # KP rk Wald F = the robust first-stage F (single endogenous regressor)
+#' c(kp_rk_wald_F = fit$diagnostics$weak_id_robust$stat,
+#'   first_stage_F = glance(fs$educ)$f_stat)
 #'
 #' @export
 first_stage <- function(x, ...) UseMethod("first_stage")

@@ -59,7 +59,8 @@ generics::augment
 #' tidy(fit, exponentiate = TRUE)
 #'
 #' \donttest{
-#' # Compare 2SLS and LIML side-by-side
+#' # Compare 2SLS and LIML side-by-side on the help-file baseline spec
+#' # (weak first stage; see the LIML example in ?ivreg2 for the framing)
 #' fit_liml <- ivreg2(lwage ~ exper + expersq | educ |
 #'                      age + kidslt6 + kidsge6,
 #'                    data = mroz_work, method = "liml")

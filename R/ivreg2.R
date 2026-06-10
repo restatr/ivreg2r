@@ -1895,17 +1895,20 @@
 #' mroz_work <- subset(mroz, inlf == 1)
 #'
 #' # --- Just-identified IV: return to schooling ---
-#' # Wooldridge (2002) instruments education with age and number of
-#' # children. With one instrument for one endogenous variable, no
-#' # overid test is possible; instrument validity must be defended on
-#' # substantive grounds.
-#' fit <- ivreg2(lwage ~ exper + expersq | educ | age,
+#' # Wooldridge (2020), Example 15.1: father's education instruments
+#' # education in a simple wage equation (replicates the published
+#' # estimates: educ = 0.059, SE = 0.035). With one instrument for one
+#' # endogenous variable, no overid test is possible; instrument validity
+#' # must be defended on substantive grounds.
+#' fit <- ivreg2(lwage ~ 1 | educ | fatheduc,
 #'               data = mroz_work)
 #' summary(fit)
 #'
 #' # --- Overidentified IV: testing instrument validity ---
-#' # Adding kidslt6 and kidsge6 provides overidentifying restrictions.
-#' # The Sargan test can now detect misspecification.
+#' # The Stata ivreg2 help file's illustrative baseline (line 1274):
+#' # age, kidslt6, and kidsge6 give two overidentifying restrictions,
+#' # so the Sargan test can detect misspecification. Note its weak
+#' # first stage (Cragg-Donald F ~ 4.3) -- see the LIML example below.
 #' fit_overid <- ivreg2(lwage ~ exper + expersq | educ |
 #'                        age + kidslt6 + kidsge6, data = mroz_work)
 #' summary(fit_overid)
@@ -1919,9 +1922,13 @@
 #' summary(fit_robust)
 #'
 #' \donttest{
-#' # --- LIML: reducing finite-sample bias ---
-#' # With weak instruments, 2SLS is biased toward OLS;
-#' # LIML is approximately median-unbiased.
+#' # --- LIML ---
+#' # Same baseline as above (a documented variation on the help-file
+#' # spec). Its weak first stage (Cragg-Donald F ~ 4.3) is the setting
+#' # where 2SLS bias toward OLS grows with the overidentification degree
+#' # relative to instrument strength, and LIML's approximate
+#' # median-unbiasedness -- established within the iid Stock-Yogo
+#' # framework -- is attractive. LIML equals 2SLS when just-identified.
 #' fit_liml <- ivreg2(lwage ~ exper + expersq | educ |
 #'                      age + kidslt6 + kidsge6, data = mroz_work,
 #'                      method = "liml")
@@ -1937,7 +1944,12 @@
 #'
 #' # --- Clustering ---
 #' # Griliches (1976) wage equation, cluster on year.
-#' # Matches Stata `ivreg2` help-file example (line 1250).
+#' # Adapted from Stata `ivreg2` help-file example (line 1250): the help
+#' # command also includes year dummies (xi i.year), omitted here, and no
+#' # small option. Either way the fit warns -- 7 year clusters < the
+#' # instrument count makes the moment covariance singular, which is the
+#' # help file's own lead-in to partialling; see
+#' # vignette("time-series-gmm").
 #' data(griliches)
 #' fit_cl <- ivreg2(lw ~ s + expr + tenure + rns + smsa |
 #'                    iq | med + kww + age,
