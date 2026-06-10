@@ -385,12 +385,11 @@ convergence issues.
 ### Evaluating the CUE objective at a point
 
 Use `b0` to evaluate the CUE objective function at a specific parameter
-vector without optimization. The canonical use is the Stock-Wright (2000) S
-statistic by hand: the help file (lines 1425--1449) evaluates the CUE
+vector without optimization. The canonical use is Stock-Wright-style
+inference by hand: the help file (lines 1425--1449) evaluates the CUE
 objective on the Mroz data at a point that sets the endogenous coefficient
-(`educ`) to zero and the exogenous coefficients to their OLS values --- the
-resulting J is an LM-style test of that parameter point, robust to weak
-instruments:
+(`educ`) to zero and the exogenous coefficients to their OLS values, then
+displays the objective value with `di e(j)`:
 
 ```{r b0}
 mroz_work <- subset(mroz, inlf == 1)
@@ -401,8 +400,17 @@ fit_b0 <- ivreg2(
   lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
   data = mroz_work, vcov = "robust", b0 = b0
 )
-fit_b0$diagnostics$overid  # J at the hypothesized point
+fit_b0$diagnostics$overid$stat  # the objective value, Stata's e(j)
 ```
+
+Calibrating this value against a chi-squared distribution requires care
+about degrees of freedom (the displayed value tests all L moment conditions
+at the fully specified point, not the L − K overidentifying restrictions),
+which is why we follow Stata in displaying the raw objective value. For
+ready-made weak-instrument-robust inference on the endogenous coefficients,
+use the Stock-Wright S statistic that `summary()` reports automatically
+(chi-squared with L1 = number-of-excluded-instruments degrees of freedom,
+exogenous regressors partialled out).
 
 (The canonical `b0` example is cross-sectional; the mechanism is identical
 under a kernel-based VCE. Evaluating the objective at a candidate optimum
@@ -477,10 +485,10 @@ fit_np <- ivreg2(cinf ~ unem + unem_1, data = phillips,
 ### Redundancy test
 
 The `redundant` argument tests whether specific excluded instruments are
-redundant (add no identifying information beyond the other instruments). This
-uses an LM rank test: the Anderson canonical correlations statistic under iid
-errors, or the Kleibergen-Paap rk statistic with a robust, cluster, or kernel
-VCE:
+redundant --- whether, given the other instruments, using them improves the
+asymptotic efficiency of the estimation. This uses an LM rank test: the
+Anderson canonical correlations statistic under iid errors, or the
+Kleibergen-Paap rk statistic with a robust, cluster, or kernel VCE:
 
 ```{r redundant}
 fit_red <- ivreg2(
@@ -497,7 +505,8 @@ Redundancy is about *efficiency*, not identification: excluded instruments
 are redundant if using them does not improve the asymptotic efficiency of
 the estimation (help-file lines 560--563), conditional on the model being
 identified by the remaining instruments. A rejection means the tested
-instruments do add identifying information worth exploiting.
+instruments are conditionally relevant --- they reduce the asymptotic
+variance of the estimates and are worth keeping.
 
 ### Centering moment conditions
 

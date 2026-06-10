@@ -220,9 +220,9 @@ Several estimators coincide under specific conditions:
 - **Driscoll-Kraay = cluster(time) + kernel**: DK VCE is equivalent
   to clustering on the time variable with a kernel (Bartlett by default) at
   the specified bandwidth. See `vignette("time-series-gmm")` for details.
-- **Kiefer = truncated kernel at full bandwidth**: Kiefer VCE is equivalent
-  to AC VCE with a truncated kernel where the bandwidth equals T (the number
-  of time periods per panel unit). See `vignette("time-series-gmm")`.
+- **Kiefer = truncated kernel**: Kiefer VCE is equivalent to AC VCE with a
+  truncated kernel at bandwidth T − 1, which weights every lag available
+  within a panel of length T. See `vignette("time-series-gmm")`.
 - **LIML = 2SLS when exactly identified**: with one excluded instrument per
   endogenous variable, LIML reduces to 2SLS. LIML's advantages only appear
   in the overidentified case.
