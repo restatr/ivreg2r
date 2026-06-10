@@ -1624,7 +1624,10 @@
 #'
 #'   **Note:** sigma will differ from [lm()]`(..., weights = w)` by a factor
 #'   of `sqrt(N / sum(w))` because `lm()` uses raw (unnormalized) weights.
-#'   Coefficients, SEs, and the VCV matrix are identical to `lm()` for OLS.
+#'   Coefficients are identical to `lm()` for OLS; SEs and the VCV matrix
+#'   additionally match `lm()` when `small = TRUE` (the default
+#'   `small = FALSE` reports Stata-convention SEs without the N − K
+#'   finite-sample correction).
 #' @param subset Optional subset expression (evaluated in `data`).
 #' @param na.action Function for handling `NA`s (default [na.omit]).
 #'   Use [na.exclude] to drop incomplete cases during estimation but
@@ -1841,9 +1844,12 @@
 #'   Equivalent to Stata's `sw` option (labeled "BETA VERSION" in Stata).
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
-#'   (equivalent to Stata's `saverf`). `"system"` stores the full system of
-#'   y + all endogenous variables regressed on Z, with cross-equation VCV
-#'   (equivalent to Stata's `savesfirst`). Silently ignored for OLS models.
+#'   (equivalent to Stata's `saverf`; Stata's `rf` option *displays* the
+#'   reduced form without storing it). `"system"` stores the full system of
+#'   y + all endogenous variables regressed on Z, with cross-equation VCV.
+#'   `"system"` has no single Stata equivalent; it combines the output of
+#'   `saverf` and `savefirst` in one object. Silently ignored for OLS
+#'   models.
 #' @param first_stage Logical: if `TRUE`, store extractable first-stage
 #'   regression objects on the fitted model. Access them via
 #'   [first_stage()]. Each object supports [coef()], [vcov()],

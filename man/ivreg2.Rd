@@ -60,7 +60,10 @@ errors, and all test statistics are unaffected by scale.
 
 \strong{Note:} sigma will differ from \code{\link[=lm]{lm()}}\verb{(..., weights = w)} by a factor
 of \code{sqrt(N / sum(w))} because \code{lm()} uses raw (unnormalized) weights.
-Coefficients, SEs, and the VCV matrix are identical to \code{lm()} for OLS.}
+Coefficients are identical to \code{lm()} for OLS; SEs and the VCV matrix
+additionally match \code{lm()} when \code{small = TRUE} (the default
+\code{small = FALSE} reports Stata-convention SEs without the N − K
+finite-sample correction).}
 
 \item{subset}{Optional subset expression (evaluated in \code{data}).}
 
@@ -310,9 +313,12 @@ Equivalent to Stata's \code{sw} option (labeled "BETA VERSION" in Stata).}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression
-(equivalent to Stata's \code{saverf}). \code{"system"} stores the full system of
-y + all endogenous variables regressed on Z, with cross-equation VCV
-(equivalent to Stata's \code{savesfirst}). Silently ignored for OLS models.}
+(equivalent to Stata's \code{saverf}; Stata's \code{rf} option \emph{displays} the
+reduced form without storing it). \code{"system"} stores the full system of
+y + all endogenous variables regressed on Z, with cross-equation VCV.
+\code{"system"} has no single Stata equivalent; it combines the output of
+\code{saverf} and \code{savefirst} in one object. Silently ignored for OLS
+models.}
 
 \item{first_stage}{Logical: if \code{TRUE}, store extractable first-stage
 regression objects on the fitted model. Access them via

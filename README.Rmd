@@ -37,8 +37,9 @@ devtools::install_github("restatr/ivreg2r")
 library(ivreg2r)
 data(card)
 
-fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa + married |
-                educ | nearc2 + nearc4,
+fit <- ivreg2(lwage ~ exper + expersq + black + smsa + south + smsa66 +
+                reg662 + reg663 + reg664 + reg665 + reg666 + reg667 +
+                reg668 + reg669 | educ | nearc2 + nearc4,
               data = card, vcov = "robust", small = TRUE)
 summary(fit)
 ```
@@ -58,7 +59,7 @@ as instruments.
 | Part | Contents | Example |
 |------|----------|---------|
 | LHS | Dependent variable | `lwage` |
-| 1st RHS | Exogenous regressors | `exper + expersq + black + south` |
+| 1st RHS | Exogenous regressors | `exper + expersq + black + smsa + ...` |
 | 2nd RHS | Endogenous regressors | `educ` |
 | 3rd RHS | Excluded instruments | `nearc2 + nearc4` |
 

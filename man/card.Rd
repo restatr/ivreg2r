@@ -35,7 +35,10 @@ A data frame with 3,010 observations and 33 variables:
 \item{enroll}{Enrolled in school in 1976 (binary).}
 \item{KWW}{Knowledge of the World of Work test score.}
 \item{IQ}{IQ score.}
-\item{married}{Married (binary, 1976).}
+\item{married}{Marital status (1976): coded 1--6 in the source data
+(1 = married; the remaining codes distinguish other marital
+statuses). Not a binary indicator; recode before use as a
+regressor.}
 \item{libcrd14}{Had a library card at age 14 (binary).}
 \item{exper}{Years of labor market experience (\code{age - educ - 6}).}
 \item{lwage}{Log hourly wage.}
@@ -58,9 +61,14 @@ college proximity as an instrument for education.
 }
 \examples{
 data(card)
-# IV regression: instrument education with college proximity
-fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-              data = card)
+# IV regression: instrument education with college proximity.
+# Control set from Card (1995, Table 2) / Wooldridge (2020), Example 15.4.
+fit <- ivreg2(
+  lwage ~ exper + expersq + black + smsa + south + smsa66 +
+    reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669 |
+    educ | nearc4,
+  data = card
+)
 summary(fit)
 }
 \keyword{datasets}
