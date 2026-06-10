@@ -127,6 +127,31 @@ test_that("pweight + kiefer yields heteroskedasticity-robust Kiefer with message
   expect_true(fit$kiefer)
 })
 
+test_that("pweight + kiefer IV fit uses robust (KP) identification tests", {
+  # Stata's ranktest receives the pweight-forced robust flag (but not the
+  # truncated kernel) under kiefer, so the id diagnostics are KP rk
+  # statistics with no kernel. Plain kiefer stays on the iid (Anderson/CD)
+  # path. Both branches verified against Stata e(idstat)/e(widstat) to all
+  # printed digits, 2026-06-10 session. The synthetic panel index mirrors
+  # the Stata cross-check exactly; only the dispatch is asserted here.
+  d <- card
+  d$id2 <- ceiling(seq_len(nrow(d)) / 10)
+  d$tt <- (seq_len(nrow(d)) - 1) %% 10 + 1
+
+  fit_pw <- suppressMessages(
+    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = d,
+           weights = weight, weight_type = "pweight",
+           kiefer = TRUE, tvar = "tt", ivar = "id2")
+  )
+  expect_match(fit_pw$diagnostics$underid$test_name, "Kleibergen-Paap")
+  expect_false(is.null(fit_pw$diagnostics$weak_id_robust))
+
+  fit_plain <- ivreg2(lwage ~ exper + expersq | educ | nearc4, data = d,
+                      kiefer = TRUE, tvar = "tt", ivar = "id2")
+  expect_match(fit_plain$diagnostics$underid$test_name, "Anderson")
+  expect_null(fit_plain$diagnostics$weak_id_robust)
+})
+
 test_that("pweight + cluster does not override vcov", {
   fit <- suppressMessages(
     ivreg2(mpg ~ wt + hp, data = mtcars, weights = disp,

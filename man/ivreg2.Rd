@@ -181,7 +181,8 @@ partialling out regressors. Equivalent to Stata's \code{sdofminus()} option.}
 HC meat uses \code{w * e^2} (linear, not quadratic).
 
 \strong{pweight}: Normalized to sum to N. Forces robust VCE
-(overrides \code{vcov = "iid"} to \code{"robust"}).
+(overrides \code{vcov = "iid"} to \code{"robust"} and \code{vcov = "AC"} ---
+explicit or kiefer-implied --- to \code{"HAC"}).
 
 \strong{iweight}: Not normalized; N is redefined as \code{sum(weights)} (float).
 All intermediate calculations use float N; posted \code{nobs} and \code{df.residual}

@@ -9,8 +9,8 @@
 #' Validate and normalize all user arguments to ivreg2().
 #'
 #' Performs all type/value checks, option routing (kiefer→kernel+vcov,
-#' dkraay→bw+kernel, pweight→robust, kernel→HAC/AC), and method/kclass/fuller
-#' mutual-exclusion checks.
+#' dkraay→bw+kernel, pweight→robust/HAC, kernel→HAC/AC), and
+#' method/kclass/fuller mutual-exclusion checks.
 #'
 #' @return Named list of normalized options.
 #' @noRd
@@ -1390,8 +1390,20 @@
 
     # Identification tests (D2) + Stock-Yogo critical values (D3)
     if (!noid) {
-      id_vcov_type <- if (isTRUE(kiefer)) "iid" else effective_vcov_type
-      id_kernel    <- if (isTRUE(kiefer)) NULL else kernel
+      # Kiefer fits: Stata's ranktest never receives the truncated kernel
+      # (kiefer assigns bw after the parser builds bwopt/kernopt, so the
+      # kernel options are empty), but it DOES receive the robust flag when
+      # one is set -- which happens when pweights force robust. So plain
+      # kiefer id tests are numerically iid, while pweight+kiefer id tests
+      # are heteroskedasticity-robust (KP rk) with no kernel. Verified
+      # against Stata 2026-06-10 (plain: Anderson/CD match rk output to
+      # ~1e-11; pw+kiefer: KP rk LM/Wald differ from iid and match Stata).
+      id_vcov_type <- if (isTRUE(kiefer)) {
+        if (effective_vcov_type == "HAC") "robust" else "iid"
+      } else {
+        effective_vcov_type
+      }
+      id_kernel <- if (isTRUE(kiefer)) NULL else kernel
       id_tests <- .compute_id_tests(
         X = parsed$X, Z = parsed$Z, y = parsed$y,
         residuals = fit$residuals, weights = parsed$weights,
@@ -1694,7 +1706,8 @@
 #'   HC meat uses `w * e^2` (linear, not quadratic).
 #'
 #'   **pweight**: Normalized to sum to N. Forces robust VCE
-#'   (overrides `vcov = "iid"` to `"robust"`).
+#'   (overrides `vcov = "iid"` to `"robust"` and `vcov = "AC"` ---
+#'   explicit or kiefer-implied --- to `"HAC"`).
 #'
 #'   **iweight**: Not normalized; N is redefined as `sum(weights)` (float).
 #'   All intermediate calculations use float N; posted `nobs` and `df.residual`

@@ -870,7 +870,14 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     vcov_type
   )
   if (isTRUE(kiefer)) {
-    base <- "Autocorrelation-consistent (Kiefer)"
+    # vcov_type is "HAC" when pweights forced robust (Stata: "Statistics
+    # robust to heteroskedasticity and within-cluster autocorrelation
+    # (Kiefer)"), "AC" otherwise.
+    base <- if (vcov_type == "HAC") {
+      "Heteroskedasticity-robust + within-cluster autocorrelation (Kiefer)"
+    } else {
+      "Autocorrelation-consistent (Kiefer)"
+    }
   } else if (!is.null(dkraay)) {
     base <- paste0("Driscoll-Kraay (kernel=", kernel, "; bandwidth=",
                    formatC(bw, format = "g"), ")")
@@ -882,7 +889,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     base <- paste0(base, " (kernel=", kernel, "; bandwidth=",
                    formatC(bw, format = "g"), ")")
   }
-  if (small && !vcov_type %in% c("iid", "AC") && !isTRUE(kiefer)) {
+  if (small && !vcov_type %in% c("iid", "AC")) {
     base <- paste0(base, ", small-sample corrected")
   }
   if (!is.null(psd)) {
