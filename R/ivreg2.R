@@ -924,6 +924,10 @@
     if (!is.numeric(tvar_vec)) {
       stop("Time variable '", tvar, "' must be numeric.", call. = FALSE)
     }
+    if (any(!is.finite(tvar_vec))) {
+      stop("Time variable '", tvar, "' must contain only finite values.",
+           call. = FALSE)
+    }
 
     ivar_vec <- NULL
     if (!is.null(ivar)) {

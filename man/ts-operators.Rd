@@ -61,10 +61,13 @@ error when called outside an \code{ivreg2()} formula (use, e.g.,
 \code{dplyr::lag()} with a consecutive-periods check, or \code{fixest}/\code{collapse}/
 \code{plm}, for general-purpose panel lagging). The lag/difference order \code{k}
 must be a constant non-negative integer (or integer vector for ranges);
-leads (negative \code{k}) and nested operators (\code{l(d(x))}) are not supported.
-\code{predict(fit, newdata)} recomputes operator terms within \code{newdata}, so
-\code{newdata} must contain the history rows needed for the lags; rows whose
-lags are missing get \code{NA} predictions (again matching Stata).
+leads (negative \code{k}), nested operators (\code{l(d(x))}), and ranges on the
+left-hand side (the model has a single dependent variable) are not
+supported. When operators appear among the \emph{regressors},
+\code{predict(fit, newdata)} recomputes them within \code{newdata}, so \code{newdata}
+must contain the history rows needed for the lags; rows whose lags are
+missing get \code{NA} predictions (again matching Stata). Operators confined
+to the instrument part impose no requirement on \code{newdata}.
 }
 
 \examples{

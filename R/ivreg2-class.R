@@ -382,10 +382,12 @@ confint.ivreg2 <- function(object, parm, level = 0.95, ...) {
 #' @param object An object of class `"ivreg2"`.
 #' @param newdata An optional data frame for prediction. If omitted, fitted
 #'   values from the original data are returned. If the model uses
-#'   time-series operators (see [`ts-operators`][l]), `newdata` must contain
-#'   the time variable (and panel variable, if any) plus the history rows
-#'   needed to compute the lags; rows whose lags are missing within
-#'   `newdata` get `NA` predictions (matching Stata).
+#'   time-series operators (see [`ts-operators`][l]) *among the regressors*,
+#'   `newdata` must contain the time variable (and panel variable, if any)
+#'   plus the history rows needed to compute the lags; rows whose lags are
+#'   missing within `newdata` get `NA` predictions (matching Stata).
+#'   Operators confined to the instrument part impose no such requirement —
+#'   prediction scores only the regressors.
 #' @param se.fit Logical: if `TRUE`, return prediction standard errors
 #'   alongside fitted values. Standard errors are computed as
 #'   `sqrt(diag(X V X'))` where `V = vcov(object)`, so they reflect the
@@ -423,18 +425,21 @@ predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
     }
     return(fitted)
   }
-  tt <- object$terms$regressors
-  if (isTRUE(object$has_ts_ops)) {
-    # Rebuild the ts-operator evaluation context from newdata so l()/d()
-    # terms are recomputed within newdata (which must therefore contain the
-    # history rows needed for the lags). Rows whose lags are absent get NA
-    # predictions, matching Stata's predict behavior with ts operators.
+  tt <- stats::delete.response(object$terms$regressors)
+  if (isTRUE(object$has_ts_ops) && .has_ts_operators(tt)) {
+    # Only the regressor terms are evaluated against newdata, so the ts
+    # context is needed only when THEY contain operators — a model whose
+    # lags appear only among the instruments (or response) predicts like
+    # any other (Stata's predict xb scores only the e(b) columns). When
+    # regressor lags ARE present, rebuild the context from newdata, which
+    # must then contain the history rows; rows whose lags are absent get
+    # NA predictions, matching Stata.
     ts_ctx <- .ts_validate_context(newdata, object$tvar, object$ivar,
                                    what = "newdata")
     environment(tt) <- .make_ts_env(environment(tt),
                                     ts_ctx$tvar_vec, ts_ctx$ivar_vec)
   }
-  mf <- stats::model.frame(stats::delete.response(tt), newdata,
+  mf <- stats::model.frame(tt, newdata,
                             na.action = na.action,
                             xlev = object$xlevels)
   # Filter contrasts to regressor variables only — object$contrasts may
@@ -442,9 +447,9 @@ predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
   # stats::model.matrix about variables absent from the terms.
   # Use rownames(factors) instead of all.vars() to preserve function
   # wrappers (e.g., "factor(x)") that match names(object$contrasts).
-  reg_vars <- rownames(attr(stats::delete.response(tt), "factors"))
+  reg_vars <- rownames(attr(tt, "factors"))
   reg_contrasts <- object$contrasts[intersect(names(object$contrasts), reg_vars)]
-  X <- stats::model.matrix(stats::delete.response(tt), mf,
+  X <- stats::model.matrix(tt, mf,
                             contrasts.arg = reg_contrasts)
   cf <- coef(object)
   # model.matrix may regenerate columns dropped for collinearity;

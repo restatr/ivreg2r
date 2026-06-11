@@ -61,10 +61,13 @@
 #' `dplyr::lag()` with a consecutive-periods check, or `fixest`/`collapse`/
 #' `plm`, for general-purpose panel lagging). The lag/difference order `k`
 #' must be a constant non-negative integer (or integer vector for ranges);
-#' leads (negative `k`) and nested operators (`l(d(x))`) are not supported.
-#' `predict(fit, newdata)` recomputes operator terms within `newdata`, so
-#' `newdata` must contain the history rows needed for the lags; rows whose
-#' lags are missing get `NA` predictions (again matching Stata).
+#' leads (negative `k`), nested operators (`l(d(x))`), and ranges on the
+#' left-hand side (the model has a single dependent variable) are not
+#' supported. When operators appear among the *regressors*,
+#' `predict(fit, newdata)` recomputes them within `newdata`, so `newdata`
+#' must contain the history rows needed for the lags; rows whose lags are
+#' missing get `NA` predictions (again matching Stata). Operators confined
+#' to the instrument part impose no requirement on `newdata`.
 #'
 #' @param x A numeric variable in the model data.
 #' @param k Lag order(s) for `l()`; difference order(s) for `d()`.
@@ -158,23 +161,29 @@ d <- function(x, k = 1) {
 #' @param top Logical: is `e` still in top-level term-sum position (under
 #'   `~`, `+`, `-`, `|`, or `(`)? Lag ranges may only appear there — a range
 #'   inside, say, `log()` has no well-defined expansion.
+#' @param lhs Logical: is `e` on the left-hand side of the `~`? Lag ranges
+#'   are rejected there — the model has a single dependent variable (Stata
+#'   parity: "multiple dependent variables specified", ivreg2.ado:502-507).
 #' @return The transformed language object.
 #' @keywords internal
 #' @noRd
-.normalize_ts_expr <- function(e, env, top = TRUE) {
+.normalize_ts_expr <- function(e, env, top = TRUE, lhs = FALSE) {
   if (!is.call(e)) {
     return(e)
   }
   fn <- e[[1L]]
   fname <- if (is.symbol(fn)) as.character(fn) else ""
   if (fname %in% .TS_OPERATORS) {
-    return(.normalize_ts_call(e, env, top))
+    return(.normalize_ts_call(e, env, top, lhs))
   }
   top_child <- top && fname %in% c("~", "+", "-", "|", "(")
   args <- as.list(e)
   for (i in seq_along(args)[-1L]) {
     if (is.call(args[[i]])) {
-      args[[i]] <- .normalize_ts_expr(args[[i]], env, top = top_child)
+      # In a two-sided `y ~ rhs` call, args[[2]] is the LHS
+      lhs_child <- lhs || (fname == "~" && length(args) == 3L && i == 2L)
+      args[[i]] <- .normalize_ts_expr(args[[i]], env, top = top_child,
+                                      lhs = lhs_child)
     }
   }
   as.call(args)
@@ -183,7 +192,7 @@ d <- function(x, k = 1) {
 #' Canonicalize a single l()/d() call, expanding ranges
 #' @keywords internal
 #' @noRd
-.normalize_ts_call <- function(e, env, top) {
+.normalize_ts_call <- function(e, env, top, lhs = FALSE) {
   op <- as.character(e[[1L]])
   m <- tryCatch(
     match.call(function(x, k = 1) NULL, e),
@@ -226,6 +235,11 @@ d <- function(x, k = 1) {
   if (length(calls) == 1L) {
     return(calls[[1L]])
   }
+  if (lhs) {
+    stop("Lag ranges are not allowed on the left-hand side of the formula ",
+         "(the model has a single dependent variable): ", deparse1(e), ".",
+         call. = FALSE)
+  }
   if (!top) {
     stop("Lag ranges like ", op, "(x, 1:3) can only be used as top-level ",
          "formula terms, not inside other functions: ", deparse1(e), ".",
@@ -261,6 +275,13 @@ d <- function(x, k = 1) {
   }
   if (!is.numeric(tvar_vec)) {
     stop("Time variable '", tvar, "' must be numeric.", call. = FALSE)
+  }
+  # Inf - k == Inf, so an infinite time value would match() as its own lag
+  # (silent self-lag). Stata cannot represent infinity, so tsset's effective
+  # guarantee includes finiteness.
+  if (any(!is.finite(tvar_vec))) {
+    stop("Time variable '", tvar, "' must contain only finite values.",
+         call. = FALSE)
   }
   ivar_vec <- NULL
   if (!is.null(ivar)) {

@@ -226,6 +226,32 @@ test_that("nested operators and non-top-level ranges error", {
   )
 })
 
+test_that("scalar lags work on the LHS; lag ranges there error", {
+  fit <- ivreg2(l(cinf, 1) ~ unem, data = phillips, tvar = "year")
+  # cinf is NA in 1948 (first difference of inflation), so l(cinf, 1) is
+  # missing in both 1948 (no lag year) and 1949 (lag value is NA): N = 47
+  expect_equal(nobs(fit), nrow(phillips) - 2L)
+  expect_error(
+    ivreg2(l(cinf, 1:2) ~ unem, data = phillips, tvar = "year"),
+    "left-hand side"
+  )
+})
+
+test_that("infinite time values error (would self-match as their own lag)", {
+  ph_inf <- phillips
+  ph_inf$year[5] <- Inf
+  expect_error(
+    ivreg2(cinf ~ l(unem, 1), data = ph_inf, tvar = "year"),
+    "finite"
+  )
+  # Same guard on the HAC/kernel time-index path
+  expect_error(
+    ivreg2(cinf ~ unem, data = ph_inf, tvar = "year",
+           vcov = "HAC", kernel = "bartlett", bw = 2),
+    "finite"
+  )
+})
+
 test_that("repeated and missing time values error", {
   dup <- rbind(phillips, phillips[1, ])
   expect_error(
@@ -337,6 +363,21 @@ test_that("predict without history yields NA, with history yields values", {
   expect_false(is.na(p_hist[2]))
   full <- predict(fit, newdata = phillips)
   expect_equal(p_hist[2], full[30])
+})
+
+test_that("instrument-only lags impose no ts requirements on newdata", {
+  # H83 pattern: lags only among the excluded instruments. Prediction
+  # scores only the regressors, so newdata needs neither the time
+  # variable nor lag history (Stata's predict xb parity).
+  fit <- ivreg2(cinf ~ 1 | unem | l(unem, 1:3), data = phillips,
+                tvar = "year")
+  p <- predict(fit, newdata = data.frame(unem = 5))
+  expect_equal(unname(p), unname(drop(c(1, 5) %*% coef(fit))))
+  # Repeated time values in counterfactual scenarios are fine too
+  p2 <- predict(fit, newdata = data.frame(unem = c(5, 6),
+                                          year = c(1990, 1990)))
+  expect_equal(length(p2), 2L)
+  expect_false(anyNA(p2))
 })
 
 test_that("predict validates the ts context in newdata", {
