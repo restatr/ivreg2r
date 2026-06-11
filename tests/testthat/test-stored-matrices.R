@@ -483,14 +483,57 @@ test_that("named user matrix with missing instrument names errors", {
   )
 })
 
-test_that("user matrix with disagreeing row/column names errors", {
+test_that("mislabeled rows surface as a symmetry error after sorting", {
   skip_if(!file.exists(card_path), "Card dataset not found")
+  # Relabeling rows without moving the values makes the name-sorted matrix
+  # genuinely asymmetric; like Stata (matsort, then issymmetric), the
+  # symmetry check fires on the sorted matrix.
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   base <- ivreg2(f, data = card, vcov = "robust")
   S <- base$S
   rownames(S) <- rev(rownames(S))
   expect_error(
     ivreg2(f, data = card, vcov = "robust", smatrix = S),
-    "row and column names disagree"
+    "not symmetric"
   )
+})
+
+test_that("independently ordered row/column names are matched per axis", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  # Stata's matsort selects each axis separately, so S[rev(nm), nm] --
+  # not literally symmetric as stored -- is valid input; symmetry is
+  # checked AFTER sorting (ivreg2.ado:4281-4292).
+  f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
+  base <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust")
+  S <- base$S
+  nm <- colnames(S)
+  S_mixed <- S[rev(nm), nm]
+  fit <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust",
+                smatrix = S_mixed)
+  ref <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust",
+                smatrix = S)
+  expect_equal(coef(fit), coef(ref), tolerance = 1e-12)
+  expect_equal(fit$S, ref$S, tolerance = 1e-14)
+})
+
+test_that("legacy fit$smatrix/fit$wmatrix echo the RAW user matrices", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
+  base <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust")
+  S <- base$S
+  shuffle <- rev(colnames(S))
+  S_shuffled <- S[shuffle, shuffle]
+  fit <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust",
+                smatrix = S_shuffled)
+  # legacy field: raw (still shuffled); canonical field: instrument order
+  expect_identical(colnames(fit$smatrix), shuffle)
+  expect_identical(colnames(fit$S), colnames(S))
+
+  inames <- colnames(S)
+  W <- diag(seq_len(7))
+  dimnames(W) <- list(inames, inames)
+  W_shuffled <- W[shuffle, shuffle]
+  fit_w <- ivreg2(f, data = card, vcov = "robust", wmatrix = W_shuffled)
+  expect_identical(colnames(fit_w$wmatrix), shuffle)
+  expect_identical(colnames(fit_w$W), inames)
 })

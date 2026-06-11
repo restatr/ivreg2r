@@ -461,22 +461,27 @@
   if (is.null(cn) && is.null(rn)) {
     return(M)
   }
-  if (!is.null(cn) && !is.null(rn) && !identical(cn, rn)) {
-    stop("`", arg, "` row and column names disagree.", call. = FALSE)
+  # Rows and columns are matched independently by their own names, as
+  # Stata's matsort does (each axis selected separately) -- e.g.
+  # S[rev(names), names] is valid input. A missing dimension's names
+  # default to the other dimension's.
+  match_axis <- function(nm, axis) {
+    if (anyDuplicated(nm)) {
+      stop("`", arg, "` has duplicated ", axis, " names.", call. = FALSE)
+    }
+    perm <- match(inames, nm)
+    if (anyNA(perm)) {
+      stop("`", arg, "` ", axis, " names do not match the instrument ",
+           "list; missing: ",
+           paste0("'", inames[is.na(perm)], "'", collapse = ", "),
+           ". Supply the matrix with instrument names (or unnamed, in ",
+           "instrument column order).", call. = FALSE)
+    }
+    perm
   }
-  nm <- if (!is.null(cn)) cn else rn
-  if (anyDuplicated(nm)) {
-    stop("`", arg, "` has duplicated row/column names.", call. = FALSE)
-  }
-  perm <- match(inames, nm)
-  if (anyNA(perm)) {
-    stop("`", arg, "` row/column names do not match the instrument list; ",
-         "missing: ",
-         paste0("'", inames[is.na(perm)], "'", collapse = ", "),
-         ". Supply the matrix with instrument names (or unnamed, in ",
-         "instrument column order).", call. = FALSE)
-  }
-  M[perm, perm, drop = FALSE]
+  rperm <- match_axis(if (!is.null(rn)) rn else cn, "row")
+  cperm <- match_axis(if (!is.null(cn)) cn else rn, "column")
+  M[rperm, cperm, drop = FALSE]
 }
 
 
@@ -535,20 +540,16 @@
          parsed$N - parsed$L, ").", call. = FALSE)
   }
 
-  # --- Validate wmatrix/smatrix (symmetry + IV-only) ---
-  if (!is.null(wmatrix)) {
-    if (!isSymmetric(unname(wmatrix), tol = sqrt(.Machine$double.eps)))
-      stop("`wmatrix` is not symmetric.", call. = FALSE)
-    if (!parsed$is_iv)
-      stop("`wmatrix` requires an IV model (endogenous variables).",
-           call. = FALSE)
+  # --- Validate wmatrix/smatrix (IV-only; symmetry checked after the
+  #     name matching below, mirroring Stata: matsort first, issymmetric
+  #     on the sorted matrix, ivreg2.ado:4281-4292) ---
+  if (!is.null(wmatrix) && !parsed$is_iv) {
+    stop("`wmatrix` requires an IV model (endogenous variables).",
+         call. = FALSE)
   }
-  if (!is.null(smatrix)) {
-    if (!isSymmetric(unname(smatrix), tol = sqrt(.Machine$double.eps)))
-      stop("`smatrix` is not symmetric.", call. = FALSE)
-    if (!parsed$is_iv)
-      stop("`smatrix` requires an IV model (endogenous variables).",
-           call. = FALSE)
+  if (!is.null(smatrix) && !parsed$is_iv) {
+    stop("`smatrix` requires an IV model (endogenous variables).",
+         call. = FALSE)
   }
 
   # --- Validate and normalize weights ---
@@ -749,6 +750,8 @@
       stop("`wmatrix` dimensions (", nrow(wmatrix), "x", ncol(wmatrix),
            ") do not match the number of instruments (", parsed$L, ").",
            call. = FALSE)
+    if (!isSymmetric(unname(wmatrix), tol = sqrt(.Machine$double.eps)))
+      stop("`wmatrix` is not symmetric.", call. = FALSE)
   }
   if (!is.null(smatrix)) {
     smatrix <- .match_user_matrix(smatrix, colnames(parsed$Z), "smatrix")
@@ -756,6 +759,8 @@
       stop("`smatrix` dimensions (", nrow(smatrix), "x", ncol(smatrix),
            ") do not match the number of instruments (", parsed$L, ").",
            call. = FALSE)
+    if (!isSymmetric(unname(smatrix), tol = sqrt(.Machine$double.eps)))
+      stop("`smatrix` is not symmetric.", call. = FALSE)
   }
 
   # ===== Dependence-structure work (clusters, time-index, sorting) =====
@@ -2197,7 +2202,9 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   parsed       <- prep$parsed
   sdofminus    <- prep$sdofminus
   b0           <- prep$b0
-  smatrix      <- prep$smatrix   # name-normalized (.match_user_matrix)
+  # NOTE: `smatrix` stays the RAW user matrix for the backward-compat
+  # fit$smatrix echo field; the name-normalized copy (prep$smatrix) is what
+  # estimation and fit$S consume.
   cluster_vec  <- prep$cluster_vec
   cluster_var_name <- prep$cluster_var_name
   M            <- prep$M
@@ -2217,7 +2224,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   fit      <- est$fit
   method   <- est$method
   bw       <- est$bw
-  wmatrix  <- est$wmatrix
+  # Backward-compat fit$wmatrix echo keeps the RAW user matrix (NULL when
+  # the wmatrix was ignored-with-warning); the name-normalized copy
+  # (est$wmatrix) feeds estimation and fit$W.
+  wmatrix  <- if (is.null(est$wmatrix)) NULL else opts$wmatrix
   omega_fn <- est$omega_fn
 
   # --- 5. VCV ---
