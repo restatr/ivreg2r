@@ -273,10 +273,11 @@ test_that("the -2^53 endpoint is rejected; +2^53 is accepted", {
   # at +2^53 every t - k is exactly representable.
   lag_hi <- ivreg2r:::.ts_lag_values(c(10, 20, 30), 1, 2^53 + c(-2, -1, 0))
   expect_equal(lag_hi, c(NA, 10, 20))
-  hi <- data.frame(t = 2^53 + c(-2, -1, 0), x = c(10, 20, 30),
-                   y = c(1, 2, 3))
+  # Need 4 rows: the lag drops one, and the fit requires N - K > 0 with K = 2.
+  hi <- data.frame(t = 2^53 + c(-3, -2, -1, 0), x = c(10, 20, 30, 40),
+                   y = c(1, 2, 3, 5))
   fit <- ivreg2(y ~ l(x, 1), data = hi, tvar = "t")
-  expect_equal(nobs(fit), 2L)
+  expect_equal(nobs(fit), 3L)
 })
 
 test_that("large numeric panel IDs do not collide in lag keys", {
