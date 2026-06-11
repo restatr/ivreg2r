@@ -240,10 +240,17 @@ test_that("weighted 2SLS two-way cluster VCV matches Stata cl2_wt fixture", {
   vcov_path <- fixture_path("sim_twoway_vcov_cl2_wt.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_twoway, clusters = ~ firm_id + year_id,
-                weights = wt)
+  # Stata suppresses J here ("covariance matrix of moment conditions not of
+  # full rank"); the numerically-singular-Omega check produces the same NA,
+  # with a warning.
+  expect_warning(
+    fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
+                  data = sim_twoway, clusters = ~ firm_id + year_id,
+                  weights = wt),
+    "Hansen J statistic not computed"
+  )
   expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
+  expect_true(is.na(fit$diagnostics$overid$stat))
 })
 
 test_that("weighted 2SLS two-way cluster VCV matches Stata cl2_wt_small fixture", {
@@ -251,9 +258,12 @@ test_that("weighted 2SLS two-way cluster VCV matches Stata cl2_wt_small fixture"
   vcov_path <- fixture_path("sim_twoway_vcov_cl2_wt_small.csv")
   skip_if(!file.exists(vcov_path), "VCV fixture not found")
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_twoway, clusters = ~ firm_id + year_id,
-                weights = wt, small = TRUE)
+  expect_warning(
+    fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
+                  data = sim_twoway, clusters = ~ firm_id + year_id,
+                  weights = wt, small = TRUE),
+    "Hansen J statistic not computed"
+  )
   expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
 })
 
@@ -262,15 +272,18 @@ test_that("weighted two-way cluster diagnostics match Stata cl2_wt fixture", {
   diag_path <- fixture_path("sim_twoway_diagnostics_cl2_wt.csv")
   skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_twoway, clusters = ~ firm_id + year_id,
-                weights = wt)
+  expect_warning(
+    fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
+                  data = sim_twoway, clusters = ~ firm_id + year_id,
+                  weights = wt),
+    "Hansen J statistic not computed"
+  )
   stata <- read.csv(diag_path)
 
   # Note: Stata warns "covariance matrix of moment conditions not of full
-  # rank" for the weighted two-way cluster case. It reports J = NA and flags
-  # all diagnostics as unreliable. We only compare diagnostics where Stata
-  # reports a value AND does not issue a rank-deficiency warning.
+  # rank" for the weighted two-way cluster case and reports J = NA; since
+  # the F2 rank-check fix we return the same NA (asserted above via the
+  # warning). We only compare diagnostics where Stata reports a value.
   # VCV and model F are still valid since they use the main sandwich VCV.
   expect_equal(fit$model_f, stata$F_stat,
                tolerance = stata_tol$stat, info = "Model F (weighted)")

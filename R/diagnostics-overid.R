@@ -219,14 +219,17 @@
 .compute_j_with_omega <- function(Z, X, y, Omega, weights, N) {
   L <- ncol(Z)
 
-  # Check Omega rank via Cholesky
-  R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
-  if (is.null(R_chol)) {
-    if (qr(Omega)$rank < L) {
-      return(NA_real_)
-    }
-    R_chol <- NULL
+  # Numerical rank check on Omega (Stata: invsym's rank determination, which
+  # drives the "covariance matrix of moment conditions not of full rank"
+  # suppression of J). chol() alone is not a reliable rank check: it can
+  # succeed on a numerically singular matrix (e.g. a psda-corrected S whose
+  # smallest eigenvalue is ~1e-17 relative), so check eigenvalues explicitly
+  # at pseudo-inverse tolerance.
+  eig <- eigen(Omega, symmetric = TRUE, only.values = TRUE)$values
+  if (min(eig) < max(abs(eig)) * .Machine$double.eps * L) {
+    return(NA_real_)
   }
+  R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
 
   # Solve Omega^{-1} %*% b
   omega_inv <- function(b) {

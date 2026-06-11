@@ -554,18 +554,51 @@ correction to it:
 - `psd = "psda"`: replace negative eigenvalues with their absolute values
   (Stock & Watson, 2008, Remark 8).
 
-Note the example below can never trigger the correction: Driscoll-Kraay with
-the default Bartlett kernel is positive semi-definite by construction
-(Newey-West, 1987), so `psd` is shown purely for syntax. The option earns
-its keep with non-PSD kernels such as the truncated kernel.
+Driscoll-Kraay with the default Bartlett kernel is positive semi-definite
+by construction (Newey-West, 1987), but the truncated kernel carries no
+such guarantee. On the wagepan panel, Driscoll-Kraay with a truncated
+kernel produces an indefinite S — a genuinely binding case. (The warnings
+below are a direct symptom: the rank-deficient S makes the Hansen J and
+Stock-Wright statistics uncomputable, so they are reported as `NA`, just
+as Stata leaves them blank here.)
 
-```{r psd, eval = FALSE}
-fit_psd <- ivreg2(
-  lwage ~ educ + exper + expersq + married + union,
-  data = wagepan, dkraay = 3, tvar = "year", ivar = "nr",
-  psd = "psd0"
+```{r psd-binding}
+fit_nopsd <- ivreg2(
+  lwage ~ exper + expersq + married + union | hours | educ + black,
+  data = wagepan, dkraay = 2, kernel = "truncated",
+  tvar = "year", ivar = "nr"
 )
+min(eigen(fit_nopsd$S, symmetric = TRUE)$values)
 ```
+
+Refitting with `psd = "psda"` repairs S (a warning reports each corrected
+matrix; Stata performs the same correction silently):
+
+```{r psd-corrected, warning = TRUE}
+fit_psda <- ivreg2(
+  lwage ~ exper + expersq + married + union | hours | educ + black,
+  data = wagepan, dkraay = 2, kernel = "truncated",
+  tvar = "year", ivar = "nr", psd = "psda"
+)
+min(eigen(fit_psda$S, symmetric = TRUE)$values)
+```
+
+The correction is applied to S *before* the coefficient
+variance-covariance matrix is assembled from it, exactly as in Stata's
+`ivreg2`, so the standard errors change while the coefficients do not:
+
+```{r psd-compare}
+round(cbind(
+  estimate   = coef(fit_psda),
+  se_nopsd   = sqrt(diag(vcov(fit_nopsd))),
+  se_psda    = sqrt(diag(vcov(fit_psda)))
+), 4)
+```
+
+Two quantities are deliberately untouched, again matching Stata: the
+conventional `vcov = "iid"` VCE (S plays no role in it) and the
+Kleibergen-Paap identification statistics (Stata's `ranktest` never
+receives the psd option).
 
 ### DoF adjustments
 

@@ -56,10 +56,11 @@
 #'
 #' The single formula reproduces every plain path exactly because each
 #' VCE type's Omega normalization cancels its sandwich scaling:
-#' HC and HAC use `Omega = meat/(N - dofminus)` with `V = bread meat bread
-#' * N/(N - dofminus)`; cluster, two-way, DK, and cluster+kernel use
-#' `Omega = meat/N` with `V = bread meat bread`; AC and Stock-Watson Omegas
-#' are already per-observation with `V = bread Omega bread * N`.
+#' HC and HAC use `Omega = meat/(N - dofminus)` with
+#' `V = bread meat bread * N/(N - dofminus)`; cluster, two-way, DK, and
+#' cluster+kernel use `Omega = meat/N` with `V = bread meat bread`; AC and
+#' Stock-Watson Omegas are already per-observation with
+#' `V = bread Omega bread * N`.
 #'
 #' @param bread K x K bread matrix (k-class bread for LIML/k-class).
 #' @param A L x K first-stage coefficient matrix, or `NULL` for OLS

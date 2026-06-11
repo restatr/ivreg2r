@@ -422,3 +422,126 @@ test_that("iid VCV is never psd-corrected (Stata m_omega parity)", {
   # Identical code path: psd is inert for the iid VCV
   expect_identical(vcov(fit_null), vcov(fit_psd))
 })
+
+
+# ============================================================================
+# F2: Stata fixture comparisons (generate-psd-fixtures.do)
+# ============================================================================
+
+# Compare a psd fit against its Stata fixture set: coefficients, SEs, full
+# VCV, e(S), and the diagnostics Stata reports. `skip_model_f = TRUE` for
+# the psd0-binding configs, where the corrected VCV is exactly singular and
+# the joint model F is not a well-defined Wald statistic: Stata inverts the
+# near-singular slope block raw (F ~ 2.9e4 on the binding repro), while our
+# conditioning guard (.is_badly_conditioned_vcov) falls back to the sweep
+# inverse (F ~ 7.7). Documented intentional divergence; see
+# planning/06-parity-deltas.md row 18.
+check_psd_fixture <- function(fit, suffix, prefix = "wp_psd",
+                              inames_file = "wp_psd_inames.csv",
+                              skip_model_f = FALSE) {
+  coef_path <- fixture_path(paste0(prefix, "_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0(prefix, "_vcov_", suffix, ".csv"))
+  s_path    <- fixture_path(paste0(prefix, "_eS_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0(prefix, "_diagnostics_", suffix, ".csv"))
+  skip_if(!file.exists(coef_path), "Fixture not found")
+
+  stata_coef <- read.csv(coef_path, stringsAsFactors = FALSE)
+  stata_coef$term[stata_coef$term == "_cons"] <- "(Intercept)"
+  r_names <- names(coef(fit))
+
+  m <- match(r_names, stata_coef$term)
+  expect_equal(unname(coef(fit)), stata_coef$estimate[m],
+               tolerance = stata_tol$coef,
+               info = paste(suffix, "coefficients"))
+  expect_equal(unname(sqrt(diag(fit$vcov))), stata_coef$std_error[m],
+               tolerance = stata_tol$se,
+               info = paste(suffix, "std errors"))
+
+  # Full VCV, reordered to Stata's coefficient order
+  V_stata <- as.matrix(read.csv(vcov_path))
+  stata_to_r <- match(stata_coef$term, r_names)
+  expect_vcov_match(unname(fit$vcov[stata_to_r, stata_to_r]), V_stata,
+                    label = suffix)
+
+  # e(S), aligned by instrument name
+  S_stata <- read_stata_matrix(s_path, fixture_path(inames_file))
+  expect_vcov_match(fit$S[rownames(S_stata), colnames(S_stata)], S_stata,
+                    label = paste(suffix, "e(S)"))
+
+  # Diagnostics Stata reports
+  stata_diag <- read.csv(diag_path, na.strings = c("", "."))
+  diag <- fit$diagnostics
+
+  if (is.na(stata_diag$overid_stat)) {
+    # Stata suppressed J (rank-deficient corrected S); we must return NA too
+    expect_true(is.null(diag$overid) || is.na(diag$overid$stat),
+                label = paste(suffix, "J suppressed like Stata"))
+  } else {
+    expect_equal(diag$overid$stat, stata_diag$overid_stat,
+                 tolerance = stata_tol$stat, info = paste(suffix, "J"))
+    expect_equal(diag$overid$p, stata_diag$overid_p,
+                 tolerance = stata_tol$pval, info = paste(suffix, "J p"))
+  }
+
+  # KP identification stats: never psd-corrected, present in all fixtures
+  expect_equal(diag$underid$stat, stata_diag$underid_stat,
+               tolerance = stata_tol$stat, info = paste(suffix, "KP LM"))
+  expect_equal(diag$weak_id_robust$stat, stata_diag$weak_id_kp_f,
+               tolerance = stata_tol$stat, info = paste(suffix, "KP F"))
+  expect_equal(diag$weak_id$stat, stata_diag$weak_id_cd_f,
+               tolerance = stata_tol$stat, info = paste(suffix, "CD F"))
+
+  if (!skip_model_f && !is.na(stata_diag$model_f)) {
+    expect_equal(fit$model_f, stata_diag$model_f,
+                 tolerance = stata_tol$stat, info = paste(suffix, "model F"))
+  }
+
+  expect_identical(fit$nobs, as.integer(stata_diag$N))
+}
+
+test_that("binding DK + truncated psd0 matches Stata", {
+  skip_if_not(file.exists(wp_psd_path))
+  res <- dk_binding_fit(psd = "psd0")
+  expect_true(any(grepl("corrected via psd0", res$warnings)))
+  check_psd_fixture(res$fit, "dk_tru2_psd0", skip_model_f = TRUE)
+})
+
+test_that("binding DK + truncated psda matches Stata", {
+  skip_if_not(file.exists(wp_psd_path))
+  res <- dk_binding_fit(psd = "psda")
+  expect_true(any(grepl("corrected via psda", res$warnings)))
+  check_psd_fixture(res$fit, "dk_tru2_psda")
+})
+
+test_that("binding DK + truncated psd0 + small matches Stata", {
+  skip_if_not(file.exists(wp_psd_path))
+  res <- dk_binding_fit(psd = "psd0", small = TRUE)
+  check_psd_fixture(res$fit, "dk_tru2_psd0_small", skip_model_f = TRUE)
+})
+
+test_that("Stock-Watson + psda matches Stata", {
+  skip_if_not(file.exists(wp_psd_path))
+  fit <- ivreg2(lwage ~ exper + expersq + married + union | hours |
+                  educ + black,
+                data = wp_psd, sw = TRUE, ivar = "nr", psd = "psda")
+  check_psd_fixture(fit, "sw_psda")
+})
+
+test_that("two-way cluster + psd0 matches Stata", {
+  skip_if_not(file.exists(wp_psd_path))
+  fit <- ivreg2(lwage ~ exper + expersq + married + union | hours |
+                  educ + black,
+                data = wp_psd, clusters = ~nr + year, psd = "psd0")
+  check_psd_fixture(fit, "twoway_psd0")
+})
+
+test_that("HAC truncated + psd0 matches Stata", {
+  phil_path <- fixture_path("phillips_data.csv")
+  skip_if_not(file.exists(phil_path))
+  phil <- read.csv(phil_path)
+  fit <- ivreg2(cinf ~ 1 | unem | unem_1 + unem_2, data = phil,
+                vcov = "robust", kernel = "truncated", bw = 2,
+                tvar = "year", psd = "psd0")
+  check_psd_fixture(fit, "hac_tru2_psd0", prefix = "phil_psd",
+                    inames_file = "phil_psd_inames.csv")
+})

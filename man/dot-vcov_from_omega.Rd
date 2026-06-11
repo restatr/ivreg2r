@@ -57,9 +57,10 @@ Stata whenever the correction binds.
 \details{
 The single formula reproduces every plain path exactly because each
 VCE type's Omega normalization cancels its sandwich scaling:
-HC and HAC use \code{Omega = meat/(N - dofminus)} with `V = bread meat bread
-\itemize{
-\item N/(N - dofminus)\verb{; cluster, two-way, DK, and cluster+kernel use }Omega = meat/N\code{with}V = bread meat bread\verb{; AC and Stock-Watson Omegas are already per-observation with }V = bread Omega bread * N`.
-}
+HC and HAC use \code{Omega = meat/(N - dofminus)} with
+\verb{V = bread meat bread * N/(N - dofminus)}; cluster, two-way, DK, and
+cluster+kernel use \code{Omega = meat/N} with \verb{V = bread meat bread}; AC and
+Stock-Watson Omegas are already per-observation with
+\verb{V = bread Omega bread * N}.
 }
 \keyword{internal}

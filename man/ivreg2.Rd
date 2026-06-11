@@ -322,8 +322,10 @@ stored as \verb{$S}. The conventional (\code{vcov = "iid"}) VCV and the
 Kleibergen-Paap identification statistics are never corrected, also
 matching Stata (its \code{ranktest} does not receive the psd option). A
 warning is emitted whenever negative eigenvalues are detected and
-corrected (Stata corrects silently). Equivalent to Stata's \code{psd0} and
-\code{psda} options.}
+corrected (Stata corrects silently). Ignored when a user-supplied
+\code{smatrix} is given: the user matrix is used as-is for estimation, the
+VCV, and \verb{$S}, matching Stata (whose \code{m_omega} is never invoked for a
+supplied S). Equivalent to Stata's \code{psd0} and \code{psda} options.}
 
 \item{sw}{Logical: if \code{TRUE}, compute the Stock-Watson (2008,
 Econometrica) panel-robust VCE. Requires panel data (\code{ivar}).
@@ -367,7 +369,7 @@ GMM weighting matrix as \verb{$W}, corresponding to Stata's \code{e(S)} and
 robust and HAC, meat divided by \code{N - dofminus}; cluster, meat divided
 by \code{N}; psd-corrected when \code{psd} is set; built from centered moments
 when \code{center = TRUE}. A user-supplied \code{smatrix} is echoed, never
-recomputed.
+recomputed and never psd-corrected.
 \item \verb{$W} is \code{NULL} for \code{method = "liml"} and \code{"kclass"} (as in Stata, no
 weighting matrix is defined for k-class estimators). For two-step
 GMM, CUE, and \code{b0} fits it is the inverse of the defining \verb{$S}; for

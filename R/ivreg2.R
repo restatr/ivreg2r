@@ -2066,8 +2066,10 @@
 #'   Kleibergen-Paap identification statistics are never corrected, also
 #'   matching Stata (its `ranktest` does not receive the psd option). A
 #'   warning is emitted whenever negative eigenvalues are detected and
-#'   corrected (Stata corrects silently). Equivalent to Stata's `psd0` and
-#'   `psda` options.
+#'   corrected (Stata corrects silently). Ignored when a user-supplied
+#'   `smatrix` is given: the user matrix is used as-is for estimation, the
+#'   VCV, and `$S`, matching Stata (whose `m_omega` is never invoked for a
+#'   supplied S). Equivalent to Stata's `psd0` and `psda` options.
 #' @param sw Logical: if `TRUE`, compute the Stock-Watson (2008,
 #'   Econometrica) panel-robust VCE. Requires panel data (`ivar`).
 #'   Incompatible with clustering, HAC kernels, kiefer, dkraay,
@@ -2104,7 +2106,7 @@
 #'     robust and HAC, meat divided by `N - dofminus`; cluster, meat divided
 #'     by `N`; psd-corrected when `psd` is set; built from centered moments
 #'     when `center = TRUE`. A user-supplied `smatrix` is echoed, never
-#'     recomputed.
+#'     recomputed and never psd-corrected.
 #'   - `$W` is `NULL` for `method = "liml"` and `"kclass"` (as in Stata, no
 #'     weighting matrix is defined for k-class estimators). For two-step
 #'     GMM, CUE, and `b0` fits it is the inverse of the defining `$S`; for
