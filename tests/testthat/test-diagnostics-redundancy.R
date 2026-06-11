@@ -435,3 +435,50 @@ test_that("redundant(z1) HAC Bartlett bw=3 matches Stata", {
                tolerance = stata_tol$pval)
   expect_identical(fit$diagnostics$redundancy$df, as.integer(fixture$reddf))
 })
+
+
+# ============================================================================
+# mroz: noconstant, K2 = 0, ALL excluded instruments tested
+# F5 regression: the redundancy test partials out [X2, Z_maintained], which
+# is empty here — exercises the empty-X2 guard in .partial_fwl().
+# ============================================================================
+
+mroz_path <- fixture_path("mroz_data.csv")
+if (file.exists(mroz_path)) {
+  mroz_fix <- read.csv(mroz_path)
+}
+
+test_that("redundant(all instruments) with noconstant K2=0 matches Stata — IID", {
+  fixture_file <- fixture_path("mroz_nocons_redundancy_iid.csv")
+  skip_if(!file.exists(mroz_path), "mroz data not found")
+  skip_if(!file.exists(fixture_file), "fixture not found")
+
+  fit <- ivreg2(lwage ~ 0 | educ | age + kidslt6 + kidsge6, data = mroz_fix,
+                redundant = c("age", "kidslt6", "kidsge6"))
+  fixture <- read_redundancy_fixture(fixture_file)
+  expect_equal(fit$diagnostics$redundancy$stat, fixture$redstat,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$redundancy$p, fixture$redp,
+               tolerance = stata_tol$pval)
+  expect_identical(fit$diagnostics$redundancy$df, as.integer(fixture$reddf))
+
+  # K1 = 1 with every instrument tested: the redundancy LM (sum of squared
+  # canonical correlations) and the underid LM (min) coincide.
+  expect_equal(fit$diagnostics$redundancy$stat,
+               fit$diagnostics$underid$stat)
+})
+
+test_that("redundant(all instruments) with noconstant K2=0 matches Stata — robust", {
+  fixture_file <- fixture_path("mroz_nocons_redundancy_robust.csv")
+  skip_if(!file.exists(mroz_path), "mroz data not found")
+  skip_if(!file.exists(fixture_file), "fixture not found")
+
+  fit <- ivreg2(lwage ~ 0 | educ | age + kidslt6 + kidsge6, data = mroz_fix,
+                redundant = c("age", "kidslt6", "kidsge6"), vcov = "robust")
+  fixture <- read_redundancy_fixture(fixture_file)
+  expect_equal(fit$diagnostics$redundancy$stat, fixture$redstat,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$redundancy$p, fixture$redp,
+               tolerance = stata_tol$pval)
+  expect_identical(fit$diagnostics$redundancy$df, as.integer(fixture$reddf))
+})

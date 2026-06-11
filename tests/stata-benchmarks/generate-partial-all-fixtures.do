@@ -129,6 +129,35 @@ program define save_ivreg2_results
     }
 end
 
+/*---------------------------------------------------------------------------
+  Helper program: save redundancy diagnostics to CSV
+  (same schema as generate-redundancy-fixtures.do)
+---------------------------------------------------------------------------*/
+capture program drop save_redundancy_results
+program define save_redundancy_results
+    syntax, prefix(string) suffix(string) outdir(string)
+
+    quietly {
+        preserve
+        clear
+        set obs 1
+
+        gen double redstat = .
+        gen double redp = .
+        gen double reddf = .
+        gen str80 redlist = ""
+
+        capture replace redstat = e(redstat)
+        capture replace redp = e(redp)
+        capture replace reddf = e(reddf)
+        capture replace redlist = "`e(redlist)'"
+
+        export delimited using ///
+            "`outdir'/`prefix'_redundancy_`suffix'.csv", replace
+        restore
+    }
+end
+
 /*===========================================================================
   Load data
 ===========================================================================*/
@@ -155,5 +184,30 @@ save_ivreg2_results, prefix(mroz_partial_all) suffix(robust) outdir(`outdir')
 display "--- 3. noconstant, K2 = 0, IID ---"
 ivreg2 lwage (educ = age kidslt6 kidsge6), noconstant
 save_ivreg2_results, prefix(mroz_nocons) suffix(iid) outdir(`outdir')
+
+/*===========================================================================
+  4. Weighted partial(_all) — the guard's weighted entry path
+===========================================================================*/
+gen double wtvar = hours + 1
+
+display "--- 4a. weighted partial(_all), IID ---"
+ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6) [aw=wtvar], partial(_all)
+save_ivreg2_results, prefix(mroz_partial_all_w) suffix(iid) outdir(`outdir')
+
+display "--- 4b. weighted partial(_all), robust ---"
+ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6) [aw=wtvar], partial(_all) robust
+save_ivreg2_results, prefix(mroz_partial_all_w) suffix(robust) outdir(`outdir')
+
+/*===========================================================================
+  5. Redundancy test with an empty partial set: noconstant, K2 = 0, ALL
+     excluded instruments tested (ranktest gets an empty partial varlist)
+===========================================================================*/
+display "--- 5a. noconstant, redundant(all instruments), IID ---"
+ivreg2 lwage (educ = age kidslt6 kidsge6), noconstant redundant(age kidslt6 kidsge6)
+save_redundancy_results, prefix(mroz_nocons) suffix(iid) outdir(`outdir')
+
+display "--- 5b. noconstant, redundant(all instruments), robust ---"
+ivreg2 lwage (educ = age kidslt6 kidsge6), noconstant redundant(age kidslt6 kidsge6) robust
+save_redundancy_results, prefix(mroz_nocons) suffix(robust) outdir(`outdir')
 
 display "Done: partial-all fixtures written to `outdir'"

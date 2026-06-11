@@ -310,6 +310,29 @@ test_that("noconstant with no exogenous regressors id tests match Stata — mroz
     fixture_path("mroz_nocons_diagnostics_iid.csv"))
 })
 
+test_that("weighted partial(_all) id tests match Stata — mroz, IID", {
+  skip_if_not(file.exists(mroz_path))
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_fix, weights = hours + 1, partial = "_all")
+
+  check_coef_fixture(fit,
+    fixture_path("mroz_partial_all_w_coef_iid.csv"))
+  check_diag_fixture(fit,
+    fixture_path("mroz_partial_all_w_diagnostics_iid.csv"))
+})
+
+test_that("weighted partial(_all) id tests match Stata — mroz, robust (KP rk)", {
+  skip_if_not(file.exists(mroz_path))
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_fix, weights = hours + 1, partial = "_all",
+                vcov = "robust")
+
+  check_coef_fixture(fit,
+    fixture_path("mroz_partial_all_w_coef_robust.csv"))
+  check_diag_fixture(fit,
+    fixture_path("mroz_partial_all_w_diagnostics_robust.csv"))
+})
+
 
 # ===========================================================================
 # 4. Weighted partial
