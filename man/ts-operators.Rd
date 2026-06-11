@@ -60,9 +60,9 @@ Operators require \code{tvar} (and \code{ivar} for panel data) to be passed to
 error when called outside an \code{ivreg2()} formula (use, e.g.,
 \code{dplyr::lag()} with a consecutive-periods check, or \code{fixest}/\code{collapse}/
 \code{plm}, for general-purpose panel lagging). The time variable must be
-integer-valued (less than \eqn{2^{53}} in magnitude), like Stata's
-\code{tsset} — lag arithmetic on fractional or astronomically large time
-values is not exact in floating point. The lag/difference order \code{k}
+integer-valued (greater than \eqn{-2^{53}}, at most \eqn{2^{53}}), like
+Stata's \code{tsset} — lag arithmetic on fractional or astronomically large
+time values is not exact in floating point. The lag/difference order \code{k}
 must be a constant non-negative integer (or integer vector for ranges);
 leads (negative \code{k}), nested operators (\code{l(d(x))}), and ranges on the
 left-hand side (the model has a single dependent variable) are not

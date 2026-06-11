@@ -60,9 +60,9 @@
 #' error when called outside an `ivreg2()` formula (use, e.g.,
 #' `dplyr::lag()` with a consecutive-periods check, or `fixest`/`collapse`/
 #' `plm`, for general-purpose panel lagging). The time variable must be
-#' integer-valued (less than \eqn{2^{53}} in magnitude), like Stata's
-#' `tsset` — lag arithmetic on fractional or astronomically large time
-#' values is not exact in floating point. The lag/difference order `k`
+#' integer-valued (greater than \eqn{-2^{53}}, at most \eqn{2^{53}}), like
+#' Stata's `tsset` — lag arithmetic on fractional or astronomically large
+#' time values is not exact in floating point. The lag/difference order `k`
 #' must be a constant non-negative integer (or integer vector for ranges);
 #' leads (negative `k`), nested operators (`l(d(x))`), and ranges on the
 #' left-hand side (the model has a single dependent variable) are not
@@ -404,10 +404,10 @@ d <- function(x, k = 1) {
   if (k == 0) {
     return(x)
   }
-  # Validation guarantees integer time values strictly inside +/- 2^53, so
-  # t - k is exact whenever its true value is representable, and rounds
-  # outside the data range (a true NA) otherwise — no per-call guard
-  # needed, for any k.
+  # Validation guarantees integer time values in (-2^53, 2^53], so t - k
+  # is exact whenever its true value is representable, and rounds outside
+  # the data range (a true NA) otherwise — no per-call guard needed, for
+  # any k.
   if (is.null(ivar_vec)) {
     idx <- match(tvar_vec - k, tvar_vec)
   } else {
