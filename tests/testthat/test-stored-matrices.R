@@ -313,3 +313,184 @@ test_that("cluster fit$S matches Stata e(S) [card_overid_smat_S_cluster]", {
   expect_equal(unname(fit$S[r_z_order_overid, r_z_order_overid]),
                unname(S_stata), tolerance = stata_tol$vcov)
 })
+
+# ============================================================================
+# Part 2: fixtures from generate-stored-matrices-fixtures.do
+#   (e(S)/e(W) saved per canonical config on CSV exports of the bundled
+#    datasets, so Stata and R compute on identical inputs)
+# ============================================================================
+
+expect_sw_match <- function(fit, eS_file, eW_file, names_file,
+                            tol = stata_tol$vcov) {
+  S_stata <- read_stata_matrix(fixture_path(eS_file), fixture_path(names_file))
+  rn <- colnames(fit$S)
+  expect_setequal(rownames(S_stata), rn)
+  expect_equal(unname(fit$S), unname(S_stata[rn, rn]), tolerance = tol)
+  if (!is.null(eW_file)) {
+    W_stata <- read_stata_matrix(fixture_path(eW_file),
+                                 fixture_path(names_file))
+    expect_equal(unname(fit$W), unname(W_stata[rn, rn]), tolerance = tol)
+  }
+}
+
+sm_fixture_ready <- function(...) {
+  all(vapply(list(...), function(f) file.exists(fixture_path(f)), logical(1)))
+}
+
+test_that("mroz 2SLS iid fit$S/fit$W match Stata e(S)/e(W)", {
+  skip_if(!sm_fixture_ready("mroz_iv_eS_iid.csv", "mroz_iv_eW_iid.csv",
+                            "mroz_iv_inames.csv", "mroz_data.csv"),
+          "Fixtures not found")
+  mroz <- read.csv(mroz_path)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz)
+  expect_sw_match(fit, "mroz_iv_eS_iid.csv", "mroz_iv_eW_iid.csv",
+                  "mroz_iv_inames.csv")
+})
+
+test_that("mroz 2SLS robust fit$S/fit$W match Stata e(S)/e(W)", {
+  skip_if(!sm_fixture_ready("mroz_iv_eS_robust.csv", "mroz_iv_eW_robust.csv",
+                            "mroz_iv_inames.csv", "mroz_data.csv"),
+          "Fixtures not found")
+  mroz <- read.csv(mroz_path)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, vcov = "robust")
+  expect_sw_match(fit, "mroz_iv_eS_robust.csv", "mroz_iv_eW_robust.csv",
+                  "mroz_iv_inames.csv")
+})
+
+test_that("mroz LIML fit$S matches Stata e(S); Stata posts no e(W)", {
+  skip_if(!sm_fixture_ready("mroz_iv_eS_liml.csv", "mroz_iv_inames.csv",
+                            "mroz_data.csv"),
+          "Fixtures not found")
+  mroz <- read.csv(mroz_path)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, method = "liml")
+  expect_sw_match(fit, "mroz_iv_eS_liml.csv", NULL, "mroz_iv_inames.csv")
+  # verified via `ereturn list, all`: LIML posts e(S) but no e(W)
+  expect_null(fit$W)
+})
+
+test_that("mroz OLS robust fit$S/fit$W match Stata e(S)/e(W)", {
+  skip_if(!sm_fixture_ready("mroz_ols_eS_robust.csv",
+                            "mroz_ols_eW_robust.csv",
+                            "mroz_ols_inames.csv", "mroz_data.csv"),
+          "Fixtures not found")
+  mroz <- read.csv(mroz_path)
+  # Stata's run drops missing-lwage rows; mirror the estimation sample
+  fit <- ivreg2(lwage ~ exper + expersq, data = mroz, vcov = "robust")
+  expect_sw_match(fit, "mroz_ols_eS_robust.csv", "mroz_ols_eW_robust.csv",
+                  "mroz_ols_inames.csv")
+})
+
+test_that("griliches gmm2s robust fit$S/fit$W match Stata e(S)/e(W)", {
+  skip_if(!sm_fixture_ready("griliches_eS_gmm2s_robust.csv",
+                            "griliches_eW_gmm2s_robust.csv",
+                            "griliches_inames.csv", "griliches_data.csv"),
+          "Fixtures not found")
+  gril <- read.csv(fixture_path("griliches_data.csv"))
+  fit <- ivreg2(lw ~ s + expr + tenure + rns + smsa | iq |
+                  med + kww + age + mrt,
+                data = gril, method = "gmm2s", vcov = "robust")
+  expect_sw_match(fit, "griliches_eS_gmm2s_robust.csv",
+                  "griliches_eW_gmm2s_robust.csv", "griliches_inames.csv")
+})
+
+test_that("phillips AC fit$S/fit$W match Stata e(S)/e(W)", {
+  skip_if(!sm_fixture_ready("phillips_eS_ac_bw3.csv", "phillips_eW_ac_bw3.csv",
+                            "phillips_inames.csv", "phillips_data.csv"),
+          "Fixtures not found")
+  phil <- read.csv(fixture_path("phillips_data.csv"))
+  fit <- ivreg2(cinf ~ unem, data = phil,
+                kernel = "bartlett", bw = 3, tvar = "year")
+  expect_sw_match(fit, "phillips_eS_ac_bw3.csv", "phillips_eW_ac_bw3.csv",
+                  "phillips_inames.csv")
+})
+
+test_that("phillips HAC fit$S/fit$W match Stata e(S)/e(W)", {
+  skip_if(!sm_fixture_ready("phillips_eS_hac_bw3.csv",
+                            "phillips_eW_hac_bw3.csv",
+                            "phillips_inames.csv", "phillips_data.csv"),
+          "Fixtures not found")
+  phil <- read.csv(fixture_path("phillips_data.csv"))
+  fit <- ivreg2(cinf ~ unem, data = phil, vcov = "robust",
+                kernel = "bartlett", bw = 3, tvar = "year")
+  expect_sw_match(fit, "phillips_eS_hac_bw3.csv", "phillips_eW_hac_bw3.csv",
+                  "phillips_inames.csv")
+})
+
+test_that("stockwatson CUE HAC fit$S/fit$W match Stata e(S)/e(W)", {
+  skip_if(!sm_fixture_ready("stockwatson_eS_cue.csv", "stockwatson_eW_cue.csv",
+                            "stockwatson_inames.csv", "stockwatson_data.csv"),
+          "Fixtures not found")
+  sw_dat <- read.csv(fixture_path("stockwatson_data.csv"))
+  fit <- ivreg2(dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1,
+                data = sw_dat, method = "cue", vcov = "robust",
+                kernel = "bartlett", bw = 5, tvar = "date")
+  # CUE: S/W are evaluated at the converged beta, so they inherit
+  # optimizer-path sensitivity (test-cue.R precedent). Measured agreement
+  # is much tighter; 1e-4 leaves margin while catching scaling errors.
+  expect_sw_match(fit, "stockwatson_eS_cue.csv", "stockwatson_eW_cue.csv",
+                  "stockwatson_inames.csv", tol = 1e-4)
+})
+
+# ============================================================================
+# Part 3: name matching for user-supplied matrices (Stata matsort parity;
+#         Codex review finding on the F1 storage commit)
+# ============================================================================
+
+test_that("named smatrix in shuffled order is matched by name", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
+  base <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust")
+  S <- base$S
+  shuffle <- rev(colnames(S))
+  S_shuffled <- S[shuffle, shuffle]
+  fit <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust",
+                smatrix = S_shuffled)
+  ref <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust",
+                smatrix = S)
+  expect_equal(coef(fit), coef(ref), tolerance = 1e-12)
+  expect_equal(vcov(fit), vcov(ref), tolerance = 1e-12)
+  expect_identical(colnames(fit$S), colnames(S))
+})
+
+test_that("named wmatrix in shuffled order is matched by name", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
+  base <- ivreg2(f, data = card, vcov = "robust")
+  inames <- colnames(base$S)
+  W <- diag(seq_len(7))            # distinguishable diagonal
+  dimnames(W) <- list(inames, inames)
+  shuffle <- inames[c(4L, 1L, 7L, 2L, 6L, 3L, 5L)]   # fixed permutation
+  W_shuffled <- W[shuffle, shuffle]
+  fit <- ivreg2(f, data = card, vcov = "robust", wmatrix = W_shuffled)
+  ref <- ivreg2(f, data = card, vcov = "robust", wmatrix = W)
+  expect_equal(coef(fit), coef(ref), tolerance = 1e-12)
+  expect_equal(unname(fit$W), unname(W), tolerance = 1e-14)
+})
+
+test_that("named user matrix with missing instrument names errors", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
+  S <- diag(7)
+  bad <- c("(Intercept)", "exper", "expersq", "black", "south",
+           "nearc2", "WRONG")
+  dimnames(S) <- list(bad, bad)
+  expect_error(
+    ivreg2(f, data = card, vcov = "robust", smatrix = S),
+    "do not match the instrument list"
+  )
+})
+
+test_that("user matrix with disagreeing row/column names errors", {
+  skip_if(!file.exists(card_path), "Card dataset not found")
+  f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
+  base <- ivreg2(f, data = card, vcov = "robust")
+  S <- base$S
+  rownames(S) <- rev(rownames(S))
+  expect_error(
+    ivreg2(f, data = card, vcov = "robust", smatrix = S),
+    "row and column names disagree"
+  )
+})

@@ -441,11 +441,50 @@
 }
 
 
+#' Match a user-supplied S or W matrix to the instrument columns by name.
+#'
+#' Mirrors Stata's matsort (ivreg2.ado:4480): when the matrix carries
+#' dimnames, its rows and columns are selected and reordered to the
+#' instrument order; names that do not cover the instrument list are an
+#' error (Stata r(198), "supplied matrix columns/rows do not match IV
+#' list"). Extra named rows/columns are dropped by the selection, as in
+#' Stata. Unnamed matrices are returned unchanged (positional use).
+#'
+#' @param M User-supplied square matrix.
+#' @param inames Character: instrument column names (colnames(Z)).
+#' @param arg Argument name for error messages.
+#' @return The matrix with rows/columns in instrument order.
+#' @noRd
+.match_user_matrix <- function(M, inames, arg) {
+  cn <- colnames(M)
+  rn <- rownames(M)
+  if (is.null(cn) && is.null(rn)) {
+    return(M)
+  }
+  if (!is.null(cn) && !is.null(rn) && !identical(cn, rn)) {
+    stop("`", arg, "` row and column names disagree.", call. = FALSE)
+  }
+  nm <- if (!is.null(cn)) cn else rn
+  if (anyDuplicated(nm)) {
+    stop("`", arg, "` has duplicated row/column names.", call. = FALSE)
+  }
+  perm <- match(inames, nm)
+  if (anyNA(perm)) {
+    stop("`", arg, "` row/column names do not match the instrument list; ",
+         "missing: ",
+         paste0("'", inames[is.na(perm)], "'", collapse = ", "),
+         ". Supply the matrix with instrument names (or unnamed, in ",
+         "instrument column order).", call. = FALSE)
+  }
+  M[perm, perm, drop = FALSE]
+}
+
+
 #' Prepare model matrices, weights, clusters, and time-index for estimation.
 #'
 #' Post-parse validation, weight normalization, FWL partialling, b0 validation,
-#' wmatrix/smatrix dimension checks, cluster parsing, DK auto-clustering,
-#' time-index construction, and HAC/AC sorting.
+#' wmatrix/smatrix name matching and dimension checks, cluster parsing,
+#' DK auto-clustering, time-index construction, and HAC/AC sorting.
 #'
 #' @return Named list with parsed (modified), sdofminus, b0, cluster_vec,
 #'   cluster_var_name, M/M1/M2, time_index, unsort_order, partial_ct,
@@ -698,14 +737,21 @@
     }
   }
 
-  # --- Validate wmatrix/smatrix dimensions (after partialling) ---
+  # --- Normalize and validate wmatrix/smatrix (after partialling) ---
+  # Named matrices are matched to the instrument columns BY NAME, mirroring
+  # Stata's matsort (ivreg2.ado:4281, 4307: rows/columns are selected and
+  # reordered against cnZ1; missing names error with r(198)). Unnamed
+  # matrices are used positionally (an R extension -- Stata matrices always
+  # carry names), with the same convention as named/unnamed `b0` above.
   if (!is.null(wmatrix)) {
+    wmatrix <- .match_user_matrix(wmatrix, colnames(parsed$Z), "wmatrix")
     if (nrow(wmatrix) != parsed$L || ncol(wmatrix) != parsed$L)
       stop("`wmatrix` dimensions (", nrow(wmatrix), "x", ncol(wmatrix),
            ") do not match the number of instruments (", parsed$L, ").",
            call. = FALSE)
   }
   if (!is.null(smatrix)) {
+    smatrix <- .match_user_matrix(smatrix, colnames(parsed$Z), "smatrix")
     if (nrow(smatrix) != parsed$L || ncol(smatrix) != parsed$L)
       stop("`smatrix` dimensions (", nrow(smatrix), "x", ncol(smatrix),
            ") do not match the number of instruments (", parsed$L, ").",
@@ -897,6 +943,7 @@
 
   list(
     parsed = parsed, sdofminus = sdofminus, b0 = b0,
+    wmatrix = wmatrix, smatrix = smatrix,
     cluster_vec = cluster_vec, cluster_var_name = cluster_var_name,
     M = M, M1 = M1, M2 = M2,
     time_index = time_index, unsort_order = unsort_order,
@@ -928,8 +975,9 @@
   center <- opts$center
   psd <- opts$psd
   ivar <- opts$ivar
-  wmatrix <- opts$wmatrix
-  smatrix <- opts$smatrix
+  # name-normalized in .prepare_model (.match_user_matrix)
+  wmatrix <- prep$wmatrix
+  smatrix <- prep$smatrix
 
   sdofminus   <- prep$sdofminus
   b0          <- prep$b0
@@ -1161,8 +1209,8 @@
     is.null(opts$kernel)
 
   # --- S ---
-  if (!is.null(opts$smatrix)) {
-    S <- opts$smatrix
+  if (!is.null(prep$smatrix)) {
+    S <- prep$smatrix
   } else if (method %in% c("gmm2s", "gmmw", "cue")) {
     S <- fit$omega
   } else {
@@ -1889,14 +1937,21 @@
 #'   When `method` is not `"gmm2s"`, ignored without robust VCE, clustering,
 #'   or HAC (with a warning).
 #'   Equivalent to Stata's `wmatrix()` option. When used (not ignored), it is
-#'   echoed back as `fit$W`, matching Stata's `e(W)`.
+#'   echoed back as `fit$W`, matching Stata's `e(W)`. A matrix with dimnames
+#'   is matched to the instrument columns by name (reordered as needed,
+#'   mirroring Stata's matsort; names that do not cover the instrument list
+#'   are an error); an unnamed matrix is used positionally, in instrument
+#'   column order.
 #' @param smatrix Numeric matrix: user-supplied L x L moment covariance matrix
 #'   for GMM estimation. When supplied, the GMM estimation uses this matrix
 #'   instead of computing Omega from residuals. Implies efficient GMM
 #'   (`method` is promoted to `"gmm2s"` if `"2sls"`). Must be symmetric.
 #'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
 #'   Equivalent to Stata's `smatrix()` option. Echoed back as `fit$S`
-#'   (never recomputed), matching Stata's `e(S)`.
+#'   (never recomputed), matching Stata's `e(S)`. A matrix with dimnames is
+#'   matched to the instrument columns by name (reordered as needed,
+#'   mirroring Stata's matsort); an unnamed matrix is used positionally, in
+#'   instrument column order.
 #' @param b0 Numeric vector: evaluate the CUE objective at this fixed
 #'   parameter vector without optimization. When supplied, `method` is
 #'   promoted to `"cue"` and the J(b0) statistic is computed and stored.
@@ -2142,6 +2197,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   parsed       <- prep$parsed
   sdofminus    <- prep$sdofminus
   b0           <- prep$b0
+  smatrix      <- prep$smatrix   # name-normalized (.match_user_matrix)
   cluster_vec  <- prep$cluster_vec
   cluster_var_name <- prep$cluster_var_name
   M            <- prep$M

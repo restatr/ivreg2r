@@ -54,3 +54,16 @@ expect_vcov_match <- function(V_r, V_stata, tol = stata_tol$vcov, label = "") {
     }
   }
 }
+
+
+# Read a Stata matrix fixture (v1..vk CSV from save_matrix) together with its
+# companion column-names CSV (from save_matrix_names), mapping Stata's
+# "_cons" to R's "(Intercept)". Returns a named square matrix; align to an R
+# fit with M[colnames(fit$S), colnames(fit$S)].
+read_stata_matrix <- function(mat_path, names_path) {
+  M <- as.matrix(read.csv(mat_path))
+  nm <- read.csv(names_path)$name
+  nm[nm == "_cons"] <- "(Intercept)"
+  dimnames(M) <- list(nm, nm)
+  M
+}

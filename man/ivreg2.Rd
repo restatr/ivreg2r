@@ -236,7 +236,11 @@ Incompatible with \code{method = "liml"}, \code{kclass}, and \code{fuller}.
 When \code{method} is not \code{"gmm2s"}, ignored without robust VCE, clustering,
 or HAC (with a warning).
 Equivalent to Stata's \code{wmatrix()} option. When used (not ignored), it is
-echoed back as \code{fit$W}, matching Stata's \code{e(W)}.}
+echoed back as \code{fit$W}, matching Stata's \code{e(W)}. A matrix with dimnames
+is matched to the instrument columns by name (reordered as needed,
+mirroring Stata's matsort; names that do not cover the instrument list
+are an error); an unnamed matrix is used positionally, in instrument
+column order.}
 
 \item{smatrix}{Numeric matrix: user-supplied L x L moment covariance matrix
 for GMM estimation. When supplied, the GMM estimation uses this matrix
@@ -244,7 +248,10 @@ instead of computing Omega from residuals. Implies efficient GMM
 (\code{method} is promoted to \code{"gmm2s"} if \code{"2sls"}). Must be symmetric.
 Incompatible with \code{method = "liml"}, \code{kclass}, and \code{fuller}.
 Equivalent to Stata's \code{smatrix()} option. Echoed back as \code{fit$S}
-(never recomputed), matching Stata's \code{e(S)}.}
+(never recomputed), matching Stata's \code{e(S)}. A matrix with dimnames is
+matched to the instrument columns by name (reordered as needed,
+mirroring Stata's matsort); an unnamed matrix is used positionally, in
+instrument column order.}
 
 \item{b0}{Numeric vector: evaluate the CUE objective at this fixed
 parameter vector without optimization. When supplied, \code{method} is

@@ -35,7 +35,13 @@ r_z_order_justid <- c("(Intercept)", "exper", "expersq", "black", "south",
 # Load a Stata S/W matrix fixture and reorder to R's Z ordering
 load_stata_matrix <- function(path, stata_order, r_order) {
   M <- as.matrix(read.csv(path))
-  reorder_stata_to_r(M, stata_order, r_order)
+  M <- reorder_stata_to_r(M, stata_order, r_order)
+  # Strip read.csv's auto colnames (v1, v2, ...): these matrices are aligned
+  # positionally by the reorder above, and named matrices are now matched to
+  # the instrument list BY NAME (.match_user_matrix, Stata matsort parity) --
+  # junk v-names would be rejected.
+  dimnames(M) <- NULL
+  M
 }
 
 # ============================================================================
