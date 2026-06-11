@@ -226,7 +226,10 @@
   # smallest eigenvalue is ~1e-17 relative), so check eigenvalues explicitly
   # at pseudo-inverse tolerance.
   eig <- eigen(Omega, symmetric = TRUE, only.values = TRUE)$values
-  if (min(eig) < max(abs(eig)) * .Machine$double.eps * L) {
+  # <= so an all-zero Omega (exactly-zero residuals) is caught: with strict
+  # <, the 0 < 0 comparison passes a rank-zero matrix through to a
+  # qr.solve() crash.
+  if (min(eig) <= max(abs(eig)) * .Machine$double.eps * L) {
     return(NA_real_)
   }
   R_chol <- tryCatch(chol(Omega), error = function(e) NULL)

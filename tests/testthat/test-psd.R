@@ -535,6 +535,28 @@ test_that("two-way cluster + psd0 matches Stata", {
   check_psd_fixture(fit, "twoway_psd0")
 })
 
+test_that("all-zero Omega returns NA J instead of crashing", {
+  # Exactly-zero residuals (y identically 0) give an all-zero moment
+  # covariance; the rank check must catch it (NA + warning, matching
+  # Stata's "not of full rank" suppression) rather than crashing in
+  # qr.solve(). Regression test for the <= boundary in the eigenvalue
+  # rank check (.compute_j_with_omega).
+  set.seed(42)
+  d <- data.frame(y0 = 0, x = rnorm(50), z1 = rnorm(50),
+                  z2 = rnorm(50), z3 = rnorm(50))
+  # The zero-residual fit degrades every moment-based diagnostic, so
+  # AR and Stock-Wright also warn; capture the set and assert on it.
+  res <- fit_capturing_warnings(
+    ivreg2(y0 ~ 1 | x | z1 + z2 + z3, data = d, vcov = "robust")
+  )
+  expect_true(any(grepl("Hansen J statistic not computed", res$warnings)))
+  expect_true(all(grepl(
+    "Hansen J statistic not computed|Anderson-Rubin: RVR matrix is singular|Stock-Wright: Omega is rank-deficient",
+    res$warnings
+  )))
+  expect_true(is.na(res$fit$diagnostics$overid$stat))
+})
+
 test_that("HAC truncated + psd0 matches Stata", {
   phil_path <- fixture_path("phillips_data.csv")
   skip_if_not(file.exists(phil_path))
