@@ -54,15 +54,23 @@ check_vcov_fixture <- function(fit, vcov_path, coef_path, tol = stata_tol) {
 }
 
 # Helper: compare diagnostics against fixture
+#
+# Presence is gated on the FIXTURE side only: a non-empty fixture value means
+# Stata posted the statistic, so the R object must exist — a NULL diagnostic
+# is a failure, not a skip. Legitimate absences (OLS underid, iid KP F) are
+# encoded as empty fixture fields.
 check_diag_fixture <- function(fit, fixture_path, tol = stata_tol) {
   fixture <- read.csv(fixture_path)
   diag <- fit$diagnostics
 
-  # Overid
-  if (!is.null(diag$overid) && diag$overid$df > 0L &&
-      !is.na(fixture$overid_stat) && fixture$overid_stat != "") {
+  # Overid. Stata posts e(sargan) = 0 with df = 0 when there is no
+  # overidentification to test (R posts no overid object) — a real test
+  # requires fixture df > 0.
+  if (!is.na(fixture$overid_stat) && fixture$overid_stat != "" &&
+      !is.na(fixture$overid_df) && as.integer(fixture$overid_df) > 0L) {
     overid_val <- as.numeric(fixture$overid_stat)
     if (!is.na(overid_val)) {
+      expect_false(is.null(diag$overid), info = "overid posted")
       expect_equal(diag$overid$stat, overid_val,
                    tolerance = tol$stat, info = "overid stat")
       expect_equal(diag$overid$p, as.numeric(fixture$overid_p),
@@ -71,10 +79,10 @@ check_diag_fixture <- function(fit, fixture_path, tol = stata_tol) {
   }
 
   # Underid
-  if (!is.null(diag$underid) && !is.na(fixture$underid_stat) &&
-      fixture$underid_stat != "") {
+  if (!is.na(fixture$underid_stat) && fixture$underid_stat != "") {
     underid_val <- as.numeric(fixture$underid_stat)
     if (!is.na(underid_val)) {
+      expect_false(is.null(diag$underid), info = "underid posted")
       expect_equal(diag$underid$stat, underid_val,
                    tolerance = tol$stat, info = "underid stat")
       expect_equal(diag$underid$p, as.numeric(fixture$underid_p),
@@ -83,30 +91,30 @@ check_diag_fixture <- function(fit, fixture_path, tol = stata_tol) {
   }
 
   # Weak ID (Cragg-Donald)
-  if (!is.null(diag$weak_id) && !is.na(fixture$weak_id_cd_f) &&
-      fixture$weak_id_cd_f != "") {
+  if (!is.na(fixture$weak_id_cd_f) && fixture$weak_id_cd_f != "") {
     cd_val <- as.numeric(fixture$weak_id_cd_f)
     if (!is.na(cd_val)) {
+      expect_false(is.null(diag$weak_id), info = "weak_id posted")
       expect_equal(diag$weak_id$stat, cd_val,
                    tolerance = tol$stat, info = "CD F")
     }
   }
 
   # Weak ID (Kleibergen-Paap rk Wald F)
-  if (!is.null(diag$weak_id_robust) && !is.na(fixture$weak_id_kp_f) &&
-      fixture$weak_id_kp_f != "") {
+  if (!is.na(fixture$weak_id_kp_f) && fixture$weak_id_kp_f != "") {
     kp_val <- as.numeric(fixture$weak_id_kp_f)
     if (!is.na(kp_val)) {
+      expect_false(is.null(diag$weak_id_robust), info = "weak_id_robust posted")
       expect_equal(diag$weak_id_robust$stat, kp_val,
                    tolerance = tol$stat, info = "KP rk Wald F")
     }
   }
 
   # Model F
-  if (!is.null(fit$model_f) && !is.na(fixture$model_f) &&
-      fixture$model_f != "") {
+  if (!is.na(fixture$model_f) && fixture$model_f != "") {
     mf_val <- as.numeric(fixture$model_f)
     if (!is.na(mf_val)) {
+      expect_false(is.null(fit$model_f), info = "model F posted")
       expect_equal(fit$model_f, mf_val,
                    tolerance = tol$stat, info = "model F")
     }
