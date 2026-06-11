@@ -205,7 +205,7 @@
 .kp_omega <- function(Z1_perp, V_hat, weights, cluster_vec, N, K1, L1,
                        weight_type = "aweight",
                        kernel = NULL, bw = NULL, time_index = NULL,
-                       center = FALSE, psd = NULL) {
+                       center = FALSE) {
   # Build N x (K1*L1) score matrix: row i = kron(V_hat[i,], Z1_perp[i,])
   # For K1=1: reduces to V_hat * Z1_perp (scalar broadcast)
   if (K1 == 1L) {
@@ -262,8 +262,10 @@
       shat0 <- crossprod(weights * scores) / N
     }
   }
-  # PSD correction (before symmetry enforcement)
-  shat0 <- .psd_correct(shat0, psd)
+  # No psd correction: Stata's ranktest never receives the psd option
+  # (ivreg2.ado:1639-1650 passes robust/cluster/bw/kernel only), so KP
+  # identification statistics are always computed from the uncorrected
+  # score covariance.
   (shat0 + t(shat0)) / 2  # force symmetry
 }
 
@@ -388,7 +390,7 @@
                               weight_type = "aweight",
                               kernel = NULL, bw = NULL,
                               time_index = NULL,
-                              center = FALSE, psd = NULL) {
+                              center = FALSE) {
 
   # Top-level guard: catch unexpected errors
   result <- tryCatch({
@@ -481,22 +483,20 @@
       }
       shat0_lm <- .ac_meat(Z1_perp, drop(V_lm), time_index, kp_kernel, bw,
                             N, dofminus, weights, weight_type, ZwZ_perp)
-      shat0_lm <- .psd_correct(shat0_lm, psd)
       shat0_wald <- .ac_meat(Z1_perp, drop(V_wald), time_index, kp_kernel, bw,
                               N, dofminus, weights, weight_type, ZwZ_perp)
-      shat0_wald <- .psd_correct(shat0_wald, psd)
     } else {
       # HAC / HC / cluster path: use score cross-products
       shat0_lm <- .kp_omega(Z1_perp, V_lm, weights, cluster_vec, N, K1, L1,
                               weight_type = weight_type,
                               kernel = kp_kernel, bw = bw,
                               time_index = time_index,
-                              center = center, psd = psd)
+                              center = center)
       shat0_wald <- .kp_omega(Z1_perp, V_wald, weights, cluster_vec, N, K1, L1,
                                 weight_type = weight_type,
                                 kernel = kp_kernel, bw = bw,
                                 time_index = time_index,
-                                center = center, psd = psd)
+                                center = center)
     }
 
     # KP rk LM

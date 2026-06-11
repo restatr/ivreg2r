@@ -16,8 +16,7 @@
   sdofminus = 0L,
   weights = NULL,
   weight_type = "aweight",
-  center = FALSE,
-  psd = NULL
+  center = FALSE
 )
 }
 \arguments{
@@ -40,8 +39,6 @@
 \item{weight_type}{Character.}
 
 \item{center}{Logical.}
-
-\item{psd}{Character or NULL: PSD correction mode.}
 }
 \value{
 K x K variance-covariance matrix.

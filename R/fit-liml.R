@@ -23,7 +23,8 @@
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return A named list with `coefficients`, `residuals`, `fitted.values`,
 #'   `vcov`, `sigma`, `df.residual`, `rank`, `r.squared`, `adj.r.squared`,
-#'   `rss`, `r2u`, `r2c`, `mss`, `bread`, `bread_kclass`, `X_hat`, `lambda`,
+#'   `rss`, `r2u`, `r2c`, `mss`, `bread`, `bread_kclass`, `X_hat`, `proj_coef`,
+#'   `lambda`,
 #'   `kclass_value`, `method`, `fuller_param`.
 #' @keywords internal
 .fit_kclass <- function(parsed, method = "liml", kclass = NULL, fuller = 0,
@@ -62,6 +63,12 @@
   }
   X_hat <- as.matrix(lm_Z$fitted.values)
   colnames(X_hat) <- colnames(X)
+
+  # --- First-stage map A (L x K): X_hat = Z %*% A ---
+  # NA (aliased) coefficients zero-filled; see .fit_2sls().
+  proj_coef <- as.matrix(lm_Z$coefficients)
+  proj_coef[is.na(proj_coef)] <- 0
+  dimnames(proj_coef) <- list(colnames(Z), colnames(X))
 
   # --- Stage 2: regress y on X_hat for rank check and 2SLS bread ---
   if (is.null(w)) {
@@ -209,6 +216,7 @@
     bread         = XtPX_inv,
     bread_kclass  = XhXh_inv,
     X_hat         = X_hat,
+    proj_coef     = proj_coef,
     lambda        = lambda,
     kclass_value  = k,
     method        = method,

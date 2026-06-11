@@ -215,13 +215,12 @@
 #' @param weights Normalized weights or NULL.
 #' @param weight_type Character.
 #' @param center Logical.
-#' @param psd Character or NULL: PSD correction mode.
 #' @return K x K variance-covariance matrix.
 #' @keywords internal
 .compute_sw_vcov <- function(bread, X_hat, resid, ivar_vec, N, K,
                               small = FALSE, dofminus = 0L, sdofminus = 0L,
                               weights = NULL, weight_type = "aweight",
-                              center = FALSE, psd = NULL) {
+                              center = FALSE) {
   eZmean <- if (center) {
     .sw_eZmean(X_hat, resid, N, weights, weight_type)
   } else {
@@ -231,11 +230,11 @@
   sw_shat <- .sw_meat(X_hat, resid, ivar_vec, N, weights, weight_type,
                        center = center, eZmean = eZmean)
 
-  # PSD correction on the meat, matching Stata (livreg2.do:607-617).
-  # This must happen here (not on the final VCV) because
-  # B * psd_correct(S) * B != psd_correct(B * S * B) in general.
-  # The caller (.compute_vcov) skips its own final-VCV PSD pass for SW.
-  sw_shat <- .psd_correct(sw_shat, psd)
+  # No psd correction here: when psd is set, the caller (.compute_vcov)
+  # routes SW through .vcov_from_omega() with the L x L SW omega corrected
+  # at the S level (Stata m_omega parity, livreg2.do:607-617). Correcting
+  # the K x K X_hat-space meat here would diverge from Stata for
+  # overidentified IV, since psd(A' S A) != A' psd(S) A.
 
   # Sandwich: V = bread * sw_shat * bread * N
   # SW meat already normalized by /(N - N_panels), and Stata's assembly

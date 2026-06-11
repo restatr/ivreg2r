@@ -47,7 +47,7 @@
                                       weight_type = "aweight",
                                       kernel = NULL, bw = NULL,
                                       time_index = NULL,
-                                      center = FALSE, psd = NULL) {
+                                      center = FALSE) {
 
   L_tested <- length(redundant_vars)
   df <- as.integer(K1 * L_tested)
@@ -140,7 +140,7 @@
                             weight_type = weight_type,
                             kernel = kp_kernel, bw = bw,
                             time_index = time_index,
-                            center = center, psd = psd)
+                            center = center)
       }
     } else {
       shat0 <- .kp_omega(Z_tested_perp, X1_perp, weights, cluster_vec,
@@ -148,7 +148,7 @@
                           weight_type = weight_type,
                           kernel = kp_kernel, bw = bw,
                           time_index = time_index,
-                          center = center, psd = psd)
+                          center = center)
     }
 
     # Invert shat0 — use pseudo-inverse if rank deficient

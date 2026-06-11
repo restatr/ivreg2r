@@ -19,7 +19,8 @@
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return A named list with: `coefficients`, `residuals`, `fitted.values`,
 #'   `vcov`, `sigma`, `df.residual`, `rank`, `r.squared`, `adj.r.squared`,
-#'   `rss`, `bread`, `X_hat`.
+#'   `rss`, `bread`, `X_hat`, `proj_coef` (the L x K first-stage coefficient
+#'   matrix A with `X_hat = Z %*% A`, used for psd-corrected VCV assembly).
 #' @keywords internal
 .fit_2sls <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L) {
   y <- parsed$y
@@ -38,6 +39,14 @@
   }
   X_hat <- as.matrix(lm_Z$fitted.values)
   colnames(X_hat) <- colnames(X)
+
+  # --- First-stage map A (L x K): X_hat = Z %*% A ---
+  # Aliased instrument columns get NA coefficients from lm.fit's pivoting;
+  # they contribute nothing to the fitted values, so zero-filling preserves
+  # the identity X_hat = Z %*% A exactly.
+  proj_coef <- as.matrix(lm_Z$coefficients)
+  proj_coef[is.na(proj_coef)] <- 0
+  dimnames(proj_coef) <- list(colnames(Z), colnames(X))
 
   # --- Stage 2: regress y on projected regressors ---
   if (is.null(w)) {
@@ -118,6 +127,7 @@
     mss           = mss,
     bread         = XtPX_inv,
     X_hat         = X_hat,
+    proj_coef     = proj_coef,
     tss_u         = tss_u,
     tss_c         = tss_c
   )

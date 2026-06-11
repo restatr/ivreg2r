@@ -312,12 +312,18 @@ S matrix from the restricted model \emph{without} centering, even when
 \code{center = TRUE}. This matches Stata's \code{ivreg2}, where \code{center} is not
 forwarded to the recursive call for the endogeneity test.}
 
-\item{psd}{Character or NULL: PSD correction for the meat matrix.
-\code{NULL} (default) applies no correction. \code{"psd0"} zeroes negative
-eigenvalues (Politis 2007). \code{"psda"} replaces negative eigenvalues
-with their absolute values (Stock & Watson 2008). A warning is emitted
-when negative eigenvalues are detected and corrected.
-Equivalent to Stata's \code{psd0} and \code{psda} options.}
+\item{psd}{Character or NULL: PSD correction for the moment covariance
+matrix S. \code{NULL} (default) applies no correction. \code{"psd0"} zeroes
+negative eigenvalues (Politis 2007). \code{"psda"} replaces negative
+eigenvalues with their absolute values (Stock & Watson 2008). The
+correction is applied to S \emph{before} the variance-covariance matrix is
+assembled from it, matching Stata's \code{m_omega}; the corrected S is
+stored as \verb{$S}. The conventional (\code{vcov = "iid"}) VCV and the
+Kleibergen-Paap identification statistics are never corrected, also
+matching Stata (its \code{ranktest} does not receive the psd option). A
+warning is emitted whenever negative eigenvalues are detected and
+corrected (Stata corrects silently). Equivalent to Stata's \code{psd0} and
+\code{psda} options.}
 
 \item{sw}{Logical: if \code{TRUE}, compute the Stock-Watson (2008,
 Econometrica) panel-robust VCE. Requires panel data (\code{ivar}).

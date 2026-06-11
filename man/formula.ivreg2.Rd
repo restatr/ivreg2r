@@ -9,7 +9,7 @@
 \arguments{
 \item{x}{An object of class \code{"ivreg2"}.}
 
-\item{...}{Additional arguments passed to \code{\link[Formula:Formula]{Formula::formula.Formula()}}
+\item{...}{Additional arguments passed to \code{\link[Formula:formula.Formula]{Formula::formula.Formula()}}
 (e.g., \code{rhs}, \code{lhs}, \code{collapse}).}
 }
 \value{

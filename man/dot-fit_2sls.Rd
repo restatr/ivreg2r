@@ -19,7 +19,8 @@ if \code{FALSE}, use \code{N}.}
 \value{
 A named list with: \code{coefficients}, \code{residuals}, \code{fitted.values},
 \code{vcov}, \code{sigma}, \code{df.residual}, \code{rank}, \code{r.squared}, \code{adj.r.squared},
-\code{rss}, \code{bread}, \code{X_hat}.
+\code{rss}, \code{bread}, \code{X_hat}, \code{proj_coef} (the L x K first-stage coefficient
+matrix A with \code{X_hat = Z \%*\% A}, used for psd-corrected VCV assembly).
 }
 \description{
 Stage 1 projects regressors X onto the instrument space Z.

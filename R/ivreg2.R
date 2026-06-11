@@ -1180,6 +1180,43 @@
 }
 
 
+#' Compute the L x L moment covariance S from the final residuals.
+#'
+#' Thin wrapper that assembles the [.compute_moment_cov()] arguments from the
+#' fit/parsed/prep/opts objects (including the AC path's Z'WZ precompute).
+#' Shared by the stored `fit$S` and the psd-corrected VCV assembly in
+#' [.compute_vcov()], so the two are the same matrix by construction.
+#' psd correction happens inside [.compute_moment_cov()] when `opts$psd`
+#' is set.
+#'
+#' Must be called BEFORE the unsort step: HAC/AC paths index residuals by the
+#' sorted `prep$time_index`.
+#'
+#' @return L x L symmetric matrix S (no dimnames).
+#' @noRd
+.fresh_moment_cov <- function(fit, parsed, prep, opts, bw, center) {
+  Zmat <- if (parsed$is_iv) parsed$Z else parsed$X
+  is_iid <- is.null(prep$cluster_vec) && opts$vcov == "iid" &&
+    is.null(opts$kernel)
+  ZwZ <- NULL
+  if (opts$vcov == "AC") {
+    ZwZ <- if (is.null(parsed$weights)) {
+      crossprod(Zmat)
+    } else {
+      crossprod(Zmat, parsed$weights * Zmat)
+    }
+  }
+  .compute_moment_cov(
+    Z = Zmat, residuals = fit$residuals, weights = parsed$weights,
+    cluster_vec = prep$cluster_vec, N = parsed$N, iid = is_iid,
+    dofminus = opts$dofminus, weight_type = opts$weight_type,
+    kernel = opts$kernel, bw = bw, time_index = prep$time_index,
+    center = center, psd = opts$psd, vcov_type = opts$vcov,
+    ZwZ = ZwZ, sw = isTRUE(opts$sw), ivar_vec = prep$ivar_vec
+  )
+}
+
+
 #' Compute the stored moment-covariance S and weighting matrix W.
 #'
 #' Builds the matrices posted on the fitted object as `fit$S` and `fit$W`,
@@ -1188,18 +1225,13 @@
 #' - S: user `smatrix` is echoed (never recomputed); GMM methods reuse the
 #'   defining Omega already computed by the fitter (`fit$omega`); all other
 #'   paths (OLS, 2SLS, LIML/k-class, any VCE) compute S fresh from the final
-#'   residuals via [.compute_moment_cov()].
+#'   residuals via [.fresh_moment_cov()].
 #' - W: NULL for LIML/k-class ("No weighting matrix defined", ivreg2.ado:1912);
 #'   user `wmatrix` is echoed (even under gmm2s, where it is the first-step
 #'   W); gmm2s/CUE/b0/smatrix-implied-GMM use `solve(S)`; 1-step OLS/2SLS use
 #'   `(1/sigma^2) (Z'WZ/N)^{-1}` from the final residuals with the
 #'   large-sample `sigma^2 = RSS/(N - dofminus)` (s_gmm1s, ivreg2.ado:5287-5371;
 #'   independent of `small`).
-#'
-#' Note (F2 interaction): the stored S is psd-corrected at the S level inside
-#' .compute_moment_cov/.compute_omega, while the plain non-GMM sandwich VCV
-#' still applies its psd correction to the final VCV — a known parity
-#' divergence scheduled for ticket F2; do not "fix" here.
 #'
 #' Must be called BEFORE the unsort step: HAC/AC paths index residuals by the
 #' sorted `prep$time_index`.
@@ -1210,31 +1242,19 @@
   method <- est$method
   Zmat <- if (parsed$is_iv) parsed$Z else parsed$X
   inames <- colnames(Zmat)
-  is_iid <- is.null(prep$cluster_vec) && opts$vcov == "iid" &&
-    is.null(opts$kernel)
 
   # --- S ---
   if (!is.null(prep$smatrix)) {
     S <- prep$smatrix
   } else if (method %in% c("gmm2s", "gmmw", "cue")) {
     S <- fit$omega
+  } else if (!is.null(fit$psd_moment_cov)) {
+    # Reuse the corrected Omega the psd VCV assembly already computed
+    # (.compute_vcov): same residuals, same correction — recomputing would
+    # only duplicate the psd warning.
+    S <- fit$psd_moment_cov
   } else {
-    ZwZ <- NULL
-    if (opts$vcov == "AC") {
-      ZwZ <- if (is.null(parsed$weights)) {
-        crossprod(Zmat)
-      } else {
-        crossprod(Zmat, parsed$weights * Zmat)
-      }
-    }
-    S <- .compute_moment_cov(
-      Z = Zmat, residuals = fit$residuals, weights = parsed$weights,
-      cluster_vec = prep$cluster_vec, N = parsed$N, iid = is_iid,
-      dofminus = opts$dofminus, weight_type = opts$weight_type,
-      kernel = opts$kernel, bw = bw, time_index = prep$time_index,
-      center = center, psd = opts$psd, vcov_type = opts$vcov,
-      ZwZ = ZwZ, sw = isTRUE(opts$sw), ivar_vec = prep$ivar_vec
-    )
+    S <- .fresh_moment_cov(fit, parsed, prep, opts, bw, center)
   }
   dimnames(S) <- list(inames, inames)
 
@@ -1265,7 +1285,9 @@
 #'
 #' GMM path: apply small-sample corrections to fit$vcov, recompute sigma.
 #' Non-GMM path: select bread (k-class vs 2SLS for COVIV), dispatch to VCV
-#' helpers. PSD correction via .psd_correct().
+#' helpers. When `psd` is set, plain robust-family paths assemble the VCV
+#' from the psd-corrected L x L moment covariance via [.vcov_from_omega()]
+#' (Stata m_omega parity); the iid VCV is never psd-corrected.
 #'
 #' @return Updated fit with final vcov, sigma, df.residual.
 #' @noRd
@@ -1324,13 +1346,40 @@
     resid_vcov <- fit$residuals
   }
 
-  if (isTRUE(opts$sw)) {
+  if (!is.null(psd) &&
+      (isTRUE(opts$sw) || !is.null(cluster_vec) ||
+       vcov %in% c("robust", "HAC", "AC"))) {
+    # F2 (D9b): Stata applies the psd0/psda correction to the L x L moment
+    # covariance S inside m_omega (livreg2.do:607-617) and assembles the
+    # plain non-GMM VCV from the corrected S by congruence with the
+    # first-stage map A (s_iegmm, ivreg2.ado:5556). Correcting the K x K
+    # meat or the final VCV diverges whenever the correction binds, so with
+    # psd set we route every plain robust-family path (HC, cluster, two-way,
+    # HAC, AC, DK, cluster+kernel, SW) through the corrected S. This S is
+    # the same computation as the stored fit$S.
+    omega_vcov <- .fresh_moment_cov(fit, parsed, prep, opts, bw, center)
+    is_cluster_family <- !is.null(cluster_vec)
+    fit$vcov <- .vcov_from_omega(
+      bread = bread_vcov,
+      A = if (parsed$is_iv) fit$proj_coef else NULL,
+      omega = omega_vcov,
+      N = parsed$N, K = parsed$K, M = M, small = small,
+      dofminus = dofminus, sdofminus = sdofminus,
+      cluster = is_cluster_family
+    )
+    if (is_cluster_family) {
+      fit$df.residual <- as.integer(M - 1L)
+    }
+    # Stash for .compute_stored_sw(): fit$S must be this exact matrix, and
+    # recomputing it would emit a duplicate psd-correction warning.
+    fit$psd_moment_cov <- omega_vcov
+  } else if (isTRUE(opts$sw)) {
     fit$vcov <- .compute_sw_vcov(
       bread = bread_vcov, X_hat = X_hat_vcov, resid = resid_vcov,
       ivar_vec = prep$ivar_vec, N = parsed$N, K = parsed$K,
       small = small, dofminus = dofminus, sdofminus = sdofminus,
       weights = parsed$weights, weight_type = weight_type,
-      center = center, psd = psd
+      center = center
     )
   } else if (!is.null(cluster_vec) && !is.null(kernel)) {
     is_twoway <- is.list(cluster_vec)
@@ -1382,11 +1431,10 @@
 
   }  # end of non-GMM VCV block
 
-  # PSD correction on final VCV (SW applies PSD to the meat instead,
-  # because B * psd_correct(S) * B != psd_correct(B * S * B) in general)
-  if (!isTRUE(opts$sw)) {
-    fit$vcov <- .psd_correct(fit$vcov, psd)
-  }
+  # No final-VCV psd pass: the correction lives at the S level (the
+  # psd branch above for plain paths; omega_fn for GMM paths), and the
+  # iid VCV is never corrected, matching Stata (m_omega is not involved
+  # in the iid VCV; psd is silently inert there).
 
   fit
 }
@@ -1558,8 +1606,7 @@
         has_intercept = parsed$has_intercept,
         dofminus = dofminus, sdofminus = sdofminus,
         weight_type = weight_type,
-        kernel = id_kernel, bw = bw, time_index = time_index,
-        psd = psd
+        kernel = id_kernel, bw = bw, time_index = time_index
       )
       diagnostics$underid        <- id_tests$underid
       diagnostics$weak_id        <- id_tests$weak_id
@@ -1681,7 +1728,7 @@
         redundant_vars = redundant_cols, dofminus = dofminus,
         weight_type = weight_type,
         kernel = kernel, bw = bw, time_index = time_index,
-        center = center, psd = psd
+        center = center
       )
     }
 
@@ -2009,12 +2056,18 @@
 #'   S matrix from the restricted model *without* centering, even when
 #'   `center = TRUE`. This matches Stata's `ivreg2`, where `center` is not
 #'   forwarded to the recursive call for the endogeneity test.
-#' @param psd Character or NULL: PSD correction for the meat matrix.
-#'   `NULL` (default) applies no correction. `"psd0"` zeroes negative
-#'   eigenvalues (Politis 2007). `"psda"` replaces negative eigenvalues
-#'   with their absolute values (Stock & Watson 2008). A warning is emitted
-#'   when negative eigenvalues are detected and corrected.
-#'   Equivalent to Stata's `psd0` and `psda` options.
+#' @param psd Character or NULL: PSD correction for the moment covariance
+#'   matrix S. `NULL` (default) applies no correction. `"psd0"` zeroes
+#'   negative eigenvalues (Politis 2007). `"psda"` replaces negative
+#'   eigenvalues with their absolute values (Stock & Watson 2008). The
+#'   correction is applied to S *before* the variance-covariance matrix is
+#'   assembled from it, matching Stata's `m_omega`; the corrected S is
+#'   stored as `$S`. The conventional (`vcov = "iid"`) VCV and the
+#'   Kleibergen-Paap identification statistics are never corrected, also
+#'   matching Stata (its `ranktest` does not receive the psd option). A
+#'   warning is emitted whenever negative eigenvalues are detected and
+#'   corrected (Stata corrects silently). Equivalent to Stata's `psd0` and
+#'   `psda` options.
 #' @param sw Logical: if `TRUE`, compute the Stock-Watson (2008,
 #'   Econometrica) panel-robust VCE. Requires panel data (`ivar`).
 #'   Incompatible with clustering, HAC kernels, kiefer, dkraay,
