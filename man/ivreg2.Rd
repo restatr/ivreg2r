@@ -46,8 +46,14 @@ ivreg2(
 )
 }
 \arguments{
-\item{formula}{A formula: \code{y ~ exog} (OLS) or
-\code{y ~ exog | endo | instruments} (IV).}
+\item{formula}{A formula: \code{y ~ exog} (OLS),
+\code{y ~ exog | endo | instruments} (IV), or
+\code{y ~ exog | 0 | instruments} (no endogenous regressors, with the
+excluded instruments contributing surplus moment conditions —
+Stata's \verb{(=z1 z2)} form). The latter is estimated by OLS; the surplus
+conditions drive the Sargan/Hansen J overidentification test and
+\code{orthog} C-tests, and \code{method = "gmm2s"} gives Cragg's (1983)
+heteroskedastic OLS (HOLS) estimator.}
 
 \item{data}{A data frame containing the variables in the formula.}
 

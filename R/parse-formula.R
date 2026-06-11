@@ -187,8 +187,12 @@ NULL
       }
     }
 
-    # Pass 3 — Re-check after reclassification (only if reclassification occurred)
-    if (length(reclassified_endogenous) > 0L && ncol(endo) > 0L) {
+    # Pass 3 — Re-check after reclassification (only if reclassification
+    # occurred). Runs even when no endogenous columns remain: a reclassified
+    # variable can itself be collinear with the exogenous regressors and
+    # must be dropped from the combined set (endo is a 0-column matrix then,
+    # which cbind and the classification loop handle).
+    if (length(reclassified_endogenous) > 0L) {
       combined2 <- cbind(exog, excluded, endo)
       col_combined2 <- suppressWarnings(.detect_collinearity(combined2, "column"))
       if (length(col_combined2$dropped) > 0L) {
@@ -208,13 +212,29 @@ NULL
       }
     }
 
-    # Edge case: all endogenous vars reclassified/dropped → degenerate to OLS
+    # K1 = 0 cases: part 2 was empty (`y ~ exog | 0 | z`, Stata's `(=z)`), or
+    # every endogenous variable was reclassified/dropped by collinearity.
+    # Either way Stata classifies the model as OLS but KEEPS the surviving
+    # excluded instruments as surplus moment conditions (e(model) decided
+    # from the post-collinearity endogenous list, ivreg2.ado:2101-2106; the
+    # overid J is not gated on the endogenous count, ivreg2.ado:1164). Only
+    # when no excluded instruments survive either does the model degrade to
+    # plain OLS.
     if (ncol(endo) == 0L) {
-      X <- exog
-      Z <- NULL
       endo <- NULL
-      excluded <- NULL
-      n_rhs <- 1L
+      if (ncol(excluded) == 0L) {
+        X <- exog
+        Z <- NULL
+        excluded <- NULL
+        if (length(all_dropped_excluded) > 0L) {
+          warning("All excluded instruments dropped; model is now plain OLS ",
+                  "(no overidentification test).", call. = FALSE)
+        }
+        n_rhs <- 1L
+      } else {
+        X <- exog
+        Z <- cbind(exog, excluded)
+      }
     } else {
       X <- cbind(endo, exog)
       if (has_intercept && "(Intercept)" %in% colnames(X)) {
@@ -250,33 +270,35 @@ NULL
     }
   }
 
-  # Update name vectors after collinearity detection
+  # Update name vectors after collinearity detection. The endogenous and
+  # excluded updates are independent: a K1 = 0 (HOLS) model has endo == NULL
+  # but keeps its excluded instruments.
   if (!is.null(endo)) {
-    # Column-level names: surviving column names from model matrices
-    endo_colnames <- colnames(endo)
-    excluded_colnames <- colnames(excluded)
-
     # Term-level names: use assign to map surviving columns → terms
+    endo_colnames <- colnames(endo)
     surviving_endo_col_idx <- match(endo_colnames, orig_endo_colnames)
     surviving_endo_terms <- unique(endo_assign[surviving_endo_col_idx])
     endo_names <- attr(mt_endo, "term.labels")[surviving_endo_terms]
-
+    # Re-index assign to map columns → positions in endo_names
+    endo_assign <- match(endo_assign[surviving_endo_col_idx],
+                         surviving_endo_terms)
+  } else {
+    # No endogenous regressors (1-part OLS, K1 = 0 form, or all
+    # dropped/reclassified)
+    endo_names <- character(0L)
+    endo_colnames <- character(0L)
+    endo_assign <- integer(0L)
+  }
+  if (!is.null(excluded)) {
+    excluded_colnames <- colnames(excluded)
     surviving_excl_col_idx <- match(excluded_colnames, orig_excluded_colnames)
     surviving_excl_terms <- unique(excluded_assign[surviving_excl_col_idx])
     excluded_names <- attr(mt_excl, "term.labels")[surviving_excl_terms]
-
-    # Re-index assign to map columns → positions in endo_names/excluded_names
-    endo_assign <- match(endo_assign[surviving_endo_col_idx],
-                         surviving_endo_terms)
     excluded_assign <- match(excluded_assign[surviving_excl_col_idx],
                              surviving_excl_terms)
   } else {
-    # All endo dropped or reclassified (with or without reclassification)
-    endo_names <- character(0L)
     excluded_names <- character(0L)
-    endo_colnames <- character(0L)
     excluded_colnames <- character(0L)
-    endo_assign <- integer(0L)
     excluded_assign <- integer(0L)
   }
   exog_names <- setdiff(exog_names, dropped_regressors)
@@ -429,20 +451,20 @@ NULL
          call. = FALSE)
   }
   if (n_rhs == 3L) {
-    # Check for empty part 2: build terms and see if there are any variables
+    # Empty part 2 (e.g. `y ~ exog | 0 | z`) is the empty-endogenous (HOLS)
+    # form, mirroring Stata's `(=z)`: no endogenous regressors, but excluded
+    # instruments contributing surplus moment conditions. It requires a
+    # non-empty part 3 — with both parts empty there is nothing beyond OLS.
     mt2 <- terms(formula, rhs = 2L)
     vars2 <- attr(mt2, "term.labels")
-    intercept2 <- attr(mt2, "intercept")
-    if (length(vars2) == 0L && intercept2 == 0L) {
-      stop("Part 2 (endogenous regressors) is empty. ",
-           "Use a one-part formula for OLS: y ~ x1 + x2.",
-           call. = FALSE)
-    }
-    if (length(vars2) == 0L && intercept2 == 1L) {
-      # Part 2 has only an implicit intercept (which we strip) — effectively empty
-      stop("Part 2 (endogenous regressors) is empty. ",
-           "Use a one-part formula for OLS: y ~ x1 + x2.",
-           call. = FALSE)
+    if (length(vars2) == 0L) {
+      mt3 <- terms(formula, rhs = 3L)
+      vars3 <- attr(mt3, "term.labels")
+      if (length(vars3) == 0L) {
+        stop("Parts 2 (endogenous) and 3 (instruments) are both empty. ",
+             "Use a one-part formula for OLS: y ~ x1 + x2.",
+             call. = FALSE)
+      }
     }
   }
   n_rhs

@@ -78,9 +78,19 @@ test_that("endo collinear with instruments: reclassified as exogenous", {
 test_that("endo collinear with instruments: warning issued", {
   d <- make_collin_data()
   d$endo1 <- d$z1
+  # After reclassifying endo1 to exogenous, pass 3 finds z1 collinear with
+  # it and drops it too; with no excluded instruments left the model then
+  # degrades to plain OLS — all three warnings are expected (F3: pass 3 now
+  # runs even when no endogenous columns remain).
   expect_warning(
-    .parse_formula(y ~ x1 | endo1 | z1, data = d),
-    "Endogenous variable.*collinear with instruments.*Now treated as exogenous: endo1"
+    expect_warning(
+      expect_warning(
+        .parse_formula(y ~ x1 | endo1 | z1, data = d),
+        "Endogenous variable.*collinear with instruments.*Now treated as exogenous: endo1"
+      ),
+      "Dropped 1 collinear instrument: z1"
+    ),
+    "model is now plain OLS"
   )
 })
 
@@ -193,23 +203,32 @@ test_that("parsed_formula return list includes reclassified_endogenous", {
 # 9. All endo dropped without reclassification clears name vectors
 #    (Codex review fix: guard must not require reclassification)
 # ==========================================================================
-test_that("all endo dropped (zero column) clears endo_names/excluded_names", {
+test_that("all endo dropped (zero column) keeps excluded instruments (F3)", {
   d <- make_collin_data()
   # Make endo1 a constant zero → collinear with intercept, dropped not reclassified
   d$endo1 <- 0
   result <- suppressWarnings(
     .parse_formula(y ~ x1 | endo1 | z1, data = d)
   )
-  # endo1 should be dropped as collinear (with intercept) not reclassified
-  # After degeneration to OLS, endo_names must be empty
+  # endo1 should be dropped as collinear (with intercept) not reclassified.
+  # With no endogenous regressors left, the model becomes the
+  # empty-endogenous (HOLS) form: Stata classifies it as OLS but KEEPS the
+  # surviving excluded instruments as surplus moment conditions
+  # (ivreg2.ado:2101-2106; J not gated on the endogenous count, :1164).
   expect_equal(result$endo_names, character(0L))
-  expect_equal(result$excluded_names, character(0L))
-  # ivreg2 object should not claim endogenous variables
+  expect_equal(result$excluded_names, "z1")
+  expect_true(result$is_iv)
+  expect_equal(result$K1, 0L)
+  expect_equal(result$overid_df, 1L)
+  # ivreg2 object: estimated by OLS, instruments retained, Sargan/J posted
   fit <- suppressWarnings(
     ivreg2(y ~ x1 | endo1 | z1, data = d)
   )
   expect_equal(length(fit$endogenous), 0L)
-  expect_equal(length(fit$instruments), 0L)
+  expect_equal(fit$instruments, "z1")
+  expect_equal(fit$method, "ols")
+  expect_equal(fit$diagnostics$overid$df, 1L)
+  expect_true(is.finite(fit$diagnostics$overid$stat))
 })
 
 # ==========================================================================

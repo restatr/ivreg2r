@@ -535,6 +535,15 @@
     stop('`method = "', method, '"` requires an IV model (3-part formula).',
          call. = FALSE)
   }
+  # Empty-endogenous (K1 = 0) models: gmm2s/cue are valid (Cragg's 1983
+  # HOLS), but the k-class eigenproblem is undefined with no endogenous
+  # regressors. Stata has no guard here (ivreg2.ado:3938-3956 only blocks
+  # the gmm2s combination) and runs into undefined behavior; we error.
+  if (method %in% c("liml", "kclass") && parsed$is_iv && parsed$K1 == 0L) {
+    stop('`method = "', method, '"` requires at least one endogenous ',
+         "regressor. With an empty endogenous part the model is estimated ",
+         "by OLS (or HOLS via `method = \"gmm2s\"`).", call. = FALSE)
+  }
   if (fuller > 0 && parsed$is_iv && fuller >= (parsed$N - parsed$L)) {
     stop("`fuller` (", fuller, ") must be less than N - L (",
          parsed$N - parsed$L, ").", call. = FALSE)
@@ -1118,10 +1127,13 @@
   } else if (method %in% c("liml", "kclass")) {
     fit <- .fit_kclass(parsed, method = method, kclass = kclass, fuller = fuller,
                 small = small, dofminus = dofminus, sdofminus = sdofminus)
-  } else if (parsed$is_iv) {
+  } else if (parsed$is_iv && parsed$K1 > 0L) {
     fit <- .fit_2sls(parsed, small = small, dofminus = dofminus,
               sdofminus = sdofminus)
   } else {
+    # 1-part OLS, or empty-endogenous (K1 = 0): estimation is exact OLS —
+    # the excluded instruments enter only the diagnostics (Stata posts
+    # e(model) = "ols" for `(=z)` models, ivreg2.ado:2101-2106).
     fit <- .fit_ols(parsed, small = small, dofminus = dofminus,
              sdofminus = sdofminus)
   }
@@ -1342,7 +1354,10 @@
 
   if (isTRUE(opts$sw) || !is.null(cluster_vec) ||
       vcov %in% c("robust", "HAC", "AC")) {
-    X_hat_vcov <- if (parsed$is_iv) fit$X_hat else parsed$X
+    # K1 = 0 (empty-endogenous) models are estimated by OLS: the meat basis
+    # is X itself, like the 1-part OLS path (Stata's robust VCV for `(=z)`
+    # models never involves Z).
+    X_hat_vcov <- if (parsed$is_iv && parsed$K1 > 0L) fit$X_hat else parsed$X
     resid_vcov <- fit$residuals
   }
 
@@ -1359,9 +1374,23 @@
     # the same computation as the stored fit$S.
     omega_vcov <- .fresh_moment_cov(fit, parsed, prep, opts, bw, center)
     is_cluster_family <- !is.null(cluster_vec)
+    # First-stage map A with X_hat = Z A. For K1 = 0 (OLS estimation with
+    # surplus instruments), X is a subset of Z's columns, so A is the exact
+    # 0/1 selection matrix — no solve needed.
+    A_vcov <- if (!parsed$is_iv) {
+      NULL
+    } else if (parsed$K1 > 0L) {
+      fit$proj_coef
+    } else {
+      A_sel <- matrix(0, nrow = parsed$L, ncol = parsed$K,
+                      dimnames = list(colnames(parsed$Z), colnames(parsed$X)))
+      A_sel[cbind(match(colnames(parsed$X), colnames(parsed$Z)),
+                  seq_len(parsed$K))] <- 1
+      A_sel
+    }
     fit$vcov <- .vcov_from_omega(
       bread = bread_vcov,
-      A = if (parsed$is_iv) fit$proj_coef else NULL,
+      A = A_vcov,
       omega = omega_vcov,
       N = parsed$N, K = parsed$K, M = M, small = small,
       dofminus = dofminus, sdofminus = sdofminus,
@@ -1579,8 +1608,11 @@
       )
     }
 
-    # Identification tests (D2) + Stock-Yogo critical values (D3)
-    if (!noid) {
+    # Identification tests (D2) + Stock-Yogo critical values (D3).
+    # K1 = 0 (empty-endogenous): skipped entirely, matching Stata's master
+    # gate `if endo1_ct > 0 & noid==""` (ivreg2.ado:1625) — idstat/widstat
+    # are not posted for `(=z)` models.
+    if (!noid && parsed$K1 > 0L) {
       # Kiefer fits: Stata's ranktest never receives the truncated kernel
       # (kiefer assigns bw after the parser builds bwopt/kernopt, so the
       # kernel options are empty), but it DOES receive the robust flag when
@@ -1625,6 +1657,13 @@
         parsed$K1, parsed$L1, method = sy_method, fuller = fuller
       )
     }
+
+    # First-stage diagnostics (E1), Anderson-Rubin (E3), Stock-Wright (J2),
+    # and the default endogeneity test (E4) all concern the endogenous
+    # regressors — skipped for K1 = 0, matching Stata (first-stage gated at
+    # ivreg2.ado:1256/2071; AR and Stock-Wright flow through ranktest, which
+    # is never called when endo1_ct == 0).
+    if (parsed$K1 > 0L) {
 
     # First-stage diagnostics (E1)
     first_stage <- .compute_first_stage(
@@ -1689,6 +1728,8 @@
       sw = sw_flag, ivar_vec = ivar_vec
     )
 
+    }  # end of if (parsed$K1 > 0L) — endogenous-regressor diagnostics
+
     # Orthogonality test (J1)
     if (!is.null(orthog_cols) && length(orthog_cols) > 0L) {
       partialled_out <- setdiff(orthog_cols, colnames(parsed$Z))
@@ -1712,8 +1753,17 @@
       )
     }
 
-    # Redundancy test (P1) — computation only if !noid (validation already done above)
-    if (!noid && !is.null(redundant) && length(redundant) > 0L) {
+    # Redundancy test (P1) — computation only if !noid (validation already
+    # done above). K1 = 0: nothing to test redundancy against — Stata
+    # silently ignores redundant() here (gated at ivreg2.ado:1741); we warn
+    # instead, following the package's explicit-request-ignored convention.
+    if (!is.null(redundant) && length(redundant) > 0L && parsed$K1 == 0L) {
+      warning("`redundant` ignored: the model has no endogenous regressors, ",
+              "so there is nothing to test instrument redundancy against.",
+              call. = FALSE)
+    }
+    if (!noid && !is.null(redundant) && length(redundant) > 0L &&
+        parsed$K1 > 0L) {
       redundant_cols <- .expand_terms_to_colnames(
         redundant, parsed$excluded_names, parsed$excluded_colnames,
         parsed$excluded_assign
@@ -1736,9 +1786,11 @@
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
 
-  # Reduced-form regression
+  # Reduced-form regression. K1 = 0: the model IS its own reduced form, so
+  # there is no separate system to store (Stata's rf/saverf display the
+  # y-on-Z system for the endogenous setup).
   reduced_form_result <- NULL
-  if (parsed$is_iv && reduced_form != "none") {
+  if (parsed$is_iv && parsed$K1 > 0L && reduced_form != "none") {
     rf_depvar <- parsed$y_name
     reduced_form_result <- .compute_reduced_form(
       mode           = reduced_form,
@@ -1823,8 +1875,14 @@
 #' k-class with automatic diagnostic tests. Uses a three-part formula for IV:
 #' `y ~ exog | endo | instruments`.
 #'
-#' @param formula A formula: `y ~ exog` (OLS) or
-#'   `y ~ exog | endo | instruments` (IV).
+#' @param formula A formula: `y ~ exog` (OLS),
+#'   `y ~ exog | endo | instruments` (IV), or
+#'   `y ~ exog | 0 | instruments` (no endogenous regressors, with the
+#'   excluded instruments contributing surplus moment conditions —
+#'   Stata's `(=z1 z2)` form). The latter is estimated by OLS; the surplus
+#'   conditions drive the Sargan/Hansen J overidentification test and
+#'   `orthog` C-tests, and `method = "gmm2s"` gives Cragg's (1983)
+#'   heteroskedastic OLS (HOLS) estimator.
 #' @param data A data frame containing the variables in the formula.
 #' @param weights Optional analytic weights expression (evaluated in `data`),
 #'   equivalent to Stata's `[aw=varname]`. Must be strictly positive.
@@ -2357,9 +2415,11 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     "gmmw"
   } else if (method %in% c("liml", "kclass", "gmm2s", "cue")) {
     method
-  } else if (parsed$is_iv) {
+  } else if (parsed$is_iv && parsed$K1 > 0L) {
     "2sls"
   } else {
+    # Includes the empty-endogenous (K1 = 0) form: Stata posts
+    # e(model) = "ols" (ivreg2.ado:2101-2106)
     "ols"
   }
 

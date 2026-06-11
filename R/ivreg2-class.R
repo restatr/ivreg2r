@@ -774,8 +774,14 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
         x$cue_convergence, ")\n", sep = "")
   }
 
-  # --- Diagnostics (IV only) ---
-  if (is_iv && !is.null(x$diagnostics)) {
+  # Empty-endogenous (HOLS-form) fits have no endogenous regressors but DO
+  # carry excluded instruments, overid/orthog diagnostics, and the
+  # instrument footer (Stata lists instruments and the J line for `(=z)`
+  # models).
+  has_instruments <- length(x$instruments) > 0L
+
+  # --- Diagnostics (models with instruments) ---
+  if ((is_iv || has_instruments) && !is.null(x$diagnostics)) {
     cat("\n")
     .print_iv_diagnostics(x, digits)
   }
@@ -790,9 +796,14 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     .print_reduced_form(x$reduced_form, digits)
   }
 
-  # --- Footer (IV only) ---
-  if (is_iv) {
-    cat("\nInstrumented:         ", paste(x$endogenous, collapse = ", "), "\n")
+  # --- Footer (models with instruments) ---
+  if (is_iv || has_instruments) {
+    if (is_iv) {
+      cat("\nInstrumented:         ", paste(x$endogenous, collapse = ", "),
+          "\n")
+    } else {
+      cat("\n")
+    }
     # Included instruments = exogenous regressors (excl intercept)
     incl <- setdiff(names(coef(x)), c(x$endo_colnames, "(Intercept)"))
     if (length(incl) > 0L) {
@@ -989,7 +1000,9 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     if (nrow(full_rel) > 0L || nrow(full_max) > 0L) {
       cat("  NB: Critical values based on Fuller parameter=1\n")
     }
-  } else {
+  } else if (!is.null(diag$weak_id) || !is.null(diag$weak_id_robust)) {
+    # Placeholder only when a weak-id section was printed above; K1 = 0
+    # models have no weak-id tests at all, so nothing to annotate.
     cat("  Stock-Yogo critical values:   <not available>\n")
   }
 

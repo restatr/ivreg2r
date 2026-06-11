@@ -61,21 +61,34 @@ test_that("5-part formula error includes correct count", {
   )
 })
 
-test_that("3-part formula with empty part 2 gives exact error", {
+test_that("empty part 2 is the empty-endogenous (HOLS) form", {
   d <- make_test_data()
-  # y ~ x1 | 0 | z1  — part 2 has no intercept and no variables
-  expect_error(
-    .parse_formula(y ~ x1 | 0 | z1, data = d),
-    "Part 2 \\(endogenous regressors\\) is empty\\. Use a one-part formula for OLS: y ~ x1 \\+ x2\\."
-  )
+  # y ~ x1 | 0 | z1 — Stata's `(=z1)`: no endogenous regressors, z1 kept as
+  # a surplus moment condition (F3)
+  result <- .parse_formula(y ~ x1 | 0 | z1, data = d)
+  expect_true(result$is_iv)
+  expect_equal(result$K1, 0L)
+  expect_equal(result$endo_names, character(0L))
+  expect_equal(result$excluded_names, "z1")
+  expect_equal(colnames(result$X), c("(Intercept)", "x1"))
+  expect_equal(colnames(result$Z), c("(Intercept)", "x1", "z1"))
+  expect_equal(result$overid_df, 1L)
 })
 
-test_that("3-part formula with only-intercept part 2 gives empty error", {
+test_that("only-intercept part 2 is also the empty-endogenous form", {
   d <- make_test_data()
-  # y ~ x1 | 1 | z1  — part 2 has only an intercept (which we strip)
+  # y ~ x1 | 1 | z1 — part 2 has only an intercept (which we strip)
+  result <- .parse_formula(y ~ x1 | 1 | z1, data = d)
+  expect_true(result$is_iv)
+  expect_equal(result$K1, 0L)
+  expect_equal(result$excluded_names, "z1")
+})
+
+test_that("empty part 2 AND empty part 3 gives exact error", {
+  d <- make_test_data()
   expect_error(
-    .parse_formula(y ~ x1 | 1 | z1, data = d),
-    "Part 2 \\(endogenous regressors\\) is empty"
+    .parse_formula(y ~ x1 | 0 | 0, data = d),
+    "Parts 2 \\(endogenous\\) and 3 \\(instruments\\) are both empty"
   )
 })
 
