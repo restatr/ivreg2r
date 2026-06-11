@@ -52,8 +52,10 @@ ivreg2(
 excluded instruments contributing surplus moment conditions —
 Stata's \verb{(=z1 z2)} form). The latter is estimated by OLS; the surplus
 conditions drive the Sargan/Hansen J overidentification test and
-\code{orthog} C-tests, and \code{method = "gmm2s"} gives Cragg's (1983)
-heteroskedastic OLS (HOLS) estimator.}
+\code{orthog} C-tests, and \code{method = "gmm2s"} with \code{vcov = "robust"} gives
+Cragg's (1983) heteroskedastic OLS (HOLS) estimator (with the default
+iid VCE the two-step weighting matrix is proportional to
+\eqn{(Z'Z)^{-1}} and the estimates equal OLS exactly).}
 
 \item{data}{A data frame containing the variables in the formula.}
 
@@ -346,7 +348,10 @@ reduced form without storing it). \code{"system"} stores the full system of
 y + all endogenous variables regressed on Z, with cross-equation VCV
 (equivalent to Stata's \code{savesfirst}, an option present in \code{ivreg2.ado}
 but absent from its help file; Stata's \code{sfirst} displays the system
-without storing it). Silently ignored for OLS models.}
+without storing it). Silently ignored for OLS models and for
+empty-endogenous (\code{y ~ exog | 0 | instruments}) models, matching Stata,
+which skips reduced-form estimation whenever the endogenous list is
+empty.}
 
 \item{first_stage}{Logical: if \code{TRUE}, store extractable first-stage
 regression objects on the fitted model. Access them via

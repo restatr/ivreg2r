@@ -326,6 +326,17 @@ test_that("HOLS proper (gmm2s + robust) matches Stata", {
   check_hols_fixture(fit, "gmm2s", compare_s = TRUE)
 })
 
+test_that("intercept-only partial = \"_all\" is a no-op, matching Stata", {
+  # Stata's `_all` expands to the included exogenous regressors EXCLUDING
+  # the constant (ivreg2.ado:3708-3710); for y ~ 1 the list is empty, the
+  # partial block is skipped, and the intercept fit proceeds (live-verified
+  # rc=0, e(partial_ct)=0). Locks the parity so a future "fix" doesn't
+  # break it.
+  fit <- ivreg2(lwage ~ 1, data = mroz, partial = "_all")
+  expect_equal(length(coef(fit)), 1L)
+  expect_equal(fit$partial_ct %||% 0L, 0L)
+})
+
 test_that("partial = \"_all\" with no surviving regressors errors like Stata", {
   # Stata: CheckMisc recounts rhs1_ct AFTER partialling (ivreg2.ado:633/641,
   # 4246-4249) and exits 102. Reachable for empty-endogenous and 1-part OLS

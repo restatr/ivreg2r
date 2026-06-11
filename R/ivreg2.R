@@ -535,8 +535,9 @@
     stop('`method = "', method, '"` requires an IV model (3-part formula).',
          call. = FALSE)
   }
-  # Empty-endogenous (K1 = 0) models: every method is valid. gmm2s/cue give
-  # Cragg's (1983) HOLS; liml/kclass are well-defined too — with X contained
+  # Empty-endogenous (K1 = 0) models: every method is valid. gmm2s/cue with
+  # a non-iid VCE give Cragg's (1983) HOLS (iid weighting collapses to OLS);
+  # liml/kclass are well-defined too — with X contained
   # in Z, X'M_Z = 0, so the k-class normal equations reduce to X'X for ANY
   # k and the coefficients equal OLS exactly, while the LIML lambda is the
   # 1x1 eigenvalue RSS(y~X)/RSS(y~Z) feeding the Anderson-Rubin LR overid
@@ -1891,8 +1892,10 @@
 #'   excluded instruments contributing surplus moment conditions —
 #'   Stata's `(=z1 z2)` form). The latter is estimated by OLS; the surplus
 #'   conditions drive the Sargan/Hansen J overidentification test and
-#'   `orthog` C-tests, and `method = "gmm2s"` gives Cragg's (1983)
-#'   heteroskedastic OLS (HOLS) estimator.
+#'   `orthog` C-tests, and `method = "gmm2s"` with `vcov = "robust"` gives
+#'   Cragg's (1983) heteroskedastic OLS (HOLS) estimator (with the default
+#'   iid VCE the two-step weighting matrix is proportional to
+#'   \eqn{(Z'Z)^{-1}} and the estimates equal OLS exactly).
 #' @param data A data frame containing the variables in the formula.
 #' @param weights Optional analytic weights expression (evaluated in `data`),
 #'   equivalent to Stata's `[aw=varname]`. Must be strictly positive.
