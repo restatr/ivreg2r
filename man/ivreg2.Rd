@@ -235,14 +235,16 @@ matrix (second step uses the optimal weighting matrix). Must be symmetric.
 Incompatible with \code{method = "liml"}, \code{kclass}, and \code{fuller}.
 When \code{method} is not \code{"gmm2s"}, ignored without robust VCE, clustering,
 or HAC (with a warning).
-Equivalent to Stata's \code{wmatrix()} option.}
+Equivalent to Stata's \code{wmatrix()} option. When used (not ignored), it is
+echoed back as \code{fit$W}, matching Stata's \code{e(W)}.}
 
 \item{smatrix}{Numeric matrix: user-supplied L x L moment covariance matrix
 for GMM estimation. When supplied, the GMM estimation uses this matrix
 instead of computing Omega from residuals. Implies efficient GMM
 (\code{method} is promoted to \code{"gmm2s"} if \code{"2sls"}). Must be symmetric.
 Incompatible with \code{method = "liml"}, \code{kclass}, and \code{fuller}.
-Equivalent to Stata's \code{smatrix()} option.}
+Equivalent to Stata's \code{smatrix()} option. Echoed back as \code{fit$S}
+(never recomputed), matching Stata's \code{e(S)}.}
 
 \item{b0}{Numeric vector: evaluate the CUE objective at this fixed
 parameter vector without optimization. When supplied, \code{method} is
@@ -341,7 +343,31 @@ return object.}
 return object.}
 }
 \value{
-An object of class \code{"ivreg2"}.
+An object of class \code{"ivreg2"}. Beyond the usual components
+(\code{coefficients}, \code{residuals}, \code{vcov}, \code{diagnostics}, ...), the object
+stores the estimated moment-condition covariance matrix as \verb{$S} and the
+GMM weighting matrix as \verb{$W}, corresponding to Stata's \code{e(S)} and
+\code{e(W)}:
+\itemize{
+\item \verb{$S} is present for every fit. Normalization matches Stata's
+\code{m_omega}: iid \verb{sigma^2 (Z'Z)/N} with \code{sigma^2 = RSS/(N - dofminus)};
+robust and HAC, meat divided by \code{N - dofminus}; cluster, meat divided
+by \code{N}; psd-corrected when \code{psd} is set; built from centered moments
+when \code{center = TRUE}. A user-supplied \code{smatrix} is echoed, never
+recomputed.
+\item \verb{$W} is \code{NULL} for \code{method = "liml"} and \code{"kclass"} (as in Stata, no
+weighting matrix is defined for k-class estimators). For two-step
+GMM, CUE, and \code{b0} fits it is the inverse of the defining \verb{$S}; for
+one-step OLS/2SLS it is \verb{(1/sigma^2) (Z'Z/N)^\{-1\}}; a user-supplied
+\code{wmatrix} is echoed (it is the first-step weighting matrix under
+\code{method = "gmm2s"}).
+}
+
+Rows and columns are named by the R instrument columns — \code{(Intercept)}
+rather than Stata's \verb{_cons}, and R column order (exogenous regressors
+before excluded instruments) rather than Stata's. Passing \code{fit$S} back
+via \code{smatrix} reproduces the corresponding efficient-GMM fit, mirroring
+the \code{e(S)} reuse workflow in Stata's \code{ivreg2} help file.
 }
 \description{
 Estimate models by OLS, two-stage least squares (2SLS), LIML, Fuller, or

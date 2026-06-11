@@ -2,7 +2,7 @@
 % Please edit documentation in R/diagnostics-overid.R
 \name{.compute_omega}
 \alias{.compute_omega}
-\title{Compute L x L moment covariance matrix Omega}
+\title{Compute L x L moment covariance matrix Omega (non-iid VCE types)}
 \usage{
 .compute_omega(
   Z,
@@ -48,7 +48,10 @@ cluster path divides by \code{N} (line 545, no dofminus adjustment).}
 L x L symmetric matrix Omega.
 }
 \description{
-Computes the instrument-space score covariance for the Hansen J test.
-This is a \emph{new} computation in Z-space, not the K x K meat from vcov-robust.R.
+Computes the instrument-space score covariance for the Hansen J test and
+the stored \code{fit$S}. This is a \emph{new} computation in Z-space, not the K x K
+meat from vcov-robust.R. Dispatched per VCE type: cluster, cluster+kernel
+(DK/Thompson), AC, HAC, Stock-Watson, and plain HC. The iid case lives in
+\code{\link[=.compute_moment_cov]{.compute_moment_cov()}}, which shares this parameter list.
 }
 \keyword{internal}

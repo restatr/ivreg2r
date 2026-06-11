@@ -28,17 +28,75 @@
 #' Computes the instrument-space score covariance for the Hansen J test.
 #' This is a *new* computation in Z-space, not the K x K meat from vcov-robust.R.
 #'
+# --------------------------------------------------------------------------
+# .compute_moment_cov
+# --------------------------------------------------------------------------
+#' Moment-condition covariance S for any VCE type (Stata's m_omega)
+#'
+#' Single entry point for the matrix Stata posts as `e(S)`: the estimated
+#' covariance of the orthogonality conditions, in Stata's normalization.
+#' The iid branch computes `sigma^2 * (Z'WZ)/N` with
+#' `sigma^2 = RSS/(N - dofminus)` (livreg2.do:197-198, 235); every other
+#' VCE type delegates to [.compute_omega()], whose parameters this function
+#' shares. This is the former body of the `omega_fn` closure in `ivreg2()`,
+#' extracted so the same formula serves both the GMM/J machinery and the
+#' stored `fit$S`.
+#'
 #' @param Z N x L instrument matrix.
 #' @param residuals N x 1 residual vector.
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param cluster_vec Cluster membership vector, or NULL.
 #' @param N Number of observations.
+#' @param iid Logical: TRUE when no cluster, no kernel, and `vcov = "iid"`.
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #'   HC path divides by `N - dofminus` (Stata livreg2.do line 326);
 #'   cluster path divides by `N` (line 545, no dofminus adjustment).
 #' @param kernel Canonical kernel name, or NULL for non-HAC.
 #' @param bw Numeric bandwidth, or NULL.
 #' @param time_index List from `.build_time_index()`, or NULL.
+#' @return L x L symmetric matrix S (psd-corrected when `psd` is set).
+#' @keywords internal
+.compute_moment_cov <- function(Z, residuals, weights, cluster_vec, N, iid,
+                                dofminus = 0L, weight_type = "aweight",
+                                kernel = NULL, bw = NULL, time_index = NULL,
+                                center = FALSE, psd = NULL,
+                                vcov_type = "HAC", ZwZ = NULL,
+                                sw = FALSE, ivar_vec = NULL) {
+  if (iid) {
+    if (!is.null(weights)) {
+      rss_step <- sum(weights * residuals^2)
+      ZWZ <- crossprod(Z, weights * Z)
+    } else {
+      rss_step <- sum(residuals^2)
+      ZWZ <- crossprod(Z)
+    }
+    sigma2 <- rss_step / (N - dofminus)
+    Omega <- sigma2 * ZWZ / N
+    Omega <- .psd_correct(Omega, psd)
+    (Omega + t(Omega)) / 2
+  } else {
+    .compute_omega(Z, residuals, weights, cluster_vec, N,
+                   dofminus = dofminus, weight_type = weight_type,
+                   kernel = kernel, bw = bw, time_index = time_index,
+                   center = center, psd = psd,
+                   vcov_type = vcov_type, ZwZ = ZwZ,
+                   sw = sw, ivar_vec = ivar_vec)
+  }
+}
+
+
+# --------------------------------------------------------------------------
+# .compute_omega
+# --------------------------------------------------------------------------
+#' Compute L x L moment covariance matrix Omega (non-iid VCE types)
+#'
+#' Computes the instrument-space score covariance for the Hansen J test and
+#' the stored `fit$S`. This is a *new* computation in Z-space, not the K x K
+#' meat from vcov-robust.R. Dispatched per VCE type: cluster, cluster+kernel
+#' (DK/Thompson), AC, HAC, Stock-Watson, and plain HC. The iid case lives in
+#' [.compute_moment_cov()], which shares this parameter list.
+#'
+#' @inheritParams .compute_moment_cov
 #' @return L x L symmetric matrix Omega.
 #' @keywords internal
 .compute_omega <- function(Z, residuals, weights, cluster_vec, N,

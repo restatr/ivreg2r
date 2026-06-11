@@ -59,6 +59,9 @@ NULL
 #' @param kclass_value Numeric: the k value actually used (NA for OLS/2SLS).
 #' @param fuller_parameter Numeric: Fuller modification parameter (0 if none).
 #' @param coviv Logical: whether COVIV (2SLS bread) was used for VCV.
+#' @param S Estimated moment-condition covariance matrix (Stata `e(S)`),
+#'   with instrument-named dimnames.
+#' @param W GMM weighting matrix (Stata `e(W)`), or NULL for LIML/k-class.
 #' @param wmatrix User-supplied weighting matrix (or NULL).
 #' @param smatrix User-supplied moment covariance matrix (or NULL).
 #' @param b0 User-supplied parameter vector for CUE evaluation (or NULL).
@@ -102,6 +105,7 @@ NULL
                          kclass_value = NA_real_,
                          fuller_parameter = 0,
                          coviv = FALSE,
+                         S = NULL, W = NULL,
                          wmatrix = NULL, smatrix = NULL,
                          b0 = NULL,
                          noid = FALSE,
@@ -172,6 +176,8 @@ NULL
       kclass_value   = kclass_value,
       fuller_parameter = fuller_parameter,
       coviv          = coviv,
+      S              = S,
+      W              = W,
       wmatrix        = wmatrix,
       smatrix        = smatrix,
       b0             = b0,

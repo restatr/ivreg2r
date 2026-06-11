@@ -1017,26 +1017,13 @@
       gmm_ZwZ <- NULL
     }
     omega_fn <- function(resid) {
-      if (gmm_is_iid) {
-        if (!is.null(gmm_w)) {
-          rss_step <- sum(gmm_w * resid^2)
-          ZWZ <- crossprod(gmm_Z, gmm_w * gmm_Z)
-        } else {
-          rss_step <- sum(resid^2)
-          ZWZ <- crossprod(gmm_Z)
-        }
-        sigma2 <- rss_step / (gmm_N - gmm_dm)
-        Omega <- sigma2 * ZWZ / gmm_N
-        Omega <- .psd_correct(Omega, gmm_psd)
-        (Omega + t(Omega)) / 2
-      } else {
-        .compute_omega(gmm_Z, resid, gmm_w, gmm_cv, gmm_N,
-                       dofminus = gmm_dm, weight_type = gmm_wt,
-                       kernel = gmm_k, bw = gmm_bw, time_index = gmm_ti,
-                       center = gmm_center, psd = gmm_psd,
-                       vcov_type = gmm_vcov_type, ZwZ = gmm_ZwZ,
-                       sw = gmm_sw, ivar_vec = gmm_ivar_vec)
-      }
+      .compute_moment_cov(gmm_Z, resid, gmm_w, gmm_cv, gmm_N,
+                          iid = gmm_is_iid,
+                          dofminus = gmm_dm, weight_type = gmm_wt,
+                          kernel = gmm_k, bw = gmm_bw, time_index = gmm_ti,
+                          center = gmm_center, psd = gmm_psd,
+                          vcov_type = gmm_vcov_type, ZwZ = gmm_ZwZ,
+                          sw = gmm_sw, ivar_vec = gmm_ivar_vec)
     }
   }
 
@@ -1115,6 +1102,109 @@
 
   list(fit = fit, method = method, bw = bw, wmatrix = wmatrix,
        omega_fn = omega_fn)
+}
+
+
+#' Invert a symmetric positive-definite matrix with graceful failure.
+#'
+#' Tries Cholesky (chol2inv), falls back to qr.solve, and returns NULL with
+#' a warning if the matrix is computationally singular. Used for the stored
+#' weighting matrix W, where Stata's hard error (exit 506) is relaxed to the
+#' package's warn-and-skip convention.
+#'
+#' @return Inverse matrix, or NULL if singular.
+#' @noRd
+.safe_inverse <- function(A, what = "matrix") {
+  inv <- tryCatch(chol2inv(chol(A)), error = function(e) NULL)
+  if (is.null(inv)) {
+    inv <- tryCatch(qr.solve(A), error = function(e) NULL)
+  }
+  if (is.null(inv)) {
+    warning("Could not invert ", what, " (computationally singular); ",
+            "storing NULL.", call. = FALSE)
+  }
+  inv
+}
+
+
+#' Compute the stored moment-covariance S and weighting matrix W.
+#'
+#' Builds the matrices posted on the fitted object as `fit$S` and `fit$W`,
+#' matching Stata's `e(S)` and `e(W)` (ivreg2.ado:1905-1918):
+#'
+#' - S: user `smatrix` is echoed (never recomputed); GMM methods reuse the
+#'   defining Omega already computed by the fitter (`fit$omega`); all other
+#'   paths (OLS, 2SLS, LIML/k-class, any VCE) compute S fresh from the final
+#'   residuals via [.compute_moment_cov()].
+#' - W: NULL for LIML/k-class ("No weighting matrix defined", ivreg2.ado:1912);
+#'   user `wmatrix` is echoed (even under gmm2s, where it is the first-step
+#'   W); gmm2s/CUE/b0/smatrix-implied-GMM use `solve(S)`; 1-step OLS/2SLS use
+#'   `(1/sigma^2) (Z'WZ/N)^{-1}` from the final residuals with the
+#'   large-sample `sigma^2 = RSS/(N - dofminus)` (s_gmm1s, ivreg2.ado:5287-5371;
+#'   independent of `small`).
+#'
+#' Note (F2 interaction): the stored S is psd-corrected at the S level inside
+#' .compute_moment_cov/.compute_omega, while the plain non-GMM sandwich VCV
+#' still applies its psd correction to the final VCV — a known parity
+#' divergence scheduled for ticket F2; do not "fix" here.
+#'
+#' Must be called BEFORE the unsort step: HAC/AC paths index residuals by the
+#' sorted `prep$time_index`.
+#'
+#' @return list(S = matrix, W = matrix or NULL), dimnames = instrument names.
+#' @noRd
+.compute_stored_sw <- function(fit, parsed, prep, opts, est, bw, center) {
+  method <- est$method
+  Zmat <- if (parsed$is_iv) parsed$Z else parsed$X
+  inames <- colnames(Zmat)
+  is_iid <- is.null(prep$cluster_vec) && opts$vcov == "iid" &&
+    is.null(opts$kernel)
+
+  # --- S ---
+  if (!is.null(opts$smatrix)) {
+    S <- opts$smatrix
+  } else if (method %in% c("gmm2s", "gmmw", "cue")) {
+    S <- fit$omega
+  } else {
+    ZwZ <- NULL
+    if (opts$vcov == "AC") {
+      ZwZ <- if (is.null(parsed$weights)) {
+        crossprod(Zmat)
+      } else {
+        crossprod(Zmat, parsed$weights * Zmat)
+      }
+    }
+    S <- .compute_moment_cov(
+      Z = Zmat, residuals = fit$residuals, weights = parsed$weights,
+      cluster_vec = prep$cluster_vec, N = parsed$N, iid = is_iid,
+      dofminus = opts$dofminus, weight_type = opts$weight_type,
+      kernel = opts$kernel, bw = bw, time_index = prep$time_index,
+      center = center, psd = opts$psd, vcov_type = opts$vcov,
+      ZwZ = ZwZ, sw = isTRUE(opts$sw), ivar_vec = prep$ivar_vec
+    )
+  }
+  dimnames(S) <- list(inames, inames)
+
+  # --- W ---
+  if (method %in% c("liml", "kclass")) {
+    W <- NULL
+  } else if (!is.null(est$wmatrix)) {
+    W <- est$wmatrix
+  } else if (method %in% c("gmm2s", "gmmw", "cue")) {
+    W <- .safe_inverse(S, what = "moment covariance S for fit$W")
+  } else {
+    ZWZ <- if (is.null(parsed$weights)) {
+      crossprod(Zmat)
+    } else {
+      crossprod(Zmat, parsed$weights * Zmat)
+    }
+    sigma2 <- fit$rss / (parsed$N - opts$dofminus)
+    QZZinv <- .safe_inverse(ZWZ / parsed$N, what = "Z'Z/N for fit$W")
+    W <- if (is.null(QZZinv)) NULL else QZZinv / sigma2
+  }
+  if (!is.null(W)) dimnames(W) <- list(inames, inames)
+
+  list(S = S, W = W)
 }
 
 
@@ -1798,13 +1888,15 @@
 #'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
 #'   When `method` is not `"gmm2s"`, ignored without robust VCE, clustering,
 #'   or HAC (with a warning).
-#'   Equivalent to Stata's `wmatrix()` option.
+#'   Equivalent to Stata's `wmatrix()` option. When used (not ignored), it is
+#'   echoed back as `fit$W`, matching Stata's `e(W)`.
 #' @param smatrix Numeric matrix: user-supplied L x L moment covariance matrix
 #'   for GMM estimation. When supplied, the GMM estimation uses this matrix
 #'   instead of computing Omega from residuals. Implies efficient GMM
 #'   (`method` is promoted to `"gmm2s"` if `"2sls"`). Must be symmetric.
 #'   Incompatible with `method = "liml"`, `kclass`, and `fuller`.
-#'   Equivalent to Stata's `smatrix()` option.
+#'   Equivalent to Stata's `smatrix()` option. Echoed back as `fit$S`
+#'   (never recomputed), matching Stata's `e(S)`.
 #' @param b0 Numeric vector: evaluate the CUE objective at this fixed
 #'   parameter vector without optimization. When supplied, `method` is
 #'   promoted to `"cue"` and the J(b0) statistic is computed and stored.
@@ -1888,7 +1980,30 @@
 #' @param y Logical: if `TRUE` (default), store the response vector in the
 #'   return object.
 #'
-#' @return An object of class `"ivreg2"`.
+#' @return An object of class `"ivreg2"`. Beyond the usual components
+#'   (`coefficients`, `residuals`, `vcov`, `diagnostics`, ...), the object
+#'   stores the estimated moment-condition covariance matrix as `$S` and the
+#'   GMM weighting matrix as `$W`, corresponding to Stata's `e(S)` and
+#'   `e(W)`:
+#'
+#'   - `$S` is present for every fit. Normalization matches Stata's
+#'     `m_omega`: iid `sigma^2 (Z'Z)/N` with `sigma^2 = RSS/(N - dofminus)`;
+#'     robust and HAC, meat divided by `N - dofminus`; cluster, meat divided
+#'     by `N`; psd-corrected when `psd` is set; built from centered moments
+#'     when `center = TRUE`. A user-supplied `smatrix` is echoed, never
+#'     recomputed.
+#'   - `$W` is `NULL` for `method = "liml"` and `"kclass"` (as in Stata, no
+#'     weighting matrix is defined for k-class estimators). For two-step
+#'     GMM, CUE, and `b0` fits it is the inverse of the defining `$S`; for
+#'     one-step OLS/2SLS it is `(1/sigma^2) (Z'Z/N)^{-1}`; a user-supplied
+#'     `wmatrix` is echoed (it is the first-step weighting matrix under
+#'     `method = "gmm2s"`).
+#'
+#'   Rows and columns are named by the R instrument columns — `(Intercept)`
+#'   rather than Stata's `_cons`, and R column order (exogenous regressors
+#'   before excluded instruments) rather than Stata's. Passing `fit$S` back
+#'   via `smatrix` reproduces the corresponding efficient-GMM fit, mirroring
+#'   the `e(S)` reuse workflow in Stata's `ivreg2` help file.
 #'
 #' @examples
 #' data(mroz)
@@ -2062,6 +2177,13 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   effective_vcov_type <- diag_result$effective_vcov_type
   center              <- diag_result$center
 
+  # --- 5c. Stored moment-covariance S and weighting matrix W ---
+  # Must precede the unsort: HAC/AC moment covariances index the residuals
+  # via the sorted prep$time_index. Uses the effective center from the
+  # diagnostics step (reset for iid/AC, matching m_omega).
+  stored_sw <- .compute_stored_sw(fit, parsed, prep, opts, est,
+                                  bw = bw, center = center)
+
   # --- 5d. Unsort for user-facing output ---
   # If data was sorted for HAC/AC, restore original row order for user-facing
   # vectors and matrices (residuals, fitted values, y, X, Z).
@@ -2171,6 +2293,8 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     kclass_value      = fit$kclass_value %||% NA_real_,
     fuller_parameter  = fit$fuller_param %||% 0,
     coviv             = coviv,
+    S                 = stored_sw$S,
+    W                 = stored_sw$W,
     wmatrix           = wmatrix,
     smatrix           = smatrix,
     b0                = b0,

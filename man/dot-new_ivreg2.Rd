@@ -53,6 +53,8 @@
   kclass_value = NA_real_,
   fuller_parameter = 0,
   coviv = FALSE,
+  S = NULL,
+  W = NULL,
   wmatrix = NULL,
   smatrix = NULL,
   b0 = NULL,
@@ -179,6 +181,11 @@ or \code{"kclass"}).}
 \item{fuller_parameter}{Numeric: Fuller modification parameter (0 if none).}
 
 \item{coviv}{Logical: whether COVIV (2SLS bread) was used for VCV.}
+
+\item{S}{Estimated moment-condition covariance matrix (Stata \code{e(S)}),
+with instrument-named dimnames.}
+
+\item{W}{GMM weighting matrix (Stata \code{e(W)}), or NULL for LIML/k-class.}
 
 \item{wmatrix}{User-supplied weighting matrix (or NULL).}
 
