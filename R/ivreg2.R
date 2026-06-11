@@ -702,6 +702,15 @@
     partial_ct <- length(partial_colnames)
     parsed <- .partial_out(parsed, partial_colnames, partialcons)
 
+    # Stata recounts regressors AFTER partialling and errors if none remain
+    # (CheckMisc rhs1_ct check, ivreg2.ado:633/641/4246-4249, exit 102).
+    # Reachable when every regressor is exogenous (1-part OLS or
+    # empty-endogenous models) and partial = "_all".
+    if (parsed$K == 0L) {
+      stop("No regressors remain after partialling: all regressors were ",
+           "partialled out via `partial`.", call. = FALSE)
+    }
+
     if (!nopartialsmall) {
       sdofminus <- sdofminus + as.integer(partial_ct)
     }

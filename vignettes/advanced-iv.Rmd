@@ -297,9 +297,14 @@ and the C-statistic isolates `educ`: it compares this model against one
 where `educ` is treated as endogenous (instrumented by `age`, `kidslt6`,
 and `kidsge6`). A small C-statistic means the data do not reject treating
 `educ` as exogenous, *conditional on the three excluded instruments being
-valid*. The same form with `method = "gmm2s"` gives Cragg's (1983)
-heteroskedastic OLS (HOLS) estimator, which exploits the surplus conditions
-for efficiency under heteroskedasticity.
+valid*. The same form with `method = "gmm2s"` **and** `vcov = "robust"`
+gives Cragg's (1983) heteroskedastic OLS (HOLS) estimator, which exploits
+the surplus orthogonality conditions for efficiency under
+heteroskedasticity. (With the default iid VCE the two-step weighting
+matrix is proportional to `(Z'Z)^{-1}` and the estimates are identical to
+OLS — Stata's bare `gmm2s` likewise reports "estimates efficient for
+homoskedasticity only". Cluster or HAC VCEs generalize the efficiency
+gain to those error structures.)
 
 ### Anderson-Rubin LIML overidentification
 

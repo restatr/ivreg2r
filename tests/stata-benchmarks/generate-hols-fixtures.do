@@ -205,7 +205,15 @@ save_ivreg2_results, prefix(mroz_hols) suffix(robust) outdir(`outdir')
 ivreg2 lwage exper expersq educ (=age kidslt6 kidsge6), orthog(educ)
 save_ivreg2_results, prefix(mroz_hols) suffix(orthog) outdir(`outdir')
 
-// --- 4. H35: HOLS proper (gmm2s; robust per Cragg's motivation) ---
+// --- 4a. H35 exact command: bare gmm2s. With no VCE option the 2-step
+//     weighting matrix is proportional to (Z'Z)^-1, so the estimates equal
+//     OLS exactly (help.txt:344-358: "IV/2SLS, SEs consistent under
+//     homoskedasticity"; subtitle "efficient for homoskedasticity only") ---
+ivreg2 lwage exper expersq educ (=age kidslt6 kidsge6), gmm2s
+save_ivreg2_results, prefix(mroz_hols) suffix(gmm2s_iid) outdir(`outdir')
+
+// --- 4b. HOLS proper: gmm2s + robust, where the surplus conditions buy
+//     heteroskedasticity-efficiency and the estimates differ from OLS ---
 ivreg2 lwage exper expersq educ (=age kidslt6 kidsge6), gmm2s robust
 save_ivreg2_results, prefix(mroz_hols) suffix(gmm2s) outdir(`outdir')
 

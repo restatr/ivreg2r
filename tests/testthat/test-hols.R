@@ -45,15 +45,21 @@ test_that("empty-endogenous fit is exact OLS (robust and cluster)", {
   expect_identical(vcov(f_hols_cl), vcov(f_ols_cl))
 })
 
-test_that("HOLS via gmm2s differs from OLS and is efficient GMM", {
-  f_hols <- suppressWarnings(
-    ivreg2(hols_fml, data = mroz, method = "gmm2s", vcov = "robust")
-  )
+test_that("HOLS via gmm2s + robust differs from OLS; bare gmm2s equals OLS", {
+  # With robust VCE the surplus moment conditions buy efficiency and shift
+  # the point estimates (Cragg's 1983 HOLS) ...
+  f_hols <- ivreg2(hols_fml, data = mroz, method = "gmm2s", vcov = "robust")
   f_ols <- ivreg2(ols_fml, data = mroz, vcov = "robust")
   expect_equal(f_hols$method, "gmm2s")
-  # The surplus moment conditions shift the point estimates
   expect_gt(max(abs(coef(f_hols) - coef(f_ols)[names(coef(f_hols))])), 1e-6)
   expect_true(is.finite(f_hols$diagnostics$overid$stat))
+
+  # ... but with the default iid VCE the 2-step weighting matrix is
+  # proportional to (Z'Z)^-1, so gmm2s = 2SLS = OLS (Stata help.txt:344-358:
+  # bare gmm2s is "IV/2SLS, SEs consistent under homoskedasticity")
+  f_iid <- ivreg2(hols_fml, data = mroz, method = "gmm2s")
+  expect_equal(coef(f_iid), coef(ivreg2(ols_fml, data = mroz)),
+               tolerance = 1e-10)
 })
 
 
@@ -306,13 +312,32 @@ test_that("H34: orthog(educ) C-test matches Stata", {
                      "orthog", compare_s = TRUE)
 })
 
-test_that("H35: HOLS gmm2s matches Stata", {
+test_that("H35 exact command (bare gmm2s) matches Stata and equals OLS", {
+  skip_if(!file.exists(fixture_path("mroz_hols_coef_gmm2s_iid.csv")),
+          "Fixture not found")
+  fit <- ivreg2(hols_fml, data = mroz, method = "gmm2s")
+  check_hols_fixture(fit, "gmm2s_iid", compare_s = TRUE)
+})
+
+test_that("HOLS proper (gmm2s + robust) matches Stata", {
   skip_if(!file.exists(fixture_path("mroz_hols_coef_gmm2s.csv")),
           "Fixture not found")
-  fit <- suppressWarnings(
-    ivreg2(hols_fml, data = mroz, method = "gmm2s", vcov = "robust")
-  )
+  fit <- ivreg2(hols_fml, data = mroz, method = "gmm2s", vcov = "robust")
   check_hols_fixture(fit, "gmm2s", compare_s = TRUE)
+})
+
+test_that("partial = \"_all\" with no surviving regressors errors like Stata", {
+  # Stata: CheckMisc recounts rhs1_ct AFTER partialling (ivreg2.ado:633/641,
+  # 4246-4249) and exits 102. Reachable for empty-endogenous and 1-part OLS
+  # models, whose regressors are all exogenous.
+  expect_error(
+    ivreg2(hols_fml, data = mroz, partial = "_all"),
+    "No regressors remain after partialling"
+  )
+  expect_error(
+    ivreg2(lwage ~ exper, data = mroz, partial = "_all"),
+    "No regressors remain after partialling"
+  )
 })
 
 test_that("LIML with K1 = 0 matches Stata (coef = OLS, lambda, arubin)", {
