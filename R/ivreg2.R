@@ -424,6 +424,16 @@
     stop("fweights not allowed with kernel-based VCE.", call. = FALSE)
   }
 
+  # Canonicalize ts-operator entries in option varlists so they match the
+  # canonical term labels produced by the formula pass — "l(unem,1)" matches
+  # "l(unem, 1)", and ranges like "l(unem, 1:2)" expand to component terms
+  # (Stata analogue: fvexpand normalization before option-varlist matching,
+  # ivreg2.ado:511-530). No-ops for entries without ts operators.
+  endog <- unique(.canonicalize_ts_labels(endog))
+  orthog <- unique(.canonicalize_ts_labels(orthog))
+  redundant <- unique(.canonicalize_ts_labels(redundant))
+  partial <- unique(.canonicalize_ts_labels(partial))
+
   list(
     method = method, vcov = vcov, kernel = kernel, bw = bw,
     kiefer = kiefer, dkraay = dkraay, tvar = tvar, ivar = ivar,
@@ -629,6 +639,21 @@
   partialcons <- FALSE
 
   if (!is.null(partial)) {
+    # Time/panel variables cannot appear in the model when partialling
+    # (Stata ivreg2.ado:562-577: "cannot use time variable ... in
+    # combination with -partial- option").
+    model_vars <- all.vars(parsed$formula)
+    if (!is.null(tvar) && tvar %in% model_vars) {
+      stop("Cannot use time variable '", tvar, "' as dependent variable, ",
+           "regressor or instrument in combination with `partial`.",
+           call. = FALSE)
+    }
+    if (!is.null(ivar) && ivar %in% model_vars) {
+      stop("Cannot use panel variable '", ivar, "' as dependent variable, ",
+           "regressor or instrument in combination with `partial`.",
+           call. = FALSE)
+    }
+
     # Resolve special strings
     if (length(partial) == 1L && partial == "_all") {
       partial <- parsed$exog_term_labels
@@ -946,6 +971,21 @@
       } else {
         cluster_vec <- cluster_vec[so]
       }
+    }
+  }
+
+  # --- Gap warning for ts operators without a kernel ---
+  # Stata warns about gaps whenever ts operators OR a kernel are present
+  # (tsreport if touse, ivreg2.ado:410-418). The kernel block above already
+  # warns via time_index; cover the operators-without-kernel case here,
+  # on the estimation sample (Stata's touse — post lag-induced shrinkage).
+  if (isTRUE(parsed$has_ts_ops) && is.null(kernel)) {
+    mf_rows_gap <- match(rownames(parsed$model_frame), rownames(data))
+    ivar_vec_gap <- if (!is.null(ivar)) data[[ivar]][mf_rows_gap] else NULL
+    ti_gap <- .build_time_index(data[[tvar]][mf_rows_gap], ivar_vec_gap)
+    if (ti_gap$n_gaps > 0L) {
+      warning("Time variable '", tvar, "' has ", ti_gap$n_gaps,
+              " gap(s) in relevant range.", call. = FALSE)
     }
   }
 
@@ -2036,9 +2076,12 @@
 #'   Spectral kernels only, and is not supported for panel data (`ivar`).
 #'   Required when `kernel` is specified.
 #' @param tvar Character: name of the time variable in `data`. Required
-#'   for HAC/AC estimation.
+#'   for HAC/AC estimation and for time-series operators `l()`/`d()` in the
+#'   formula (see [`ts-operators`][l]). Lags are resolved by time *value*
+#'   (gap-aware), mirroring Stata's `tsset`.
 #' @param ivar Character: name of the panel identifier variable in `data`.
-#'   Optional; only needed for panel data with HAC/AC estimation.
+#'   Optional; only needed for panel data (HAC/AC estimation, or so that
+#'   time-series operators lag within panel units).
 #' @param kiefer Logical: if `TRUE`, use the Kiefer (1980) VCE —
 #'   autocorrelation-consistent with kernel = Truncated and bandwidth = T
 #'   (the full time span). Requires panel data (`tvar` + `ivar`).
@@ -2322,6 +2365,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   pf_call <- cl[c(1L, match(c("formula", "data", "weights", "subset",
                                "na.action"), names(cl), 0L))]
   pf_call[[1L]] <- quote(.parse_formula)
+  # Time/panel variable names for ts-operator resolution (literal strings,
+  # not user expressions, so direct assignment into the call is safe).
+  pf_call$tvar <- opts$tvar
+  pf_call$ivar <- opts$ivar
   pf_env <- list2env(list(.parse_formula = .parse_formula),
                      parent = parent.frame())
   parsed <- eval(pf_call, pf_env)
@@ -2504,6 +2551,7 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
     kiefer            = kiefer,
     dkraay            = dkraay,
     ivar              = ivar,
+    has_ts_ops        = isTRUE(parsed$has_ts_ops),
     center            = center,
     psd               = psd,
     sw                = isTRUE(opts$sw),

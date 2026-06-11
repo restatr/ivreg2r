@@ -9,7 +9,9 @@
   data,
   weights = NULL,
   subset = NULL,
-  na.action = na.omit
+  na.action = na.omit,
+  tvar = NULL,
+  ivar = NULL
 )
 }
 \arguments{
@@ -23,6 +25,9 @@
 \item{subset}{Optional subset expression (evaluated in \code{data}).}
 
 \item{na.action}{Function for handling \code{NA}s (default \code{na.omit}).}
+
+\item{tvar, ivar}{Optional time/panel variable names (single character),
+required when the formula contains time-series operators \code{l()}/\code{d()}.}
 }
 \value{
 A named list; see Details.

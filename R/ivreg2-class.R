@@ -114,6 +114,7 @@ NULL
                          tvar = NULL,
                          kiefer = FALSE, dkraay = NULL,
                          ivar = NULL,
+                         has_ts_ops = FALSE,
                          center = FALSE,
                          psd = NULL,
                          sw = FALSE,
@@ -190,6 +191,7 @@ NULL
       kiefer         = kiefer,
       dkraay         = dkraay,
       ivar           = ivar,
+      has_ts_ops     = has_ts_ops,
       center         = center,
       psd            = psd,
       sw             = sw,
@@ -379,7 +381,11 @@ confint.ivreg2 <- function(object, parm, level = 0.95, ...) {
 #'
 #' @param object An object of class `"ivreg2"`.
 #' @param newdata An optional data frame for prediction. If omitted, fitted
-#'   values from the original data are returned.
+#'   values from the original data are returned. If the model uses
+#'   time-series operators (see [`ts-operators`][l]), `newdata` must contain
+#'   the time variable (and panel variable, if any) plus the history rows
+#'   needed to compute the lags; rows whose lags are missing within
+#'   `newdata` get `NA` predictions (matching Stata).
 #' @param se.fit Logical: if `TRUE`, return prediction standard errors
 #'   alongside fitted values. Standard errors are computed as
 #'   `sqrt(diag(X V X'))` where `V = vcov(object)`, so they reflect the
@@ -418,6 +424,16 @@ predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
     return(fitted)
   }
   tt <- object$terms$regressors
+  if (isTRUE(object$has_ts_ops)) {
+    # Rebuild the ts-operator evaluation context from newdata so l()/d()
+    # terms are recomputed within newdata (which must therefore contain the
+    # history rows needed for the lags). Rows whose lags are absent get NA
+    # predictions, matching Stata's predict behavior with ts operators.
+    ts_ctx <- .ts_validate_context(newdata, object$tvar, object$ivar,
+                                   what = "newdata")
+    environment(tt) <- .make_ts_env(environment(tt),
+                                    ts_ctx$tvar_vec, ts_ctx$ivar_vec)
+  }
   mf <- stats::model.frame(stats::delete.response(tt), newdata,
                             na.action = na.action,
                             xlev = object$xlevels)

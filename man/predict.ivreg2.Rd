@@ -10,7 +10,11 @@
 \item{object}{An object of class \code{"ivreg2"}.}
 
 \item{newdata}{An optional data frame for prediction. If omitted, fitted
-values from the original data are returned.}
+values from the original data are returned. If the model uses
+time-series operators (see \code{\link[=l]{ts-operators}}), \code{newdata} must contain
+the time variable (and panel variable, if any) plus the history rows
+needed to compute the lags; rows whose lags are missing within
+\code{newdata} get \code{NA} predictions (matching Stata).}
 
 \item{se.fit}{Logical: if \code{TRUE}, return prediction standard errors
 alongside fitted values. Standard errors are computed as

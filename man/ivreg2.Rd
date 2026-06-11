@@ -216,10 +216,13 @@ Spectral kernels only, and is not supported for panel data (\code{ivar}).
 Required when \code{kernel} is specified.}
 
 \item{tvar}{Character: name of the time variable in \code{data}. Required
-for HAC/AC estimation.}
+for HAC/AC estimation and for time-series operators \code{l()}/\code{d()} in the
+formula (see \code{\link[=l]{ts-operators}}). Lags are resolved by time \emph{value}
+(gap-aware), mirroring Stata's \code{tsset}.}
 
 \item{ivar}{Character: name of the panel identifier variable in \code{data}.
-Optional; only needed for panel data with HAC/AC estimation.}
+Optional; only needed for panel data (HAC/AC estimation, or so that
+time-series operators lag within panel units).}
 
 \item{kiefer}{Logical: if \code{TRUE}, use the Kiefer (1980) VCE —
 autocorrelation-consistent with kernel = Truncated and bandwidth = T

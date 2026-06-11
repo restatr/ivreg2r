@@ -14,11 +14,30 @@ NULL
 #' @param weights Optional weights expression (evaluated in `data`).
 #' @param subset Optional subset expression (evaluated in `data`).
 #' @param na.action Function for handling `NA`s (default `na.omit`).
+#' @param tvar,ivar Optional time/panel variable names (single character),
+#'   required when the formula contains time-series operators `l()`/`d()`.
 #' @return A named list; see Details.
 #' @keywords internal
 .parse_formula <- function(formula, data, weights = NULL, subset = NULL,
-                           na.action = na.omit) {
+                           na.action = na.omit, tvar = NULL, ivar = NULL) {
 
+  # --- 0. Time-series operators ---
+  # Normalize l()/d() calls (range expansion, canonical two-argument form)
+  # and bind the formula to an environment carrying working operator
+  # closures, so model.frame() below evaluates lags/differences against
+  # the full data BEFORE subset and na.action — Stata's evaluation order
+  # (lags on all data, then if/in, then markout of missing lags).
+  has_ts_ops <- .has_ts_operators(formula)
+  if (has_ts_ops) {
+    if (is.null(tvar)) {
+      stop("Time-series operators l()/d() in the formula require `tvar` ",
+           "(and `ivar` for panel data). See ?`ts-operators`.", call. = FALSE)
+    }
+    ts_ctx <- .ts_validate_context(data, tvar, ivar)
+    formula <- .normalize_ts_formula(formula)
+    environment(formula) <- .make_ts_env(environment(formula),
+                                         ts_ctx$tvar_vec, ts_ctx$ivar_vec)
+  }
 
   # --- 1. Convert & validate ---
   formula <- Formula::as.Formula(formula)
@@ -427,6 +446,7 @@ NULL
       dropped_regressors        = dropped_regressors,
       dropped_instruments       = dropped_instruments,
       reclassified_endogenous   = reclassified_endogenous,
+      has_ts_ops         = has_ts_ops,
       is_iv              = is_iv,
       is_overid          = is_overid,
       overid_df          = overid_df
@@ -486,9 +506,9 @@ NULL
 #' @return Invisible `NULL`. Stops with an error naming all duplicates.
 #' @keywords internal
 .check_duplicates <- function(formula) {
-  vars1 <- all.vars(formula(formula, lhs = 0L, rhs = 1L))
-  vars2 <- all.vars(formula(formula, lhs = 0L, rhs = 2L))
-  vars3 <- all.vars(formula(formula, lhs = 0L, rhs = 3L))
+  vars1 <- .dup_check_keys(formula, rhs = 1L)
+  vars2 <- .dup_check_keys(formula, rhs = 2L)
+  vars3 <- .dup_check_keys(formula, rhs = 3L)
 
   dup_12 <- intersect(vars1, vars2)
   dup_13 <- intersect(vars1, vars3)
@@ -503,6 +523,38 @@ NULL
          call. = FALSE)
   }
   invisible(NULL)
+}
+
+#' Duplicate-check keys for one formula part
+#'
+#' Terms containing a time-series operator are keyed by their canonical term
+#' label, not their underlying variable, so `unem` (endogenous) and
+#' `l(unem, 1)` (instrument) coexist — matching Stata, where `unem` and
+#' `L.unem` are distinct varlist entries. All other terms contribute their
+#' variable names, as before.
+#'
+#' @param formula A 3-part `Formula` object.
+#' @param rhs Which part.
+#' @return Character vector of keys.
+#' @keywords internal
+.dup_check_keys <- function(formula, rhs) {
+  part <- formula(formula, lhs = 0L, rhs = rhs)
+  if (!.has_ts_operators(part)) {
+    return(all.vars(part))
+  }
+  labs <- attr(terms(part), "term.labels")
+  keys <- character(0L)
+  for (lab in labs) {
+    e <- tryCatch(str2lang(lab), error = function(err) NULL)
+    if (!is.null(e) && is.call(e) && .has_ts_operators(e)) {
+      keys <- c(keys, deparse1(e))
+    } else if (is.null(e)) {
+      keys <- c(keys, lab)
+    } else {
+      keys <- c(keys, all.vars(e))
+    }
+  }
+  unique(keys)
 }
 
 

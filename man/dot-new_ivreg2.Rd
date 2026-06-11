@@ -67,6 +67,7 @@
   kiefer = FALSE,
   dkraay = NULL,
   ivar = NULL,
+  has_ts_ops = FALSE,
   center = FALSE,
   psd = NULL,
   sw = FALSE,
