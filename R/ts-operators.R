@@ -60,9 +60,9 @@
 #' error when called outside an `ivreg2()` formula (use, e.g.,
 #' `dplyr::lag()` with a consecutive-periods check, or `fixest`/`collapse`/
 #' `plm`, for general-purpose panel lagging). The time variable must be
-#' integer-valued (within \eqn{\pm 2^{53}}), like Stata's `tsset` —
-#' lag arithmetic on fractional or astronomically large time values is not
-#' exact in floating point. The lag/difference order `k`
+#' integer-valued (less than \eqn{2^{53}} in magnitude), like Stata's
+#' `tsset` — lag arithmetic on fractional or astronomically large time
+#' values is not exact in floating point. The lag/difference order `k`
 #' must be a constant non-negative integer (or integer vector for ranges);
 #' leads (negative `k`), nested operators (`l(d(x))`), and ranges on the
 #' left-hand side (the model has a single dependent variable) are not
@@ -286,13 +286,18 @@ d <- function(x, k = 1) {
     stop("Time variable '", tvar, "' must contain only finite values.",
          call. = FALSE)
   }
-  # Lag arithmetic is exact only for integer time values within +/- 2^53:
-  # beyond that, t - k can round onto a DIFFERENT observed timestamp
-  # (e.g., 1e16 - 1 == 1e16), silently fabricating lags; fractional grids
-  # have the mirror problem (fl(1.1) - 1 != fl(0.1), false NAs). Stata's
-  # tsset likewise requires the time variable to take integer values.
-  if (any(abs(tvar_vec) > 2^53) || any(tvar_vec != trunc(tvar_vec))) {
-    stop("Time variable '", tvar, "' must be integer-valued (and at most ",
+  # Lag arithmetic is exact only for integer time values strictly inside
+  # +/- 2^53: beyond that, t - k can round onto a DIFFERENT observed
+  # timestamp (e.g., 1e16 - 1 == 1e16), silently fabricating lags;
+  # fractional grids have the mirror problem (fl(1.1) - 1 != fl(0.1),
+  # false NAs). The bound is strict so that the endpoint itself cannot
+  # self-match (-2^53 - 1 rounds back to -2^53): with |t| < 2^53, IEEE
+  # correctly-rounded subtraction makes every representable t - k exact,
+  # and any t - k that leaves the range rounds to a value outside the
+  # data, i.e. a true NA. Stata's tsset likewise requires the time
+  # variable to take integer values.
+  if (any(abs(tvar_vec) >= 2^53) || any(tvar_vec != trunc(tvar_vec))) {
+    stop("Time variable '", tvar, "' must be integer-valued (and less than ",
          "2^53 in magnitude) for time-series operators. Rescale it to ",
          "period counts (e.g., t - min(t), or t %/% delta).", call. = FALSE)
   }
@@ -396,21 +401,20 @@ d <- function(x, k = 1) {
   if (k == 0) {
     return(x)
   }
-  # Validation guarantees integer time values in +/- 2^53; keep t - k in the
-  # exact-integer range too (a pathological k could push it out and round
-  # onto an observed timestamp).
-  if (k > 2^53 || min(tvar_vec) - k < -2^53) {
-    stop("Lag order ", k, " pushes the time variable outside the ",
-         "exact-integer range; rescale the time variable.", call. = FALSE)
-  }
+  # Validation guarantees integer time values strictly inside +/- 2^53, so
+  # t - k is exact whenever its true value is representable, and rounds
+  # outside the data range (a true NA) otherwise — no per-call guard
+  # needed, for any k.
   if (is.null(ivar_vec)) {
     idx <- match(tvar_vec - k, tvar_vec)
   } else {
-    # sprintf("%.0f") renders integer-valued doubles exactly; plain paste()
-    # formats at 15 significant digits, which collides distinct timestamps
-    # at epoch-microsecond magnitudes (~1.7e15).
-    idx <- match(paste(ivar_vec, sprintf("%.0f", tvar_vec - k), sep = "\r"),
-                 paste(ivar_vec, sprintf("%.0f", tvar_vec), sep = "\r"))
+    # Build keys from exact components: panel IDs as integer codes (plain
+    # paste() formats numeric IDs at 15 significant digits, colliding
+    # distinct IDs near 1.7e15) and times via sprintf("%.0f"), exact for
+    # integer-valued doubles.
+    id_codes <- match(ivar_vec, unique(ivar_vec))
+    idx <- match(paste(id_codes, sprintf("%.0f", tvar_vec - k), sep = "\r"),
+                 paste(id_codes, sprintf("%.0f", tvar_vec), sep = "\r"))
   }
   unname(x[idx])
 }

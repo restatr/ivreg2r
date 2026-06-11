@@ -263,6 +263,24 @@ test_that("epoch-microsecond panel timestamps lag exactly", {
   expect_equal(nobs(fit), 4L)
 })
 
+test_that("the 2^53 endpoint is rejected (t - k would round back onto t)", {
+  # -2^53 - 1 rounds back to -2^53, so the endpoint itself would self-lag;
+  # the validation bound is therefore strict.
+  endp <- data.frame(t = -2^53 + c(0, 1, 2), x = c(10, 20, 30),
+                     y = c(1, 2, 3))
+  expect_error(ivreg2(y ~ l(x, 1), data = endp, tvar = "t"),
+               "integer-valued")
+})
+
+test_that("large numeric panel IDs do not collide in lag keys", {
+  # Regression: paste() formats numeric panel IDs at 15 significant digits,
+  # collapsing distinct IDs near 1.7e15 and lagging across panels.
+  pd <- data.frame(id = rep(1.7e15 + c(0, 1), each = 2),
+                   t = rep(1:2, 2), x = c(1, 2, 3, 4))
+  lagged <- ivreg2r:::.ts_lag_values(pd$x, 1, pd$t, pd$id)
+  expect_equal(lagged, c(NA, 1, NA, 3))
+})
+
 test_that("infinite time values error (would self-match as their own lag)", {
   ph_inf <- phillips
   ph_inf$year[5] <- Inf
