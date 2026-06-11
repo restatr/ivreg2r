@@ -59,7 +59,10 @@
 #' [ivreg2()]; `l()` and `d()` are not standalone lag utilities and signal an
 #' error when called outside an `ivreg2()` formula (use, e.g.,
 #' `dplyr::lag()` with a consecutive-periods check, or `fixest`/`collapse`/
-#' `plm`, for general-purpose panel lagging). The lag/difference order `k`
+#' `plm`, for general-purpose panel lagging). The time variable must be
+#' integer-valued (within \eqn{\pm 2^{53}}), like Stata's `tsset` —
+#' lag arithmetic on fractional or astronomically large time values is not
+#' exact in floating point. The lag/difference order `k`
 #' must be a constant non-negative integer (or integer vector for ranges);
 #' leads (negative `k`), nested operators (`l(d(x))`), and ranges on the
 #' left-hand side (the model has a single dependent variable) are not
@@ -283,6 +286,16 @@ d <- function(x, k = 1) {
     stop("Time variable '", tvar, "' must contain only finite values.",
          call. = FALSE)
   }
+  # Lag arithmetic is exact only for integer time values within +/- 2^53:
+  # beyond that, t - k can round onto a DIFFERENT observed timestamp
+  # (e.g., 1e16 - 1 == 1e16), silently fabricating lags; fractional grids
+  # have the mirror problem (fl(1.1) - 1 != fl(0.1), false NAs). Stata's
+  # tsset likewise requires the time variable to take integer values.
+  if (any(abs(tvar_vec) > 2^53) || any(tvar_vec != trunc(tvar_vec))) {
+    stop("Time variable '", tvar, "' must be integer-valued (and at most ",
+         "2^53 in magnitude) for time-series operators. Rescale it to ",
+         "period counts (e.g., t - min(t), or t %/% delta).", call. = FALSE)
+  }
   ivar_vec <- NULL
   if (!is.null(ivar)) {
     if (!ivar %in% names(data)) {
@@ -383,11 +396,21 @@ d <- function(x, k = 1) {
   if (k == 0) {
     return(x)
   }
+  # Validation guarantees integer time values in +/- 2^53; keep t - k in the
+  # exact-integer range too (a pathological k could push it out and round
+  # onto an observed timestamp).
+  if (k > 2^53 || min(tvar_vec) - k < -2^53) {
+    stop("Lag order ", k, " pushes the time variable outside the ",
+         "exact-integer range; rescale the time variable.", call. = FALSE)
+  }
   if (is.null(ivar_vec)) {
     idx <- match(tvar_vec - k, tvar_vec)
   } else {
-    idx <- match(paste(ivar_vec, tvar_vec - k, sep = "\r"),
-                 paste(ivar_vec, tvar_vec, sep = "\r"))
+    # sprintf("%.0f") renders integer-valued doubles exactly; plain paste()
+    # formats at 15 significant digits, which collides distinct timestamps
+    # at epoch-microsecond magnitudes (~1.7e15).
+    idx <- match(paste(ivar_vec, sprintf("%.0f", tvar_vec - k), sep = "\r"),
+                 paste(ivar_vec, sprintf("%.0f", tvar_vec), sep = "\r"))
   }
   unname(x[idx])
 }

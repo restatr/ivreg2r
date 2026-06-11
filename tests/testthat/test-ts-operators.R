@@ -237,6 +237,32 @@ test_that("scalar lags work on the LHS; lag ranges there error", {
   )
 })
 
+test_that("time values must be integer-valued and within 2^53", {
+  # Beyond 2^53, t - k can round onto an observed timestamp and fabricate
+  # lags (1e16 - 1 == 1e16 in doubles); fractional grids have the mirror
+  # false-NA problem. Stata's tsset requires integer time values.
+  set.seed(7)
+  big <- data.frame(t = 1e16 + c(0, 2, 4, 6), x = rnorm(4), y = rnorm(4))
+  expect_error(ivreg2(y ~ l(x, 1), data = big, tvar = "t"),
+               "integer-valued")
+  frac <- data.frame(t = c(0.5, 1.5, 2.5, 3.5), x = rnorm(4), y = rnorm(4))
+  expect_error(ivreg2(y ~ l(x, 1), data = frac, tvar = "t"),
+               "integer-valued")
+})
+
+test_that("epoch-microsecond panel timestamps lag exactly", {
+  # Regression: plain paste() formats doubles at 15 significant digits, so
+  # distinct timestamps near 1.7e15 (integer-valued, well inside 2^53)
+  # collapsed to one key and produced wrong lags.
+  pd <- data.frame(id = rep(1:2, each = 3), t = 1.7e15 + rep(0:2, 2),
+                   x = c(10, 20, 30, 40, 50, 60))
+  lagged <- ivreg2r:::.ts_lag_values(pd$x, 1, pd$t, pd$id)
+  expect_equal(lagged, c(NA, 10, 20, NA, 40, 50))
+  pd$y <- pd$x + rep(c(1, 2, 3), 2)
+  fit <- ivreg2(y ~ l(x, 1), data = pd, tvar = "t", ivar = "id")
+  expect_equal(nobs(fit), 4L)
+})
+
 test_that("infinite time values error (would self-match as their own lag)", {
   ph_inf <- phillips
   ph_inf$year[5] <- Inf
