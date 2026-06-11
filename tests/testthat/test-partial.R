@@ -9,6 +9,11 @@ if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
 
+mroz_path <- fixture_path("mroz_data.csv")
+if (file.exists(mroz_path)) {
+  mroz_fix <- read.csv(mroz_path)
+}
+
 # Helper: compare coefficients and SEs against fixture
 check_coef_fixture <- function(fit, fixture_path, tol = stata_tol) {
   fixture <- read.csv(fixture_path)
@@ -84,6 +89,16 @@ check_diag_fixture <- function(fit, fixture_path, tol = stata_tol) {
     if (!is.na(cd_val)) {
       expect_equal(diag$weak_id$stat, cd_val,
                    tolerance = tol$stat, info = "CD F")
+    }
+  }
+
+  # Weak ID (Kleibergen-Paap rk Wald F)
+  if (!is.null(diag$weak_id_robust) && !is.na(fixture$weak_id_kp_f) &&
+      fixture$weak_id_kp_f != "") {
+    kp_val <- as.numeric(fixture$weak_id_kp_f)
+    if (!is.na(kp_val)) {
+      expect_equal(diag$weak_id_robust$stat, kp_val,
+                   tolerance = tol$stat, info = "KP rk Wald F")
     }
   }
 
@@ -185,9 +200,9 @@ test_that("partial(black south smsa) matches Stata — IID small", {
 # ===========================================================================
 test_that("partial(_cons) matches Stata — IID", {
   skip_if_not(file.exists(card_path))
-  fit <- suppressWarnings(ivreg2(
+  fit <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "_cons"))
+    data = card, partial = "_cons")
 
   check_coef_fixture(fit,
     fixture_path("card_partial_cons_coef_iid.csv"))
@@ -210,12 +225,12 @@ test_that("partial(_cons) matches Stata — IID", {
 # ===========================================================================
 test_that("partial accepts both '_cons' and '(Intercept)'", {
   skip_if_not(file.exists(card_path))
-  fit1 <- suppressWarnings(ivreg2(
+  fit1 <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "_cons"))
-  fit2 <- suppressWarnings(ivreg2(
+    data = card, partial = "_cons")
+  fit2 <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "(Intercept)"))
+    data = card, partial = "(Intercept)")
   expect_equal(coef(fit1), coef(fit2))
   expect_equal(vcov(fit1), vcov(fit2))
 })
@@ -226,18 +241,73 @@ test_that("partial accepts both '_cons' and '(Intercept)'", {
 # ===========================================================================
 test_that("partial(_all) matches Stata — IID", {
   skip_if_not(file.exists(card_path))
-  # partial("_all") with overid can trigger diagnostic array errors
-  fit <- suppressWarnings(ivreg2(
+  fit <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa |
       educ | nearc2 + nearc4,
-    data = card, partial = "_all"))
+    data = card, partial = "_all")
 
   check_coef_fixture(fit,
     fixture_path("card_partial_all_coef_iid.csv"))
+  check_diag_fixture(fit,
+    fixture_path("card_partial_all_diagnostics_iid.csv"))
 
   # Only endogenous variable(s) remain
   expect_equal(length(coef(fit)), 1L)
   expect_equal(names(coef(fit)), "educ")
+})
+
+test_that("partial(_all) id tests equal partial(_cons) id tests (FWL invariance)", {
+  skip_if_not(file.exists(card_path))
+  fit_all <- ivreg2(
+    lwage ~ exper + expersq + black + south + smsa |
+      educ | nearc2 + nearc4,
+    data = card, partial = "_all")
+  fit_cons <- ivreg2(
+    lwage ~ exper + expersq + black + south + smsa |
+      educ | nearc2 + nearc4,
+    data = card, partial = "_cons")
+
+  expect_equal(fit_all$diagnostics$underid$stat,
+               fit_cons$diagnostics$underid$stat)
+  expect_equal(fit_all$diagnostics$weak_id$stat,
+               fit_cons$diagnostics$weak_id$stat)
+})
+
+
+# ===========================================================================
+# 3b. F5 regression: id tests with an empty exogenous block
+#     (partial(_all) with K1 > 0, and noconstant with K2 = 0)
+# ===========================================================================
+test_that("partial(_all) id tests match Stata — mroz, IID", {
+  skip_if_not(file.exists(mroz_path))
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_fix, partial = "_all")
+
+  check_coef_fixture(fit,
+    fixture_path("mroz_partial_all_coef_iid.csv"))
+  check_diag_fixture(fit,
+    fixture_path("mroz_partial_all_diagnostics_iid.csv"))
+})
+
+test_that("partial(_all) id tests match Stata — mroz, robust (KP rk)", {
+  skip_if_not(file.exists(mroz_path))
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_fix, partial = "_all", vcov = "robust")
+
+  check_coef_fixture(fit,
+    fixture_path("mroz_partial_all_coef_robust.csv"))
+  check_diag_fixture(fit,
+    fixture_path("mroz_partial_all_diagnostics_robust.csv"))
+})
+
+test_that("noconstant with no exogenous regressors id tests match Stata — mroz, IID", {
+  skip_if_not(file.exists(mroz_path))
+  fit <- ivreg2(lwage ~ 0 | educ | age + kidslt6 + kidsge6, data = mroz_fix)
+
+  check_coef_fixture(fit,
+    fixture_path("mroz_nocons_coef_iid.csv"))
+  check_diag_fixture(fit,
+    fixture_path("mroz_nocons_diagnostics_iid.csv"))
 })
 
 
@@ -457,19 +527,18 @@ test_that("partial_ct and partial_names are correct", {
   expect_equal(sort(fit1$partial_names), sort(c("black", "south", "smsa")))
 
   # partial(_cons) → partial_ct = 1
-  fit2 <- suppressWarnings(ivreg2(
+  fit2 <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "_cons"))
+    data = card, partial = "_cons")
   expect_equal(fit2$partial_ct, 1L)
   expect_true(fit2$partialcons)
   expect_equal(fit2$partial_names, character(0L))
 
   # partial(_all) → partial_ct = 6 (5 exog vars + cons)
-  # partial("_all") may produce diagnostic warnings
-  fit3 <- suppressWarnings(ivreg2(
+  fit3 <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa |
       educ | nearc2 + nearc4,
-    data = card, partial = "_all"))
+    data = card, partial = "_all")
   expect_equal(fit3$partial_ct, 6L)
   expect_true(fit3$partialcons)
 })
@@ -601,9 +670,9 @@ test_that("FWL theorem: partial(_cons) coefficients match full model", {
   skip_if_not(file.exists(card_path))
   fit_full <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                        educ | nearc2 + nearc4, data = card)
-  fit_cons <- suppressWarnings(ivreg2(
+  fit_cons <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "_cons"))
+    data = card, partial = "_cons")
   shared <- intersect(names(coef(fit_full)), names(coef(fit_cons)))
   for (nm in shared) {
     expect_equal(unname(coef(fit_cons)[nm]), unname(coef(fit_full)[nm]),
@@ -636,10 +705,13 @@ test_that("CUE + partial is NOT FWL-invariant with robust VCE", {
   fit_full <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
                        educ | nearc2 + nearc4,
                      data = card, method = "cue", vcov = "robust")
-  fit_partial <- suppressWarnings(ivreg2(
-    lwage ~ exper + expersq + black + south + smsa |
-      educ | nearc2 + nearc4,
-    data = card, method = "cue", vcov = "robust", partial = "smsa"))
+  expect_warning(
+    fit_partial <- ivreg2(
+      lwage ~ exper + expersq + black + south + smsa |
+        educ | nearc2 + nearc4,
+      data = card, method = "cue", vcov = "robust", partial = "smsa"),
+    "FWL invariance does not hold for CUE"
+  )
   shared <- intersect(names(coef(fit_full)), names(coef(fit_partial)))
   # At least one coefficient should differ (non-invariance)
   diffs <- vapply(shared, function(nm) {
@@ -662,9 +734,9 @@ test_that("CUE b0 + partial works (b0 validated after partialling)", {
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
     data = card, method = "liml", partial = "smsa")
   b0_vec <- coef(fit_liml)
-  fit_cue <- suppressWarnings(ivreg2(
+  fit_cue <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, method = "cue", partial = "smsa", b0 = b0_vec))
+    data = card, method = "cue", partial = "smsa", b0 = b0_vec)
   # CUE + IID should match LIML
   for (nm in names(b0_vec)) {
     expect_equal(unname(coef(fit_cue)[nm]), unname(coef(fit_liml)[nm]),

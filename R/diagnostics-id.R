@@ -45,6 +45,12 @@
 #' @return List with `X1_perp` and `Z1_perp`.
 #' @keywords internal
 .partial_fwl <- function(X1, Z1, X2, weights) {
+  # Nothing to partial out: matches ranktest.ado's no-transformation branch
+  # (lines 1136-1138), reached when partial() is empty and nocons is set --
+  # the path ivreg2.ado takes for partial(_all) and for noconstant K2=0.
+  if (ncol(X2) == 0L) {
+    return(list(X1_perp = X1, Z1_perp = Z1))
+  }
   if (is.null(weights)) {
     X1_perp <- X1 - X2 %*% lm.fit(X2, X1)$coefficients
     Z1_perp <- Z1 - X2 %*% lm.fit(X2, Z1)$coefficients
