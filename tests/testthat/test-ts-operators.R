@@ -263,13 +263,20 @@ test_that("epoch-microsecond panel timestamps lag exactly", {
   expect_equal(nobs(fit), 4L)
 })
 
-test_that("the 2^53 endpoint is rejected (t - k would round back onto t)", {
-  # -2^53 - 1 rounds back to -2^53, so the endpoint itself would self-lag;
-  # the validation bound is therefore strict.
+test_that("the -2^53 endpoint is rejected; +2^53 is accepted", {
+  # -2^53 - 1 rounds back to -2^53, so the lower endpoint would self-lag.
   endp <- data.frame(t = -2^53 + c(0, 1, 2), x = c(10, 20, 30),
                      y = c(1, 2, 3))
   expect_error(ivreg2(y ~ l(x, 1), data = endp, tvar = "t"),
                "integer-valued")
+  # Operators only subtract nonnegative k, so the UPPER endpoint is safe:
+  # at +2^53 every t - k is exactly representable.
+  lag_hi <- ivreg2r:::.ts_lag_values(c(10, 20, 30), 1, 2^53 + c(-2, -1, 0))
+  expect_equal(lag_hi, c(NA, 10, 20))
+  hi <- data.frame(t = 2^53 + c(-2, -1, 0), x = c(10, 20, 30),
+                   y = c(1, 2, 3))
+  fit <- ivreg2(y ~ l(x, 1), data = hi, tvar = "t")
+  expect_equal(nobs(fit), 2L)
 })
 
 test_that("large numeric panel IDs do not collide in lag keys", {

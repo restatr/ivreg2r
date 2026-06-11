@@ -286,20 +286,23 @@ d <- function(x, k = 1) {
     stop("Time variable '", tvar, "' must contain only finite values.",
          call. = FALSE)
   }
-  # Lag arithmetic is exact only for integer time values strictly inside
-  # +/- 2^53: beyond that, t - k can round onto a DIFFERENT observed
+  # Lag arithmetic is exact only for integer time values in the exact-
+  # integer range: beyond it, t - k can round onto a DIFFERENT observed
   # timestamp (e.g., 1e16 - 1 == 1e16), silently fabricating lags;
   # fractional grids have the mirror problem (fl(1.1) - 1 != fl(0.1),
-  # false NAs). The bound is strict so that the endpoint itself cannot
-  # self-match (-2^53 - 1 rounds back to -2^53): with |t| < 2^53, IEEE
-  # correctly-rounded subtraction makes every representable t - k exact,
-  # and any t - k that leaves the range rounds to a value outside the
-  # data, i.e. a true NA. Stata's tsset likewise requires the time
-  # variable to take integer values.
-  if (any(abs(tvar_vec) >= 2^53) || any(tvar_vec != trunc(tvar_vec))) {
-    stop("Time variable '", tvar, "' must be integer-valued (and less than ",
-         "2^53 in magnitude) for time-series operators. Rescale it to ",
-         "period counts (e.g., t - min(t), or t %/% delta).", call. = FALSE)
+  # false NAs). The range is (-2^53, 2^53]: only the LOWER endpoint is
+  # unsafe (operators subtract nonnegative k, and -2^53 - 1 rounds back
+  # to -2^53, a self-match), while at +2^53 every t - k is exactly
+  # representable. With that bound, IEEE correctly-rounded subtraction
+  # makes every representable t - k exact, and any t - k that leaves the
+  # range rounds to a value outside the data, i.e. a true NA. Stata's
+  # tsset likewise requires the time variable to take integer values.
+  if (any(tvar_vec <= -2^53) || any(tvar_vec > 2^53) ||
+      any(tvar_vec != trunc(tvar_vec))) {
+    stop("Time variable '", tvar, "' must be integer-valued and within ",
+         "the exact-integer range (greater than -2^53, at most 2^53) for ",
+         "time-series operators. Rescale it to period counts (e.g., ",
+         "t - min(t), or t %/% delta).", call. = FALSE)
   }
   ivar_vec <- NULL
   if (!is.null(ivar)) {
