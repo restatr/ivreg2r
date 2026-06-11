@@ -505,6 +505,7 @@ augment(fit_iv) |> head()
 | Task | Stata | R (`ivreg2r`) |
 |------|-------|---------------|
 | Basic IV | `ivreg2 y x (endo = z)` | `ivreg2(y ~ x | endo | z, data = d)` |
+| No endogenous regressors (HOLS form) | `ivreg2 y x (=z1 z2)` | `ivreg2(y ~ x | 0 | z1 + z2, data = d)` |
 | Robust SEs | `ivreg2 ..., robust` | `ivreg2(..., vcov = "robust")` |
 | Robust + small | `ivreg2 ..., robust small` | `ivreg2(..., vcov = "robust", small = TRUE)` |
 | Cluster SEs | `ivreg2 ..., cluster(g)` | `ivreg2(..., clusters = ~ g)` |

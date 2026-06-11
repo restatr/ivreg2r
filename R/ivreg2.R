@@ -535,15 +535,12 @@
     stop('`method = "', method, '"` requires an IV model (3-part formula).',
          call. = FALSE)
   }
-  # Empty-endogenous (K1 = 0) models: gmm2s/cue are valid (Cragg's 1983
-  # HOLS), but the k-class eigenproblem is undefined with no endogenous
-  # regressors. Stata has no guard here (ivreg2.ado:3938-3956 only blocks
-  # the gmm2s combination) and runs into undefined behavior; we error.
-  if (method %in% c("liml", "kclass") && parsed$is_iv && parsed$K1 == 0L) {
-    stop('`method = "', method, '"` requires at least one endogenous ',
-         "regressor. With an empty endogenous part the model is estimated ",
-         "by OLS (or HOLS via `method = \"gmm2s\"`).", call. = FALSE)
-  }
+  # Empty-endogenous (K1 = 0) models: every method is valid. gmm2s/cue give
+  # Cragg's (1983) HOLS; liml/kclass are well-defined too — with X contained
+  # in Z, X'M_Z = 0, so the k-class normal equations reduce to X'X for ANY
+  # k and the coefficients equal OLS exactly, while the LIML lambda is the
+  # 1x1 eigenvalue RSS(y~X)/RSS(y~Z) feeding the Anderson-Rubin LR overid
+  # statistic e(arubin) (Stata runs this; verified vs e(lambda) on mroz).
   if (fuller > 0 && parsed$is_iv && fuller >= (parsed$N - parsed$L)) {
     stop("`fuller` (", fuller, ") must be less than N - L (",
          parsed$N - parsed$L, ").", call. = FALSE)
@@ -1786,9 +1783,13 @@
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
 
-  # Reduced-form regression. K1 = 0: the model IS its own reduced form, so
-  # there is no separate system to store (Stata's rf/saverf display the
-  # y-on-Z system for the endogenous setup).
+  # Reduced-form regression. K1 = 0: skipped, matching Stata — the entire
+  # RF/first-stage estimation block is gated on `endo1_ct > 0`
+  # (ivreg2.ado:1256), and saverf on a `(=z)` model stores nothing
+  # (e(rfeq) empty; verified by probe 2026-06-11). Note the y-on-Z reduced
+  # form WOULD differ from the main y-on-X model (Z carries the surplus
+  # instruments), but Stata never computes it, so there is no ground truth
+  # to validate an extension against.
   reduced_form_result <- NULL
   if (parsed$is_iv && parsed$K1 > 0L && reduced_form != "none") {
     rf_depvar <- parsed$y_name
@@ -2140,7 +2141,10 @@
 #'   y + all endogenous variables regressed on Z, with cross-equation VCV
 #'   (equivalent to Stata's `savesfirst`, an option present in `ivreg2.ado`
 #'   but absent from its help file; Stata's `sfirst` displays the system
-#'   without storing it). Silently ignored for OLS models.
+#'   without storing it). Silently ignored for OLS models and for
+#'   empty-endogenous (`y ~ exog | 0 | instruments`) models, matching Stata,
+#'   which skips reduced-form estimation whenever the endogenous list is
+#'   empty.
 #' @param first_stage Logical: if `TRUE`, store extractable first-stage
 #'   regression objects on the fitted model. Access them via
 #'   [first_stage()]. Each object supports [coef()], [vcov()],

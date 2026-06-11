@@ -272,6 +272,35 @@ challenged instruments, and with robust or cluster-robust standard errors
 the test is computed as a difference in Hansen J statistics rather than
 Sargan statistics.
 
+### Testing an included regressor: the empty-endogenous form
+
+The C-statistic can also challenge an *included* regressor's exogeneity.
+Write the model with **no** endogenous regressors — the empty-endogenous
+form `y ~ exog | 0 | instruments`, Stata's `(=z1 z2)` — so the equation is
+estimated by OLS while the excluded instruments contribute surplus
+orthogonality conditions, and then test the regressor with `orthog`. This
+replicates the help-file C-test of `educ` in the Mroz labor-supply
+equation (`ivreg2 lwage exper expersq educ (=age kidslt6 kidsge6),
+orthog(educ)`):
+
+```{r hols-orthog}
+fit_hols <- ivreg2(
+  lwage ~ exper + expersq + educ | 0 | age + kidslt6 + kidsge6,
+  data = mroz, orthog = "educ"
+)
+summary(fit_hols)
+```
+
+Estimation is exactly OLS — the instruments play no role in the
+coefficients — but the Sargan statistic now tests all surplus conditions,
+and the C-statistic isolates `educ`: it compares this model against one
+where `educ` is treated as endogenous (instrumented by `age`, `kidslt6`,
+and `kidsge6`). A small C-statistic means the data do not reject treating
+`educ` as exogenous, *conditional on the three excluded instruments being
+valid*. The same form with `method = "gmm2s"` gives Cragg's (1983)
+heteroskedastic OLS (HOLS) estimator, which exploits the surplus conditions
+for efficiency under heteroskedasticity.
+
 ### Anderson-Rubin LIML overidentification
 
 When using LIML with iid errors, two additional overidentification statistics

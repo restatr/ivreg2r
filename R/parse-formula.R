@@ -332,6 +332,12 @@ NULL
   # --- 8. Dimensions and identification checks ---
   N <- length(y)
   K <- ncol(X)                       # total regressors (after drops)
+  # No regressors at all (e.g. `y ~ 0 | 0 | z`, or everything dropped by
+  # collinearity): reject like Stata's CheckMisc (ivreg2.ado:4246-4249,
+  # "no regressors specified", also checked post-collinearity).
+  if (K == 0L) {
+    stop("No regressors specified.", call. = FALSE)
+  }
   if (!is.null(endo)) {
     endo_cols_in_X <- intersect(colnames(endo), colnames(X))
     K1 <- length(endo_cols_in_X)
