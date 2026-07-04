@@ -43,6 +43,11 @@ if _rc != 0 {
 // Full-precision export: the default `export delimited` writes numeric
 // columns at 8-digit precision, which truncates float32 bit patterns
 // (see ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
+// WARNING (2026-07-04): do NOT regenerate wagepan_data.csv until the
+// CUE convergence criterion is investigated at M-17 -- on the exact
+// float32 data the wp_sw_cue fit (test-vcov-sw.R) warns of CUE
+// non-convergence (estimates still match the fixture). See the
+// data-CSV retirement item in planning/22-spec-matrix.md.
 quietly ds, has(type numeric)
 format `r(varlist)' %21.0g
 export delimited using "`outdir'/wagepan_data.csv", replace datafmt

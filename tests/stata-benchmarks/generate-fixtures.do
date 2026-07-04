@@ -38,6 +38,10 @@ save "`outdir'/_card_temp.dta", replace
 // Full-precision export: the default `export delimited` writes numeric
 // columns at 8-digit precision, which truncates float32 bit patterns
 // (see ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
+// WARNING (2026-07-04): do NOT regenerate card_data.csv until the card
+// CUE cells are deleted at M-17/M-18 -- a sub-1e-7 data perturbation
+// risks flipping the CUE optimizer basin in test-cue.R/test-center.R.
+// See the data-CSV retirement item in planning/22-spec-matrix.md.
 quietly ds, has(type numeric)
 format `r(varlist)' %21.0g
 export delimited using "`outdir'/card_data.csv", replace datafmt
