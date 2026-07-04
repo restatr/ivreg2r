@@ -508,4 +508,71 @@ save_ivreg2_results, prefix(hf_nls) suffix(H104) outdir(`outdir')
 ivreg2 ln_w grade age ttl_exp tenure, cluster(idcode year) bw(2) kernel(tru)
 save_ivreg2_results, prefix(hf_nls) suffix(H105) outdir(`outdir')
 
+
+/*===========================================================================
+  Stored scalar results (family M-28, absorbed into the hf suite 2026-07-04
+  per planning/22-spec-matrix.md): e(yy), e(yyc), e(rankxx), e(rankzz),
+  e(condxx), e(condzz), e(ll), e(ccev), e(cdev) on the canonical mroz
+  bases H31 (2SLS, help.txt:1274) and H61 (OLS via ivreg2, help.txt:1416).
+  These are bookkeeping outputs with no worked example in the help file
+  (decision D5a); they do not vary with the VCE type, so two cells
+  (IV overidentified + OLS) suffice -- estimator/weight variation is
+  compositionally covered by each family's rss/r2/N parity fixtures.
+  Consumed by test-stored-results.R.
+===========================================================================*/
+
+capture use "../validation/data/mroz.dta", clear
+if _rc {
+    capture use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+    if _rc {
+        display as error "Could not load mroz dataset (no local cache, no network)."
+        exit 601
+    }
+}
+
+// --- H31 (help.txt:1274): baseline 2SLS -- stored scalars + ccev/cdev ---
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6)
+
+mat ccev_vec = e(ccev)
+mat cdev_vec = e(cdev)
+
+file open fh using "`outdir'/hf_mroz_stored_H31.csv", write replace
+file write fh "quantity,value" _n
+file write fh "yy," %21.0g (e(yy)) _n
+file write fh "yyc," %21.0g (e(yyc)) _n
+file write fh "rankxx," %21.0g (e(rankxx)) _n
+file write fh "rankzz," %21.0g (e(rankzz)) _n
+file write fh "condxx," %21.0g (e(condxx)) _n
+file write fh "condzz," %21.0g (e(condzz)) _n
+file write fh "ll," %21.0g (e(ll)) _n
+file write fh "N," %21.0g (e(N)) _n
+file write fh "rss," %21.0g (e(rss)) _n
+local nccev = colsof(ccev_vec)
+forval i = 1/`nccev' {
+    file write fh "ccev`i'," %21.0g (ccev_vec[1,`i']) _n
+    file write fh "cdev`i'," %21.0g (cdev_vec[1,`i']) _n
+}
+file close fh
+
+// --- H61 (help.txt:1416): reduced-form OLS via ivreg2 -- stored scalars.
+//     The robust option is part of the verbatim H61 command but does not
+//     affect any of these scalars. No ccev/cdev block (OLS has none). ---
+ivreg2 lwage exper expersq age kidslt6 kidsge6, robust
+
+file open fh using "`outdir'/hf_mroz_stored_H61.csv", write replace
+file write fh "quantity,value" _n
+file write fh "yy," %21.0g (e(yy)) _n
+file write fh "yyc," %21.0g (e(yyc)) _n
+file write fh "rankxx," %21.0g (e(rankxx)) _n
+* rankzz may equal rankxx for OLS in Stata
+cap file write fh "rankzz," %21.0g (e(rankzz)) _n
+file write fh "condxx," %21.0g (e(condxx)) _n
+* condzz may equal condxx for OLS in Stata
+cap file write fh "condzz," %21.0g (e(condzz)) _n
+file write fh "ll," %21.0g (e(ll)) _n
+file write fh "N," %21.0g (e(N)) _n
+file write fh "rss," %21.0g (e(rss)) _n
+file close fh
+
+
 display "generate-helpfile-fixtures.do complete"
