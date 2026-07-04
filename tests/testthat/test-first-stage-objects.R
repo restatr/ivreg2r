@@ -14,12 +14,10 @@ data(griliches, package = "ivreg2r")
 data(abdata, package = "ivreg2r")
 
 mroz_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
+mroz_justid_formula <- lwage ~ exper + expersq | educ | age
 
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | med + kww + age + mrt
-
-# Deterministic synthetic analytic weight (M-12/M-23 precedent): mod(age,5)+1 matches the .do file's `gen awt = mod(age,5)+1`.
-griliches_awt <- transform(griliches, awt = age %% 5 + 1)
 
 ab_formula <- n ~ 1 | w + k + ys |
   d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)
@@ -52,50 +50,6 @@ read_fs_vcov <- function(prefix) {
 read_fs_scalars <- function(prefix) {
   read_scalar_fixture(fixture_path(paste0(prefix, "_scalars.csv")))
 }
-
-# Translate Stata ts-operator coefficient names to canonical R term labels
-# (mirrors test-ts-operators.R's ts_translate_names): "D.w" -> "d(w, 1)",
-# "D2.w" -> "d(w, 2)", "_cons"/"(Intercept)" pass through unchanged. Needed
-# for the abdata (fs_ab_cl) config, whose first-stage instruments are
-# differenced terms.
-translate_ts_names <- function(x) {
-  out <- character(length(x))
-  for (i in seq_along(x)) {
-    s <- x[i]
-    if (s %in% c("_cons", "(Intercept)")) {
-      out[i] <- "(Intercept)"
-      next
-    }
-    m <- regexec("^([LDld])([0-9]*)\\.(.+)$", s)
-    parts <- regmatches(s, m)[[1L]]
-    if (length(parts) == 0L) {
-      out[i] <- s
-      next
-    }
-    op <- if (toupper(parts[2L]) == "L") "l" else "d"
-    k <- if (parts[3L] == "") 1L else as.integer(parts[3L])
-    out[i] <- paste0(op, "(", parts[4L], ", ", k, ")")
-  }
-  out
-}
-
-# Translate Stata `xi i.year`-style dummies to canonical R term labels:
-# "_Iyear_67" -> "factor(year)67", "_cons" -> "(Intercept)" (mirrors
-# test-helpfile-examples.R's translate_hf_names). Needed for the griliches
-# aweight configs, whose first-stage regression includes factor(year).
-translate_factor_names <- function(x) {
-  out <- x
-  out[x == "_cons"] <- "(Intercept)"
-  m <- regmatches(x, regexec("^_I(.+)_([^_]+)$", x))
-  for (i in seq_along(x)) {
-    parts <- m[[i]]
-    if (length(parts) == 3L) {
-      out[i] <- paste0("factor(", parts[2L], ")", parts[3L])
-    }
-  }
-  out
-}
-
 
 # ============================================================================
 # Tests: API and structure
@@ -169,6 +123,26 @@ test_that("first_stage matches Stata (mroz, robust)", {
   expect_equal(fs$df.residual, as.integer(stata_sc$df_r))
 })
 
+# Restores the saved-equation coverage of the retired just-identified fs_just_robust config (single-excluded-instrument L1=K1=1 equation).
+test_that("first_stage matches Stata (mroz just-identified, robust)", {
+  skip_if_no_fs_fixtures("fs_mroz_justid_robust")
+  fit <- ivreg2(mroz_justid_formula, data = mroz, vcov = "robust",
+                first_stage = TRUE)
+  fs <- first_stage(fit)$educ
+
+  stata_coef <- read_fs_coef("fs_mroz_justid_robust")
+  stata_vcov <- read_fs_vcov("fs_mroz_justid_robust")
+  stata_sc <- read_fs_scalars("fs_mroz_justid_robust")
+
+  for (nm in names(stata_coef)) {
+    expect_equal(coef(fs)[[nm]], stata_coef[[nm]], tolerance = stata_tol$coef,
+                 label = paste0("coef [", nm, "]"))
+  }
+  expect_vcov_equal(vcov(fs), stata_vcov, tol = stata_tol$vcov)
+  expect_equal(fs$sigma, stata_sc$rmse, tolerance = stata_tol$coef)
+  expect_equal(fs$df.residual, as.integer(stata_sc$df_r))
+})
+
 test_that("first_stage matches Stata (abdata, cluster(id) M=140)", {
   skip_if_no_fs_fixtures("fs_ab_cl")
   fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
@@ -176,10 +150,10 @@ test_that("first_stage matches Stata (abdata, cluster(id) M=140)", {
   fs <- first_stage(fit)$w
 
   stata_coef <- read_fs_coef("fs_ab_cl")
-  names(stata_coef) <- translate_ts_names(names(stata_coef))
+  names(stata_coef) <- translate_stata_ts_names(names(stata_coef))
   stata_vcov <- read_fs_vcov("fs_ab_cl")
-  dimnames(stata_vcov) <- list(translate_ts_names(rownames(stata_vcov)),
-                               translate_ts_names(colnames(stata_vcov)))
+  dimnames(stata_vcov) <- list(translate_stata_ts_names(rownames(stata_vcov)),
+                               translate_stata_ts_names(colnames(stata_vcov)))
   stata_sc <- read_fs_scalars("fs_ab_cl")
 
   # Scale-aware coefficient bound: |diff| <= stata_tol$coef * max(1, |stata|). All seven coefficients agree with Stata to ~5e-9 ABSOLUTE, inside the suite's normal observed band (investigated at re-base: abdata.rda is bit-identical to the .dta Stata used and cond(Z) ~ 24, so this is ordinary cross-implementation noise, not a formula bug). d(k, 1)'s coefficient is near-zero (~2.8e-4), so a plain relative tolerance would inflate that ordinary gap to ~1.7e-5 and fail; the max(1, .) floor keeps O(1) coefficients at the standard 1e-6 relative check while bounding the near-zero one at 1e-6 absolute (~200x margin over the observed gap in both regimes).
@@ -203,10 +177,10 @@ test_that("first_stage matches Stata (griliches aweight, IID)", {
   fs <- first_stage(fit)$iq
 
   stata_coef <- read_fs_coef("fs_gril_aw_iid")
-  names(stata_coef) <- translate_factor_names(names(stata_coef))
+  names(stata_coef) <- translate_stata_xi_names(names(stata_coef))
   stata_vcov <- read_fs_vcov("fs_gril_aw_iid")
-  dimnames(stata_vcov) <- list(translate_factor_names(rownames(stata_vcov)),
-                               translate_factor_names(colnames(stata_vcov)))
+  dimnames(stata_vcov) <- list(translate_stata_xi_names(rownames(stata_vcov)),
+                               translate_stata_xi_names(colnames(stata_vcov)))
   stata_sc <- read_fs_scalars("fs_gril_aw_iid")
 
   for (nm in names(stata_coef)) {
@@ -224,13 +198,13 @@ test_that("first_stage matches Stata (griliches aweight, robust)", {
   fs <- first_stage(fit)$iq
 
   stata_vcov <- read_fs_vcov("fs_gril_aw_robust")
-  dimnames(stata_vcov) <- list(translate_factor_names(rownames(stata_vcov)),
-                               translate_factor_names(colnames(stata_vcov)))
+  dimnames(stata_vcov) <- list(translate_stata_xi_names(rownames(stata_vcov)),
+                               translate_stata_xi_names(colnames(stata_vcov)))
   stata_sc <- read_fs_scalars("fs_gril_aw_robust")
 
   # No fs_gril_aw_robust_coef fixture is shipped (VCE-invariant first-stage coefficients; see the mroz robust cell note) — compare against the iid coef fixture.
   stata_coef <- read_fs_coef("fs_gril_aw_iid")
-  names(stata_coef) <- translate_factor_names(names(stata_coef))
+  names(stata_coef) <- translate_stata_xi_names(names(stata_coef))
   for (nm in names(stata_coef)) {
     expect_equal(coef(fs)[[nm]], stata_coef[[nm]], tolerance = stata_tol$coef,
                  label = paste0("coef [", nm, "]"))

@@ -72,24 +72,7 @@ have_hf_ab <- file.exists(hf_path("ab", "coef", "H89"))
 have_hf_grun <- file.exists(hf_path("grun", "coef", "H95"))
 have_hf_nls <- file.exists(hf_path("nls", "coef", "H103"))
 
-# ============================================================================
-# Name translation: Stata term -> canonical R term label
-# ============================================================================
-
-# griliches uses `xi i.year`, generating `_Iyear_NN` dummies; everything else
-# maps 1:1 except the constant.
-translate_hf_names <- function(x) {
-  out <- x
-  out[x == "_cons"] <- "(Intercept)"
-  m <- regmatches(x, regexec("^_I(.+)_([^_]+)$", x))
-  for (i in seq_along(x)) {
-    parts <- m[[i]]
-    if (length(parts) == 3L) {
-      out[i] <- paste0("factor(", parts[2L], ")", parts[3L])
-    }
-  }
-  out
-}
+# Name translation (Stata term -> canonical R term label) uses the shared translate_stata_xi_names() helper (helper-fixtures.R); griliches uses `xi i.year`, generating `_Iyear_NN` dummies, and everything else maps 1:1 except the constant.
 
 # ============================================================================
 # Diagnostics field mapping: Stata e()-style column name -> R fit accessor
@@ -175,7 +158,7 @@ compare_hf <- function(fit, ds, hnn, tol_coef = stata_tol$coef,
                        tol_se = stata_tol$se) {
   # --- Coefficients and SEs ---
   coef_fx <- read.csv(hf_path(ds, "coef", hnn), stringsAsFactors = FALSE)
-  coef_fx$term_r <- translate_hf_names(coef_fx$term)
+  coef_fx$term_r <- translate_stata_xi_names(coef_fx$term)
   b <- coef(fit)
   se <- sqrt(diag(vcov(fit)))
   testthat::expect_setequal(coef_fx$term_r, names(b))
@@ -193,7 +176,7 @@ compare_hf <- function(fit, ds, hnn, tol_coef = stata_tol$coef,
   vcov_fx <- read.csv(hf_path(ds, "vcov", hnn))
   vcov_cols <- grep("^vcov_", names(vcov_fx), value = TRUE)
   V_s <- as.matrix(vcov_fx[, vcov_cols, drop = FALSE])
-  stata_terms <- translate_hf_names(sub("^vcov_", "", vcov_cols))
+  stata_terms <- translate_stata_xi_names(sub("^vcov_", "", vcov_cols))
   dimnames(V_s) <- list(stata_terms, stata_terms)
   V_r <- vcov(fit)
   testthat::expect_setequal(rownames(V_r), stata_terms)
@@ -713,7 +696,7 @@ test_that("H22: Griliches CUE robust stays out of Stata's degenerate basin", {
   # Stata's pathological basin, `expect_gt` below will fail and flag it.
   skip_if(!have_hf_gril, "helpfile fixtures not found")
   fx <- read.csv(hf_path("gril", "coef", "H22"), stringsAsFactors = FALSE)
-  fx$term_r <- translate_hf_names(fx$term)
+  fx$term_r <- translate_stata_xi_names(fx$term)
 
   expect_warning(
     fit <- ivreg2(

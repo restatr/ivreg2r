@@ -88,6 +88,58 @@ read_stata_matrix <- function(mat_path, names_path) {
 }
 
 
+# Shared Stata-to-R ts-operator name translator ("D2.w" -> "d(w, 2)", "L3.unem" -> "l(unem, 3)"), promoted from its two per-file copies at the M-25 review.
+translate_stata_ts_names <- function(x) {
+  out <- character(length(x))
+  for (i in seq_along(x)) {
+    s <- x[i]
+    if (s %in% c("_cons", "(Intercept)")) {
+      out[i] <- "(Intercept)"
+      next
+    }
+    m <- regexec("^([LDld])([0-9]*)\\.(.+)$", s)
+    parts <- regmatches(s, m)[[1L]]
+    if (length(parts) == 0L) {
+      out[i] <- s
+      next
+    }
+    op <- if (toupper(parts[2L]) == "L") "l" else "d"
+    k <- if (parts[3L] == "") 1L else as.integer(parts[3L])
+    out[i] <- paste0(op, "(", parts[4L], ", ", k, ")")
+  }
+  out
+}
+
+# Shared Stata `xi i.year`-style name translator ("_Iyear_67" -> "factor(year)67", "_cons" -> "(Intercept)"), promoted from its two per-file copies at the M-25 review.
+translate_stata_xi_names <- function(x) {
+  out <- x
+  out[x == "_cons"] <- "(Intercept)"
+  m <- regmatches(x, regexec("^_I(.+)_([^_]+)$", x))
+  for (i in seq_along(x)) {
+    parts <- m[[i]]
+    if (length(parts) == 3L) {
+      out[i] <- paste0("factor(", parts[2L], ")", parts[3L])
+    }
+  }
+  out
+}
+
+# Read a first-stage fixture CSV; identical to read_diagnostics() (read.csv with check.names = FALSE) but kept as a separate domain name for first-stage call sites, promoted from its two per-file copies at the M-25 review.
+read_firststage <- function(path) {
+  read.csv(path, check.names = FALSE)
+}
+
+# Extract a single first-stage statistic for one endogenous regressor from a long-format first-stage fixture (columns: statistic, <endo1>, <endo2>, ...), promoted from its two per-file copies at the M-25 review.
+get_fs_value <- function(fixture, stat, endo_name) {
+  as.numeric(fixture[fixture$statistic == stat, endo_name])
+}
+
+# Deterministic synthetic analytic weight (M-12/M-23 precedent): mod(age,5)+1 matches the .do file's `gen awt = mod(age,5)+1`; shared data object so the formula has one source of truth across the first-stage, redundancy, and edge-case test files.
+griliches_awt <- transform(ivreg2r::griliches, awt = age %% 5 + 1)
+
+# Deterministic synthetic analytic weight (M-12/M-23 precedent): mod(year,3)+1 matches the .do file's `gen abwt = mod(year,3)+1`; shared data object so the formula has one source of truth across the first-stage and diagnostics test files.
+abdata_awt <- transform(ivreg2r::abdata, abwt = year %% 3 + 1)
+
 # Run a table of Stata fixture cells through the shared small-invariance harness used by the re-based diagnostic families (M-22 orthog, M-23 redundancy, ...). Each cell is a list(name, fixture, fit_args); the harness makes one test_that per cell that skips if the fixture CSV is missing, reads it once, fits the model with small = FALSE and small = TRUE via do.call, runs `compare(fit, fixture)` on both fits, and then asserts the two fits' diagnostics[[slot]] stat/p/df are directly equal at testthat's default ~1.5e-8 tolerance — the Stata statistics behind these families are small-invariant (verified byte-identical in each family's retired fixtures), so the fixtures do not vary `small` and the direct equality keeps the invariant pinned tightly rather than only transitively through the looser Stata tolerances.
 test_stata_fixture_cells <- function(cells, compare, slot, label_prefix) {
   for (cell in cells) {

@@ -6,16 +6,7 @@
 # 2. Near-singular KP matrix defensive guards
 #
 # Verifies against Stata ivreg2 fixtures and pure R unit tests.
-
-# --- Helpers ---
-read_firststage <- function(path) {
-  read.csv(path, check.names = FALSE)
-}
-
-get_fs_value <- function(fixture, stat, endo_name) {
-  as.numeric(fixture[fixture$statistic == stat, endo_name])
-}
-
+# read_firststage()/get_fs_value() are shared helpers (helper-fixtures.R).
 
 # --- Load dataset ---
 intonly_path <- fixture_path("sim_intercept_only_data.csv")

@@ -15,9 +15,6 @@ data(mroz, package = "ivreg2r")
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | age + mrt
 
-# Deterministic synthetic analytic weight (M-12 precedent): mod(age,5)+1 matches the .do file's `gen awt = mod(age,5)+1`.
-griliches_awt <- transform(griliches, awt = age %% 5 + 1)
-
 ab_formula <- n ~ 1 | w + k + ys |
   d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)
 

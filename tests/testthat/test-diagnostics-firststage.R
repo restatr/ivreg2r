@@ -18,27 +18,8 @@ mroz_nocons_formula <- lwage ~ 0 | educ | age + kidslt6 + kidsge6
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | med + kww + age + mrt
 
-# Deterministic synthetic analytic weight (M-12/M-23 precedent): mod(age,5)+1 matches the .do file's `gen awt = mod(age,5)+1`.
-griliches_awt <- transform(griliches, awt = age %% 5 + 1)
-
 ab_formula <- n ~ 1 | w + k + ys |
   d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)
-
-# Deterministic synthetic analytic weight (M-12/M-23 precedent): mod(year,3)+1 matches the .do file's `gen abwt = mod(year,3)+1`.
-abdata_awt <- transform(abdata, abwt = year %% 3 + 1)
-
-
-# ============================================================================
-# Helpers: fixture readers
-# ============================================================================
-
-read_firststage <- function(path) {
-  read.csv(path, check.names = FALSE)
-}
-
-get_fs_value <- function(fixture, stat, endo_name) {
-  as.numeric(fixture[fixture$statistic == stat, endo_name])
-}
 
 
 # ============================================================================
@@ -102,13 +83,6 @@ test_that("small does not change first-stage F-stat (HC1)", {
                fit2$first_stage$educ$f_stat)
 })
 
-test_that("HC0 and HC1 produce same first-stage F-stat", {
-  fit0 <- ivreg2(mroz_formula, data = mroz, vcov = "robust")
-  fit1 <- ivreg2(mroz_formula, data = mroz, vcov = "robust")
-  expect_equal(fit0$first_stage$educ$f_stat,
-               fit1$first_stage$educ$f_stat)
-})
-
 test_that("K1=1: SW/AP F equals standard F", {
   fit <- ivreg2(mroz_formula, data = mroz)
   fs <- fit$first_stage$educ
@@ -148,16 +122,8 @@ test_that("K1>1: SW/AP df1 equals L1 - K1 + 1", {
 })
 
 test_that("K1=1: SW/AP identity holds with cluster VCE", {
-  # griliches76 has no natural panel id, so this clusters on `tenure80` (23
-  # groups, a variable from the 1980 follow-up survey that does not appear
-  # anywhere in gril_formula) rather than the retired synthetic sim_cluster
-  # data; the identity being tested (SW/AP collapse to plain F when K1=1)
-  # doesn't depend on what the cluster variable represents economically.
-  # (Clustering on `year` or on `age` was tried first but both are
-  # degenerate here: `year` is already a regressor via factor(year), and
-  # `age` is already an excluded instrument, so clustering on either makes
-  # the within-cluster score for that column exactly zero and the
-  # cluster-robust Omega exactly singular.)
+  # griliches76 has no natural panel id, so this clusters on `tenure80` (23 groups, a variable from the 1980 follow-up survey that does not appear anywhere in gril_formula) rather than the retired synthetic sim_cluster data; the identity being tested (SW/AP collapse to plain F when K1=1) doesn't depend on what the cluster variable represents economically.
+  # (Clustering on `year` or on `age` was tried first but both are degenerate here: `year` is already a regressor via factor(year), and `age` is already an excluded instrument, so clustering on either makes the within-cluster score for that column exactly zero and the cluster-robust Omega exactly singular.)
   fit <- ivreg2(gril_formula, data = griliches, clusters = ~tenure80)
   fs <- fit$first_stage$iq
   expect_equal(fs$sw_f, fs$f_stat)
@@ -200,9 +166,7 @@ test_that("multi-endo: Shea partial R2 differs from partial R2", {
 
 
 # ============================================================================
-# Helper: plain assertions for one fixture/endo combination (no test_that
-# inside -- callers wrap one test_that per fixture cell, matching the
-# structure of the other re-based families, e.g. test-diagnostics-redundancy.R)
+# Helper: plain assertions for one fixture/endo combination (no test_that inside -- callers wrap one test_that per fixture cell, matching the structure of the other re-based families, e.g. test-diagnostics-redundancy.R)
 # ============================================================================
 
 check_firststage <- function(fit, fixture, endo_name) {
@@ -330,6 +294,11 @@ firststage_cells <- list(
        fit_args = list(gril_formula, data = griliches_awt,
                        weights = quote(awt), vcov = "robust"),
        endos = "iq"),
+  # Restores the K1=1 x cluster intersection lost with the retired sim_cluster cells (tenure80 = arbitrary-but-real 23-group clustering, disclosed in the .do).
+  list(name = "gril_fs cl (K1=1 x cluster, tenure80)",
+       fixture = "gril_fs_firststage_cl.csv",
+       fit_args = list(gril_formula, data = griliches, clusters = ~tenure80),
+       endos = "iq"),
   list(name = "abdata iid",
        fixture = "ab_fs_firststage_iid.csv",
        fit_args = list(ab_formula, data = abdata, tvar = "year", ivar = "id"),
@@ -376,10 +345,7 @@ for (cell in firststage_cells) {
 # ============================================================================
 
 test_that("widstat equals first-stage F when K1=1", {
-  # H41 widstat=F identity (help.txt:1325), already verified TRUE in the
-  # retired card fixtures: with a single endogenous regressor, the weak
-  # identification statistic (Cragg-Donald F under iid, KP Wald F under
-  # robust/cluster) coincides with the first-stage F statistic.
+  # H41 widstat=F identity (help.txt:1325), already verified TRUE in the retired card fixtures: with a single endogenous regressor, the weak identification statistic (Cragg-Donald F under iid, KP Wald F under robust/cluster) coincides with the first-stage F statistic.
   fit_iid <- ivreg2(mroz_formula, data = mroz)
   expect_equal(fit_iid$diagnostics$weak_id$stat,
                fit_iid$first_stage$educ$f_stat)
@@ -390,10 +356,7 @@ test_that("widstat equals first-stage F when K1=1", {
 })
 
 test_that("first stage is estimator-invariant", {
-  # Verified in the retired card fixtures that fs_overid_liml_* was
-  # byte-identical to fs_overid_iid_*, hence this identity is expected to
-  # hold structurally: first-stage regressions don't depend on the
-  # second-stage estimator.
+  # Verified in the retired card fixtures that fs_overid_liml_* was byte-identical to fs_overid_iid_*, hence this identity is expected to hold structurally: first-stage regressions don't depend on the second-stage estimator.
   fit_2sls_iid <- ivreg2(mroz_formula, data = mroz)
   fit_liml <- ivreg2(mroz_formula, data = mroz, method = "liml")
   expect_equal(fit_liml$first_stage, fit_2sls_iid$first_stage)

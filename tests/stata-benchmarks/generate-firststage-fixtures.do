@@ -1,7 +1,7 @@
 /*===========================================================================
   generate-firststage-fixtures.do
   --------------------------------
-  Generates CSV benchmark fixtures for first-stage diagnostics and first-stage model objects (M-25, planning/22-spec-matrix.md), re-based off the Card/sim ad hoc data onto the canonical help-file bases: mroz (H31/H41, help.txt:1274/1325-1359), griliches76 (H03/H04, help.txt:1138/1147), and abdata (H88 minus gmm2s, help.txt:1541).
+  Generates CSV benchmark fixtures for first-stage diagnostics and first-stage model objects (M-25, planning/22-spec-matrix.md), re-based off the Card/sim ad hoc data onto the canonical help-file bases: mroz (H31/H41, help.txt:1274/1325-1359), griliches76 (H03/H04, help.txt:1138/1141), and abdata (H88 minus gmm2s, help.txt:1541).
 
   `small` variants are deliberately NOT generated for any cell in this file: Stata's first-stage diagnostics (e(first)) were verified byte-identical under `small` across iid/hc1/cluster in the retired card/sim fixtures, so the R tests fit both small = FALSE and small = TRUE against each fixture here and assert the whole first_stage object is equal either way.
   No liml/kclass/gmm2s cells are generated: the saved first-stage regression is the same OLS fit regardless of the main-equation estimator -- fs_overid_liml_* was verified byte-identical to fs_overid_iid_* in the retired card fixtures, so the R tests assert this estimator-invariance as a fixture-free identity rather than pinning a duplicate fixture.
@@ -41,7 +41,7 @@ if _rc {
 }
 save "`outdir'/_fs_mroz_temp.dta", replace
 
-// --- griliches76: local cache, then BC.edu web fallback (per the H03/H04 base model, help.txt:1138/1147) ---
+// --- griliches76: local cache, then BC.edu web fallback (per the H03/H04 base model, help.txt:1138/1141) ---
 capture use "../validation/data/griliches76.dta", clear
 if _rc {
     capture use http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta, clear
@@ -198,10 +198,11 @@ display _newline(2) "=== mroz first-stage, just-identified, IID (D5a) ==="
 ivreg2 lwage exper expersq (educ=age), ffirst
 save_firststage, prefix(mroz_fs_justid) suffix(iid) outdir(`outdir')
 
-// --- Cell 4: just-identified, robust (D5a) ---
+// --- Cell 4 (DIAGNOSTICS) + OBJECT fs_mroz_justid_robust: just-identified, robust (D5a) -- the object files restore the saved-equation coverage of the retired just-identified fs_just_robust config on the canonical base (review finding, 2026-07-04) ---
 display _newline(2) "=== mroz first-stage, just-identified, robust (D5a) ==="
-ivreg2 lwage exper expersq (educ=age), robust ffirst
+ivreg2 lwage exper expersq (educ=age), robust ffirst savefirst
 save_firststage, prefix(mroz_fs_justid) suffix(hc1) outdir(`outdir')
+save_fs_fixture, prefix(fs_mroz_justid_robust) eqname(_ivreg2_educ) outdir(`outdir')
 
 // --- Cell 5: D5a -- the M-04 K2=0 noconstant spec -- no-intercept first stage (replaces retired sim_no_constant cells) ---
 display _newline(2) "=== mroz first-stage, noconstant, IID (D5a) ==="
@@ -220,10 +221,15 @@ save_firststage, prefix(mroz_fs_nocons) suffix(hc1) outdir(`outdir')
 ===========================================================================*/
 use "`outdir'/_fs_gril_temp.dta", clear
 
-// --- Cell 7: H03 base, IID, ffirst -- H04 (help.txt:1147) is this command plus small+ffirst; small-invariance means this fixture also verifies the H04 small fit ---
+// --- Cell 7: H03 base, IID, ffirst -- H04 (help.txt:1141) is this command plus small+ffirst; small-invariance means this fixture also verifies the H04 small fit ---
 display _newline(2) "=== griliches first-stage, IID (H03/H04) ==="
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), ffirst
 save_firststage, prefix(gril_fs) suffix(iid) outdir(`outdir')
+
+// --- Cell 7b: D5a WITH DISCLOSURE -- cluster(tenure80) on the H03 base restores the K1=1 x cluster first-stage intersection lost with the retired sim_cluster cells (review finding, 2026-07-04); tenure80 (23 groups) is an arbitrary-but-real grouping variable unrelated to the model, not an economically motivated cluster structure ---
+display _newline(2) "=== griliches first-stage, cluster(tenure80) (D5a) ==="
+ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), cluster(tenure80) ffirst
+save_firststage, prefix(gril_fs) suffix(cl) outdir(`outdir')
 
 // --- Cell 8 (DIAGNOSTICS) + OBJECT fs_gril_aw_iid: D5a -- deterministic synthetic aweight (replaces retired card weighted cells) ---
 display _newline(2) "=== griliches first-stage, aweight, IID (D5a) ==="

@@ -22,35 +22,12 @@ if (have_ab) {
   abdata <- read.csv(ab_path)
 }
 
-# Translate Stata ts-operator coefficient names to canonical R term labels:
-# "L.profits" -> "l(profits, 1)", "D2.w" -> "d(w, 2)", "_cons" -> "(Intercept)"
-ts_translate_names <- function(x) {
-  out <- character(length(x))
-  for (i in seq_along(x)) {
-    s <- x[i]
-    if (s == "_cons") {
-      out[i] <- "(Intercept)"
-      next
-    }
-    m <- regexec("^([LDld])([0-9]*)\\.(.+)$", s)
-    parts <- regmatches(s, m)[[1L]]
-    if (length(parts) == 0L) {
-      out[i] <- s
-      next
-    }
-    op <- if (toupper(parts[2L]) == "L") "l" else "d"
-    k <- if (parts[3L] == "") 1L else as.integer(parts[3L])
-    out[i] <- paste0(op, "(", parts[4L], ", ", k, ")")
-  }
-  out
-}
-
 # Compare coefficients and SEs against a Stata coef fixture, matching by
 # translated term name.
 expect_coef_fixture <- function(fit, coef_file, tol_coef = stata_tol$coef,
                                 tol_se = stata_tol$se) {
   fx <- read.csv(fixture_path(coef_file))
-  fx$term_r <- ts_translate_names(fx$term)
+  fx$term_r <- translate_stata_ts_names(fx$term)
   b <- coef(fit)
   se <- sqrt(diag(vcov(fit)))
   expect_setequal(fx$term_r, names(b))
@@ -66,7 +43,7 @@ expect_coef_fixture <- function(fit, coef_file, tol_coef = stata_tol$coef,
 # Compare the full VCV against a Stata vcov fixture, matching by name.
 expect_vcov_fixture <- function(fit, vcov_file, tol = stata_tol$vcov) {
   fx <- read.csv(fixture_path(vcov_file))
-  stata_terms <- ts_translate_names(fx$term)
+  stata_terms <- translate_stata_ts_names(fx$term)
   V_s <- as.matrix(fx[, grep("^vcov_", names(fx)), drop = FALSE])
   dimnames(V_s) <- list(stata_terms, stata_terms)
   V_r <- vcov(fit)
