@@ -241,6 +241,11 @@ display _newline(2) "=== iweight 2SLS overidentified (integer weights) ==="
 // --- IID, small=FALSE ---
 ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) [iw=iwint]
 save_ivreg2_results, prefix(mroz_iweight_overid) suffix(iid) outdir(`outdir')
+// Capture e() from THIS fit for the self-check below, so the check is tied
+// to the exact fixture fit rather than a re-typed copy that could drift.
+matrix b_iw = e(b)
+matrix V_iw = e(V)
+local N_iw = e(N)
 
 // --- IID, small=TRUE ---
 ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) [iw=iwint], small
@@ -251,16 +256,10 @@ save_ivreg2_results, prefix(mroz_iweight_overid) suffix(iid_small) outdir(`outdi
   Self-check: integral iweight is equivalent to fweight
   M-12's self-verifying property (planning/22-spec-matrix.md): an iweight
   whose values are all integers must give the same e(b), e(V), and e(N) as
-  an fweight built from the same values. This cannot be pinned by the
-  integer-weight cells above alone, so it is asserted directly here at
-  generation time.
+  an fweight built from the same values. Compares the fweight fit against
+  the b_iw/V_iw/N_iw captured from the FIXTURE SET 2 iid fit above.
 ===========================================================================*/
 display _newline(2) "=== self-check: integral iweight == fweight ==="
-
-ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) [iw=iwint]
-matrix b_iw = e(b)
-matrix V_iw = e(V)
-local N_iw = e(N)
 
 ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) [fw=iwint]
 // assert/scalar expression parsers cannot take e(b)/e(V) (matrix-returning

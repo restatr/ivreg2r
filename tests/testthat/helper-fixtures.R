@@ -38,6 +38,17 @@ read_scalar_fixture <- function(path) {
   out
 }
 
+# Read a coefficient fixture CSV (term,estimate,std_error rows) with
+# Stata->R name translation (_cons -> (Intercept)).
+read_coef_fixture <- function(path) {
+  d <- read.csv(path)
+  nms <- ifelse(d$term == "_cons", "(Intercept)", d$term)
+  list(
+    estimate  = setNames(d$estimate, nms),
+    std_error = setNames(d$std_error, nms)
+  )
+}
+
 # Compare VCV matrices by name (for fixtures with term column)
 expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
   shared <- intersect(rownames(V_r), rownames(V_stata))

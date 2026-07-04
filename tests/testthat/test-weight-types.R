@@ -3,14 +3,7 @@
 # Ticket K2
 # ============================================================================
 
-read_coef_fixture <- function(path) {
-  d <- read.csv(path)
-  nms <- ifelse(d$term == "_cons", "(Intercept)", d$term)
-  list(
-    estimate  = setNames(d$estimate, nms),
-    std_error = setNames(d$std_error, nms)
-  )
-}
+# read_coef_fixture comes from helper-fixtures.R
 
 read_diagnostics_fixture <- function(path) {
   read.csv(path)
