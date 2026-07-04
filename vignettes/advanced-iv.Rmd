@@ -407,12 +407,12 @@ manual subsetting is required:
 ```{r twoway}
 fit_1way <- ivreg2(
   ln_wage ~ grade + age + ttl_exp + tenure,
-  data = nlswork, clusters = ~idcode
+  data = nlswork, clusters = ~ idcode
 )
 
 fit_2way <- ivreg2(
   ln_wage ~ grade + age + ttl_exp + tenure,
-  data = nlswork, clusters = ~idcode + year
+  data = nlswork, clusters = ~ idcode + year
 )
 ```
 
