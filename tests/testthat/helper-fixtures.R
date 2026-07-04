@@ -86,3 +86,26 @@ read_stata_matrix <- function(mat_path, names_path) {
   dimnames(M) <- list(nm, nm)
   M
 }
+
+
+# Run a table of Stata fixture cells through the shared small-invariance harness used by the re-based diagnostic families (M-22 orthog, M-23 redundancy, ...). Each cell is a list(name, fixture, fit_args); the harness makes one test_that per cell that skips if the fixture CSV is missing, reads it once, fits the model with small = FALSE and small = TRUE via do.call, runs `compare(fit, fixture)` on both fits, and then asserts the two fits' diagnostics[[slot]] stat/p/df are directly equal at testthat's default ~1.5e-8 tolerance — the Stata statistics behind these families are small-invariant (verified byte-identical in each family's retired fixtures), so the fixtures do not vary `small` and the direct equality keeps the invariant pinned tightly rather than only transitively through the looser Stata tolerances.
+test_stata_fixture_cells <- function(cells, compare, slot, label_prefix) {
+  for (cell in cells) {
+    test_that(paste0(label_prefix, ": ", cell$name), {
+      fixture_file <- fixture_path(cell$fixture)
+      skip_if(!file.exists(fixture_file), "fixture not found")
+      fixture <- read_diagnostics(fixture_file)
+
+      fit <- do.call(ivreg2, c(cell$fit_args, list(small = FALSE)))
+      fit_small <- do.call(ivreg2, c(cell$fit_args, list(small = TRUE)))
+      compare(fit, fixture)
+      compare(fit_small, fixture)
+
+      d <- fit$diagnostics[[slot]]
+      d_small <- fit_small$diagnostics[[slot]]
+      expect_equal(d_small$stat, d$stat)
+      expect_equal(d_small$p, d$p)
+      expect_identical(d_small$df, d$df)
+    })
+  }
+}

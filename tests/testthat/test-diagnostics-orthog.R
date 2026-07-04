@@ -168,27 +168,8 @@ orthog_cells <- list(
                        clusters = ~idcode + year, orthog = "south"))
 )
 
-for (cell in orthog_cells) {
-  test_that(paste("orthog matches Stata:", cell$name), {
-    fixture_file <- fixture_path(cell$fixture)
-    skip_if(!file.exists(fixture_file), "fixture not found")
-    fixture <- read_diagnostics(fixture_file)
-
-    fit <- do.call(ivreg2, c(cell$fit_args, list(small = FALSE)))
-    fit_small <- do.call(ivreg2, c(cell$fit_args, list(small = TRUE)))
-    compare_orthog(fit, fixture)
-    compare_orthog(fit_small, fixture)
-
-    # The C-stat must be exactly small-invariant (default ~1.5e-8 tolerance),
-    # not just transitively equal within the looser Stata fixture tolerance
-    expect_equal(fit_small$diagnostics$orthog$stat,
-                 fit$diagnostics$orthog$stat)
-    expect_equal(fit_small$diagnostics$orthog$p,
-                 fit$diagnostics$orthog$p)
-    expect_identical(fit_small$diagnostics$orthog$df,
-                     fit$diagnostics$orthog$df)
-  })
-}
+test_stata_fixture_cells(orthog_cells, compare_orthog, slot = "orthog",
+                         label_prefix = "orthog matches Stata")
 
 
 # ============================================================================

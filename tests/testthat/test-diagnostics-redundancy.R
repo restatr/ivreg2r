@@ -15,8 +15,7 @@ data(mroz, package = "ivreg2r")
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | age + mrt
 
-# Deterministic synthetic analytic weight (M-12 precedent): mod(age,5)+1
-# matches the .do file's `gen awt = mod(age,5)+1`.
+# Deterministic synthetic analytic weight (M-12 precedent): mod(age,5)+1 matches the .do file's `gen awt = mod(age,5)+1`.
 griliches_awt <- transform(griliches, awt = age %% 5 + 1)
 
 ab_formula <- n ~ 1 | w + k + ys |
@@ -133,9 +132,7 @@ test_that("df = K1 * L_tested", {
 })
 
 test_that("df = K1 * L_tested for multi-endo models", {
-  # Inline synthetic dataset (replaces the retired sim_multi_endo fixture
-  # data): 2 endogenous regressors, 4 excluded instruments, same shape as
-  # the retired test.
+  # Inline synthetic dataset (replaces the retired sim_multi_endo fixture data): 2 endogenous regressors, 4 excluded instruments, same shape as the retired test.
   set.seed(20260722)
   n <- 500
   x1 <- rnorm(n)
@@ -209,15 +206,29 @@ redundancy_cells <- list(
   list(name = "gril_red_aw mrt iid (aweight)",
        fixture = "gril_red_aw_redundancy_mrt_iid.csv",
        fit_args = list(gril_formula, data = griliches_awt,
-                       redundant = "mrt", weights = griliches_awt$awt)),
+                       redundant = "mrt", weights = quote(awt))),
   list(name = "ab_red d2ys iid",
        fixture = "ab_red_redundancy_d2ys_iid.csv",
        fit_args = list(ab_formula, data = abdata, tvar = "year",
                        ivar = "id", redundant = "d(ys, 2)")),
+  list(name = "ab_red d2ys robust (K1=3 x HC)",
+       fixture = "ab_red_redundancy_d2ys_robust.csv",
+       fit_args = list(ab_formula, data = abdata, tvar = "year",
+                       ivar = "id", vcov = "robust", redundant = "d(ys, 2)")),
+  list(name = "ab_red d2k+d2ys iid (K1=3 x L_tested=2, df=6)",
+       fixture = "ab_red_redundancy_d2kd2ys_iid.csv",
+       fit_args = list(ab_formula, data = abdata, tvar = "year",
+                       ivar = "id", redundant = c("d(k, 2)", "d(ys, 2)"))),
   list(name = "ab_red d2ys cl",
        fixture = "ab_red_redundancy_d2ys_cl.csv",
        fit_args = list(ab_formula, data = abdata, tvar = "year",
                        ivar = "id", clusters = ~id, redundant = "d(ys, 2)")),
+  # Stata ignores dofminus in the cluster-VCE redundancy stat (verified byte-identical at re-base), so the dofminus fit is pinned against the SAME d2ys_cl fixture rather than a duplicate file.
+  list(name = "ab_red d2ys cl + dofminus (dofminus ignored under cluster VCE)",
+       fixture = "ab_red_redundancy_d2ys_cl.csv",
+       fit_args = list(ab_formula, data = abdata, tvar = "year",
+                       ivar = "id", clusters = ~id, redundant = "d(ys, 2)",
+                       dofminus = 1L)),
   list(name = "phil_red l3 bartlett bw3 (HAC)",
        fixture = "phil_red_redundancy_l3_bartlett_bw3.csv",
        fit_args = list(phil_formula, data = phillips, tvar = "year",
@@ -225,28 +236,9 @@ redundancy_cells <- list(
                        redundant = "l(unem, 3)"))
 )
 
-for (cell in redundancy_cells) {
-  test_that(paste("redundancy matches Stata:", cell$name), {
-    fixture_file <- fixture_path(cell$fixture)
-    skip_if(!file.exists(fixture_file), "fixture not found")
-    fixture <- read_diagnostics(fixture_file)
-
-    fit <- do.call(ivreg2, c(cell$fit_args, list(small = FALSE)))
-    fit_small <- do.call(ivreg2, c(cell$fit_args, list(small = TRUE)))
-    compare_redundancy(fit, fixture)
-    compare_redundancy(fit_small, fixture)
-
-    # The redundancy stat must be exactly small-invariant (default ~1.5e-8
-    # tolerance), not just transitively equal within the looser Stata
-    # fixture tolerance.
-    expect_equal(fit_small$diagnostics$redundancy$stat,
-                 fit$diagnostics$redundancy$stat)
-    expect_equal(fit_small$diagnostics$redundancy$p,
-                 fit$diagnostics$redundancy$p)
-    expect_identical(fit_small$diagnostics$redundancy$df,
-                     fit$diagnostics$redundancy$df)
-  })
-}
+test_stata_fixture_cells(redundancy_cells, compare_redundancy,
+                         slot = "redundancy",
+                         label_prefix = "redundancy matches Stata")
 
 
 # ============================================================================
@@ -254,9 +246,7 @@ for (cell in redundancy_cells) {
 # ============================================================================
 
 test_that("gmm2s redundancy equals 2SLS redundancy (robust)", {
-  # Stata's e(redstat) is byte-identical across estimators given the VCE
-  # (verified in the retired card fixtures), so no gmm2s fixture cell exists
-  # for this family — this identity is asserted directly instead.
+  # Stata's e(redstat) is byte-identical across estimators given the VCE (verified in the retired card fixtures), so no gmm2s fixture cell exists for this family — this identity is asserted directly instead.
   fit_2sls <- ivreg2(gril_formula, data = griliches, vcov = "robust",
                      redundant = "mrt")
   fit_gmm2s <- ivreg2(gril_formula, data = griliches, vcov = "robust",
@@ -265,13 +255,12 @@ test_that("gmm2s redundancy equals 2SLS redundancy (robust)", {
                fit_2sls$diagnostics$redundancy$stat)
   expect_equal(fit_gmm2s$diagnostics$redundancy$p,
                fit_2sls$diagnostics$redundancy$p)
+  expect_identical(fit_gmm2s$diagnostics$redundancy$df,
+                   fit_2sls$diagnostics$redundancy$df)
 })
 
 test_that("testing all excluded instruments makes redundancy coincide with underid (K1=1)", {
-  # griliches has K1=1 endogenous (iq); testing both excluded instruments
-  # (age, mrt) makes the redundancy LM (sum of squared canonical
-  # correlations) coincide with the underid LM (min), since there is only
-  # one canonical correlation to sum/min over.
+  # griliches has K1=1 endogenous (iq); testing both excluded instruments (age, mrt) makes the redundancy LM (sum of squared canonical correlations) coincide with the underid LM (min), since there is only one canonical correlation to sum/min over.
   fit <- ivreg2(gril_formula, data = griliches, redundant = c("age", "mrt"))
   expect_equal(fit$diagnostics$redundancy$stat, fit$diagnostics$underid$stat)
 })
@@ -290,14 +279,9 @@ test_that("redundant(all instruments) with noconstant K2=0 matches Stata — IID
   fit <- ivreg2(lwage ~ 0 | educ | age + kidslt6 + kidsge6, data = mroz,
                 redundant = c("age", "kidslt6", "kidsge6"))
   fixture <- read_diagnostics(fixture_file)
-  expect_equal(fit$diagnostics$redundancy$stat, fixture$redstat,
-               tolerance = stata_tol$stat)
-  expect_equal(fit$diagnostics$redundancy$p, fixture$redp,
-               tolerance = stata_tol$pval)
-  expect_identical(fit$diagnostics$redundancy$df, as.integer(fixture$reddf))
+  compare_redundancy(fit, fixture)
 
-  # K1 = 1 with every instrument tested: the redundancy LM (sum of squared
-  # canonical correlations) and the underid LM (min) coincide.
+  # K1 = 1 with every instrument tested: the redundancy LM (sum of squared canonical correlations) and the underid LM (min) coincide.
   expect_equal(fit$diagnostics$redundancy$stat,
                fit$diagnostics$underid$stat)
 })
@@ -309,9 +293,5 @@ test_that("redundant(all instruments) with noconstant K2=0 matches Stata — rob
   fit <- ivreg2(lwage ~ 0 | educ | age + kidslt6 + kidsge6, data = mroz,
                 redundant = c("age", "kidslt6", "kidsge6"), vcov = "robust")
   fixture <- read_diagnostics(fixture_file)
-  expect_equal(fit$diagnostics$redundancy$stat, fixture$redstat,
-               tolerance = stata_tol$stat)
-  expect_equal(fit$diagnostics$redundancy$p, fixture$redp,
-               tolerance = stata_tol$pval)
-  expect_identical(fit$diagnostics$redundancy$df, as.integer(fixture$reddf))
+  compare_redundancy(fit, fixture)
 })

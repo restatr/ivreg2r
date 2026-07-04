@@ -155,6 +155,18 @@ display _newline(2) "=== abdata redundant(d2.ys), cluster(id) ==="
 ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), cluster(id) redundant(d2.ys)
 save_redundancy_results, prefix(ab_red) suffix(d2ys_cl) outdir(`outdir')
 
+// --- D5a: K1=3 with plain heteroskedasticity-robust (non-cluster) VCE; restores the retired sim_multi_endo z1_hc1 intersection (multi-endo x HC) on a canonical base ---
+display _newline(2) "=== abdata redundant(d2.ys), robust ==="
+ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), robust redundant(d2.ys)
+save_redundancy_results, prefix(ab_red) suffix(d2ys_robust) outdir(`outdir')
+
+// --- D5a: K1=3 with L_tested=2 (df = 6); restores the retired sim_multi_endo z1z2 intersection (multi-endo x multi-instrument) on a canonical base ---
+display _newline(2) "=== abdata redundant(d2.k d2.ys), IID ==="
+ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), redundant(d2.k d2.ys)
+save_redundancy_results, prefix(ab_red) suffix(d2kd2ys_iid) outdir(`outdir')
+
+// --- dofminus x cluster: no separate fixture is generated because Stata ignores dofminus in the cluster-VCE redundancy stat — `cluster(id) dofminus(1) redundant(d2.ys)` was verified byte-identical to the d2ys_cl cell at re-base (2026-07-04); the R tests pin this behavior by fitting dofminus = 1L against the d2ys_cl fixture ---
+
 
 /*===========================================================================
   BLOCK 3: phillips
