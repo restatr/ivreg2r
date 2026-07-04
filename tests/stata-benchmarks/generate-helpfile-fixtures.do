@@ -564,11 +564,13 @@ file write fh "quantity,value" _n
 file write fh "yy," %21.0g (e(yy)) _n
 file write fh "yyc," %21.0g (e(yyc)) _n
 file write fh "rankxx," %21.0g (e(rankxx)) _n
-* rankzz may equal rankxx for OLS in Stata
-cap file write fh "rankzz," %21.0g (e(rankzz)) _n
+* Stata sets rankzz = rankxx for OLS; an unconditional write fails loudly
+* if that ever changes.
+file write fh "rankzz," %21.0g (e(rankzz)) _n
 file write fh "condxx," %21.0g (e(condxx)) _n
-* condzz may equal condxx for OLS in Stata
-cap file write fh "condzz," %21.0g (e(condzz)) _n
+* Stata sets condzz = condxx for OLS; an unconditional write fails loudly
+* if that ever changes.
+file write fh "condzz," %21.0g (e(condzz)) _n
 file write fh "ll," %21.0g (e(ll)) _n
 file write fh "N," %21.0g (e(N)) _n
 file write fh "rss," %21.0g (e(rss)) _n

@@ -27,11 +27,7 @@ read_fs_vcov <- function(prefix) {
 }
 
 read_fs_scalars <- function(prefix) {
-  fx <- read.csv(fixture_path(paste0(prefix, "_scalars.csv")),
-                 strip.white = TRUE)
-  out <- as.list(fx$value)
-  names(out) <- fx$quantity
-  out
+  read_scalar_fixture(fixture_path(paste0(prefix, "_scalars.csv")))
 }
 
 

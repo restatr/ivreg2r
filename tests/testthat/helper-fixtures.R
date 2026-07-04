@@ -30,6 +30,14 @@ read_diagnostics <- function(path) {
   read.csv(path, check.names = FALSE)
 }
 
+# Read a scalar fixture CSV (quantity,value rows) into a named list.
+read_scalar_fixture <- function(path) {
+  fx <- read.csv(path, strip.white = TRUE)
+  out <- as.list(fx$value)
+  names(out) <- fx$quantity
+  out
+}
+
 # Compare VCV matrices by name (for fixtures with term column)
 expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
   shared <- intersect(rownames(V_r), rownames(V_stata))
