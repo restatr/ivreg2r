@@ -374,21 +374,55 @@ t-statistics and F-tests replace z-statistics and chi-squared tests.
 ### Cluster-robust standard errors
 
 When observations are correlated within groups (e.g., repeated observations
-on the same individual in panel data), use the `clusters` argument. Here we
-illustrate with the Wooldridge wage panel, clustering on individual:
+on the same individual in panel data), use the `clusters` argument. The
+`ivreg2` help file (line 1618) illustrates clustering with an **OLS**
+regression --- no instruments are involved --- of log wages on grade, age,
+total labor-market experience, and job tenure in the NLS young women's panel
+(`nlswork`), clustering on the individual (`idcode`):
 
 ```{r cluster}
-data(wagepan)
+data(nlswork)
 fit_cluster <- ivreg2(
-  lwage ~ educ + black + hisp + exper + expersq + married + union,
-  data = wagepan, clusters = ~ nr, small = TRUE
+  ln_wage ~ grade + age + ttl_exp + tenure,
+  data = nlswork, clusters = ~ idcode
 )
 summary(fit_cluster)
 ```
 
-Cluster-robust VCE is automatically used when `clusters` is supplied. The
-`small = TRUE` option adds the standard cluster finite-sample correction
-factor, `(N-1)/(N-K) * M/(M-1)`, where M is the number of clusters.
+```{r cluster-values, include = FALSE}
+fit_iid <- ivreg2(ln_wage ~ grade + age + ttl_exp + tenure, data = nlswork)
+se_cluster_grade <- sqrt(vcov(fit_cluster)["grade", "grade"])
+se_iid_grade <- sqrt(vcov(fit_iid)["grade", "grade"])
+```
+
+We use this OLS example, taken directly from the help file, purely to
+illustrate the `clusters` argument; the same option applies identically when
+the formula has endogenous and excluded-instrument parts. Cluster-robust VCE
+is automatically used whenever `clusters` is supplied, without needing to set
+`vcov` explicitly. Fitting on the full
+`r format(nobs(fit_cluster), big.mark = ",")` observations, the
+cluster-robust standard error on `grade` is
+`r formatC(se_cluster_grade, format = "f", digits = 4)`, versus
+`r formatC(se_iid_grade, format = "f", digits = 4)` under the
+classical (i.i.d.) VCE fit on the same data --- clustering roughly doubles
+the SE here because wages are serially correlated within person across the
+panel's multiple survey years, a dependence that classical and
+heteroskedasticity-robust SEs both ignore.
+
+Cluster-robust inference is asymptotic in the number of clusters, not the
+number of observations: with only a handful of clusters (e.g., a dozen
+states or regions), the standard errors can be badly biased downward even
+when N is large, and the `small = TRUE` finite-sample correction only
+partially compensates. Here there are
+`r format(fit_cluster$n_clusters, big.mark = ",")` clusters, one per
+individual, so this concern does not arise; researchers clustering on a
+small number of groups should treat the reported SEs with caution and
+consider wild-cluster bootstrap or other few-cluster methods.
+
+When `small = TRUE` is added, `ivreg2r` applies the standard cluster
+finite-sample correction factor, `(N-1)/(N-K) * M/(M-1)`, where M is the
+number of clusters, and reports t- and F-statistics instead of z- and
+chi-squared statistics.
 
 For two-way clustering (e.g., by firm and year in a panel), use
 `clusters = ~ var1 + var2`. See `vignette("advanced-iv")` for details.
