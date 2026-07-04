@@ -8,6 +8,19 @@
 # .rda and the fixture CSVs carry identical numbers.
 # ============================================================================
 
+expect_matches_fixture_csv <- function(data, csv_name, label) {
+  path <- fixture_path(csv_name)
+  skip_if(!file.exists(path))
+  fx <- read.csv(path, na.strings = c("", "."))
+  shared <- intersect(names(data), names(fx))
+  expect_true(length(shared) > 0)
+  expect_equal(nrow(data), nrow(fx))
+  for (col in shared) {
+    expect_equal(data[[col]], fx[[col]], tolerance = 1e-12,
+                 info = paste(label, "column", col))
+  }
+}
+
 test_that("klein has the documented dimensions and column names", {
   data(klein)
   expect_equal(dim(klein), c(22L, 12L))
@@ -45,29 +58,11 @@ test_that("nlswork has the documented dimensions and column names", {
 })
 
 test_that("bundled klein matches the tsop_klein_data.csv fixture export", {
-  path <- fixture_path("tsop_klein_data.csv")
-  skip_if(!file.exists(path))
   data(klein)
-  fx <- read.csv(path, na.strings = c("", "."))
-  shared <- intersect(names(klein), names(fx))
-  expect_true(length(shared) > 0)
-  expect_equal(nrow(klein), nrow(fx))
-  for (col in shared) {
-    expect_equal(klein[[col]], fx[[col]], tolerance = 1e-12,
-                 info = paste("klein column", col))
-  }
+  expect_matches_fixture_csv(klein, "tsop_klein_data.csv", "klein")
 })
 
 test_that("bundled abdata matches the tsop_ab_data.csv fixture export", {
-  path <- fixture_path("tsop_ab_data.csv")
-  skip_if(!file.exists(path))
   data(abdata)
-  fx <- read.csv(path, na.strings = c("", "."))
-  shared <- intersect(names(abdata), names(fx))
-  expect_true(length(shared) > 0)
-  expect_equal(nrow(abdata), nrow(fx))
-  for (col in shared) {
-    expect_equal(abdata[[col]], fx[[col]], tolerance = 1e-12,
-                 info = paste("abdata column", col))
-  }
+  expect_matches_fixture_csv(abdata, "tsop_ab_data.csv", "abdata")
 })
