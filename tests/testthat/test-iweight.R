@@ -1,6 +1,13 @@
 # ============================================================================
-# Tests: Importance weights (iweight) — Ticket Q2
+# Tests: Importance weights (iweight) — M-12 re-base
 # ============================================================================
+#
+# Family M-12: importance weights on the mroz base (H31 model, help.txt:1274;
+# D5a — Stata documents the `iweight` option for `ivreg2` but provides no
+# worked example, so cells are D5a option-variation on the H31 base). Weights
+# are synthetic and deterministic. The audit-20 anti-pattern (passing the
+# non-integer `wage` variable as an iweight) was retired 2026-07-04 per
+# planning/22-spec-matrix.md. Originally Ticket Q2.
 
 read_coef_fixture <- function(path) {
   d <- read.csv(path)
@@ -15,11 +22,15 @@ read_diagnostics_fixture <- function(path) {
   read.csv(path)
 }
 
-# --- Load Card data ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+# --- Load mroz data (H31 canonical base) ---
+data(mroz, package = "ivreg2r")
+mroz_lw <- mroz[!is.na(mroz$lwage), ]
+
+# Deterministic weights mirroring the Stata generator
+# (`gen int iwint = mod(age,5)+1`; `iwfrac` adds 0.7 so
+# sum(iwfrac) = 1556.6 is non-integral and floor() binds).
+mroz_lw$iwint <- (mroz_lw$age %% 5) + 1
+mroz_lw$iwfrac <- (mroz_lw$age %% 5) + 1.7
 
 
 # ============================================================================
@@ -66,19 +77,19 @@ test_that("iweight blocks kernel-based VCE", {
 })
 
 test_that("iweight blocks GMM estimation", {
-  skip_if(!file.exists(card_path))
   expect_error(
-    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
-           weights = wage, weight_type = "iweight", method = "gmm2s"),
+    ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+           data = mroz_lw, weights = iwint, weight_type = "iweight",
+           method = "gmm2s"),
     "iweights not allowed with GMM"
   )
 })
 
 test_that("iweight blocks GMM via mixed-case method", {
-  skip_if(!file.exists(card_path))
   expect_error(
-    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
-           weights = wage, weight_type = "iweight", method = "GMM2S"),
+    ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+           data = mroz_lw, weights = iwint, weight_type = "iweight",
+           method = "GMM2S"),
     "iweights not allowed with GMM"
   )
 })
@@ -94,21 +105,23 @@ test_that("iweight blocks bw without kernel", {
 })
 
 test_that("iweight blocks smatrix", {
-  skip_if(!file.exists(card_path))
-  S <- diag(5)
+  # H31 model: L = 6 (exog exper, expersq, intercept + excluded age,
+  # kidslt6, kidsge6).
+  S <- diag(6)
   expect_error(
-    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
-           weights = wage, weight_type = "iweight", smatrix = S),
+    ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+           data = mroz_lw, weights = iwint, weight_type = "iweight",
+           smatrix = S),
     "iweights not allowed.*smatrix"
   )
 })
 
 test_that("iweight blocks wmatrix", {
-  skip_if(!file.exists(card_path))
-  W <- diag(5)
+  W <- diag(6)
   expect_error(
-    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
-           weights = wage, weight_type = "iweight", wmatrix = W),
+    ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+           data = mroz_lw, weights = iwint, weight_type = "iweight",
+           wmatrix = W),
     "iweights not allowed.*wmatrix"
   )
 })
@@ -168,17 +181,16 @@ test_that("iweight preserves n_physical", {
 
 # --- OLS, IID, small=FALSE ---
 test_that("iweight OLS IID matches Stata", {
-  skip_if(!file.exists(card_path))
-  coef_path <- fixture_path("card_iweight_ols_coef_iid.csv")
+  coef_path <- fixture_path("mroz_iweight_ols_coef_iid.csv")
   skip_if(!file.exists(coef_path))
 
-  fit <- ivreg2(lwage ~ exper + expersq, data = card,
-                weights = wage, weight_type = "iweight")
+  fit <- ivreg2(lwage ~ exper + expersq, data = mroz_lw,
+                weights = iwint, weight_type = "iweight")
   stata_coef <- read_coef_fixture(coef_path)
   stata_diag <- read_diagnostics_fixture(
-    fixture_path("card_iweight_ols_diagnostics_iid.csv"))
+    fixture_path("mroz_iweight_ols_diagnostics_iid.csv"))
   stata_vcov <- read_vcov_fixture(
-    fixture_path("card_iweight_ols_vcov_iid.csv"))
+    fixture_path("mroz_iweight_ols_vcov_iid.csv"))
 
   # N
   expect_equal(nobs(fit), stata_diag$N)
@@ -208,15 +220,16 @@ test_that("iweight OLS IID matches Stata", {
 
 # --- OLS, IID, small=TRUE ---
 test_that("iweight OLS IID small matches Stata", {
-  skip_if(!file.exists(card_path))
-  coef_path <- fixture_path("card_iweight_ols_coef_iid_small.csv")
+  coef_path <- fixture_path("mroz_iweight_ols_coef_iid_small.csv")
   skip_if(!file.exists(coef_path))
 
-  fit <- ivreg2(lwage ~ exper + expersq, data = card,
-                weights = wage, weight_type = "iweight", small = TRUE)
+  fit <- ivreg2(lwage ~ exper + expersq, data = mroz_lw,
+                weights = iwint, weight_type = "iweight", small = TRUE)
   stata_coef <- read_coef_fixture(coef_path)
   stata_diag <- read_diagnostics_fixture(
-    fixture_path("card_iweight_ols_diagnostics_iid_small.csv"))
+    fixture_path("mroz_iweight_ols_diagnostics_iid_small.csv"))
+  stata_vcov <- read_vcov_fixture(
+    fixture_path("mroz_iweight_ols_vcov_iid_small.csv"))
 
   # N
   expect_equal(nobs(fit), stata_diag$N)
@@ -232,6 +245,9 @@ test_that("iweight OLS IID small matches Stata", {
                  tolerance = stata_tol$se, info = paste("SE:", nm))
   }
 
+  # VCV
+  expect_vcov_equal(vcov(fit), stata_vcov)
+
   # Summary stats
   expect_equal(fit$sigma^2, stata_diag$sigmasq, tolerance = stata_tol$coef)
   expect_equal(fit$r.squared, stata_diag$r2, tolerance = stata_tol$coef)
@@ -245,87 +261,20 @@ test_that("iweight OLS IID small matches Stata", {
 
 
 # ============================================================================
-# Section 3: Stata parity — 2SLS just identified with iweight
-# ============================================================================
-
-test_that("iweight 2SLS just-id IID matches Stata", {
-  skip_if(!file.exists(card_path))
-  coef_path <- fixture_path("card_iweight_just_id_coef_iid.csv")
-  skip_if(!file.exists(coef_path))
-
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
-                weights = wage, weight_type = "iweight")
-  stata_coef <- read_coef_fixture(coef_path)
-  stata_diag <- read_diagnostics_fixture(
-    fixture_path("card_iweight_just_id_diagnostics_iid.csv"))
-  stata_vcov <- read_vcov_fixture(
-    fixture_path("card_iweight_just_id_vcov_iid.csv"))
-
-  expect_equal(nobs(fit), stata_diag$N)
-
-  for (nm in names(stata_coef$estimate)) {
-    expect_equal(coef(fit)[nm], stata_coef$estimate[nm],
-                 tolerance = stata_tol$coef, info = paste("coef:", nm))
-  }
-  se_r <- sqrt(diag(vcov(fit)))
-  for (nm in names(stata_coef$std_error)) {
-    expect_equal(se_r[nm], stata_coef$std_error[nm],
-                 tolerance = stata_tol$se, info = paste("SE:", nm))
-  }
-  expect_vcov_equal(vcov(fit), stata_vcov)
-
-  expect_equal(fit$sigma^2, stata_diag$sigmasq, tolerance = stata_tol$coef)
-  expect_equal(fit$r.squared, stata_diag$r2, tolerance = stata_tol$coef)
-  expect_equal(fit$adj.r.squared, stata_diag$r2_a, tolerance = stata_tol$coef)
-  expect_equal(fit$rss, stata_diag$rss, tolerance = stata_tol$coef)
-})
-
-test_that("iweight 2SLS just-id IID small matches Stata", {
-  skip_if(!file.exists(card_path))
-  coef_path <- fixture_path("card_iweight_just_id_coef_iid_small.csv")
-  skip_if(!file.exists(coef_path))
-
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
-                weights = wage, weight_type = "iweight", small = TRUE)
-  stata_coef <- read_coef_fixture(coef_path)
-  stata_diag <- read_diagnostics_fixture(
-    fixture_path("card_iweight_just_id_diagnostics_iid_small.csv"))
-
-  expect_equal(nobs(fit), stata_diag$N)
-
-  for (nm in names(stata_coef$estimate)) {
-    expect_equal(coef(fit)[nm], stata_coef$estimate[nm],
-                 tolerance = stata_tol$coef, info = paste("coef:", nm))
-  }
-  se_r <- sqrt(diag(vcov(fit)))
-  for (nm in names(stata_coef$std_error)) {
-    expect_equal(se_r[nm], stata_coef$std_error[nm],
-                 tolerance = stata_tol$se, info = paste("SE:", nm))
-  }
-
-  expect_equal(fit$sigma^2, stata_diag$sigmasq, tolerance = stata_tol$coef)
-  expect_equal(fit$model_f, stata_diag$F_stat, tolerance = stata_tol$stat)
-  expect_equal(fit$model_f_df1, stata_diag$F_df1)
-  expect_equal(fit$model_f_df2, stata_diag$F_df2)
-})
-
-
-# ============================================================================
-# Section 4: Stata parity — 2SLS overidentified with iweight
+# Section 3: Stata parity — 2SLS overidentified with iweight
 # ============================================================================
 
 test_that("iweight 2SLS overid IID matches Stata", {
-  skip_if(!file.exists(card_path))
-  coef_path <- fixture_path("card_iweight_overid_coef_iid.csv")
+  coef_path <- fixture_path("mroz_iweight_overid_coef_iid.csv")
   skip_if(!file.exists(coef_path))
 
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4, data = card,
-                weights = wage, weight_type = "iweight")
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, weights = iwint, weight_type = "iweight")
   stata_coef <- read_coef_fixture(coef_path)
   stata_diag <- read_diagnostics_fixture(
-    fixture_path("card_iweight_overid_diagnostics_iid.csv"))
+    fixture_path("mroz_iweight_overid_diagnostics_iid.csv"))
   stata_vcov <- read_vcov_fixture(
-    fixture_path("card_iweight_overid_vcov_iid.csv"))
+    fixture_path("mroz_iweight_overid_vcov_iid.csv"))
 
   expect_equal(nobs(fit), stata_diag$N)
 
@@ -355,15 +304,17 @@ test_that("iweight 2SLS overid IID matches Stata", {
 })
 
 test_that("iweight 2SLS overid IID small matches Stata", {
-  skip_if(!file.exists(card_path))
-  coef_path <- fixture_path("card_iweight_overid_coef_iid_small.csv")
+  coef_path <- fixture_path("mroz_iweight_overid_coef_iid_small.csv")
   skip_if(!file.exists(coef_path))
 
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4, data = card,
-                weights = wage, weight_type = "iweight", small = TRUE)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, weights = iwint, weight_type = "iweight",
+                small = TRUE)
   stata_coef <- read_coef_fixture(coef_path)
   stata_diag <- read_diagnostics_fixture(
-    fixture_path("card_iweight_overid_diagnostics_iid_small.csv"))
+    fixture_path("mroz_iweight_overid_diagnostics_iid_small.csv"))
+  stata_vcov <- read_vcov_fixture(
+    fixture_path("mroz_iweight_overid_vcov_iid_small.csv"))
 
   expect_equal(nobs(fit), stata_diag$N)
 
@@ -376,9 +327,82 @@ test_that("iweight 2SLS overid IID small matches Stata", {
     expect_equal(se_r[nm], stata_coef$std_error[nm],
                  tolerance = stata_tol$se, info = paste("SE:", nm))
   }
+  expect_vcov_equal(vcov(fit), stata_vcov)
 
   expect_equal(fit$sigma^2, stata_diag$sigmasq, tolerance = stata_tol$coef)
   expect_equal(fit$model_f, stata_diag$F_stat, tolerance = stata_tol$stat)
   expect_equal(fit$model_f_df1, stata_diag$F_df1)
   expect_equal(fit$model_f_df2, stata_diag$F_df2)
+})
+
+
+# ============================================================================
+# Section 4: Stata parity — fractional-weight N convention
+# ============================================================================
+
+test_that("iweight fractional weights pin N = floor(sum(w))", {
+  coef_path <- fixture_path("mroz_iweight_frac_coef_iid.csv")
+  skip_if(!file.exists(coef_path))
+
+  fit <- ivreg2(lwage ~ exper + expersq, data = mroz_lw,
+                weights = iwfrac, weight_type = "iweight")
+  stata_coef <- read_coef_fixture(coef_path)
+  stata_diag <- read_diagnostics_fixture(
+    fixture_path("mroz_iweight_frac_diagnostics_iid.csv"))
+  stata_vcov <- read_vcov_fixture(
+    fixture_path("mroz_iweight_frac_vcov_iid.csv"))
+
+  # N = floor(sum(w)); previously pinned by the retired wage fixtures.
+  # sum(iwfrac) = 1556.6 -> N = 1556.
+  expect_equal(nobs(fit), stata_diag$N)
+  expect_equal(nobs(fit), as.integer(floor(sum(mroz_lw$iwfrac))))
+
+  for (nm in names(stata_coef$estimate)) {
+    expect_equal(coef(fit)[nm], stata_coef$estimate[nm],
+                 tolerance = stata_tol$coef, info = paste("coef:", nm))
+  }
+  se_r <- sqrt(diag(vcov(fit)))
+  for (nm in names(stata_coef$std_error)) {
+    expect_equal(se_r[nm], stata_coef$std_error[nm],
+                 tolerance = stata_tol$se, info = paste("SE:", nm))
+  }
+  expect_vcov_equal(vcov(fit), stata_vcov)
+})
+
+
+# ============================================================================
+# Section 5: Self-verifying identities (M-12 anchor)
+# ============================================================================
+# The Stata generator asserts the same identities at generation time
+# (see generate-iweight-fixtures.do self-check block).
+
+test_that("integral iweight is equivalent to fweight", {
+  fit_iw <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                    data = mroz_lw, weights = iwint, weight_type = "iweight")
+  fit_fw <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                    data = mroz_lw, weights = iwint, weight_type = "fweight")
+
+  expect_equal(coef(fit_iw), coef(fit_fw), tolerance = 1e-12)
+  expect_equal(vcov(fit_iw), vcov(fit_fw), tolerance = 1e-12,
+               ignore_attr = TRUE)
+  expect_equal(nobs(fit_iw), nobs(fit_fw))
+  expect_equal(fit_iw$rss, fit_fw$rss, tolerance = 1e-12)
+})
+
+test_that("integral iweight is equivalent to physically duplicated rows", {
+  dup <- mroz_lw[rep(seq_len(nrow(mroz_lw)), mroz_lw$iwint), ]
+
+  fit_iw  <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                     data = mroz_lw, weights = iwint, weight_type = "iweight")
+  fit_dup <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                     data = dup)
+
+  expect_equal(nobs(fit_iw), 1257L)
+  expect_equal(nobs(fit_dup), 1257L)
+
+  expect_equal(coef(fit_iw), coef(fit_dup), tolerance = 1e-12)
+  expect_equal(vcov(fit_iw), vcov(fit_dup), tolerance = 1e-12,
+               ignore_attr = TRUE)
+  expect_equal(nobs(fit_iw), nobs(fit_dup))
+  expect_equal(fit_iw$rss, fit_dup$rss, tolerance = 1e-12)
 })

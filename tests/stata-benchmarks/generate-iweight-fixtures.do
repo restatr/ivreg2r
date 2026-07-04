@@ -1,7 +1,19 @@
 /*===========================================================================
   generate-iweight-fixtures.do
   ----------------------------
-  Generates CSV benchmark fixtures for importance weights (iweight).
+  Generates CSV benchmark fixtures for importance weights (iweight; family
+  M-12, re-based 2026-07-04 per planning/22-spec-matrix.md).
+
+  Canonical base: mroz 2SLS baseline H31 (Stata ivreg2 help.txt line 1274).
+  Stata documents the iweight option for ivreg2 but provides no worked
+  example, so cells are D5a option-variation on the H31 base, using
+  synthetic deterministic integer weights. The retired audit-20
+  anti-pattern (passing the non-integer `wage` variable as an iweight) is
+  not ported.
+
+  Self-verifying property: an integral iweight is equivalent to a fweight
+  of the same values. This is asserted at generation time (see the
+  self-check block below) rather than merely assumed.
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -18,15 +30,27 @@ version 14
 local outdir "tests/stata-benchmarks/fixtures"
 capture mkdir "`outdir'"
 
-// Pre-load Card data and save before defining programs.
-// bcuse calls "clear all" which drops user-defined programs.
-capture bcuse card, clear
-if _rc != 0 {
-    display as error "Could not load Card dataset via bcuse."
-    display as error "Install bcuse (ssc install bcuse) and rerun."
-    exit 601
+/*===========================================================================
+  Load mroz data
+===========================================================================*/
+capture use "../validation/data/mroz.dta", clear
+if _rc {
+    capture use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+    if _rc {
+        display as error "Could not load mroz dataset (no local cache, no network)."
+        exit 601
+    }
 }
-save "`outdir'/_card_iw_temp.dta", replace
+
+// Deterministic synthetic weights derived from age (reproducible in R as
+// (age %% 5) + 1). iwint is integer-valued in {1, ..., 5}. iwfrac adds 0.7
+// so its sum over the 428-row estimation sample is genuinely non-integral
+// (428 * 0.7 = 299.6) and the N = floor(sum(w)) convention binds -- a +1.5
+// offset would sum integrally on an even sample size and leave floor() a
+// no-op.
+gen int iwint = mod(age, 5) + 1
+gen double iwfrac = mod(age, 5) + 1.7
+
 
 /*---------------------------------------------------------------------------
   Helper program: extract all results from ivreg2 and save to CSV
@@ -188,95 +212,85 @@ program define save_ivreg2_results
             "`outdir'/`prefix'_diagnostics_`suffix'.csv", replace
         restore
     }
-
-    // --- First-stage diagnostics ---
-    capture confirm matrix e(first)
-    if _rc == 0 {
-        quietly {
-            preserve
-            clear
-
-            matrix F = e(first)
-            local frows = rowsof(F)
-            local fcols = colsof(F)
-            local fnames : colnames F
-            local rnames : rownames F
-
-            set obs `frows'
-            gen str32 statistic = ""
-            forvalues i = 1/`frows' {
-                local rn : word `i' of `rnames'
-                replace statistic = "`rn'" in `i'
-            }
-
-            forvalues j = 1/`fcols' {
-                local cn : word `j' of `fnames'
-                local cnclean = subinstr("`cn'", ".", "_", .)
-                gen double `cnclean' = .
-                forvalues i = 1/`frows' {
-                    replace `cnclean' = F[`i', `j'] in `i'
-                }
-            }
-
-            export delimited using ///
-                "`outdir'/`prefix'_firststage_`suffix'.csv", replace
-            restore
-        }
-    }
 end
 
 
 /*===========================================================================
-  FIXTURE SET 1: iweight — OLS
-  Model: lwage ~ exper expersq [iw=wage]
-  Uses wage as a continuous weight variable (non-integer sum)
+  FIXTURE SET 1: iweight OLS (integer weights)
+  D5a option-variation, no upstream example; OLS companion to the H31 base.
+  Model: lwage ~ exper expersq [iw=iwint]
 ===========================================================================*/
-use "`outdir'/_card_iw_temp.dta", clear
+display _newline(2) "=== iweight OLS (integer weights) ==="
 
 // --- IID, small=FALSE ---
-ivreg2 lwage exper expersq [iw=wage]
-save_ivreg2_results, prefix(card_iweight_ols) suffix(iid) outdir(`outdir')
+ivreg2 lwage exper expersq [iw=iwint]
+save_ivreg2_results, prefix(mroz_iweight_ols) suffix(iid) outdir(`outdir')
 
 // --- IID, small=TRUE ---
-ivreg2 lwage exper expersq [iw=wage], small
-save_ivreg2_results, prefix(card_iweight_ols) suffix(iid_small) outdir(`outdir')
+ivreg2 lwage exper expersq [iw=iwint], small
+save_ivreg2_results, prefix(mroz_iweight_ols) suffix(iid_small) outdir(`outdir')
 
 
 /*===========================================================================
-  FIXTURE SET 2: iweight — 2SLS just identified
-  Model: lwage ~ exper expersq (educ = nearc4) [iw=wage]
+  FIXTURE SET 2: iweight 2SLS overidentified (integer weights)
+  H31 model (help.txt:1274) with [iw=iwint], D5a.
+  Model: lwage ~ exper expersq (educ = age kidslt6 kidsge6) [iw=iwint]
 ===========================================================================*/
-use "`outdir'/_card_iw_temp.dta", clear
+display _newline(2) "=== iweight 2SLS overidentified (integer weights) ==="
 
 // --- IID, small=FALSE ---
-ivreg2 lwage exper expersq (educ = nearc4) [iw=wage], first
-save_ivreg2_results, prefix(card_iweight_just_id) suffix(iid) outdir(`outdir')
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) [iw=iwint]
+save_ivreg2_results, prefix(mroz_iweight_overid) suffix(iid) outdir(`outdir')
 
 // --- IID, small=TRUE ---
-ivreg2 lwage exper expersq (educ = nearc4) [iw=wage], first small
-save_ivreg2_results, prefix(card_iweight_just_id) suffix(iid_small) outdir(`outdir')
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) [iw=iwint], small
+save_ivreg2_results, prefix(mroz_iweight_overid) suffix(iid_small) outdir(`outdir')
 
 
 /*===========================================================================
-  FIXTURE SET 3: iweight — 2SLS overidentified
-  Model: lwage ~ exper expersq (educ = nearc2 nearc4) [iw=wage]
+  Self-check: integral iweight is equivalent to fweight
+  M-12's self-verifying property (planning/22-spec-matrix.md): an iweight
+  whose values are all integers must give the same e(b), e(V), and e(N) as
+  an fweight built from the same values. This cannot be pinned by the
+  integer-weight cells above alone, so it is asserted directly here at
+  generation time.
 ===========================================================================*/
-use "`outdir'/_card_iw_temp.dta", clear
+display _newline(2) "=== self-check: integral iweight == fweight ==="
 
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq (educ = nearc2 nearc4) [iw=wage], first
-save_ivreg2_results, prefix(card_iweight_overid) suffix(iid) outdir(`outdir')
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) [iw=iwint]
+matrix b_iw = e(b)
+matrix V_iw = e(V)
+local N_iw = e(N)
 
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq (educ = nearc2 nearc4) [iw=wage], first small
-save_ivreg2_results, prefix(card_iweight_overid) suffix(iid_small) outdir(`outdir')
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) [fw=iwint]
+// assert/scalar expression parsers cannot take e(b)/e(V) (matrix-returning
+// operators) inline; copy them to named matrices, then bind mreldif scalars.
+matrix b_fw = e(b)
+matrix V_fw = e(V)
+scalar d_b = mreldif(b_iw, b_fw)
+scalar d_V = mreldif(V_iw, V_fw)
+assert d_b < 1e-12
+assert d_V < 1e-12
+assert `N_iw' == e(N)
+display "self-check passed: integral iweight == fweight (b, V, N)"
 
 
 /*===========================================================================
-  Cleanup
+  FIXTURE SET 3: iweight fractional-weight N convention
+  Pins Stata's N = floor(sum(w)) convention for non-integral iweight sums
+  (the integer cells above cannot test this; previously pinned by the
+  retired card_iweight_* [iw=wage] fixtures).
+  Model: lwage ~ exper expersq [iw=iwfrac]
 ===========================================================================*/
-capture erase "`outdir'/_card_iw_temp.dta"
+display _newline(2) "=== iweight fractional-weight N convention ==="
 
+ivreg2 lwage exper expersq [iw=iwfrac]
+save_ivreg2_results, prefix(mroz_iweight_frac) suffix(iid) outdir(`outdir')
+
+
+/*===========================================================================
+  Done
+===========================================================================*/
 display ""
 display "=========================================="
 display "iweight fixtures generated successfully"
