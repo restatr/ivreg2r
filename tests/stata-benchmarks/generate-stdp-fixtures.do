@@ -1,12 +1,17 @@
 /*===========================================================================
   generate-stdp-fixtures.do
   -------------------------
-  Generates CSV benchmark fixtures for predict(..., se.fit = TRUE) testing
-  (Ticket Q1).
+  Generates CSV benchmark fixtures for predict(..., se.fit = TRUE) parity
+  testing (family M-26, re-based 2026-07-04 per planning/22-spec-matrix.md).
+
+  Canonical base: mroz 2SLS baseline H31 (Stata ivreg2 help.txt line 1274).
+  `predict, stdp` is Stata post-estimation with no worked example in the
+  help file, so cells are option-variation on the canonical base per
+  decision D5a (planning/24-execution-roadmap.md).
 
   For each ivreg2 specification, saves fitted values and prediction SEs
   (Stata's "predict, stdp") for (a) all observations and (b) first 10 obs
-  as "newdata" subset.
+  as a "newdata" subset.
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -24,17 +29,12 @@ local outdir "tests/stata-benchmarks/fixtures"
 capture mkdir "`outdir'"
 
 /*===========================================================================
-  Load Card data FIRST — bcuse calls "clear all" which drops programs
+  Load mroz data
 ===========================================================================*/
-capture bcuse card, clear
-if _rc != 0 {
-    capture use "`outdir'/_card_temp.dta", clear
-    if _rc != 0 {
-        display as error "Could not load Card dataset."
-        exit 601
-    }
+capture use "../validation/data/mroz.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
 }
-save "`outdir'/_card_stdp_temp.dta", replace
 
 
 /*---------------------------------------------------------------------------
@@ -59,107 +59,52 @@ program define save_stdp_results
         keep obs `yhat' `se'
         rename `yhat' fit
         rename `se' se_fit
-        export delimited using "`outdir'/`prefix'_stdp_`suffix'.csv", replace
+        format fit se_fit %21.0g
+        export delimited using "`outdir'/`prefix'_stdp_`suffix'.csv", ///
+            replace datafmt
 
         // Subset: first 10 observations
         keep if _n <= 10
-        export delimited using "`outdir'/`prefix'_stdp_`suffix'_sub.csv", replace
+        format fit se_fit %21.0g
+        export delimited using "`outdir'/`prefix'_stdp_`suffix'_sub.csv", ///
+            replace datafmt
         restore
     }
 end
 
 
 /*===========================================================================
-  Reload Card data
+  FIXTURE 1: mroz IID
+  Canonical base H31 (help.txt:1274); predict, stdp per D5a (no worked
+  example in the help file).
+  Model: ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6)
 ===========================================================================*/
-use "`outdir'/_card_stdp_temp.dta", clear
+display _newline(2) "=== stdp: mroz iid ==="
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6)
+save_stdp_results, prefix(mroz) suffix(iid) outdir(`outdir')
 
 
 /*===========================================================================
-  FIXTURE SET 1: Card overid, IID
-  Model: ivreg2 lwage exper expersq (educ = nearc2 nearc4)
+  FIXTURE 2: mroz robust
+  H41/H46 robust spec (help.txt:1325/1350) on the H31 base.
 ===========================================================================*/
-display _newline(2) "=== stdp: Card overid, IID ==="
-ivreg2 lwage exper expersq (educ = nearc2 nearc4)
-save_stdp_results, prefix(card_overid) suffix(iid) outdir(`outdir')
+display _newline(2) "=== stdp: mroz robust ==="
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6), robust
+save_stdp_results, prefix(mroz) suffix(robust) outdir(`outdir')
 
 
 /*===========================================================================
-  FIXTURE SET 2: Card overid, robust (HC0)
+  FIXTURE 3: mroz robust small
+  D5a option-variation (small) on the H41 robust spec; verifies the
+  small-sample e(V) convention propagates into stdp.
 ===========================================================================*/
-display _newline(2) "=== stdp: Card overid, robust ==="
-ivreg2 lwage exper expersq (educ = nearc2 nearc4), robust
-save_stdp_results, prefix(card_overid) suffix(hc0) outdir(`outdir')
+display _newline(2) "=== stdp: mroz robust small ==="
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6), robust small
+save_stdp_results, prefix(mroz) suffix(robust_small) outdir(`outdir')
 
 
 /*===========================================================================
-  FIXTURE SET 3: Card overid, robust small (HC1)
+  Done
 ===========================================================================*/
-display _newline(2) "=== stdp: Card overid, robust small ==="
-ivreg2 lwage exper expersq (educ = nearc2 nearc4), robust small
-save_stdp_results, prefix(card_overid) suffix(hc1_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE SET 4: Card overid, cluster(smsa)
-===========================================================================*/
-display _newline(2) "=== stdp: Card overid, cluster ==="
-ivreg2 lwage exper expersq (educ = nearc2 nearc4), cluster(smsa)
-save_stdp_results, prefix(card_overid) suffix(cluster) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE SET 5: Card overid, cluster(smsa) small
-===========================================================================*/
-display _newline(2) "=== stdp: Card overid, cluster small ==="
-ivreg2 lwage exper expersq (educ = nearc2 nearc4), cluster(smsa) small
-save_stdp_results, prefix(card_overid) suffix(cluster_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE SET 6: Card overid, aweight
-===========================================================================*/
-display _newline(2) "=== stdp: Card overid, aweight ==="
-ivreg2 lwage exper expersq (educ = nearc2 nearc4) [aw=weight]
-save_stdp_results, prefix(card_overid) suffix(aw) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE SET 7: Card overid, LIML
-===========================================================================*/
-display _newline(2) "=== stdp: Card overid, LIML ==="
-ivreg2 lwage exper expersq (educ = nearc2 nearc4), liml
-save_stdp_results, prefix(card_overid) suffix(liml) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE SET 8: Card overid, Fuller(1)
-===========================================================================*/
-display _newline(2) "=== stdp: Card overid, Fuller(1) ==="
-ivreg2 lwage exper expersq (educ = nearc2 nearc4), fuller(1)
-save_stdp_results, prefix(card_overid) suffix(fuller1) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE SET 9: Card just-identified, IID
-  Model: ivreg2 lwage exper expersq (educ = nearc4)
-===========================================================================*/
-display _newline(2) "=== stdp: Card justid, IID ==="
-ivreg2 lwage exper expersq (educ = nearc4)
-save_stdp_results, prefix(card_justid) suffix(iid) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE SET 10: Card just-identified, robust
-===========================================================================*/
-display _newline(2) "=== stdp: Card justid, robust ==="
-ivreg2 lwage exper expersq (educ = nearc4), robust
-save_stdp_results, prefix(card_justid) suffix(hc0) outdir(`outdir')
-
-
-/*===========================================================================
-  Clean up temp file and done
-===========================================================================*/
-capture erase "`outdir'/_card_stdp_temp.dta"
 display _newline(2) "=== All stdp fixtures generated ==="
 display "Output directory: `outdir'"

@@ -31,142 +31,70 @@ compare_stdp_sub <- function(fit, fixture, newdata, tol = stata_tol$se,
 
 
 # ==========================================================================
-# Stata parity: Card overid — IID
+# Stata parity: mroz — IID
+# Canonical base H31 (help.txt:1274); `predict, stdp` per D5a (no worked
+# example in the help file).
 # ==========================================================================
-test_that("stdp matches Stata: Card overid IID", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                data = card)
-  compare_stdp(fit, list(prefix = "card_overid", suffix = "iid"))
+test_that("stdp matches Stata: mroz IID", {
+  data(mroz, package = "ivreg2r")
+  mroz_lw <- mroz[!is.na(mroz$lwage), ]
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw)
+  compare_stdp(fit, list(prefix = "mroz", suffix = "iid"))
 })
 
-test_that("stdp newdata matches Stata: Card overid IID", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                data = card)
-  compare_stdp_sub(fit, list(prefix = "card_overid", suffix = "iid"),
-                   newdata = card[1:10, ])
-})
-
-
-# ==========================================================================
-# Stata parity: Card overid — robust (HC0)
-# ==========================================================================
-test_that("stdp matches Stata: Card overid HC0", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                data = card, vcov = "robust")
-  compare_stdp(fit, list(prefix = "card_overid", suffix = "hc0"))
+test_that("stdp newdata matches Stata: mroz IID", {
+  data(mroz, package = "ivreg2r")
+  mroz_lw <- mroz[!is.na(mroz$lwage), ]
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw)
+  compare_stdp_sub(fit, list(prefix = "mroz", suffix = "iid"),
+                   newdata = mroz_lw[1:10, ])
 })
 
 
 # ==========================================================================
-# Stata parity: Card overid — robust small (HC1)
+# Stata parity: mroz — robust
+# H41/H46 robust spec (help.txt:1325/1350) on the H31 base.
 # ==========================================================================
-test_that("stdp matches Stata: Card overid HC1 small", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                data = card, vcov = "robust", small = TRUE)
-  compare_stdp(fit, list(prefix = "card_overid", suffix = "hc1_small"))
+test_that("stdp matches Stata: mroz robust", {
+  data(mroz, package = "ivreg2r")
+  mroz_lw <- mroz[!is.na(mroz$lwage), ]
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust")
+  compare_stdp(fit, list(prefix = "mroz", suffix = "robust"))
+})
+
+test_that("stdp newdata matches Stata: mroz robust", {
+  data(mroz, package = "ivreg2r")
+  mroz_lw <- mroz[!is.na(mroz$lwage), ]
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust")
+  compare_stdp_sub(fit, list(prefix = "mroz", suffix = "robust"),
+                   newdata = mroz_lw[1:10, ])
 })
 
 
 # ==========================================================================
-# Stata parity: Card overid — cluster
+# Stata parity: mroz — robust small
+# D5a option-variation (small) on the H41 robust spec; verifies the
+# small-sample e(V) convention propagates into stdp.
 # ==========================================================================
-test_that("stdp matches Stata: Card overid cluster", {
-  data(card, package = "ivreg2r")
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-           data = card, clusters = ~smsa)
-  )
-  compare_stdp(fit, list(prefix = "card_overid", suffix = "cluster"))
+test_that("stdp matches Stata: mroz robust small", {
+  data(mroz, package = "ivreg2r")
+  mroz_lw <- mroz[!is.na(mroz$lwage), ]
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust", small = TRUE)
+  compare_stdp(fit, list(prefix = "mroz", suffix = "robust_small"))
 })
 
-
-# ==========================================================================
-# Stata parity: Card overid — cluster small
-# ==========================================================================
-test_that("stdp matches Stata: Card overid cluster small", {
-  data(card, package = "ivreg2r")
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-           data = card, clusters = ~smsa, small = TRUE)
-  )
-  compare_stdp(fit, list(prefix = "card_overid", suffix = "cluster_small"))
-})
-
-test_that("stdp newdata matches Stata: Card overid cluster small", {
-  data(card, package = "ivreg2r")
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-           data = card, clusters = ~smsa, small = TRUE)
-  )
-  compare_stdp_sub(fit, list(prefix = "card_overid", suffix = "cluster_small"),
-                   newdata = card[1:10, ])
-})
-
-
-# ==========================================================================
-# Stata parity: Card overid — aweight
-# ==========================================================================
-test_that("stdp matches Stata: Card overid aweight", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                data = card, weights = weight)
-  compare_stdp(fit, list(prefix = "card_overid", suffix = "aw"))
-})
-
-
-# ==========================================================================
-# Stata parity: Card overid — LIML
-# ==========================================================================
-test_that("stdp matches Stata: Card overid LIML", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                data = card, method = "liml")
-  compare_stdp(fit, list(prefix = "card_overid", suffix = "liml"))
-})
-
-
-# ==========================================================================
-# Stata parity: Card overid — Fuller(1)
-# ==========================================================================
-test_that("stdp matches Stata: Card overid Fuller(1)", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                data = card, method = "liml", fuller = 1)
-  compare_stdp(fit, list(prefix = "card_overid", suffix = "fuller1"))
-})
-
-
-# ==========================================================================
-# Stata parity: Card just-identified — IID
-# ==========================================================================
-test_that("stdp matches Stata: Card justid IID", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                data = card)
-  compare_stdp(fit, list(prefix = "card_justid", suffix = "iid"))
-})
-
-test_that("stdp newdata matches Stata: Card justid IID", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                data = card)
-  compare_stdp_sub(fit, list(prefix = "card_justid", suffix = "iid"),
-                   newdata = card[1:10, ])
-})
-
-
-# ==========================================================================
-# Stata parity: Card just-identified — robust (HC0)
-# ==========================================================================
-test_that("stdp matches Stata: Card justid HC0", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
-                data = card, vcov = "robust")
-  compare_stdp(fit, list(prefix = "card_justid", suffix = "hc0"))
+test_that("stdp newdata matches Stata: mroz robust small", {
+  data(mroz, package = "ivreg2r")
+  mroz_lw <- mroz[!is.na(mroz$lwage), ]
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust", small = TRUE)
+  compare_stdp_sub(fit, list(prefix = "mroz", suffix = "robust_small"),
+                   newdata = mroz_lw[1:10, ])
 })
 
 
@@ -265,11 +193,10 @@ test_that("se.fit with newdata works", {
 # All se.fit values are non-negative
 # ==========================================================================
 test_that("se.fit values are non-negative", {
-  data(card, package = "ivreg2r")
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-           data = card, clusters = ~smsa, small = TRUE)
-  )
+  data(mroz, package = "ivreg2r")
+  mroz_lw <- mroz[!is.na(mroz$lwage), ]
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust", small = TRUE)
   pred <- predict(fit, se.fit = TRUE)
   expect_true(all(pred$se.fit >= 0))
 })
