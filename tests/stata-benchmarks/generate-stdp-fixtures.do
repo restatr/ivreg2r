@@ -33,7 +33,11 @@ capture mkdir "`outdir'"
 ===========================================================================*/
 capture use "../validation/data/mroz.dta", clear
 if _rc {
-    use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+    capture use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+    if _rc {
+        display as error "Could not load mroz dataset (no local cache, no network)."
+        exit 601
+    }
 }
 
 
@@ -42,6 +46,8 @@ if _rc {
   Saves two files:
     - *_stdp_<suffix>.csv       (all obs: obs, fit, se_fit)
     - *_stdp_<suffix>_sub.csv   (first 10 obs only)
+  The obs column (original row index) is not read by the tests, which
+  compare positionally; it is kept for row-alignment debugging.
 ---------------------------------------------------------------------------*/
 capture program drop save_stdp_results
 program define save_stdp_results
@@ -63,9 +69,8 @@ program define save_stdp_results
         export delimited using "`outdir'/`prefix'_stdp_`suffix'.csv", ///
             replace datafmt
 
-        // Subset: first 10 observations
+        // Subset: first 10 observations (format set above persists)
         keep if _n <= 10
-        format fit se_fit %21.0g
         export delimited using "`outdir'/`prefix'_stdp_`suffix'_sub.csv", ///
             replace datafmt
         restore

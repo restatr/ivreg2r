@@ -1,5 +1,11 @@
-# Tests for predict(..., se.fit = TRUE) — Ticket Q1
+# Tests for predict(..., se.fit = TRUE) — fixture family M-26
+# (re-based onto the canonical mroz H31 base 2026-07-04 per
+# planning/22-spec-matrix.md; originally Ticket Q1).
 # Prediction standard errors: SE = sqrt(diag(X %*% V %*% t(X)))
+
+# === Data: mroz estimation sample (Stata's e(sample) = lwage non-missing) ===
+data(mroz, package = "ivreg2r")
+mroz_lw <- mroz[!is.na(mroz$lwage), ]
 
 # === Helper ===
 read_stdp_fixture <- function(prefix, suffix) {
@@ -36,16 +42,12 @@ compare_stdp_sub <- function(fit, fixture, newdata, tol = stata_tol$se,
 # example in the help file).
 # ==========================================================================
 test_that("stdp matches Stata: mroz IID", {
-  data(mroz, package = "ivreg2r")
-  mroz_lw <- mroz[!is.na(mroz$lwage), ]
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz_lw)
   compare_stdp(fit, list(prefix = "mroz", suffix = "iid"))
 })
 
 test_that("stdp newdata matches Stata: mroz IID", {
-  data(mroz, package = "ivreg2r")
-  mroz_lw <- mroz[!is.na(mroz$lwage), ]
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz_lw)
   compare_stdp_sub(fit, list(prefix = "mroz", suffix = "iid"),
@@ -58,16 +60,12 @@ test_that("stdp newdata matches Stata: mroz IID", {
 # H41/H46 robust spec (help.txt:1325/1350) on the H31 base.
 # ==========================================================================
 test_that("stdp matches Stata: mroz robust", {
-  data(mroz, package = "ivreg2r")
-  mroz_lw <- mroz[!is.na(mroz$lwage), ]
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz_lw, vcov = "robust")
   compare_stdp(fit, list(prefix = "mroz", suffix = "robust"))
 })
 
 test_that("stdp newdata matches Stata: mroz robust", {
-  data(mroz, package = "ivreg2r")
-  mroz_lw <- mroz[!is.na(mroz$lwage), ]
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz_lw, vcov = "robust")
   compare_stdp_sub(fit, list(prefix = "mroz", suffix = "robust"),
@@ -81,16 +79,12 @@ test_that("stdp newdata matches Stata: mroz robust", {
 # small-sample e(V) convention propagates into stdp.
 # ==========================================================================
 test_that("stdp matches Stata: mroz robust small", {
-  data(mroz, package = "ivreg2r")
-  mroz_lw <- mroz[!is.na(mroz$lwage), ]
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz_lw, vcov = "robust", small = TRUE)
   compare_stdp(fit, list(prefix = "mroz", suffix = "robust_small"))
 })
 
 test_that("stdp newdata matches Stata: mroz robust small", {
-  data(mroz, package = "ivreg2r")
-  mroz_lw <- mroz[!is.na(mroz$lwage), ]
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz_lw, vcov = "robust", small = TRUE)
   compare_stdp_sub(fit, list(prefix = "mroz", suffix = "robust_small"),
@@ -142,11 +136,12 @@ test_that("se.fit = TRUE returns list with fit and se.fit components", {
 
 # ==========================================================================
 # Consistency: se.fit equals manual sqrt(diag(X V X'))
+# (deliberately the naive n x n formula, independent of .compute_se_fit's
+# rowSums algebra; run on mroz, n = 428, so the n x n matrix stays small)
 # ==========================================================================
 test_that("se.fit matches manual computation", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq | educ | nearc2 + nearc4,
-                data = card, vcov = "robust", model = TRUE)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust", model = TRUE)
   pred <- predict(fit, se.fit = TRUE)
 
   X <- model.matrix(fit)
@@ -160,8 +155,7 @@ test_that("se.fit matches manual computation", {
 # OLS model also works with se.fit
 # ==========================================================================
 test_that("se.fit works for OLS models", {
-  data(card, package = "ivreg2r")
-  fit <- ivreg2(lwage ~ exper + expersq + educ, data = card, model = TRUE)
+  fit <- ivreg2(lwage ~ exper + expersq + educ, data = mroz_lw, model = TRUE)
   pred <- predict(fit, se.fit = TRUE)
   expect_true(is.list(pred))
   expect_equal(length(pred$se.fit), nobs(fit))
@@ -193,8 +187,6 @@ test_that("se.fit with newdata works", {
 # All se.fit values are non-negative
 # ==========================================================================
 test_that("se.fit values are non-negative", {
-  data(mroz, package = "ivreg2r")
-  mroz_lw <- mroz[!is.na(mroz$lwage), ]
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz_lw, vcov = "robust", small = TRUE)
   pred <- predict(fit, se.fit = TRUE)
