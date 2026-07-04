@@ -32,13 +32,14 @@ For HAC/AC standard errors, GMM, CUE, Kiefer, Driscoll-Kraay, partialling,
 and user-supplied matrices, see `vignette("time-series-gmm")`.
 
 We use three datasets: the Mroz (1987) female labor supply data, the
-Griliches (1976) young men's wage data, and the Wooldridge wage panel.
+Griliches (1976) young men's wage data, and the NLS Young Women panel
+(`nlswork`, the extract distributed with Stata's `[XT]` manual).
 
 ```{r setup}
 library(ivreg2r)
 data(mroz)
 data(griliches)
-data(wagepan)
+data(nlswork)
 ```
 
 ## The Mroz dataset
@@ -379,15 +380,16 @@ restrictions --- the test cannot say which.
 
 ## Two-way clustering
 
-### The wagepan dataset
+### The nlswork dataset
 
-The Wooldridge wage panel contains 4,360 observations on 545 young men from
-the NLSY, observed annually from 1980 to 1987:
+The NLS Young Women panel is the extract distributed with Stata's `[XT]`
+manual (`webuse nlswork`): person-year observations on women 14--24 years
+old in 1968, interviewed annually from 1968 to 1988.
 
-```{r wagepan-overview}
-nrow(wagepan)
-length(unique(wagepan$nr))    # persons
-length(unique(wagepan$year))  # years
+```{r nlswork-overview}
+nrow(nlswork)
+length(unique(nlswork$idcode))  # persons
+length(unique(nlswork$year))    # interview years
 ```
 
 Panel data like this can exhibit correlation within individuals over time
@@ -396,21 +398,27 @@ Panel data like this can exhibit correlation within individuals over time
 ### One-way vs. two-way clustering
 
 Compare one-way clustering (by person) with two-way clustering (by person and
-year):
+interview year). This is the help file's own clustering example at line 1618
+(one-way, `cluster(idcode)`) paired with its two-way variant at line 1628
+(`cluster(idcode year)`). Fitting on the full `nlswork` data frame
+automatically restricts to the complete cases needed by the formula, so no
+manual subsetting is required:
 
 ```{r twoway}
 fit_1way <- ivreg2(
-  lwage ~ educ + black + hisp + exper + expersq + married + union,
-  data = wagepan, clusters = ~ nr, small = TRUE
+  ln_wage ~ grade + age + ttl_exp + tenure,
+  data = nlswork, clusters = ~idcode
 )
 
 fit_2way <- ivreg2(
-  lwage ~ educ + black + hisp + exper + expersq + married + union,
-  data = wagepan, clusters = ~ nr + year, small = TRUE
+  ln_wage ~ grade + age + ttl_exp + tenure,
+  data = nlswork, clusters = ~idcode + year
 )
 ```
 
-Compare the standard errors:
+Of the `r format(nrow(nlswork), big.mark = ",")` person-year rows,
+`r format(nobs(fit_1way), big.mark = ",")` have complete data on the
+variables in the formula and enter both fits. Compare the standard errors:
 
 ```{r twoway-compare}
 se_comparison <- data.frame(
@@ -423,11 +431,15 @@ se_comparison
 ```
 
 Two-way clustering uses the Cameron, Gelbach & Miller (2011) formula:
-`V_twoway = V_cluster1 + V_cluster2 - V_intersection`. The small-sample
-correction uses `min(M1, M2)` clusters, and t-tests use
-`min(M1, M2) - 1 = 7` degrees of freedom. With only 8 effective clusters,
-users should be cautious: the CGM two-way cluster-robust VCE requires both
-cluster dimensions to grow to infinity for consistency.
+`V_twoway = V_cluster1 + V_cluster2 - V_intersection`. The CGM two-way
+cluster-robust VCE requires *both* cluster dimensions to grow to infinity for
+consistency, so the effective number of clusters governing that asymptotic
+argument is the smaller of the two, `min(M1, M2)`. Here there are
+`r format(fit_2way$n_clusters1, big.mark = ",")` person clusters and only
+`r fit_2way$n_clusters2` interview-year clusters, so `min(M1, M2)` is
+`r fit_2way$n_clusters`: it is the year dimension, not the much larger
+person dimension, that limits how far the two-way asymptotics can be trusted
+here.
 
 **Note:** Two-way clustering is only useful when the two cluster variables
 define distinct, *crossed* (non-nested) categories --- as here, where every
