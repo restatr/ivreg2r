@@ -29,10 +29,12 @@ vignette is about. It covers the tools `ivreg2r` provides for them:
 - **Partialling out regressors** for high-dimensional fixed effects
 - **Additional options**: redundancy tests, moment centering, PSD corrections
 
-We use five datasets: the U.S. Phillips-curve data from Wooldridge (annual,
+We use eight datasets: the U.S. Phillips-curve data from Wooldridge (annual,
 1948--1996; pure time series), the Stock-Watson quarterly macro data used by
 Baum, Schaffer & Stillman (2007), the Mroz (1987) labor-supply data, the
-Card (1995) schooling data, and the Wooldridge wage panel.
+Card (1995) schooling data, the Wooldridge wage panel, the Arellano-Bond
+UK-firms employment panel (`abdata`), the Grunfeld (1958) investment panel,
+and the NLS young-women's-work panel (`nlswork`).
 
 ```{r setup}
 library(ivreg2r)
@@ -41,6 +43,9 @@ data(stockwatson)
 data(mroz)
 data(card)
 data(wagepan)
+data(abdata)
+data(grunfeld)
+data(nlswork)
 ```
 
 ## HAC and AC standard errors
@@ -190,69 +195,120 @@ Kiefer (1980) VCE assumes conditional homoskedasticity across all observations
 but allows arbitrary intra-group (within-panel) serial correlation. It is
 equivalent to AC VCE with a truncated kernel at bandwidth T − 1, which puts
 weight one on every lag available within a panel of length T (bandwidths
-beyond T − 1 are rejected, as in Stata):
+beyond T − 1 are rejected, as in Stata). We use the Arellano-Bond UK-firms
+employment panel (`abdata`: `r length(unique(abdata$id))` firms,
+`r min(abdata$year)`--`r max(abdata$year)`), following the help-file example
+at line 1548:
 
 ```{r kiefer}
-fit_kiefer <- ivreg2(
-  lwage ~ educ + black + hisp + exper + expersq + married + union,
-  data = wagepan, kiefer = TRUE, tvar = "year", ivar = "nr",
-  small = TRUE
-)
+fit_kiefer <- ivreg2(n ~ w + k, data = abdata, kiefer = TRUE,
+                     tvar = "year", ivar = "id")
+summary(fit_kiefer)
 ```
 
 Use Kiefer when conditional homoskedasticity is plausible but you want to
 allow for arbitrary within-unit serial correlation. If heteroskedasticity is
 also a concern, use Driscoll-Kraay or cluster+kernel instead.
 
+The help file demonstrates the truncated-kernel equivalence to Kiefer with
+`bw(9)` (line 1551), but `abdata` spans T = `r length(unique(abdata$year))`
+years (`r min(abdata$year)`--`r max(abdata$year)`), and modern Stata --- like
+this package --- rejects any bandwidth that does not fall strictly below the
+timespan of the data. The maximum usable lag is T − 1 =
+`r length(unique(abdata$year)) - 1`, and because the truncated kernel puts
+weight one on every lag up to the bandwidth, `bw = 8` weights exactly the
+same within-panel lags the help file's `bw(9)` intended, so the equivalence
+holds exactly at `bw = 8` (a documented help-file bug; see
+`planning/help-file-specs.md`, "Known bugs"):
+
+```{r kiefer-equiv}
+fit_tru8 <- ivreg2(
+  n ~ w + k, data = abdata,
+  kernel = "truncated", bw = 8, tvar = "year", ivar = "id"
+)
+stopifnot(isTRUE(all.equal(vcov(fit_kiefer), vcov(fit_tru8))))
+all.equal(vcov(fit_kiefer), vcov(fit_tru8))
+```
+
 ### Driscoll-Kraay VCE
 
 Driscoll and Kraay (1998) VCE handles cross-sectional dependence *and*
 persistence. It clusters on the time variable and applies a kernel to scores
-summed within each time period:
+summed within each time period. Because Driscoll-Kraay wants a long
+time-series dimension, we switch to the Grunfeld (1958) investment panel
+(`grunfeld`: `r length(unique(grunfeld$company))` firms,
+`r min(grunfeld$year)`--`r max(grunfeld$year)`), following the help-file
+example at line 1595:
 
 ```{r dk}
 fit_dk <- ivreg2(
-  lwage ~ educ + black + hisp + exper + expersq + married + union,
-  data = wagepan, dkraay = 3, tvar = "year", ivar = "nr",
-  small = TRUE
+  invest ~ mvalue + kstock, data = grunfeld,
+  dkraay = 2, small = TRUE, tvar = "year", ivar = "company"
 )
+summary(fit_dk)
 ```
 
 The `dkraay` argument specifies the bandwidth (here, Bartlett with bandwidth
-3, i.e. autocovariances up to 2 lags --- for the Bartlett kernel the number
+2, i.e. autocovariances up to 1 lag --- for the Bartlett kernel the number
 of lags is the bandwidth minus one). DK is robust to arbitrary
 cross-sectional dependence --- useful when common
 shocks (business cycles, policy changes) affect all individuals
 simultaneously. DK is equivalent to clustering on the time variable with a
 kernel (Bartlett by default; can be overridden with the `kernel` argument).
+The help file's own equivalence demonstration (line 1598) confirms this for
+the same model:
+
+```{r dk-equiv}
+fit_dk_ck <- ivreg2(
+  invest ~ mvalue + kstock, data = grunfeld,
+  clusters = ~ year, kernel = "bartlett", bw = 2, small = TRUE,
+  tvar = "year", ivar = "company"
+)
+stopifnot(isTRUE(all.equal(vcov(fit_dk), vcov(fit_dk_ck))))
+all.equal(vcov(fit_dk), vcov(fit_dk_ck))
+```
 
 **Important:** Driscoll-Kraay is a large-T estimator --- the panel should have
 a reasonably long time-series dimension for the asymptotics to apply. It is
 not appropriate for panels with very few time periods.
 
-### Cluster + kernel
+### Cluster + kernel (Thompson)
 
 Two-way cluster+kernel VCE accounts for both within-panel correlation (via
 clustering on `ivar`) and autocorrelated cross-panel shocks (via a kernel
-applied to time-aggregated scores). Specify both `clusters` and `kernel`:
+applied to time-aggregated scores). Specify both `clusters` and `kernel`. We
+use Wooldridge's NLS young-women's-work panel (`nlswork`:
+`r length(unique(nlswork$idcode))` women,
+`r length(unique(nlswork$year))` survey years), following the help-file
+example at line 1637:
 
 ```{r ck}
 fit_ck <- ivreg2(
-  lwage ~ educ + black + hisp + exper + expersq + married + union,
-  data = wagepan, clusters = ~ nr + year, kernel = "bartlett", bw = 3,
-  tvar = "year", ivar = "nr", small = TRUE
+  ln_wage ~ grade + age + ttl_exp + tenure, data = nlswork,
+  clusters = ~ idcode + year, kernel = "truncated", bw = 2,
+  tvar = "year", ivar = "idcode"
 )
+summary(fit_ck)
 ```
+
+The gap warning is expected here and worth understanding: the NLS interviews
+were not conducted every calendar year, so most women have gaps in their
+`year` sequence. `ivreg2r` builds the kernel weights from the time *values*,
+not the row positions, so a lag of 2 means "two calendar years earlier" ---
+observations separated by an unobserved year contribute at their true
+temporal distance, exactly as Stata's `tsset`-aware kernels do. The warning
+simply alerts you that gaps exist; it does not indicate a problem with the
+fit.
 
 The variance decomposition is
 $V_{CK} = V_{cluster,i} + V_{kernel,t} - V_{HAC}$, where the third term is
 the observation-level HAC variance (the individual-time intersection),
-following the two-way structure of Cameron, Gelbach & Miller (2011) and
-Thompson (2011). Note that Thompson's specific proposal is this estimator
-with the *truncated* kernel, with the bandwidth chosen as the number of
-periods after which the common autocorrelated shocks can be ignored
-(help-file lines 237--246); the Bartlett variant shown here is a documented
-generalization rather than Thompson's own estimator.
+following the two-way structure of Cameron, Gelbach & Miller (2011). With the
+*truncated* kernel shown here, this construction is not merely a
+generalization of Thompson's (2011) estimator --- it *is* Thompson's
+estimator: his proposal is exactly two-way cluster+kernel with a truncated
+kernel, the bandwidth chosen as the number of periods after which the common
+autocorrelated shocks can be ignored (help-file lines 237--246).
 
 ### When to use which
 
