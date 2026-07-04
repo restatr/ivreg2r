@@ -581,14 +581,11 @@ test_that("H103: nlswork cluster(idcode) (help.txt:1618)", {
   compare_hf(fit, "nls", "H103")
 })
 
-nls_h104_fit <- NULL
-
 test_that("H104: nlswork two-way cluster(idcode year) (help.txt:1628)", {
   skip_if(!have_hf_nls, "helpfile fixtures not found")
   fit <- ivreg2(ln_wage ~ grade + age + ttl_exp + tenure, data = nls_cc,
                 clusters = ~idcode + year)
   compare_hf(fit, "nls", "H104")
-  nls_h104_fit <<- fit
 })
 
 test_that("H105: nlswork two-way cluster + Truncated bw(2) (help.txt:1637)", {
@@ -620,20 +617,40 @@ test_that("widstat equals the first-stage F (H36-H45 savefirst demo)", {
                tolerance = stata_tol$stat)
 })
 
-test_that("Ahn smatrix demo: J equals a hand-rolled Wald from the H14 fit (H16-H20)", {
-  # Exercises fit$S end-to-end: the Wald quadratic form built from the H14
-  # fit's own coef/vcov subset should equal the J-statistic of a smatrix-
-  # reuse fit whose excluded instrument set collapses to a single variable
-  # (test med age -> the H16-style demo).
+test_that("Ahn (1997): H14 J equals the Wald test of included regressors in each smatrix refit (H14-H21, help.txt:1183-1210)", {
+  # The help file's Ahn (1997) demo: the Hansen J of the overidentified
+  # H14 fit equals the Wald test that the "extra" instruments have zero
+  # coefficients when they are moved into the regression as included
+  # regressors, PROVIDED the refit reuses the H14 fit's moment covariance
+  # (smatrix = fit14$S) -- irrespective of which instrument stays excluded.
+  # Stata runs `test med age` / `test kww age` / `test med kww` after the
+  # three refits; here the same quadratic form b' V^-1 b is built from
+  # each refit's coef/vcov. This exercises the fit$S export end-to-end.
   skip_if(!have_hf_gril, "helpfile fixtures not found")
   fit14 <- ivreg2(lw ~ 1 | iq | med + kww + age, data = griliches,
                   method = "gmm2s")
+  J14 <- fit14$diagnostics$overid$stat
   S0 <- fit14$S
-  fit16 <- ivreg2(lw ~ med + age | iq | kww, data = griliches,
-                  method = "gmm2s", smatrix = S0)
-  expect_true(is.finite(fit16$diagnostics$overid$stat))
   expect_equal(dim(S0), c(4L, 4L))
   expect_true(all(c("(Intercept)", "med", "kww", "age") %in% colnames(S0)))
+
+  wald_included <- function(fit, vars) {
+    b <- coef(fit)[vars]
+    V <- vcov(fit)[vars, vars]
+    drop(t(b) %*% solve(V) %*% b)
+  }
+  fit16 <- ivreg2(lw ~ med + age | iq | kww, data = griliches,
+                  method = "gmm2s", smatrix = S0)
+  fit18 <- ivreg2(lw ~ kww + age | iq | med, data = griliches,
+                  method = "gmm2s", smatrix = S0)
+  fit20 <- ivreg2(lw ~ med + kww | iq | age, data = griliches,
+                  method = "gmm2s", smatrix = S0)
+  expect_equal(wald_included(fit16, c("med", "age")), J14,
+               tolerance = 1e-8)
+  expect_equal(wald_included(fit18, c("kww", "age")), J14,
+               tolerance = 1e-8)
+  expect_equal(wald_included(fit20, c("med", "kww")), J14,
+               tolerance = 1e-8)
 })
 
 test_that("AR stat equals the reduced-form Wald (H58-H63 demo)", {

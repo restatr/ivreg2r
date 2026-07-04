@@ -258,8 +258,7 @@ save_ivreg2_results, prefix(hf_gril) suffix(H13) outdir(`outdir')
 //     Base GMM2S fit with only iq endogenous (med kww age excluded);
 //     S0 = e(S); refit three times with the SAME instrument set but
 //     different included/excluded partitions, reusing smatrix(S0). ---
-quietly use "../validation/data/griliches76.dta", clear
-capture confirm file "../validation/data/griliches76.dta"
+capture use "../validation/data/griliches76.dta", clear
 if _rc {
     use http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta, clear
 }
@@ -288,14 +287,18 @@ save_ivreg2_results, prefix(hf_gril) suffix(H20) outdir(`outdir')
 //     and STATUS.md. Stata's answer is recorded here DELIBERATELY so the
 //     R test can assert the divergence explicitly (a staleness tripwire),
 //     not because we expect R to reproduce it. ---
-quietly use "../validation/data/griliches76.dta", clear
-capture confirm file "../validation/data/griliches76.dta"
+capture use "../validation/data/griliches76.dta", clear
 if _rc {
     use http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta, clear
 }
 quietly xi i.year
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), cue robust
 save_ivreg2_results, prefix(hf_gril) suffix(H22) outdir(`outdir')
+// H22 is a divergence tripwire: the R test compares COEFFICIENTS only
+// (asserting they do NOT match). Erase the vcov/diagnostics files the
+// shared saver wrote so no orphaned fixtures ship (planning/18 rule).
+erase "`outdir'/hf_gril_vcov_H22.csv"
+erase "`outdir'/hf_gril_diagnostics_H22.csv"
 
 // --- H25 (help.txt:1235): GMM2S, orthog on an included regressor (s) ---
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s orthog(s)
@@ -322,8 +325,9 @@ save_ivreg2_results, prefix(hf_gril) suffix(H28) outdir(`outdir')
 //     unique"). Encoded as an assert, not a fixture. ---
 capture noisily ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age), ///
     cluster(year) partial(_I*) gmm2s
-assert _rc != 0
-display "H29 (help.txt:1261): confirmed Stata rejects this command, rc=" _rc
+local rc29 = _rc
+assert `rc29' == 506
+display "H29 (help.txt:1261): confirmed Stata rejects this command, rc=`rc29'"
 
 
 /*===========================================================================
@@ -430,8 +434,9 @@ save_ivreg2_results, prefix(hf_ab) suffix(H89) outdir(`outdir')
 //     kiefer internally uses bw = T_span. bw(8) is numerically identical
 //     (truncated kernel gives weight 1 to every available lag). ---
 capture noisily ivreg2 n w k, bw(9) kernel(tru)
-assert _rc != 0
-display "H90 (help.txt:1551): confirmed Stata rejects bw(9), rc=" _rc
+local rc90 = _rc
+assert `rc90' == 198
+display "H90 (help.txt:1551): confirmed Stata rejects bw(9), rc=`rc90'"
 ivreg2 n w k, bw(8) kernel(tru)
 save_ivreg2_results, prefix(hf_ab) suffix(H90) outdir(`outdir')
 
@@ -442,8 +447,9 @@ save_ivreg2_results, prefix(hf_ab) suffix(H91) outdir(`outdir')
 // --- H92 (help.txt:1561): SAME help-file bug as H90 (bw(9) -> bw(8)),
 //     HAC variant (+ robust) ---
 capture noisily ivreg2 n w k, bw(9) kernel(tru) robust
-assert _rc != 0
-display "H92 (help.txt:1561): confirmed Stata rejects bw(9), rc=" _rc
+local rc92 = _rc
+assert `rc92' == 198
+display "H92 (help.txt:1561): confirmed Stata rejects bw(9), rc=`rc92'"
 ivreg2 n w k, bw(8) kernel(tru) robust
 save_ivreg2_results, prefix(hf_ab) suffix(H92) outdir(`outdir')
 
