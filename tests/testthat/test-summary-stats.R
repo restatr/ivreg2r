@@ -279,14 +279,7 @@ for (vce_combo in list(
 # card_wt from helper-fixtures.R)
 # ============================================================================
 
-for (vce_combo in list(
-  list(vcov = "iid",    small = FALSE, clusters = NULL,      suffix = "iid"),
-  list(vcov = "iid",    small = TRUE,  clusters = NULL,      suffix = "iid_small"),
-  list(vcov = "robust", small = FALSE, clusters = NULL,      suffix = "hc1"),
-  list(vcov = "robust", small = TRUE,  clusters = NULL,      suffix = "hc1_small"),
-  list(vcov = "iid",    small = FALSE, clusters = ~ region,  suffix = "cl"),
-  list(vcov = "iid",    small = TRUE,  clusters = ~ region,  suffix = "cl_small")
-)) {
+for (vce_combo in card_fw_vce_cells) {
   fixture_file <- fixture_path(paste0("card_fw_diagnostics_", vce_combo$suffix, ".csv"))
   label <- paste("card_fw", vce_combo$suffix)
 

@@ -249,14 +249,7 @@ for (vce_combo in list(
 # card_wt from helper-fixtures.R)
 # ============================================================================
 
-for (vce_combo in list(
-  list(vcov = "iid",    small = FALSE, clusters = NULL,      suffix = "iid"),
-  list(vcov = "iid",    small = TRUE,  clusters = NULL,      suffix = "iid_small"),
-  list(vcov = "robust", small = FALSE, clusters = NULL,      suffix = "hc1"),
-  list(vcov = "robust", small = TRUE,  clusters = NULL,      suffix = "hc1_small"),
-  list(vcov = "iid",    small = FALSE, clusters = ~ region,  suffix = "cl"),
-  list(vcov = "iid",    small = TRUE,  clusters = ~ region,  suffix = "cl_small")
-)) {
+for (vce_combo in card_fw_vce_cells) {
   fixture_file <- fixture_path(paste0("card_fw_diagnostics_", vce_combo$suffix, ".csv"))
   label <- paste("card_fw", vce_combo$suffix)
 
@@ -343,12 +336,16 @@ test_that(".syminv_sweep chi2 matches Stata for M=2 cluster case", {
   # Stata's `test` drops 4 of 5 constraints and reports chi2 = 1.546.
   # The surviving constraint is "black" (largest diagonal in VCV submatrix).
   # M=2 clusters → expected rank-deficient diagnostics (deliberate edge case
-  # that motivated the sweep inverse; the warning is asserted, not muffled).
+  # that motivated the sweep inverse). The fit emits exactly one warning
+  # (verified 2026-07-05): "Stock-Wright: Omega is rank-deficient; S
+  # statistic not computed." This comes from the Stock-Wright diagnostic,
+  # NOT from the model-F sweep path — the sweep computes model F silently
+  # by design and is pinned by the assertions below the fit.
   expect_warning(
     fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                   data = card_wt, weights = weight,
                   clusters = ~ smsa66, small = TRUE),
-    "rank-deficient|singular|not computed"
+    "Stock-Wright.*not computed"
   )
 
   # Verify the model F was computed (not NA) despite rank-deficient VCV

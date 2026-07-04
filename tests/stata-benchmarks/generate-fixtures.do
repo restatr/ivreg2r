@@ -482,6 +482,10 @@ run_all_vce_combos, ///
     endogopt(endo1)
 
 
+// FIXTURE 6 (card_just_id_weighted) retired 2026-07-05 by the M-11 re-base;
+// weighted cells now live in generate-weight-type-fixtures.do.
+
+
 /*===========================================================================
   FIXTURE 7: card_just_id_dofminus
   Dataset: Card (1995) — returns to education

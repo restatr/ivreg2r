@@ -3,14 +3,10 @@
 # Ticket K2
 # ============================================================================
 
-# read_coef_fixture comes from helper-fixtures.R
+# read_coef_fixture and read_diagnostics come from helper-fixtures.R
 # card_wt (card data + deterministic region/fwt columns) comes from
 # helper-fixtures.R; card-based tests use it directly (bundled data, full
 # precision — see the M-11 re-base note in helper-fixtures.R).
-
-read_diagnostics_fixture <- function(path) {
-  read.csv(path)
-}
 
 
 # ============================================================================
@@ -301,7 +297,7 @@ test_fweight_config <- function(suffix, vcov_arg, small_arg, cluster_arg) {
 
   stata_coef <- read_coef_fixture(coef_path)
   stata_vcov <- read_vcov_fixture(vcov_path)
-  stata_diag <- read_diagnostics_fixture(diag_path)
+  stata_diag <- read_diagnostics(diag_path)
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
                 data = card_wt, weights = fwt, weight_type = "fweight",
@@ -310,26 +306,10 @@ test_fweight_config <- function(suffix, vcov_arg, small_arg, cluster_arg) {
   # N (fweight uses expanded N = sum(fwt))
   expect_equal(nobs(fit), as.integer(stata_diag$N))
 
-  # Coefficients
-  r_coef <- coef(fit)[names(stata_coef$estimate)]
-  expect_equal(r_coef, stata_coef$estimate, tolerance = stata_tol$coef)
-
-  # Standard errors
-  r_se <- sqrt(diag(vcov(fit)))[names(stata_coef$std_error)]
-  expect_equal(r_se, stata_coef$std_error, tolerance = stata_tol$se)
-
-  # VCV
-  r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
-  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
-
-  # Sigma
-  expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
+  expect_stata_parity_core(fit, stata_coef, stata_vcov, stata_diag)
 
   # R-squared
   expect_equal(fit$r.squared, stata_diag$r2, tolerance = stata_tol$coef)
-
-  # Model F
-  expect_equal(fit$model_f, stata_diag$F_stat, tolerance = stata_tol$stat)
 
   # Underidentification / weak-identification
   expect_equal(fit$diagnostics$underid$stat, stata_diag$idstat,
@@ -384,6 +364,16 @@ test_that("fweight identity: weights = fwt equals unweighted fit on duplicated r
   expect_equal(coef(fit_fw), coef(fit_expanded))
   expect_equal(vcov(fit_fw), vcov(fit_expanded))
   expect_equal(nobs(fit_fw), nobs(fit_expanded))
+
+  # This restores fweight first-stage coverage via the equivalence chain
+  # (unweighted first stage is pinned against Stata by the M-10/M-25
+  # fixtures). Compare all first-stage statistic components except the
+  # per-observation residuals/fitted.values, which differ in length (3010
+  # rows for fit_fw vs 9510 for fit_expanded).
+  fs_fw <- fit_fw$first_stage$educ
+  fs_expanded <- fit_expanded$first_stage$educ
+  fs_scalar_names <- setdiff(names(fs_fw), c("residuals", "fitted.values"))
+  expect_equal(fs_fw[fs_scalar_names], fs_expanded[fs_scalar_names])
 })
 
 
@@ -393,6 +383,10 @@ test_that("fweight identity: weights = fwt equals unweighted fit on duplicated r
 # card_pw: lwage ~ exper+expersq+black+south | educ | nearc4+nearc2,
 # pweight = genuine NLS sampling weight (pweight forces robust; no iid
 # cells), cluster(region) M=9 (family M-11, re-based).
+# The cl cells below pass vcov = "robust" together with clusters: pweight +
+# vcov = "iid" emits the override message, and the CL dispatch is selected
+# by the clusters argument regardless of vcov (this differs cosmetically
+# from card_fw's cl cells, which use vcov = "iid" per the older convention).
 
 test_pw_style_config <- function(suffix, weight_type_arg, vcov_arg, small_arg,
                                  cluster_arg) {
@@ -404,7 +398,7 @@ test_pw_style_config <- function(suffix, weight_type_arg, vcov_arg, small_arg,
 
   stata_coef <- read_coef_fixture(coef_path)
   stata_vcov <- read_vcov_fixture(vcov_path)
-  stata_diag <- read_diagnostics_fixture(diag_path)
+  stata_diag <- read_diagnostics(diag_path)
 
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
                 data = card_wt, weights = weight, weight_type = weight_type_arg,
@@ -413,20 +407,7 @@ test_pw_style_config <- function(suffix, weight_type_arg, vcov_arg, small_arg,
   # N (pweight/aweight use physical N)
   expect_equal(nobs(fit), as.integer(stata_diag$N))
 
-  # Coefficients
-  r_coef <- coef(fit)[names(stata_coef$estimate)]
-  expect_equal(r_coef, stata_coef$estimate, tolerance = stata_tol$coef)
-
-  # Standard errors
-  r_se <- sqrt(diag(vcov(fit)))[names(stata_coef$std_error)]
-  expect_equal(r_se, stata_coef$std_error, tolerance = stata_tol$se)
-
-  # VCV
-  r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
-  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
-
-  # Sigma
-  expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
+  expect_stata_parity_core(fit, stata_coef, stata_vcov, stata_diag)
 
   # Underidentification / weak-identification
   expect_equal(fit$diagnostics$underid$stat, stata_diag$idstat,
@@ -489,6 +470,13 @@ for (cell in list(
     expect_equal(coef(fit_aw), coef(fit_pw))
     expect_equal(vcov(fit_aw), vcov(fit_pw))
     expect_equal(fit_aw$sigma, fit_pw$sigma)
+
+    # The retired Stata fixtures' first-stage CSVs were byte-identical
+    # between [aw=w] robust and [pw=w] (verified 2026-07-05), so this pins
+    # pweight first-stage behavior through the aweight coverage that M-25
+    # owns. Both fits see identical 3010-row data, so whole-object equality
+    # holds.
+    expect_equal(fit_aw$first_stage, fit_pw$first_stage)
   })
 }
 

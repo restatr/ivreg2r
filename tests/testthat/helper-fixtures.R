@@ -148,6 +148,29 @@ card_wt <- transform(
   fwt = age %% 5 + 1
 )
 
+# Shared card_fw VCE cell table (M-11): the six diagnostics cells consumed by the cross-family weighted loops in test-model-f.R, test-summary-stats.R, test-stock-wright.R, test-diagnostics-endogeneity.R, and test-diagnostics-anderson-rubin.R; fit card_wt with weights = fwt, weight_type = "fweight".
+card_fw_vce_cells <- list(
+  list(vcov = "iid",    small = FALSE, clusters = NULL,     suffix = "iid"),
+  list(vcov = "iid",    small = TRUE,  clusters = NULL,     suffix = "iid_small"),
+  list(vcov = "robust", small = FALSE, clusters = NULL,     suffix = "hc1"),
+  list(vcov = "robust", small = TRUE,  clusters = NULL,     suffix = "hc1_small"),
+  list(vcov = "iid",    small = FALSE, clusters = ~ region, suffix = "cl"),
+  list(vcov = "iid",    small = TRUE,  clusters = ~ region, suffix = "cl_small")
+)
+
+# Shared core Stata-parity assertion block (M-11 review): coefficients, SEs, VCV, sigma, RSS, and model F, promoted from its three per-file copies at the M-11 review (test_fweight_config and test_pw_style_config in test-weight-types.R, test_aw_cells_config in test-weights.R).
+expect_stata_parity_core <- function(fit, stata_coef, stata_vcov, stata_diag) {
+  r_coef <- coef(fit)[names(stata_coef$estimate)]
+  expect_equal(r_coef, stata_coef$estimate, tolerance = stata_tol$coef)
+  r_se <- sqrt(diag(vcov(fit)))[names(stata_coef$std_error)]
+  expect_equal(r_se, stata_coef$std_error, tolerance = stata_tol$se)
+  r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
+  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
+  expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
+  expect_equal(fit$rss, stata_diag$rss, tolerance = stata_tol$stat)
+  expect_equal(fit$model_f, stata_diag$F_stat, tolerance = stata_tol$stat)
+}
+
 # Run a table of Stata fixture cells through the shared small-invariance harness used by the re-based diagnostic families (M-22 orthog, M-23 redundancy, ...). Each cell is a list(name, fixture, fit_args); the harness makes one test_that per cell that skips if the fixture CSV is missing, reads it once, fits the model with small = FALSE and small = TRUE via do.call, runs `compare(fit, fixture)` on both fits, and then asserts the two fits' diagnostics[[slot]] stat/p/df are directly equal at testthat's default ~1.5e-8 tolerance — the Stata statistics behind these families are small-invariant (verified byte-identical in each family's retired fixtures), so the fixtures do not vary `small` and the direct equality keeps the invariant pinned tightly rather than only transitively through the looser Stata tolerances.
 test_stata_fixture_cells <- function(cells, compare, slot, label_prefix) {
   for (cell in cells) {

@@ -81,10 +81,9 @@ test_that("weighted OLS robust+small VCV matches sandwich::vcovHC(type='HC1')", 
 # must recover the unweighted micro-data fit (see the identity test below);
 # V differs by construction and is only compared against the Stata fixture.
 
-card_cells <- aggregate(lwage ~ educ + exper + expersq + black + south + nearc4 + nearc2,
-                        data = card_wt, FUN = mean)
-card_cells$n <- aggregate(lwage ~ educ + exper + expersq + black + south + nearc4 + nearc2,
-                          data = card_wt, FUN = length)$lwage
+aw_cells_by <- lwage ~ educ + exper + expersq + black + south + nearc4 + nearc2
+card_cells <- aggregate(aw_cells_by, data = card_wt, FUN = mean)
+card_cells$n <- aggregate(aw_cells_by, data = card_wt, FUN = length)$lwage
 
 test_aw_cells_config <- function(suffix, vcov_arg, small_arg) {
   coef_path <- fixture_path(paste0("card_aw_cells_coef_", suffix, ".csv"))
@@ -101,20 +100,7 @@ test_aw_cells_config <- function(suffix, vcov_arg, small_arg) {
                 data = card_cells, weights = n,
                 vcov = vcov_arg, small = small_arg)
 
-  # Coefficients
-  r_coef <- coef(fit)[names(stata_coef$estimate)]
-  expect_equal(r_coef, stata_coef$estimate, tolerance = stata_tol$coef)
-
-  # Standard errors
-  r_se <- sqrt(diag(vcov(fit)))[names(stata_coef$std_error)]
-  expect_equal(r_se, stata_coef$std_error, tolerance = stata_tol$se)
-
-  # VCV
-  r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
-  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
-
-  # Sigma
-  expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
+  expect_stata_parity_core(fit, stata_coef, stata_vcov, stata_diag)
 
   # R-squared
   expect_equal(fit$r.squared, stata_diag$r2, tolerance = stata_tol$coef)

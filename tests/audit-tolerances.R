@@ -188,8 +188,16 @@ results <- data.frame(
 # =====================================================================
 data(card)
 
-f_justid <- log(wage) ~ exper + expersq + black + south | educ | nearc4
-f_overid <- log(wage) ~ exper + expersq + black + south | educ | nearc4 + nearc2
+# Fit the stored lwage, not log(wage): card.dta stores lwage as float32, and
+# every Stata fixture was generated from that stored variable. Recomputing
+# log(wage) in double precision perturbs the depvar at ~1e-8 relative per
+# observation, which this audit then reports as spurious parity gaps of up to
+# ~5e-6 relative on near-zero coefficients (measured 2026-07-05: the black
+# coef gap is 5.5e-6 with log(wage) vs 1.6e-11 with lwage on the identical
+# fit). The audit must measure implementation parity on the same data both
+# sides saw, exactly as the test files do.
+f_justid <- lwage ~ exper + expersq + black + south | educ | nearc4
+f_overid <- lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2
 
 cat("Running model configurations...\n\n")
 
@@ -232,6 +240,9 @@ cat("Running model configurations...\n\n")
   "card_fuller1_overid")
 
 # --- Weighted (M-11 re-based cells: fweight fwt = mod(age,5)+1; pweight = genuine NLS sampling weight) ---
+# This standalone script cannot source the testthat helpers, so the fwt
+# formula is re-derived here; helper-fixtures.R's `card_wt` is the source of
+# truth — keep the two in sync.
 card_fwt <- transform(card, fwt = age %% 5 + 1)
 .audit_model("2sls_overid_fw_iid",
   ivreg2(f_overid, data = card_fwt, weights = fwt, weight_type = "fweight"),
