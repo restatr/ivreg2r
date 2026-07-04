@@ -483,42 +483,6 @@ run_all_vce_combos, ///
 
 
 /*===========================================================================
-  FIXTURE 6: card_just_id_weighted
-  Dataset: Card (1995) — returns to education
-  Model: lwage ~ exper expersq black south | educ | nearc4 [aw=weight]
-  Purpose: Weighted 2SLS with analytic weights; just-identified
-===========================================================================*/
-display _newline(2) "=== FIXTURE 6: card_just_id_weighted ==="
-
-// Reload Card data
-use "`outdir'/_card_temp.dta", clear
-
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc4) [aw=weight], first endog(educ)
-save_ivreg2_results, prefix(card_just_id_weighted) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc4) [aw=weight], first small endog(educ)
-save_ivreg2_results, prefix(card_just_id_weighted) suffix(iid_small) outdir(`outdir')
-
-// --- HC1, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc4) [aw=weight], first robust endog(educ)
-save_ivreg2_results, prefix(card_just_id_weighted) suffix(hc1) outdir(`outdir')
-
-// --- HC1, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc4) [aw=weight], first robust small endog(educ)
-save_ivreg2_results, prefix(card_just_id_weighted) suffix(hc1_small) outdir(`outdir')
-
-// --- Cluster on smsa66, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc4) [aw=weight], first cluster(smsa66) endog(educ)
-save_ivreg2_results, prefix(card_just_id_weighted) suffix(cl) outdir(`outdir')
-
-// --- Cluster on smsa66, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc4) [aw=weight], first cluster(smsa66) small endog(educ)
-save_ivreg2_results, prefix(card_just_id_weighted) suffix(cl_small) outdir(`outdir')
-
-
-/*===========================================================================
   FIXTURE 7: card_just_id_dofminus
   Dataset: Card (1995) — returns to education
   Model: lwage ~ exper expersq black south | educ | nearc4

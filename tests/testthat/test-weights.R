@@ -2,11 +2,8 @@
 # Tests: Analytic Weights (Ticket C3)
 # ============================================================================
 
-# --- Load Card data ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+# card_wt (card data + deterministic region/fwt columns) comes from
+# helper-fixtures.R; card-based tests use it directly (bundled data).
 
 
 # ============================================================================
@@ -76,216 +73,83 @@ test_that("weighted OLS robust+small VCV matches sandwich::vcovHC(type='HC1')", 
 
 
 # ============================================================================
-# Weighted 2SLS vs Stata: coefficients (iid, small=FALSE and TRUE)
+# Weighted 2SLS vs Stata: aweight cell-means parity (card_aw_cells_*)
 # ============================================================================
+# Collapsed data: collapse (mean) lwage (count) n=lwage, by(educ exper
+# expersq black south nearc4 nearc2) on the micro card data (1030 cells;
+# family M-11, re-based). Fit [aw=n] on the collapsed data — coefficients
+# must recover the unweighted micro-data fit (see the identity test below);
+# V differs by construction and is only compared against the Stata fixture.
 
-test_that("weighted 2SLS coefficients match Stata fixture (iid)", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- fixture_path("card_just_id_weighted_coef_iid.csv")
-  skip_if(!file.exists(coef_path), "Fixture not found")
+card_cells <- aggregate(lwage ~ educ + exper + expersq + black + south + nearc4 + nearc2,
+                        data = card_wt, FUN = mean)
+card_cells$n <- aggregate(lwage ~ educ + exper + expersq + black + south + nearc4 + nearc2,
+                          data = card_wt, FUN = length)$lwage
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight)
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
+test_aw_cells_config <- function(suffix, vcov_arg, small_arg) {
+  coef_path <- fixture_path(paste0("card_aw_cells_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0("card_aw_cells_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0("card_aw_cells_diagnostics_", suffix, ".csv"))
 
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      unname(coef(fit)[nm]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", nm)
-    )
+  skip_if(!file.exists(coef_path))
+
+  stata_coef <- read_coef_fixture(coef_path)
+  stata_vcov <- read_vcov_fixture(vcov_path)
+  stata_diag <- read_diagnostics(diag_path)
+
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+                data = card_cells, weights = n,
+                vcov = vcov_arg, small = small_arg)
+
+  # Coefficients
+  r_coef <- coef(fit)[names(stata_coef$estimate)]
+  expect_equal(r_coef, stata_coef$estimate, tolerance = stata_tol$coef)
+
+  # Standard errors
+  r_se <- sqrt(diag(vcov(fit)))[names(stata_coef$std_error)]
+  expect_equal(r_se, stata_coef$std_error, tolerance = stata_tol$se)
+
+  # VCV
+  r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
+  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
+
+  # Sigma
+  expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
+
+  # R-squared
+  expect_equal(fit$r.squared, stata_diag$r2, tolerance = stata_tol$coef)
+
+  # Overidentification: Sargan under iid, Hansen J under robust
+  if (!is.na(stata_diag$sargan)) {
+    expect_equal(fit$diagnostics$overid$stat, stata_diag$sargan,
+                 tolerance = stata_tol$stat)
   }
-})
-
-test_that("weighted 2SLS SEs match Stata fixture (iid, small=FALSE)", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- fixture_path("card_just_id_weighted_coef_iid.csv")
-  skip_if(!file.exists(coef_path), "Fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight)
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
-
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      sqrt(fit$vcov[nm, nm]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", nm)
-    )
+  if (!is.na(stata_diag$j)) {
+    expect_equal(fit$diagnostics$overid$stat, stata_diag$j,
+                 tolerance = stata_tol$stat)
   }
-})
+}
 
-test_that("weighted 2SLS SEs match Stata fixture (iid, small=TRUE)", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- fixture_path("card_just_id_weighted_coef_iid_small.csv")
-  skip_if(!file.exists(coef_path), "Fixture not found")
+for (cell in list(
+  list(suffix = "iid",       vcov_arg = "iid",    small_arg = FALSE),
+  list(suffix = "iid_small", vcov_arg = "iid",    small_arg = TRUE),
+  list(suffix = "hc1",       vcov_arg = "robust", small_arg = FALSE),
+  list(suffix = "hc1_small", vcov_arg = "robust", small_arg = TRUE)
+)) {
+  test_that(paste("aweight cell-means overid matches Stata:", cell$suffix), {
+    test_aw_cells_config(cell$suffix, cell$vcov_arg, cell$small_arg)
+  })
+}
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, small = TRUE)
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
-
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      sqrt(fit$vcov[nm, nm]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", nm)
-    )
-  }
-})
-
-
-# ============================================================================
-# Weighted 2SLS vs Stata: robust VCV
-# ============================================================================
-
-test_that("weighted 2SLS SEs match Stata fixture (robust/HC0, small=FALSE)", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- fixture_path("card_just_id_weighted_coef_hc1.csv")
-  skip_if(!file.exists(coef_path), "Fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, vcov = "robust")
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
-
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      sqrt(fit$vcov[nm, nm]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", nm)
-    )
-  }
-})
-
-test_that("weighted 2SLS SEs match Stata fixture (robust/HC1, small=TRUE)", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- fixture_path("card_just_id_weighted_coef_hc1_small.csv")
-  skip_if(!file.exists(coef_path), "Fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, vcov = "robust", small = TRUE)
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
-
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      sqrt(fit$vcov[nm, nm]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", nm)
-    )
-  }
-})
-
-
-# ============================================================================
-# Weighted 2SLS vs Stata: Cluster VCV
-# ============================================================================
-
-test_that("weighted 2SLS SEs match Stata fixture (cluster, small=FALSE)", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- fixture_path("card_just_id_weighted_coef_cl.csv")
-  skip_if(!file.exists(coef_path), "Fixture not found")
-
-  # M=2 clusters → expected rank-deficient diagnostics
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, weights = weight, clusters = ~smsa66)
-  )
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
-
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      sqrt(fit$vcov[nm, nm]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", nm)
-    )
-  }
-})
-
-test_that("weighted 2SLS SEs match Stata fixture (cluster, small=TRUE)", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  coef_path <- fixture_path("card_just_id_weighted_coef_cl_small.csv")
-  skip_if(!file.exists(coef_path), "Fixture not found")
-
-  # M=2 clusters → expected rank-deficient diagnostics
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, weights = weight, clusters = ~smsa66,
-           small = TRUE)
-  )
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
-
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      sqrt(fit$vcov[nm, nm]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", nm)
-    )
-  }
-})
-
-
-# ============================================================================
-# Weighted 2SLS vs Stata: full VCV matrix
-# ============================================================================
-
-test_that("weighted 2SLS VCV matches Stata fixture (iid)", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  vcov_path <- fixture_path("card_just_id_weighted_vcov_iid.csv")
-  skip_if(!file.exists(vcov_path), "VCV fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight)
-  V_stata <- read_vcov_fixture(vcov_path)
-  shared <- intersect(rownames(fit$vcov), rownames(V_stata))
-  for (rn in shared) {
-    for (cn in shared) {
-      expect_equal(
-        fit$vcov[rn, cn], V_stata[rn, cn],
-        tolerance = stata_tol$vcov,
-        info = paste("VCV mismatch:", rn, cn)
-      )
-    }
-  }
-})
-
-
-# ============================================================================
-# Weighted 2SLS vs Stata: sigma (RMSE) and RSS
-# ============================================================================
-
-test_that("weighted 2SLS sigma matches Stata RMSE fixture", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  diag_path <- fixture_path("card_just_id_weighted_diagnostics_iid.csv")
-  skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight)
-  fixture <- read.csv(diag_path)
-  expect_equal(fit$sigma, fixture$rmse, tolerance = stata_tol$se)
-})
-
-test_that("weighted 2SLS RSS matches Stata RSS fixture", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  diag_path <- fixture_path("card_just_id_weighted_diagnostics_iid.csv")
-  skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight)
-  fixture <- read.csv(diag_path)
-  expect_equal(fit$rss, fixture$rss, tolerance = stata_tol$stat)
+test_that("aweight cell-means recover the micro-data fit", {
+  # Mirrors the .do generator's self-check: coefficients from the collapsed
+  # [aw=n] iid fit equal the unweighted micro-data fit (V intentionally
+  # differs by construction, so only coefficients are compared here).
+  fit_cells <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+                      data = card_cells, weights = n)
+  fit_micro <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+                      data = card_wt)
+  expect_equal(coef(fit_cells), coef(fit_micro))
 })
 
 
@@ -364,12 +228,8 @@ test_that("weighted OLS 1-part formula works", {
 })
 
 test_that("weighted IV with clustering works", {
-  skip_if(!file.exists(card_path), "Card data not found")
-  # M=2 clusters → expected rank-deficient diagnostics
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, weights = weight, clusters = ~smsa66)
-  )
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
+                data = card_wt, weights = weight, clusters = ~ region)
   expect_s3_class(fit, "ivreg2")
   expect_identical(fit$vcov_type, "CL")
   expect_false(is.null(fit$weights))

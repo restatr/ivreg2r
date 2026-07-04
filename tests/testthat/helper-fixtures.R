@@ -140,6 +140,14 @@ griliches_awt <- transform(ivreg2r::griliches, awt = age %% 5 + 1)
 # Deterministic synthetic analytic weight (M-12/M-23 precedent): mod(year,3)+1 matches the .do file's `gen abwt = mod(year,3)+1`; shared data object so the formula has one source of truth across the first-stage and diagnostics test files.
 abdata_awt <- transform(ivreg2r::abdata, abwt = year %% 3 + 1)
 
+# Deterministic card derivations (M-11): region = sum of k*reg66k (the 9 Census-region dummies form a partition; M=9 cluster replacing the retired binary smsa/smsa66 M=2 anti-pattern) and fwt = mod(age,5)+1 (M-12/M-23 precedent); matches the .do file's gen lines.
+card_wt <- transform(
+  ivreg2r::card,
+  region = reg661 * 1 + reg662 * 2 + reg663 * 3 + reg664 * 4 + reg665 * 5 +
+    reg666 * 6 + reg667 * 7 + reg668 * 8 + reg669 * 9,
+  fwt = age %% 5 + 1
+)
+
 # Run a table of Stata fixture cells through the shared small-invariance harness used by the re-based diagnostic families (M-22 orthog, M-23 redundancy, ...). Each cell is a list(name, fixture, fit_args); the harness makes one test_that per cell that skips if the fixture CSV is missing, reads it once, fits the model with small = FALSE and small = TRUE via do.call, runs `compare(fit, fixture)` on both fits, and then asserts the two fits' diagnostics[[slot]] stat/p/df are directly equal at testthat's default ~1.5e-8 tolerance — the Stata statistics behind these families are small-invariant (verified byte-identical in each family's retired fixtures), so the fixtures do not vary `small` and the direct equality keeps the invariant pinned tightly rather than only transitively through the looser Stata tolerances.
 test_stata_fixture_cells <- function(cells, compare, slot, label_prefix) {
   for (cell in cells) {

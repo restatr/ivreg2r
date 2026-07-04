@@ -248,31 +248,27 @@ for (vce_combo in list(
 
 
 # ============================================================================
-# card_just_id_weighted: lwage ~ exper+expersq+black+south | educ | nearc4
-# with weights=weight; cluster on smsa66 (M=2)
+# card_fw: lwage ~ exper+expersq+black+south | educ | nearc4+nearc2,
+# fweight fwt = mod(age,5)+1, cluster(region) M=9 (family M-11, re-based;
+# card_wt from helper-fixtures.R)
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, clusters = NULL,       suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  clusters = NULL,       suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, clusters = NULL,       suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  clusters = NULL,       suffix = "hc1_small"),
-  list(vcov = "iid",  small = FALSE, clusters = ~smsa66,    suffix = "cl"),
-  list(vcov = "iid",  small = TRUE,  clusters = ~smsa66,    suffix = "cl_small")
+  list(vcov = "iid",    small = FALSE, clusters = NULL,      suffix = "iid"),
+  list(vcov = "iid",    small = TRUE,  clusters = NULL,      suffix = "iid_small"),
+  list(vcov = "robust", small = FALSE, clusters = NULL,      suffix = "hc1"),
+  list(vcov = "robust", small = TRUE,  clusters = NULL,      suffix = "hc1_small"),
+  list(vcov = "iid",    small = FALSE, clusters = ~ region,  suffix = "cl"),
+  list(vcov = "iid",    small = TRUE,  clusters = ~ region,  suffix = "cl_small")
 )) {
-  fixture_file <- fixture_path(
-    paste0("card_just_id_weighted_diagnostics_", vce_combo$suffix, ".csv")
-  )
-  label <- paste("card_just_id_weighted", vce_combo$suffix)
+  fixture_file <- fixture_path(paste0("card_fw_diagnostics_", vce_combo$suffix, ".csv"))
+  label <- paste("card_fw", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    # M=2 clusters → expected rank-deficient diagnostics
-    fit <- muffle_rank_warnings(
-      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-             data = card, weights = weight,
-             vcov = vce_combo$vcov, small = vce_combo$small,
-             clusters = vce_combo$clusters)
-    )
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+                  data = card_wt, weights = fwt, weight_type = "fweight",
+                  vcov = vce_combo$vcov, small = vce_combo$small,
+                  clusters = vce_combo$clusters)
     check_stock_wright(fit, fixture_file, label)
   }
 }

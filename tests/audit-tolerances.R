@@ -231,13 +231,19 @@ cat("Running model configurations...\n\n")
   ivreg2(f_overid, data = card, method = "liml", fuller = 1),
   "card_fuller1_overid")
 
-# --- Weighted ---
-.audit_model("2sls_justid_weighted_iid",
-  ivreg2(f_justid, data = card, weights = weight),
-  "card_just_id_weighted")
-.audit_model("2sls_justid_weighted_hc1",
-  ivreg2(f_justid, data = card, weights = weight, vcov = "robust"),
-  "card_just_id_weighted", "hc1")
+# --- Weighted (M-11 re-based cells: fweight fwt = mod(age,5)+1; pweight = genuine NLS sampling weight) ---
+card_fwt <- transform(card, fwt = age %% 5 + 1)
+.audit_model("2sls_overid_fw_iid",
+  ivreg2(f_overid, data = card_fwt, weights = fwt, weight_type = "fweight"),
+  "card_fw")
+.audit_model("2sls_overid_fw_hc1",
+  ivreg2(f_overid, data = card_fwt, weights = fwt, weight_type = "fweight",
+         vcov = "robust"),
+  "card_fw", "hc1")
+.audit_model("2sls_overid_pw_hc0",
+  ivreg2(f_overid, data = card, weights = weight, weight_type = "pweight",
+         vcov = "robust"),
+  "card_pw", "hc0")
 
 # --- CUE ---
 .audit_model("cue_overid_iid",

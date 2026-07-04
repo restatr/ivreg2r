@@ -4,19 +4,12 @@
 # ============================================================================
 
 # read_coef_fixture comes from helper-fixtures.R
+# card_wt (card data + deterministic region/fwt columns) comes from
+# helper-fixtures.R; card-based tests use it directly (bundled data, full
+# precision — see the M-11 re-base note in helper-fixtures.R).
 
 read_diagnostics_fixture <- function(path) {
   read.csv(path)
-}
-
-read_firststage_fixture <- function(path) {
-  read.csv(path)
-}
-
-# --- Load Card data ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
 }
 
 
@@ -127,7 +120,7 @@ test_that("pweight + kiefer IV fit uses robust (KP) identification tests", {
   # path. Both branches verified against Stata e(idstat)/e(widstat) to all
   # printed digits, 2026-06-10 session. The synthetic panel index mirrors
   # the Stata cross-check exactly; only the dispatch is asserted here.
-  d <- card
+  d <- card_wt
   d$id2 <- ceiling(seq_len(nrow(d)) / 10)
   d$tt <- (seq_len(nrow(d)) - 1) %% 10 + 1
 
@@ -281,11 +274,10 @@ test_that("weight_type='aweight' is identical to omitting it", {
 })
 
 test_that("weight_type='aweight' IV is identical to omitting it", {
-  skip_if(!file.exists(card_path))
   fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, weights = weight, vcov = "robust")
+                 data = card_wt, weights = weight, vcov = "robust")
   fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, weights = weight, weight_type = "aweight",
+                 data = card_wt, weights = weight, weight_type = "aweight",
                  vcov = "robust")
   expect_equal(coef(fit1), coef(fit2))
   expect_equal(vcov(fit1), vcov(fit2))
@@ -294,39 +286,28 @@ test_that("weight_type='aweight' IV is identical to omitting it", {
 
 
 # ============================================================================
-# Section 4: Frequency weight (fweight) parity vs Stata fixtures
+# Section 4: Frequency weight (fweight) parity vs Stata fixtures (card_fw_*)
 # ============================================================================
+# card_fw: lwage ~ exper+expersq+black+south | educ | nearc4+nearc2,
+# fweight fwt = mod(age,5)+1, cluster(region) M=9 (family M-11, re-based).
+# `first endog(educ)` populates estat/arf/sstat on every cell.
 
-# Helper function for testing one fixture configuration
-test_fweight_config <- function(fixture_prefix, suffix, card_data,
-                                vcov_arg, small_arg, cluster_arg,
-                                overid = FALSE) {
-  coef_path <- fixture_path(paste0(fixture_prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- fixture_path(paste0(fixture_prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- fixture_path(paste0(fixture_prefix, "_diagnostics_", suffix, ".csv"))
-  fs_path   <- fixture_path(paste0(fixture_prefix, "_firststage_", suffix, ".csv"))
+test_fweight_config <- function(suffix, vcov_arg, small_arg, cluster_arg) {
+  coef_path <- fixture_path(paste0("card_fw_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0("card_fw_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0("card_fw_diagnostics_", suffix, ".csv"))
 
   skip_if(!file.exists(coef_path))
 
   stata_coef <- read_coef_fixture(coef_path)
   stata_vcov <- read_vcov_fixture(vcov_path)
   stata_diag <- read_diagnostics_fixture(diag_path)
-  stata_fs   <- if (file.exists(fs_path)) read_firststage_fixture(fs_path) else NULL
 
-  iv_formula <- if (overid) {
-    lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2
-  } else {
-    lwage ~ exper + expersq + black + south | educ | nearc4
-  }
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+                data = card_wt, weights = fwt, weight_type = "fweight",
+                vcov = vcov_arg, small = small_arg, clusters = cluster_arg)
 
-  # M=2 clusters → expected rank-deficient diagnostics
-  fit <- muffle_rank_warnings(
-    ivreg2(iv_formula, data = card_data, weights = weight,
-           weight_type = "fweight", vcov = vcov_arg,
-           small = small_arg, clusters = cluster_arg)
-  )
-
-  # Test N
+  # N (fweight uses expanded N = sum(fwt))
   expect_equal(nobs(fit), as.integer(stata_diag$N))
 
   # Coefficients
@@ -348,179 +329,88 @@ test_fweight_config <- function(fixture_prefix, suffix, card_data,
   expect_equal(fit$r.squared, stata_diag$r2, tolerance = stata_tol$coef)
 
   # Model F
-  if (!is.na(stata_diag$F_stat)) {
-    expect_equal(fit$model_f, stata_diag$F_stat, tolerance = stata_tol$stat)
-  }
+  expect_equal(fit$model_f, stata_diag$F_stat, tolerance = stata_tol$stat)
 
-  # Diagnostics
-  if (!is.na(stata_diag$idstat)) {
-    expect_equal(fit$diagnostics$underid$stat, stata_diag$idstat,
-                 tolerance = stata_tol$stat)
-  }
-  if (!is.na(stata_diag$cdf)) {
-    expect_equal(fit$diagnostics$weak_id$stat, stata_diag$cdf,
-                 tolerance = stata_tol$stat)
-  }
-  # AR and Stock-Wright: skip when our code returns NA due to numerical
+  # Underidentification / weak-identification
+  expect_equal(fit$diagnostics$underid$stat, stata_diag$idstat,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$weak_id$stat, stata_diag$cdf,
+               tolerance = stata_tol$stat)
 
-  # singularity (happens with very few clusters, where the cluster meat is
-  # rank-deficient — a pre-existing limitation, not K2-specific).
-  if (!is.na(stata_diag$arf) &&
-      !is.na(fit$diagnostics$anderson_rubin$f_stat)) {
-    expect_equal(fit$diagnostics$anderson_rubin$f_stat, stata_diag$arf,
-                 tolerance = stata_tol$stat)
-  }
-  if (!is.na(stata_diag$sstat) &&
-      !is.null(fit$diagnostics$stock_wright) &&
-      !is.na(fit$diagnostics$stock_wright$stat)) {
-    expect_equal(fit$diagnostics$stock_wright$stat, stata_diag$sstat,
-                 tolerance = stata_tol$stat)
-  }
+  # Anderson-Rubin and Stock-Wright (weak-instrument-robust)
+  expect_equal(fit$diagnostics$anderson_rubin$f_stat, stata_diag$arf,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$stock_wright$stat, stata_diag$sstat,
+               tolerance = stata_tol$stat)
 
-  # First-stage: skip when our code returns NA (same rank-deficiency issue)
-  if (!is.null(stata_fs) && !is.null(fit$first_stage)) {
-    fs_f_row <- stata_fs[stata_fs$statistic == "F", ]
-    if (nrow(fs_f_row) > 0L) {
-      fs_f_stata <- fs_f_row$educ
-      if (!is.na(fs_f_stata) && !is.na(fit$first_stage$educ$f_stat)) {
-        expect_equal(fit$first_stage$educ$f_stat, fs_f_stata,
-                     tolerance = stata_tol$stat)
-      }
-    }
-  }
+  # Endogeneity (C-statistic), from `endog(educ)`
+  expect_equal(fit$diagnostics$endogeneity$stat, stata_diag$estat,
+               tolerance = stata_tol$stat)
 
-  # Overid
-  if (overid && !is.na(stata_diag$sargan)) {
+  # Overidentification: Sargan under iid, Hansen J under robust/cluster
+  if (!is.na(stata_diag$sargan)) {
     expect_equal(fit$diagnostics$overid$stat, stata_diag$sargan,
                  tolerance = stata_tol$stat)
   }
-  if (overid && !is.na(stata_diag$j)) {
+  if (!is.na(stata_diag$j)) {
     expect_equal(fit$diagnostics$overid$stat, stata_diag$j,
                  tolerance = stata_tol$stat)
   }
 }
 
+for (cell in list(
+  list(suffix = "iid",       vcov_arg = "iid",    small_arg = FALSE, cluster_arg = NULL),
+  list(suffix = "iid_small", vcov_arg = "iid",    small_arg = TRUE,  cluster_arg = NULL),
+  list(suffix = "hc1",       vcov_arg = "robust", small_arg = FALSE, cluster_arg = NULL),
+  list(suffix = "hc1_small", vcov_arg = "robust", small_arg = TRUE,  cluster_arg = NULL),
+  list(suffix = "cl",        vcov_arg = "iid",    small_arg = FALSE, cluster_arg = ~ region),
+  list(suffix = "cl_small",  vcov_arg = "iid",    small_arg = TRUE,  cluster_arg = ~ region)
+)) {
+  test_that(paste("fweight overid matches Stata:", cell$suffix), {
+    test_fweight_config(cell$suffix, cell$vcov_arg, cell$small_arg, cell$cluster_arg)
+  })
+}
 
-# --- fweight just-identified ---
-test_that("fweight just-id: iid matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_fweight_config("card_fweight_just_id", "iid", card,
-                      vcov_arg = "iid", small_arg = FALSE, cluster_arg = NULL)
-})
+test_that("fweight identity: weights = fwt equals unweighted fit on duplicated rows", {
+  # Mirrors the .do generator's self-check: [fw=fwt] on the micro data must
+  # equal the unweighted fit on the row-duplicated (expand fwt) data.
+  card_expanded <- card_wt[rep(seq_len(nrow(card_wt)), card_wt$fwt), ]
 
-test_that("fweight just-id: iid_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_fweight_config("card_fweight_just_id", "iid_small", card,
-                      vcov_arg = "iid", small_arg = TRUE, cluster_arg = NULL)
-})
+  fit_fw <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+                   data = card_wt, weights = fwt, weight_type = "fweight")
+  fit_expanded <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+                         data = card_expanded)
 
-test_that("fweight just-id: robust matches Stata", {
-  skip_if(!file.exists(card_path))
-  # Stata robust (no small) = our HC0
-  test_fweight_config("card_fweight_just_id", "hc1", card,
-                      vcov_arg = "robust", small_arg = FALSE, cluster_arg = NULL)
-})
-
-test_that("fweight just-id: robust_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  # Stata robust small = our HC1
-  test_fweight_config("card_fweight_just_id", "hc1_small", card,
-                      vcov_arg = "robust", small_arg = TRUE, cluster_arg = NULL)
-})
-
-test_that("fweight just-id: cl matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_fweight_config("card_fweight_just_id", "cl", card,
-                      vcov_arg = "iid", small_arg = FALSE,
-                      cluster_arg = ~ smsa)
-})
-
-test_that("fweight just-id: cl_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_fweight_config("card_fweight_just_id", "cl_small", card,
-                      vcov_arg = "iid", small_arg = TRUE,
-                      cluster_arg = ~ smsa)
-})
-
-# --- fweight overidentified ---
-test_that("fweight overid: iid matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_fweight_config("card_fweight_overid", "iid", card,
-                      vcov_arg = "iid", small_arg = FALSE, cluster_arg = NULL,
-                      overid = TRUE)
-})
-
-test_that("fweight overid: iid_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_fweight_config("card_fweight_overid", "iid_small", card,
-                      vcov_arg = "iid", small_arg = TRUE, cluster_arg = NULL,
-                      overid = TRUE)
-})
-
-test_that("fweight overid: robust matches Stata", {
-  skip_if(!file.exists(card_path))
-  # Stata robust (no small) = our HC0
-  test_fweight_config("card_fweight_overid", "hc1", card,
-                      vcov_arg = "robust", small_arg = FALSE, cluster_arg = NULL,
-                      overid = TRUE)
-})
-
-test_that("fweight overid: robust_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  # Stata robust small = our HC1
-  test_fweight_config("card_fweight_overid", "hc1_small", card,
-                      vcov_arg = "robust", small_arg = TRUE, cluster_arg = NULL,
-                      overid = TRUE)
-})
-
-test_that("fweight overid: cl matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_fweight_config("card_fweight_overid", "cl", card,
-                      vcov_arg = "iid", small_arg = FALSE,
-                      cluster_arg = ~ smsa, overid = TRUE)
-})
-
-test_that("fweight overid: cl_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_fweight_config("card_fweight_overid", "cl_small", card,
-                      vcov_arg = "iid", small_arg = TRUE,
-                      cluster_arg = ~ smsa, overid = TRUE)
+  expect_equal(coef(fit_fw), coef(fit_expanded))
+  expect_equal(vcov(fit_fw), vcov(fit_expanded))
+  expect_equal(nobs(fit_fw), nobs(fit_expanded))
 })
 
 
 # ============================================================================
-# Section 5: Probability weight (pweight) parity vs Stata fixtures
+# Section 5: Probability weight (pweight) parity vs Stata fixtures (card_pw_*)
 # ============================================================================
+# card_pw: lwage ~ exper+expersq+black+south | educ | nearc4+nearc2,
+# pweight = genuine NLS sampling weight (pweight forces robust; no iid
+# cells), cluster(region) M=9 (family M-11, re-based).
 
-test_pweight_config <- function(fixture_prefix, suffix, card_data,
-                                vcov_arg, small_arg, cluster_arg,
-                                overid = FALSE) {
-  coef_path <- fixture_path(paste0(fixture_prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- fixture_path(paste0(fixture_prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- fixture_path(paste0(fixture_prefix, "_diagnostics_", suffix, ".csv"))
-  fs_path   <- fixture_path(paste0(fixture_prefix, "_firststage_", suffix, ".csv"))
+test_pw_style_config <- function(suffix, weight_type_arg, vcov_arg, small_arg,
+                                 cluster_arg) {
+  coef_path <- fixture_path(paste0("card_pw_coef_", suffix, ".csv"))
+  vcov_path <- fixture_path(paste0("card_pw_vcov_", suffix, ".csv"))
+  diag_path <- fixture_path(paste0("card_pw_diagnostics_", suffix, ".csv"))
 
   skip_if(!file.exists(coef_path))
 
   stata_coef <- read_coef_fixture(coef_path)
   stata_vcov <- read_vcov_fixture(vcov_path)
   stata_diag <- read_diagnostics_fixture(diag_path)
-  stata_fs   <- if (file.exists(fs_path)) read_firststage_fixture(fs_path) else NULL
 
-  iv_formula <- if (overid) {
-    lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2
-  } else {
-    lwage ~ exper + expersq + black + south | educ | nearc4
-  }
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
+                data = card_wt, weights = weight, weight_type = weight_type_arg,
+                vcov = vcov_arg, small = small_arg, clusters = cluster_arg)
 
-  # M=2 clusters → expected rank-deficient diagnostics
-  fit <- muffle_rank_warnings(suppressMessages(
-    ivreg2(iv_formula, data = card_data, weights = weight,
-           weight_type = "pweight", vcov = vcov_arg,
-           small = small_arg, clusters = cluster_arg)
-  ))
-
-  # Test N (pweight uses physical N)
+  # N (pweight/aweight use physical N)
   expect_equal(nobs(fit), as.integer(stata_diag$N))
 
   # Coefficients
@@ -538,202 +428,69 @@ test_pweight_config <- function(fixture_prefix, suffix, card_data,
   # Sigma
   expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
 
-  # Diagnostics
-  if (!is.na(stata_diag$idstat)) {
-    expect_equal(fit$diagnostics$underid$stat, stata_diag$idstat,
-                 tolerance = stata_tol$stat)
-  }
-  if (!is.na(stata_diag$cdf)) {
-    expect_equal(fit$diagnostics$weak_id$stat, stata_diag$cdf,
-                 tolerance = stata_tol$stat)
-  }
-  # AR: skip when our code returns NA due to numerical singularity
-  if (!is.na(stata_diag$arf) &&
-      !is.na(fit$diagnostics$anderson_rubin$f_stat)) {
-    expect_equal(fit$diagnostics$anderson_rubin$f_stat, stata_diag$arf,
-                 tolerance = stata_tol$stat)
-  }
+  # Underidentification / weak-identification
+  expect_equal(fit$diagnostics$underid$stat, stata_diag$idstat,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$weak_id$stat, stata_diag$cdf,
+               tolerance = stata_tol$stat)
 
-  # First-stage: skip when our code returns NA
-  if (!is.null(stata_fs) && !is.null(fit$first_stage)) {
-    fs_f_row <- stata_fs[stata_fs$statistic == "F", ]
-    if (nrow(fs_f_row) > 0L) {
-      fs_f_stata <- fs_f_row$educ
-      if (!is.na(fs_f_stata) && !is.na(fit$first_stage$educ$f_stat)) {
-        expect_equal(fit$first_stage$educ$f_stat, fs_f_stata,
-                     tolerance = stata_tol$stat)
-      }
-    }
-  }
+  # Anderson-Rubin and Stock-Wright (weak-instrument-robust)
+  expect_equal(fit$diagnostics$anderson_rubin$f_stat, stata_diag$arf,
+               tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$stock_wright$stat, stata_diag$sstat,
+               tolerance = stata_tol$stat)
 
-  # Overid
-  if (overid && !is.na(stata_diag$j)) {
-    expect_equal(fit$diagnostics$overid$stat, stata_diag$j,
-                 tolerance = stata_tol$stat)
-  }
+  # Endogeneity (C-statistic), from `endog(educ)`
+  expect_equal(fit$diagnostics$endogeneity$stat, stata_diag$estat,
+               tolerance = stata_tol$stat)
+
+  # Overidentification: Hansen J (pweight/aweight+robust always route here)
+  expect_equal(fit$diagnostics$overid$stat, stata_diag$j,
+               tolerance = stata_tol$stat)
+
+  invisible(fit)
+}
+
+for (cell in list(
+  list(suffix = "hc0",       vcov_arg = "robust", small_arg = FALSE, cluster_arg = NULL),
+  list(suffix = "hc0_small", vcov_arg = "robust", small_arg = TRUE,  cluster_arg = NULL),
+  list(suffix = "cl",        vcov_arg = "robust", small_arg = FALSE, cluster_arg = ~ region),
+  list(suffix = "cl_small",  vcov_arg = "robust", small_arg = TRUE,  cluster_arg = ~ region)
+)) {
+  test_that(paste("pweight overid matches Stata:", cell$suffix), {
+    test_pw_style_config(cell$suffix, "pweight", cell$vcov_arg,
+                         cell$small_arg, cell$cluster_arg)
+  })
 }
 
 
-# --- pweight just-identified ---
-test_that("pweight just-id: hc0 matches Stata", {
-  skip_if(!file.exists(card_path))
-  # pweight forces robust: vcov="iid" → HC0 (small=FALSE)
-  test_pweight_config("card_pweight_just_id", "hc0", card,
-                      vcov_arg = "iid", small_arg = FALSE, cluster_arg = NULL)
-})
-
-test_that("pweight just-id: hc0_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  # pweight forces robust: vcov="iid" → HC1 (small=TRUE)
-  test_pweight_config("card_pweight_just_id", "hc0_small", card,
-                      vcov_arg = "iid", small_arg = TRUE, cluster_arg = NULL)
-})
-
-test_that("pweight just-id: cl matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_pweight_config("card_pweight_just_id", "cl", card,
-                      vcov_arg = "iid", small_arg = FALSE,
-                      cluster_arg = ~ smsa)
-})
-
-test_that("pweight just-id: cl_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_pweight_config("card_pweight_just_id", "cl_small", card,
-                      vcov_arg = "iid", small_arg = TRUE,
-                      cluster_arg = ~ smsa)
-})
-
-# --- pweight overidentified ---
-test_that("pweight overid: hc0 matches Stata", {
-  skip_if(!file.exists(card_path))
-  # pweight forces robust: vcov="iid" → HC0 (small=FALSE)
-  test_pweight_config("card_pweight_overid", "hc0", card,
-                      vcov_arg = "iid", small_arg = FALSE, cluster_arg = NULL,
-                      overid = TRUE)
-})
-
-test_that("pweight overid: hc0_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  # pweight forces robust: vcov="iid" → HC1 (small=TRUE)
-  test_pweight_config("card_pweight_overid", "hc0_small", card,
-                      vcov_arg = "iid", small_arg = TRUE, cluster_arg = NULL,
-                      overid = TRUE)
-})
-
-test_that("pweight overid: cl matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_pweight_config("card_pweight_overid", "cl", card,
-                      vcov_arg = "iid", small_arg = FALSE,
-                      cluster_arg = ~ smsa, overid = TRUE)
-})
-
-test_that("pweight overid: cl_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_pweight_config("card_pweight_overid", "cl_small", card,
-                      vcov_arg = "iid", small_arg = TRUE,
-                      cluster_arg = ~ smsa, overid = TRUE)
-})
-
-
 # ============================================================================
-# Section 6: Weighted overidentified aweight (fills Tier 1 gap)
+# aweight+robust == pweight (Stata byte-identity, R direct equality)
 # ============================================================================
+# Byte-identity verified in the retired card_aweight_overid vs
+# card_pweight_overid fixtures (2026-07-05); Stata treats [pw=w] as [aw=w]
+# with robust. No separate aweight fixtures are generated (D6) — the
+# aweight fit is checked against the SAME card_pw_* fixture as the pweight
+# fit, and then the two R fits are asserted directly equal (the M-22
+# lesson: comparing both variants only against the fixture would loosen
+# the invariant to Stata tolerance rather than pinning it exactly).
 
-test_aweight_overid_config <- function(suffix, card_data,
-                                       vcov_arg, small_arg, cluster_arg) {
-  prefix <- "card_aweight_overid"
-  coef_path <- fixture_path(paste0(prefix, "_coef_", suffix, ".csv"))
-  vcov_path <- fixture_path(paste0(prefix, "_vcov_", suffix, ".csv"))
-  diag_path <- fixture_path(paste0(prefix, "_diagnostics_", suffix, ".csv"))
-  fs_path   <- fixture_path(paste0(prefix, "_firststage_", suffix, ".csv"))
-
-  skip_if(!file.exists(coef_path))
-
-  stata_coef <- read_coef_fixture(coef_path)
-  stata_vcov <- read_vcov_fixture(vcov_path)
-  stata_diag <- read_diagnostics_fixture(diag_path)
-
-  # M=2 clusters → expected rank-deficient diagnostics
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
-           data = card_data, weights = weight, vcov = vcov_arg,
-           small = small_arg, clusters = cluster_arg)
-  )
-
-  # Coefficients
-  r_coef <- coef(fit)[names(stata_coef$estimate)]
-  expect_equal(r_coef, stata_coef$estimate, tolerance = stata_tol$coef)
-
-  # Standard errors
-  r_se <- sqrt(diag(vcov(fit)))[names(stata_coef$std_error)]
-  expect_equal(r_se, stata_coef$std_error, tolerance = stata_tol$se)
-
-  # VCV
-  r_vcov <- vcov(fit)[rownames(stata_vcov), colnames(stata_vcov)]
-  expect_equal(r_vcov, stata_vcov, tolerance = stata_tol$vcov, ignore_attr = TRUE)
-
-  # Sigma
-  expect_equal(fit$sigma, stata_diag$rmse, tolerance = stata_tol$coef)
-
-  # Overid test
-  if (!is.na(stata_diag$sargan)) {
-    expect_equal(fit$diagnostics$overid$stat, stata_diag$sargan,
-                 tolerance = stata_tol$stat)
-  }
-  if (!is.na(stata_diag$j)) {
-    expect_equal(fit$diagnostics$overid$stat, stata_diag$j,
-                 tolerance = stata_tol$stat)
-  }
-
-  # Model F
-  if (!is.na(stata_diag$F_stat)) {
-    expect_equal(fit$model_f, stata_diag$F_stat, tolerance = stata_tol$stat)
-  }
+for (cell in list(
+  list(suffix = "hc0",       vcov_arg = "robust", small_arg = FALSE, cluster_arg = NULL),
+  list(suffix = "hc0_small", vcov_arg = "robust", small_arg = TRUE,  cluster_arg = NULL),
+  list(suffix = "cl",        vcov_arg = "robust", small_arg = FALSE, cluster_arg = ~ region),
+  list(suffix = "cl_small",  vcov_arg = "robust", small_arg = TRUE,  cluster_arg = ~ region)
+)) {
+  test_that(paste("aweight+robust == pweight, both match Stata:", cell$suffix), {
+    fit_pw <- test_pw_style_config(cell$suffix, "pweight", cell$vcov_arg,
+                                   cell$small_arg, cell$cluster_arg)
+    fit_aw <- test_pw_style_config(cell$suffix, "aweight", cell$vcov_arg,
+                                   cell$small_arg, cell$cluster_arg)
+    expect_equal(coef(fit_aw), coef(fit_pw))
+    expect_equal(vcov(fit_aw), vcov(fit_pw))
+    expect_equal(fit_aw$sigma, fit_pw$sigma)
+  })
 }
-
-test_that("aweight overid: iid matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_aweight_overid_config("iid", card,
-                             vcov_arg = "iid", small_arg = FALSE,
-                             cluster_arg = NULL)
-})
-
-test_that("aweight overid: iid_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_aweight_overid_config("iid_small", card,
-                             vcov_arg = "iid", small_arg = TRUE,
-                             cluster_arg = NULL)
-})
-
-test_that("aweight overid: robust matches Stata", {
-  skip_if(!file.exists(card_path))
-  # Stata robust (no small) = our HC0
-  test_aweight_overid_config("hc1", card,
-                             vcov_arg = "robust", small_arg = FALSE,
-                             cluster_arg = NULL)
-})
-
-test_that("aweight overid: robust_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  # Stata robust small = our HC1
-  test_aweight_overid_config("hc1_small", card,
-                             vcov_arg = "robust", small_arg = TRUE,
-                             cluster_arg = NULL)
-})
-
-test_that("aweight overid: cl matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_aweight_overid_config("cl", card,
-                             vcov_arg = "iid", small_arg = FALSE,
-                             cluster_arg = ~ smsa)
-})
-
-test_that("aweight overid: cl_small matches Stata", {
-  skip_if(!file.exists(card_path))
-  test_aweight_overid_config("cl_small", card,
-                             vcov_arg = "iid", small_arg = TRUE,
-                             cluster_arg = ~ smsa)
-})
 
 
 # ============================================================================
@@ -741,9 +498,8 @@ test_that("aweight overid: cl_small matches Stata", {
 # ============================================================================
 
 test_that("glance includes weight_type for fweight", {
-  skip_if(!file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, weight_type = "fweight")
+                data = card_wt, weights = fwt, weight_type = "fweight")
   gl <- glance(fit)
   expect_equal(gl$weight_type, "fweight")
 })
@@ -758,9 +514,8 @@ test_that("weight_type is stored in fitted object", {
   fit_a <- ivreg2(mpg ~ wt + hp, data = mtcars, weights = disp)
   expect_equal(fit_a$weight_type, "aweight")
 
-  skip_if(!file.exists(card_path))
   fit_f <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, weights = weight, weight_type = "fweight")
+                  data = card_wt, weights = fwt, weight_type = "fweight")
   expect_equal(fit_f$weight_type, "fweight")
 
   fit_p <- suppressMessages(
@@ -771,9 +526,8 @@ test_that("weight_type is stored in fitted object", {
 })
 
 test_that("n_physical is stored for fweight", {
-  skip_if(!file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, weight_type = "fweight")
+                data = card_wt, weights = fwt, weight_type = "fweight")
   expect_equal(fit$n_physical, 3010L)
   expect_true(nobs(fit) > fit$n_physical)
 })
