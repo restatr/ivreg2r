@@ -1,5 +1,13 @@
 # ===========================================================================
 # Tests for reduced-form regression (Ticket J3)
+#
+# M-21 re-base (2026-07-04): reduced-form/system fixtures re-based onto the
+# mroz H31 base per planning/22-spec-matrix.md. The canonical base is the
+# saverf command H54 (help.txt:1385); the saved RF equals the H61
+# reduced-form OLS demo (help.txt:1416) -- the "saverf no-op parity". The
+# card_* rf/system fixtures are retired. sim_multi_endo is kept for K1 > 1
+# system coverage and sim_cluster for cluster RF (mroz has no cluster
+# variable).
 # ===========================================================================
 
 # --- Fixture loading helpers ---
@@ -21,6 +29,11 @@ load_system_fixture <- function(prefix, suffix) {
 
 # --- Shared data ---
 data(card, package = "ivreg2r")
+data(mroz, package = "ivreg2r")
+
+# e(sample): Stata's ivreg2 drops observations with missing lwage
+# (never-employed women) before estimation.
+mroz_lw <- mroz[!is.na(mroz$lwage), ]
 
 sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
@@ -153,21 +166,18 @@ test_that("RF F equals AR F (HC1)", {
 })
 
 test_that("RF F equals AR F (cluster)", {
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, clusters = ~smsa, reduced_form = "rf")
-  )
+  skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
+  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2, data = sim_cluster,
+                clusters = ~cluster_id, reduced_form = "rf")
   expect_equal(fit$reduced_form$f_stat,
                fit$diagnostics$anderson_rubin$f_stat,
                tolerance = 1e-14)
 })
 
 test_that("RF F equals AR F (cluster, small)", {
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, clusters = ~smsa, small = TRUE,
-           reduced_form = "rf")
-  )
+  skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
+  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2, data = sim_cluster,
+                clusters = ~cluster_id, small = TRUE, reduced_form = "rf")
   expect_equal(fit$reduced_form$f_stat,
                fit$diagnostics$anderson_rubin$f_stat,
                tolerance = 1e-14)
@@ -346,130 +356,62 @@ compare_system_fixture <- function(fit, prefix, suffix) {
 }
 
 
-# --- card_just_id ---
+# --- mroz (H31 base: `lwage ~ exper + expersq | educ | age + kidslt6 +
+# kidsge6`). Canonical saverf command is H54 (help.txt:1385); the saved RF
+# equals the H61 reduced-form OLS demo (help.txt:1416) -- the "saverf no-op
+# parity". Weighted RF cells were deleted, not ported -- weighted-VCV
+# parity is owned by the M-11 family, and the fixture-free weighted
+# AR-identity test above ("RF F equals AR F (weighted)") exercises weighted
+# RF structurally. ---
 
-test_that("card_just_id RF: IID", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, reduced_form = "rf")
-  compare_rf_fixture(fit, "card_just_id", "iid")
+test_that("mroz RF: IID", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, reduced_form = "rf")
+  compare_rf_fixture(fit, "mroz", "iid")
 })
 
-test_that("card_just_id RF: IID small", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, small = TRUE, reduced_form = "rf")
-  compare_rf_fixture(fit, "card_just_id", "iid_small")
+test_that("mroz RF: IID small", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, small = TRUE, reduced_form = "rf")
+  compare_rf_fixture(fit, "mroz", "iid_small")
 })
 
-test_that("card_just_id RF: HC1", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "robust", reduced_form = "rf")
-  compare_rf_fixture(fit, "card_just_id", "hc1")
+test_that("mroz RF: HC1", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust", reduced_form = "rf")
+  compare_rf_fixture(fit, "mroz", "hc1")
 })
 
-test_that("card_just_id RF: HC1 small", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "robust", small = TRUE, reduced_form = "rf")
-  compare_rf_fixture(fit, "card_just_id", "hc1_small")
-})
-
-test_that("card_just_id RF: cluster", {
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, clusters = ~smsa, reduced_form = "rf")
-  )
-  compare_rf_fixture(fit, "card_just_id", "cl")
-})
-
-test_that("card_just_id RF: cluster small", {
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, clusters = ~smsa, small = TRUE,
-           reduced_form = "rf")
-  )
-  compare_rf_fixture(fit, "card_just_id", "cl_small")
-})
-
-
-# --- card_just_id system ---
-
-test_that("card_just_id system: IID", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, reduced_form = "system")
-  compare_system_fixture(fit, "card_just_id", "iid")
-})
-
-test_that("card_just_id system: HC1", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "robust", reduced_form = "system")
-  compare_system_fixture(fit, "card_just_id", "hc1")
-})
-
-test_that("card_just_id system: cluster", {
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, clusters = ~smsa, reduced_form = "system")
-  )
-  compare_system_fixture(fit, "card_just_id", "cl")
-})
-
-
-# --- card_overid ---
-
-test_that("card_overid RF: IID", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, reduced_form = "rf")
-  compare_rf_fixture(fit, "card_overid", "iid")
-})
-
-test_that("card_overid RF: HC1", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "robust", reduced_form = "rf")
-  compare_rf_fixture(fit, "card_overid", "hc1")
-})
-
-test_that("card_overid RF: cluster", {
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-           data = card, clusters = ~smsa, reduced_form = "rf")
-  )
-  compare_rf_fixture(fit, "card_overid", "cl")
-})
-
-test_that("card_overid system: IID", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, reduced_form = "system")
-  compare_system_fixture(fit, "card_overid", "iid")
-})
-
-
-# --- card_just_id_weighted ---
-
-test_that("card_just_id_weighted RF: IID", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, reduced_form = "rf")
-  compare_rf_fixture(fit, "card_just_id_weighted", "iid")
-})
-
-test_that("card_just_id_weighted RF: HC1", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, vcov = "robust",
+test_that("mroz RF: HC1 small", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust", small = TRUE,
                 reduced_form = "rf")
-  compare_rf_fixture(fit, "card_just_id_weighted", "hc1")
+  compare_rf_fixture(fit, "mroz", "hc1_small")
 })
 
-test_that("card_just_id_weighted RF: cluster", {
-  fit <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, weights = weight, clusters = ~smsa,
-           reduced_form = "rf")
-  )
-  compare_rf_fixture(fit, "card_just_id_weighted", "cl")
+test_that("mroz system: IID", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, reduced_form = "system")
+  compare_system_fixture(fit, "mroz", "iid")
 })
 
-test_that("card_just_id_weighted system: IID", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, weights = weight, reduced_form = "system")
-  compare_system_fixture(fit, "card_just_id_weighted", "iid")
+test_that("mroz system: IID small", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, small = TRUE, reduced_form = "system")
+  compare_system_fixture(fit, "mroz", "iid_small")
+})
+
+test_that("mroz system: HC1", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust", reduced_form = "system")
+  compare_system_fixture(fit, "mroz", "hc1")
+})
+
+test_that("mroz system: HC1 small", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz_lw, vcov = "robust", small = TRUE,
+                reduced_form = "system")
+  compare_system_fixture(fit, "mroz", "hc1_small")
 })
 
 
@@ -482,11 +424,26 @@ test_that("sim_multi_endo RF: IID", {
   compare_rf_fixture(fit, "sim_multi_endo", "iid")
 })
 
+test_that("sim_multi_endo RF: IID small", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi_endo, small = TRUE, reduced_form = "rf")
+  compare_rf_fixture(fit, "sim_multi_endo", "iid_small")
+})
+
 test_that("sim_multi_endo RF: HC1", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                 data = sim_multi_endo, vcov = "robust", reduced_form = "rf")
   compare_rf_fixture(fit, "sim_multi_endo", "hc1")
+})
+
+test_that("sim_multi_endo RF: HC1 small", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi_endo, vcov = "robust", small = TRUE,
+                reduced_form = "rf")
+  compare_rf_fixture(fit, "sim_multi_endo", "hc1_small")
 })
 
 test_that("sim_multi_endo system: IID", {
@@ -496,11 +453,26 @@ test_that("sim_multi_endo system: IID", {
   compare_system_fixture(fit, "sim_multi_endo", "iid")
 })
 
+test_that("sim_multi_endo system: IID small", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi_endo, small = TRUE, reduced_form = "system")
+  compare_system_fixture(fit, "sim_multi_endo", "iid_small")
+})
+
 test_that("sim_multi_endo system: HC1", {
   skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
   fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
                 data = sim_multi_endo, vcov = "robust", reduced_form = "system")
   compare_system_fixture(fit, "sim_multi_endo", "hc1")
+})
+
+test_that("sim_multi_endo system: HC1 small", {
+  skip_if(!file.exists(sim_multi_path), "sim_multi_endo data not found")
+  fit <- ivreg2(y ~ x1 + x2 | endo1 + endo2 | z1 + z2 + z3 + z4,
+                data = sim_multi_endo, vcov = "robust", small = TRUE,
+                reduced_form = "system")
+  compare_system_fixture(fit, "sim_multi_endo", "hc1_small")
 })
 
 
@@ -525,4 +497,11 @@ test_that("sim_cluster system: cluster", {
   fit <- ivreg2(y ~ x1 | endo1 | z1 + z2, data = sim_cluster,
                 clusters = ~cluster_id, reduced_form = "system")
   compare_system_fixture(fit, "sim_cluster", "cl")
+})
+
+test_that("sim_cluster system: cluster small", {
+  skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
+  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2, data = sim_cluster,
+                clusters = ~cluster_id, small = TRUE, reduced_form = "system")
+  compare_system_fixture(fit, "sim_cluster", "cl_small")
 })

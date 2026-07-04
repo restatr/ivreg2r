@@ -1,13 +1,28 @@
 /*===========================================================================
   generate-rf-fixtures.do
   -----------------------
-  Generates CSV benchmark fixtures for reduced-form regression tests.
-  Run in Stata with ivreg2 installed (ssc install ivreg2).
+  Generates CSV benchmark fixtures for reduced-form regression tests
+  (family M-21, re-based 2026-07-04 per planning/22-spec-matrix.md).
+
+  Canonical base: the mroz H31 model (Stata ivreg2 help.txt line 1274),
+  ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6), exercised with
+  ivreg2's saverf/savesfirst bookkeeping. H54 (`ivreg2 ... , robust ffirst
+  saverf`, help.txt:1385) is the canonical saverf command; the RF equation
+  it saves equals the H61 reduced-form OLS demo (`ivreg2 lwage exper
+  expersq age kidslt6 kidsge6, robust`, help.txt:1416) -- both regress
+  lwage on the exogenous regressors plus the excluded instruments. The
+  iid/small cells below are D5a option-variation (no separate upstream
+  worked example covers iid or small standard errors for saverf).
 
   Uses ivreg2's saverf and savesfirst options to extract:
     - Coefficients and SEs from the reduced-form y ~ Z regression
     - F-stat of excluded instruments
     - RMSE
+
+  Execution-order dependency: the sim_multi_endo and sim_cluster fixture
+  sections below import sim_multi_endo_data.csv and sim_cluster_data.csv,
+  which are written by generate-fixtures.do. Run generate-fixtures.do
+  first (unchanged from the pre-rebase version of this file).
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -24,16 +39,17 @@ version 14
 local outdir "tests/stata-benchmarks/fixtures"
 capture mkdir "`outdir'"
 
-// Pre-load Card data and save before defining programs.
-// bcuse internally calls "clear all" which drops user-defined programs,
-// so we must call it before any program definitions.
-capture bcuse card, clear
-if _rc != 0 {
-    display as error "Could not load Card dataset via bcuse."
-    display as error "Install bcuse (ssc install bcuse) and rerun."
-    exit 601
+/*===========================================================================
+  Load mroz data
+===========================================================================*/
+capture use "../validation/data/mroz.dta", clear
+if _rc {
+    capture use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+    if _rc {
+        display as error "Could not load mroz dataset (no local cache, no network)."
+        exit 601
+    }
 }
-save "`outdir'/_card_temp_rf.dta", replace
 
 
 /*---------------------------------------------------------------------------
@@ -167,20 +183,21 @@ end
 
 
 /*===========================================================================
-  FIXTURE 1: card_just_id
-  Dataset: Card (1995) — returns to education
-  Model: lwage ~ exper expersq black south | educ | nearc4
-  Just-identified (1 endogenous, 1 excluded IV)
+  FIXTURE 1: mroz
+  Dataset: mroz (Wooldridge) -- female labor supply / wage equation
+  Model: lwage ~ exper expersq (educ = age kidslt6 kidsge6)
+  Canonical base: H31 (help.txt:1274). H54 (help.txt:1385) is the
+  canonical saverf command; the saved RF equation equals the H61
+  reduced-form OLS demo (help.txt:1416). The iid/small cells are D5a
+  option-variation.
 ===========================================================================*/
-display _newline(2) "=== FIXTURE 1: card_just_id ==="
+display _newline(2) "=== FIXTURE 1: mroz ==="
 
-use "`outdir'/_card_temp_rf.dta", clear
-
-global ivreg2_cmd "ivreg2 lwage exper expersq black south (educ = nearc4)"
+global ivreg2_cmd "ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6)"
 local rfeq "_ivreg2_lwage"
 local sfirsteq "_ivreg2_sfirst_lwage"
-local excludedivs "nearc4"
-local pre "card_just_id"
+local excludedivs "age kidslt6 kidsge6"
+local pre "mroz"
 
 // IID
 run_rf_save, prefix(`pre') suffix(iid) outdir(`outdir') ///
@@ -191,7 +208,7 @@ run_rf_save, prefix(`pre') suffix(iid_small) outdir(`outdir') ///
     rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
     opts(small)
 
-// HC1
+// HC1 -- the H54 command's robust option verbatim
 run_rf_save, prefix(`pre') suffix(hc1) outdir(`outdir') ///
     rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
     opts(robust)
@@ -200,113 +217,14 @@ run_rf_save, prefix(`pre') suffix(hc1) outdir(`outdir') ///
 run_rf_save, prefix(`pre') suffix(hc1_small) outdir(`outdir') ///
     rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
     opts(robust small)
-
-// Cluster
-run_rf_save, prefix(`pre') suffix(cl) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(cluster(smsa))
-
-// Cluster small
-run_rf_save, prefix(`pre') suffix(cl_small) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(cluster(smsa) small)
-
-
-/*===========================================================================
-  FIXTURE 2: card_overid
-  Dataset: Card (1995) — overidentified model
-  Model: lwage ~ exper expersq black south | educ | nearc2 nearc4
-===========================================================================*/
-display _newline(2) "=== FIXTURE 2: card_overid ==="
-
-use "`outdir'/_card_temp_rf.dta", clear
-
-global ivreg2_cmd "ivreg2 lwage exper expersq black south (educ = nearc2 nearc4)"
-local rfeq "_ivreg2_lwage"
-local sfirsteq "_ivreg2_sfirst_lwage"
-local excludedivs "nearc2 nearc4"
-local pre "card_overid"
-
-// IID
-run_rf_save, prefix(`pre') suffix(iid) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs')
-
-// IID small
-run_rf_save, prefix(`pre') suffix(iid_small) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(small)
-
-// HC1
-run_rf_save, prefix(`pre') suffix(hc1) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(robust)
-
-// HC1 small
-run_rf_save, prefix(`pre') suffix(hc1_small) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(robust small)
-
-// Cluster
-run_rf_save, prefix(`pre') suffix(cl) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(cluster(smsa))
-
-// Cluster small
-run_rf_save, prefix(`pre') suffix(cl_small) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(cluster(smsa) small)
-
-
-/*===========================================================================
-  FIXTURE 3: card_just_id_weighted
-  Dataset: Card (1995) — weighted model
-  Model: lwage ~ exper expersq black south | educ | nearc4 [aw=weight]
-  Weights go before the comma, so we set them in the global command.
-===========================================================================*/
-display _newline(2) "=== FIXTURE 3: card_just_id_weighted ==="
-
-use "`outdir'/_card_temp_rf.dta", clear
-
-global ivreg2_cmd "ivreg2 lwage exper expersq black south (educ = nearc4) [aw=weight]"
-local rfeq "_ivreg2_lwage"
-local sfirsteq "_ivreg2_sfirst_lwage"
-local excludedivs "nearc4"
-local pre "card_just_id_weighted"
-
-// IID
-run_rf_save, prefix(`pre') suffix(iid) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs')
-
-// IID small
-run_rf_save, prefix(`pre') suffix(iid_small) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(small)
-
-// HC1
-run_rf_save, prefix(`pre') suffix(hc1) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(robust)
-
-// HC1 small
-run_rf_save, prefix(`pre') suffix(hc1_small) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(robust small)
-
-// Cluster
-run_rf_save, prefix(`pre') suffix(cl) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(cluster(smsa))
-
-// Cluster small
-run_rf_save, prefix(`pre') suffix(cl_small) outdir(`outdir') ///
-    rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
-    opts(cluster(smsa) small)
 
 
 /*===========================================================================
   FIXTURE 4: sim_multi_endo
   Simulated data with 2 endogenous variables and 4 excluded IVs
   Purpose: Tests system mode with K1 > 1
+  Synthetic base kept because K1 > 1 system mode is inexpressible on the
+  single-endogenous mroz H31 base (M-21 row, planning/22).
 ===========================================================================*/
 display _newline(2) "=== FIXTURE 4: sim_multi_endo ==="
 
@@ -342,6 +260,9 @@ run_rf_save, prefix(`pre') suffix(hc1_small) outdir(`outdir') ///
   FIXTURE 5: sim_cluster
   Simulated cluster data
   Purpose: Tests cluster-robust RF
+  Synthetic base kept because cluster RF needs a genuine multi-level
+  cluster variable, which mroz lacks (the retired card cells clustered
+  on binary smsa -- audit-20 anti-pattern).
 ===========================================================================*/
 display _newline(2) "=== FIXTURE 5: sim_cluster ==="
 
@@ -363,10 +284,5 @@ run_rf_save, prefix(`pre') suffix(cl_small) outdir(`outdir') ///
     rfeq(`rfeq') sfirsteq(`sfirsteq') excludedivs(`excludedivs') ///
     opts(cluster(cluster_id) small)
 
-
-/*===========================================================================
-  Cleanup
-===========================================================================*/
-capture erase "`outdir'/_card_temp_rf.dta"
 
 display _newline(2) "=== All RF fixtures generated successfully ==="
