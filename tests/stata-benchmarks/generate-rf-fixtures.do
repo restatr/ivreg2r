@@ -220,13 +220,13 @@ run_rf_save, prefix(`pre') suffix(hc1_small) outdir(`outdir') ///
 
 
 /*===========================================================================
-  FIXTURE 4: sim_multi_endo
+  FIXTURE 2: sim_multi_endo
   Simulated data with 2 endogenous variables and 4 excluded IVs
   Purpose: Tests system mode with K1 > 1
   Synthetic base kept because K1 > 1 system mode is inexpressible on the
   single-endogenous mroz H31 base (M-21 row, planning/22).
 ===========================================================================*/
-display _newline(2) "=== FIXTURE 4: sim_multi_endo ==="
+display _newline(2) "=== FIXTURE 2: sim_multi_endo ==="
 
 import delimited "`outdir'/sim_multi_endo_data.csv", clear
 
@@ -257,14 +257,14 @@ run_rf_save, prefix(`pre') suffix(hc1_small) outdir(`outdir') ///
 
 
 /*===========================================================================
-  FIXTURE 5: sim_cluster
+  FIXTURE 3: sim_cluster
   Simulated cluster data
   Purpose: Tests cluster-robust RF
   Synthetic base kept because cluster RF needs a genuine multi-level
   cluster variable, which mroz lacks (the retired card cells clustered
   on binary smsa -- audit-20 anti-pattern).
 ===========================================================================*/
-display _newline(2) "=== FIXTURE 5: sim_cluster ==="
+display _newline(2) "=== FIXTURE 3: sim_cluster ==="
 
 import delimited "`outdir'/sim_cluster_data.csv", clear
 
