@@ -1,0 +1,57 @@
+#' NLS Young Women Panel (Stata \code{[XT]} Manual Extract)
+#'
+#' Panel data from the U.S. Bureau of Labor Statistics' National
+#' Longitudinal Survey of Young Women, 14--24 years of age in 1968,
+#' interviewed in survey years 1968--1988. This is the extract distributed
+#' with Stata's \code{[XT]} manual (\code{webuse nlswork}): 28,534
+#' person-year observations.
+#'
+#' \code{race} is coded 1 = White, 2 = Black, 3 = Other (faithful to the
+#' upstream numeric coding; not converted to a factor). Many columns
+#' contain missing values, consistent with the source survey.
+#'
+#' @format A data frame with 28,534 observations and 21 variables:
+#' \describe{
+#'   \item{idcode}{Person identifier. Use as \code{ivar}.}
+#'   \item{year}{Interview year (two-digit, e.g. 70 = 1970). The time
+#'     variable: use as \code{tvar}.}
+#'   \item{birth_yr}{Birth year (two-digit).}
+#'   \item{age}{Age in current year.}
+#'   \item{race}{Race: 1 = White, 2 = Black, 3 = Other.}
+#'   \item{msp}{1 if married, spouse present.}
+#'   \item{nev_mar}{1 if never married.}
+#'   \item{grade}{Current grade completed.}
+#'   \item{collgrad}{1 if college graduate.}
+#'   \item{not_smsa}{1 if not in an SMSA (metropolitan area).}
+#'   \item{c_city}{1 if central city.}
+#'   \item{south}{1 if in the South.}
+#'   \item{ind_code}{Industry of employment (code).}
+#'   \item{occ_code}{Occupation (code).}
+#'   \item{union}{1 if union member.}
+#'   \item{wks_ue}{Weeks unemployed, last year.}
+#'   \item{ttl_exp}{Total work experience (years).}
+#'   \item{tenure}{Job tenure (years).}
+#'   \item{hours}{Usual hours worked.}
+#'   \item{wks_work}{Weeks worked, last year.}
+#'   \item{ln_wage}{Log wage (deflated by the GNP deflator).}
+#' }
+#'
+#' @source
+#' U.S. Bureau of Labor Statistics. National Longitudinal Survey of Young
+#' Women, 14--24 years old in 1968. Center for Human Resource Research.
+#'
+#' Distributed via Stata's \code{webuse nlswork}.
+#'
+#' @examples
+#' data(nlswork)
+#'
+#' # ivreg2 help file line 1618: one-way cluster on person id
+#' fit <- ivreg2(ln_wage ~ grade + age + ttl_exp + tenure, data = nlswork,
+#'               clusters = ~idcode)
+#' summary(fit)
+#'
+#' # ivreg2 help file line 1628: two-way cluster on person id and year
+#' fit2 <- ivreg2(ln_wage ~ grade + age + ttl_exp + tenure, data = nlswork,
+#'                clusters = ~idcode + year)
+#' summary(fit2)
+"nlswork"
