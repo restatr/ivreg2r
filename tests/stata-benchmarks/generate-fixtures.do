@@ -35,7 +35,12 @@ if _rc != 0 {
     exit 601
 }
 save "`outdir'/_card_temp.dta", replace
-export delimited using "`outdir'/card_data.csv", replace
+// Full-precision export: the default `export delimited` writes numeric
+// columns at 8-digit precision, which truncates float32 bit patterns
+// (see ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
+quietly ds, has(type numeric)
+format `r(varlist)' %21.0g
+export delimited using "`outdir'/card_data.csv", replace datafmt
 
 /*---------------------------------------------------------------------------
   Helper program: extract all results from ivreg2 and save to CSV

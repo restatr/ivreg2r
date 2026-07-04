@@ -26,7 +26,12 @@ if _rc != 0 {
     display as error "Install bcuse (ssc install bcuse) and rerun."
     exit 601
 }
-export delimited using "`outdir'/mroz_data.csv", replace
+// Full-precision export: the default `export delimited` writes numeric
+// columns at 8-digit precision, which truncates float32 bit patterns
+// (see ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
+quietly ds, has(type numeric)
+format `r(varlist)' %21.0g
+export delimited using "`outdir'/mroz_data.csv", replace datafmt
 
 // --- Wooldridge wagepan panel data ---
 capture bcuse wagepan, clear
@@ -35,7 +40,12 @@ if _rc != 0 {
     display as error "Install bcuse (ssc install bcuse) and rerun."
     exit 601
 }
-export delimited using "`outdir'/wagepan_data.csv", replace
+// Full-precision export: the default `export delimited` writes numeric
+// columns at 8-digit precision, which truncates float32 bit patterns
+// (see ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
+quietly ds, has(type numeric)
+format `r(varlist)' %21.0g
+export delimited using "`outdir'/wagepan_data.csv", replace datafmt
 
 display _newline
 display "Vignette datasets exported successfully."
