@@ -9,7 +9,7 @@
 
   Retired cells (planning/22-spec-matrix.md): Fuller(4) and kclass(0.5) were deleted as anti-pattern cells per the spec matrix's delete table — they duplicated the option-variation shape of Fuller(1)/kclass(1.19) without adding new coverage.
   Just-identified LIML and kclass(1) cells are also retired: plain just-identified LIML short-circuits to 2SLS in R (a bit-identical identity test), and kclass(1) is a fixture-free identity with 2SLS itself; Stata parity for 2SLS is owned by the M-10 family, so neither needs a dedicated LIML-family fixture here.
-  coviv x cluster, coviv x small, fuller x cluster, kclass x cluster, and weighted x small cells are retired compositionally: coviv only swaps the VCV bread and is already pinned at iid by the tsop H73 cell and at robust by klein_liml_coviv/hc1 here; fuller/kclass only change the k-class bread, and the k-class-bread x cluster-meat assembly is pinned by the ab_liml cluster cells; the small finite-sample correction is uniform across weight types and is pinned by the klein small cells (iid_small, hc1_small, cl_small).
+  coviv x cluster, coviv x small, fuller x cluster, kclass x cluster, weighted x small, fuller x small, and kclass x small cells are retired compositionally: coviv only swaps the VCV bread and is already pinned at iid by the tsop H73 cell and at robust by klein_liml_coviv/hc1 here; fuller/kclass only change the k-class bread, and the k-class-bread x cluster-meat assembly is pinned by the ABDATA ab_liml cl/cl_small cells (cl_small is not a klein suffix); the small finite-sample correction is applied in the shared .vcov_from_omega with no method branch, so fuller x small and kclass x small are pinned by the klein_liml iid_small/hc1_small cells plus the method-uniformity identity test in test-liml.R.
 ===========================================================================*/
 
 clear all
@@ -22,10 +22,7 @@ capture mkdir "`outdir'"
 
 /*---------------------------------------------------------------------------
   Helper program: extract ivreg2 results and save to CSV
-  (Same as generate-ts-operator-fixtures.do: includes kclass/lambda/fuller
-  and AR-LIML overid columns, plus a small-sample flag column since this
-  generator's suffixes include iid_small/hc1_small/cl_small. First-stage
-  matrix export omitted — not consumed by these tests.)
+  (Same as generate-ts-operator-fixtures.do: includes kclass/lambda/fuller and AR-LIML overid columns, plus a small-sample flag column since this generator's suffixes include iid_small/hc1_small/cl_small. First-stage matrix export omitted — not consumed by these tests.)
 ---------------------------------------------------------------------------*/
 capture program drop save_ivreg2_results
 program define save_ivreg2_results

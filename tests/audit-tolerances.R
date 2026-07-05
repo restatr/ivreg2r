@@ -22,12 +22,8 @@ stopifnot(dir.exists(fixture_dir))
 STANDARD_TOL <- list(coef = 1e-6, se = 1e-6, vcov = 1e-6, stat = 1e-4, pval = 1e-4)
 
 # --- Helpers ---
-.stata_to_r <- function(x) ifelse(x == "_cons", "(Intercept)", x)
 
-# ts-operator name translator ("L.profits" -> "l(profits, 1)", "D2.w" ->
-# "d(w, 2)"). This standalone script cannot source the testthat helpers, so
-# this is a copy of translate_stata_ts_names() from helper-fixtures.R (same
-# precedent as the card_fwt comment below) -- keep the two in sync.
+# ts-operator name translator ("L.profits" -> "l(profits, 1)", "D2.w" -> "d(w, 2)"). This standalone script cannot source the testthat helpers, so this is a copy of translate_stata_ts_names() from helper-fixtures.R (same precedent as the card_fwt comment below) -- keep the two in sync.
 .translate_ts_names <- function(x) {
   out <- character(length(x))
   for (i in seq_along(x)) {
@@ -141,11 +137,15 @@ results <- data.frame(
     r2_a     = list(val = fit$adj.r.squared, cat = "stat"),
     rmse     = list(val = fit$sigma, cat = "stat"),
     F_stat   = list(val = fit$model_f, cat = "stat"),
-    F_p      = list(val = fit$model_f_p, cat = "pval")
+    F_p      = list(val = fit$model_f_p, cat = "pval"),
+    lambda   = list(val = fit$lambda, cat = "stat"),
+    kclass   = list(val = fit$kclass_value, cat = "stat")
   )
   if (!is.null(d$overid)) {
     mapping$sargan   <- list(val = d$overid$stat, cat = "stat")
     mapping$sarganp  <- list(val = d$overid$p, cat = "pval")
+    mapping$j        <- list(val = d$overid$stat, cat = "stat")
+    mapping$jp       <- list(val = d$overid$p, cat = "pval")
   }
   if (!is.null(d$underid)) {
     mapping$idstat  <- list(val = d$underid$stat, cat = "stat")
@@ -229,10 +229,7 @@ data(abdata)
 f_justid <- lwage ~ exper + expersq + black + south | educ | nearc4
 f_overid <- lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2
 
-# klein/abdata LIML fixture family (M-15 re-base): klein carries the native
-# K1=2 multi-endogenous + panel-lag LIML/Fuller cells; abdata carries the
-# K1=3 multi-endogenous cluster cell. See helper-fixtures.R's card_wt/fwt
-# comment for the same "keep in sync" precedent on the awt formula below.
+# klein/abdata LIML fixture family (M-15 re-base): klein carries the native K1=2 multi-endogenous + panel-lag LIML/Fuller cells; abdata carries the K1=3 multi-endogenous cluster cell. See helper-fixtures.R's card_wt/fwt comment for the same "keep in sync" precedent on the awt formula below.
 klein$awt <- klein$yr %% 5 + 1
 klein_f <- consump ~ l(profits, 1) | profits + wagetot |
   govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)

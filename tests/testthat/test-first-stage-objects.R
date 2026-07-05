@@ -19,9 +19,6 @@ mroz_justid_formula <- lwage ~ exper + expersq | educ | age
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | med + kww + age + mrt
 
-ab_formula <- n ~ 1 | w + k + ys |
-  d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)
-
 
 # ============================================================================
 # Fixture readers

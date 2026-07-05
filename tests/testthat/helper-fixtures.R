@@ -192,3 +192,41 @@ test_stata_fixture_cells <- function(cells, compare, slot, label_prefix) {
     })
   }
 }
+
+# Compare coefficients and SEs against a Stata coef fixture, matching by translated term name (strict: every fit term must have a matching fixture term and vice versa), promoted from the two per-file copies (test-ts-operators.R and test-liml.R) at the M-15 review, keeping the stricter term-setequal semantics.
+expect_coef_fixture <- function(fit, coef_file, tol_coef = stata_tol$coef,
+                                tol_se = stata_tol$se) {
+  fx <- read.csv(fixture_path(coef_file))
+  fx$term_r <- translate_stata_ts_names(fx$term)
+  b <- coef(fit)
+  se <- sqrt(diag(vcov(fit)))
+  expect_setequal(fx$term_r, names(b))
+  for (i in seq_len(nrow(fx))) {
+    nm <- fx$term_r[i]
+    expect_equal(unname(b[nm]), fx$estimate[i], tolerance = tol_coef,
+                 info = paste(coef_file, "coef", nm))
+    expect_equal(unname(se[nm]), fx$std_error[i], tolerance = tol_se,
+                 info = paste(coef_file, "se", nm))
+  }
+}
+
+# Compare the full VCV against a Stata vcov fixture, matching by translated term name (strict: row names must equal the fixture's term set), promoted from the two per-file copies (test-ts-operators.R and test-liml.R) at the M-15 review, keeping the stricter term-setequal semantics.
+expect_vcov_fixture <- function(fit, vcov_file, tol = stata_tol$vcov) {
+  fx <- read.csv(fixture_path(vcov_file))
+  stata_terms <- translate_stata_ts_names(fx$term)
+  V_s <- as.matrix(fx[, grep("^vcov_", names(fx)), drop = FALSE])
+  dimnames(V_s) <- list(stata_terms, stata_terms)
+  V_r <- vcov(fit)
+  expect_setequal(rownames(V_r), stata_terms)
+  perm <- match(rownames(V_r), stata_terms)
+  expect_vcov_match(V_r, V_s[perm, perm], tol = tol, label = vcov_file)
+}
+
+# Shared klein/abdata fixture formulas (one source of truth, M-25 promotion precedent): klein_formula anchors help-file case H72, ab_formula anchors H88.
+klein_formula <- consump ~ l(profits, 1) | profits + wagetot |
+  govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)
+ab_formula <- n ~ 1 | w + k + ys |
+  d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)
+
+# Shared weighted-klein data object mirroring the griliches_awt/abdata_awt pattern; matches generate-liml-fixtures.do's `gen double awt = mod(yr, 5) + 1`.
+klein_awt <- transform(ivreg2r::klein, awt = yr %% 5 + 1)

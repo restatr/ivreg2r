@@ -1,92 +1,41 @@
 # ============================================================================
 # Tests: LIML / Fuller / k-class estimation (Ticket H1; M-15 fixture re-base)
 #
-# The M-15 fixture re-base moved the LIML/Fuller/k-class Stata-parity cells
-# off Card/simulated fixtures and onto klein/abdata fixtures (klein for the
-# native K1=2 multi-endogenous + panel-lag case, abdata for the K1=3
-# multi-endogenous cluster case). Card is retained only for fixture-free
-# behavioral, error, display, and identity tests.
+# The M-15 fixture re-base moved the LIML/Fuller/k-class Stata-parity cells off Card/simulated fixtures and onto klein/abdata fixtures (klein for the native K1=2 multi-endogenous + panel-lag case, abdata for the K1=3 multi-endogenous cluster case). Card is retained only for fixture-free behavioral, error, display, and identity tests.
 # ============================================================================
 
 data(card, package = "ivreg2r")
 data(klein, package = "ivreg2r")
 data(abdata, package = "ivreg2r")
 
-klein$awt <- klein$yr %% 5 + 1
-
-klein_formula <- consump ~ l(profits, 1) | profits + wagetot |
-  govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)
-
-ab_formula <- n ~ 1 | w + k + ys | d(w, 1) + d(k, 1) + d(ys, 1) +
-  d(w, 2) + d(k, 2) + d(ys, 2)
-
-# --- Helper: compare coefficients/SEs against a Stata fixture, matching by
-# translated ts-operator term name (test-ts-operators.R pattern). Every
-# fixture term must be present in the R fit -- missing terms fail loudly
-# rather than being silently intersected away. ---
-expect_coef_fixture <- function(fit, coef_file, tol_coef = stata_tol$coef,
-                                tol_se = stata_tol$se) {
-  fx <- read.csv(fixture_path(coef_file))
-  fx$term_r <- translate_stata_ts_names(fx$term)
-  b <- coef(fit)
-  se <- sqrt(diag(vcov(fit)))
-  for (i in seq_len(nrow(fx))) {
-    nm <- fx$term_r[i]
-    expect_true(nm %in% names(b),
-                info = paste(coef_file, "missing coefficient", nm))
-    expect_equal(unname(b[nm]), fx$estimate[i], tolerance = tol_coef,
-                 info = paste(coef_file, "coef", nm))
-    expect_equal(unname(se[nm]), fx$std_error[i], tolerance = tol_se,
-                 info = paste(coef_file, "se", nm))
-  }
-}
-
-# --- Helper: compare the full VCV against a Stata fixture, matching by
-# translated term name. Every fixture term must be present in fit's VCV. ---
-expect_vcov_fixture <- function(fit, vcov_file, tol = stata_tol$vcov) {
-  fx <- read.csv(fixture_path(vcov_file))
-  stata_terms <- translate_stata_ts_names(fx$term)
-  V_s <- as.matrix(fx[, grep("^vcov_", names(fx)), drop = FALSE])
-  dimnames(V_s) <- list(stata_terms, stata_terms)
-  V_r <- vcov(fit)
-  for (nm in stata_terms) {
-    expect_true(nm %in% rownames(V_r),
-                info = paste(vcov_file, "missing VCV term", nm))
-  }
-  expect_vcov_match(V_r[stata_terms, stata_terms, drop = FALSE], V_s,
-                    tol = tol, label = vcov_file)
-}
-
-# --- Helper: compare AR LIML overid against Stata fixture ---
-compare_ar_liml_overid <- function(fit, fixture_path,
+# --- Helper: compare AR LIML overid against an already-read diagnostics data frame. All call sites in this file are overidentified; the fixture-free just-identified test in section 18 owns exact-id (df = 0) behavior. ---
+compare_ar_liml_overid <- function(fit, dx,
                                    tol_stat = stata_tol$stat,
                                    tol_pval = stata_tol$pval) {
-  diag <- read.csv(fixture_path)
   aro <- fit$diagnostics$anderson_rubin_overid
 
   expect_false(is.null(aro), info = "anderson_rubin_overid should not be NULL")
 
-  # df
-  expect_equal(aro$df, as.integer(diag$arubindf),
+  expect_equal(aro$df, as.integer(dx$arubindf),
                info = "AR LIML overid df mismatch")
+  expect_equal(aro$lr_stat, dx$arubin, tolerance = tol_stat,
+               info = "AR LR stat mismatch")
+  expect_equal(aro$lr_p, dx$arubinp, tolerance = tol_pval,
+               info = "AR LR p-value mismatch")
+  expect_equal(aro$lin_stat, dx$arubin_lin, tolerance = tol_stat,
+               info = "AR lin stat mismatch")
+  expect_equal(aro$lin_p, dx$arubin_linp, tolerance = tol_pval,
+               info = "AR lin p-value mismatch")
+}
 
-  if (aro$df == 0L) {
-    # Exactly identified: stats = 0, p = NA
-    expect_equal(aro$lr_stat, 0, info = "AR LR stat should be 0 for exact-id")
-    expect_equal(aro$lin_stat, 0, info = "AR lin stat should be 0 for exact-id")
-    expect_true(is.na(aro$lr_p), info = "AR LR p should be NA for exact-id")
-    expect_true(is.na(aro$lin_p), info = "AR lin p should be NA for exact-id")
-  } else {
-    # Overidentified: compare to Stata values
-    expect_equal(aro$lr_stat, diag$arubin, tolerance = tol_stat,
-                 info = "AR LR stat mismatch")
-    expect_equal(aro$lr_p, diag$arubinp, tolerance = tol_pval,
-                 info = "AR LR p-value mismatch")
-    expect_equal(aro$lin_stat, diag$arubin_lin, tolerance = tol_stat,
-                 info = "AR lin stat mismatch")
-    expect_equal(aro$lin_p, diag$arubin_linp, tolerance = tol_pval,
-                 info = "AR lin p-value mismatch")
-  }
+# --- Helper: the RSS/sigma/R-squared/model-F core shared by every Stata parity cell in this file, promoted at the M-15 review to replace its triplicated inline block (sections 9, 10, 15-iid). ---
+expect_liml_core_diagnostics <- function(fit, dx) {
+  expect_equal(fit$rss, dx$rss, tolerance = stata_tol$coef, info = "RSS mismatch")
+  expect_equal(fit$sigma, dx$rmse, tolerance = stata_tol$coef, info = "sigma mismatch")
+  expect_equal(fit$r.squared, dx$r2, tolerance = stata_tol$coef,
+               info = "R-squared mismatch")
+  expect_equal(fit$model_f, dx$F_stat, tolerance = stata_tol$stat,
+               info = "Model F mismatch")
 }
 
 
@@ -122,9 +71,7 @@ test_that("kclass(1) matches 2SLS exactly", {
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                      data = card)
 
-  # Near machine-precision agreement (cross-product vs QR paths differ ~1e-11
-  # on the retired card_data.csv export; ~1e-10 on the bundled card dataset
-  # now used here, still far tighter than the 1e-6 Stata-parity standard).
+  # Near machine-precision agreement (cross-product vs QR paths differ ~1e-11 on the retired card_data.csv export; ~1e-10 on the bundled card dataset now used here, still far tighter than the 1e-6 Stata-parity standard).
   expect_equal(coef(fit_k1), coef(fit_2sls), tolerance = 1e-9)
   expect_equal(vcov(fit_k1), vcov(fit_2sls), tolerance = 1e-9)
   expect_equal(fit_k1$sigma, fit_2sls$sigma, tolerance = 1e-9)
@@ -468,10 +415,7 @@ test_that("COVIV appears in glance output", {
 # ============================================================================
 # 8. LIML just-identified — robust/cluster VCV equals 2SLS (identity)
 # ============================================================================
-# Just-identified LIML has lambda=1 and k=1, so all breads coincide. The
-# robust half stays on Card (fixture-free). The cluster half moved to a
-# just-identified abdata spec at M-15 (K1=3, L1=3), replacing the retired
-# card clusters=~smsa66 cell (M=2 cluster anti-pattern).
+# Just-identified LIML has lambda=1 and k=1, so all breads coincide. The robust half stays on Card (fixture-free). The cluster half moved to a just-identified abdata spec at M-15 (K1=3, L1=3), replacing the retired card clusters=~smsa66 cell (M=2 cluster anti-pattern).
 
 test_that("LIML justid robust VCV equals 2SLS robust VCV", {
   # HC0
@@ -505,16 +449,11 @@ test_that("Klein LIML (iid, small=TRUE): coef, vcov, diagnostics match Stata", {
   expect_vcov_fixture(fit, "klein_liml_vcov_iid_small.csv")
 
   dx <- read_diagnostics(fixture_path("klein_liml_diagnostics_iid_small.csv"))
-  expect_equal(fit$rss, dx$rss, tolerance = stata_tol$coef, info = "RSS mismatch")
-  expect_equal(fit$sigma, dx$rmse, tolerance = stata_tol$coef, info = "sigma mismatch")
-  expect_equal(fit$r.squared, dx$r2, tolerance = stata_tol$coef,
-               info = "R-squared mismatch")
-  expect_equal(fit$model_f, dx$F_stat, tolerance = stata_tol$stat,
-               info = "Model F mismatch")
-  expect_equal(fit$lambda, dx$lambda, tolerance = stata_tol$stat)
-  expect_equal(fit$kclass_value, dx$kclass, tolerance = stata_tol$stat)
+  expect_liml_core_diagnostics(fit, dx)
+  expect_equal(fit$lambda, dx$lambda, tolerance = stata_tol$coef)
+  expect_equal(fit$kclass_value, dx$kclass, tolerance = stata_tol$coef)
 
-  compare_ar_liml_overid(fit, fixture_path("klein_liml_diagnostics_iid_small.csv"))
+  compare_ar_liml_overid(fit, dx)
 })
 
 
@@ -532,12 +471,7 @@ test_that("Klein LIML (robust): coef, vcov, diagnostics match Stata", {
   expect_vcov_fixture(fit, "klein_liml_vcov_hc1.csv")
 
   dx <- read_diagnostics(fixture_path("klein_liml_diagnostics_hc1.csv"))
-  expect_equal(fit$rss, dx$rss, tolerance = stata_tol$coef, info = "RSS mismatch")
-  expect_equal(fit$sigma, dx$rmse, tolerance = stata_tol$coef, info = "sigma mismatch")
-  expect_equal(fit$r.squared, dx$r2, tolerance = stata_tol$coef,
-               info = "R-squared mismatch")
-  expect_equal(fit$model_f, dx$F_stat, tolerance = stata_tol$stat,
-               info = "Model F mismatch")
+  expect_liml_core_diagnostics(fit, dx)
 
   # AR overid is IID-only
   expect_null(fit$diagnostics$anderson_rubin_overid)
@@ -603,7 +537,7 @@ test_that("Klein Fuller(1) (robust): coef, vcov match Stata; kclass matches", {
   expect_vcov_fixture(fit, "klein_fuller1_vcov_hc1.csv")
 
   dx <- read_diagnostics(fixture_path("klein_fuller1_diagnostics_hc1.csv"))
-  expect_equal(fit$kclass_value, dx$kclass, tolerance = stata_tol$stat)
+  expect_equal(fit$kclass_value, dx$kclass, tolerance = stata_tol$coef)
 })
 
 
@@ -621,7 +555,7 @@ test_that("Klein kclass(1.19) (robust): coef, vcov match Stata", {
   expect_vcov_fixture(fit, "klein_kclass119_vcov_hc1.csv")
 
   dx <- read_diagnostics(fixture_path("klein_kclass119_diagnostics_hc1.csv"))
-  expect_equal(fit$kclass_value, dx$kclass, tolerance = stata_tol$stat)
+  expect_equal(fit$kclass_value, dx$kclass, tolerance = stata_tol$coef)
   expect_equal(fit$model_f, dx$F_stat, tolerance = stata_tol$stat,
                info = "Model F mismatch")
 })
@@ -635,29 +569,24 @@ test_that("Klein weighted LIML (iid): coef, vcov, diagnostics, AR overid match S
   skip_if(!file.exists(fixture_path("klein_liml_aw_coef_iid.csv")),
           "Klein weighted LIML fixture not found")
 
-  fit <- ivreg2(klein_formula, data = klein, tvar = "yr", weights = awt,
+  fit <- ivreg2(klein_formula, data = klein_awt, tvar = "yr", weights = awt,
                 method = "liml")
   expect_coef_fixture(fit, "klein_liml_aw_coef_iid.csv")
   expect_vcov_fixture(fit, "klein_liml_aw_vcov_iid.csv")
 
   dx <- read_diagnostics(fixture_path("klein_liml_aw_diagnostics_iid.csv"))
-  expect_equal(fit$rss, dx$rss, tolerance = stata_tol$coef, info = "RSS mismatch")
-  expect_equal(fit$sigma, dx$rmse, tolerance = stata_tol$coef, info = "sigma mismatch")
-  expect_equal(fit$r.squared, dx$r2, tolerance = stata_tol$coef,
-               info = "R-squared mismatch")
-  expect_equal(fit$model_f, dx$F_stat, tolerance = stata_tol$stat,
-               info = "Model F mismatch")
-  expect_equal(fit$lambda, dx$lambda, tolerance = stata_tol$stat)
-  expect_equal(fit$kclass_value, dx$kclass, tolerance = stata_tol$stat)
+  expect_liml_core_diagnostics(fit, dx)
+  expect_equal(fit$lambda, dx$lambda, tolerance = stata_tol$coef)
+  expect_equal(fit$kclass_value, dx$kclass, tolerance = stata_tol$coef)
 
-  compare_ar_liml_overid(fit, fixture_path("klein_liml_aw_diagnostics_iid.csv"))
+  compare_ar_liml_overid(fit, dx)
 })
 
 test_that("Klein weighted LIML (robust): coef, vcov match Stata", {
   skip_if(!file.exists(fixture_path("klein_liml_aw_coef_hc1.csv")),
           "Klein weighted LIML robust fixture not found")
 
-  fit <- ivreg2(klein_formula, data = klein, tvar = "yr", weights = awt,
+  fit <- ivreg2(klein_formula, data = klein_awt, tvar = "yr", weights = awt,
                 method = "liml", vcov = "robust")
   expect_coef_fixture(fit, "klein_liml_aw_coef_hc1.csv")
   expect_vcov_fixture(fit, "klein_liml_aw_vcov_hc1.csv")
@@ -671,52 +600,57 @@ test_that("Klein weighted LIML (robust): coef, vcov match Stata", {
 # ============================================================================
 # 16. abdata LIML — Stata parity (cluster)
 # ============================================================================
-# This cell carries the LIML x cluster and K1=3 multi-endogenous
-# intersections that the retired sim_multi_endo and card cluster (M=2,
-# clusters=~smsa66) cells used to cover.
+# This cell carries the LIML x cluster and K1=3 multi-endogenous intersections that the retired sim_multi_endo and card cluster (M=2, clusters=~smsa66) cells used to cover.
 
-test_that("abdata LIML (cluster): coef, vcov, diagnostics match Stata", {
-  skip_if(!file.exists(fixture_path("ab_liml_coef_cl.csv")),
-          "abdata LIML cluster fixture not found")
+for (cell in list(list(suffix = "cl", small = FALSE),
+                  list(suffix = "cl_small", small = TRUE))) {
+  test_that(paste0("abdata LIML (", cell$suffix,
+                   "): coef, vcov, diagnostics match Stata"), {
+    coef_file <- paste0("ab_liml_coef_", cell$suffix, ".csv")
+    skip_if(!file.exists(fixture_path(coef_file)),
+            "abdata LIML cluster fixture not found")
 
-  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                method = "liml", clusters = ~id)
-  expect_coef_fixture(fit, "ab_liml_coef_cl.csv")
-  expect_vcov_fixture(fit, "ab_liml_vcov_cl.csv")
+    fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                  method = "liml", clusters = ~id, small = cell$small)
+    expect_coef_fixture(fit, coef_file)
+    expect_vcov_fixture(fit, paste0("ab_liml_vcov_", cell$suffix, ".csv"))
 
-  dx <- read_diagnostics(fixture_path("ab_liml_diagnostics_cl.csv"))
-  expect_equal(nobs(fit), dx$N)
-  expect_equal(fit$n_clusters, dx$N_clust)
-  expect_equal(fit$lambda, dx$lambda, tolerance = stata_tol$stat)
-  expect_equal(fit$diagnostics$overid$stat, dx$j, tolerance = stata_tol$stat)
-  expect_equal(fit$diagnostics$underid$stat, dx$idstat, tolerance = stata_tol$stat)
-})
+    dx <- read_diagnostics(
+      fixture_path(paste0("ab_liml_diagnostics_", cell$suffix, ".csv")))
+    expect_equal(nobs(fit), dx$N)
+    expect_equal(fit$n_clusters, dx$N_clust)
+    expect_equal(fit$lambda, dx$lambda, tolerance = stata_tol$coef)
+    expect_equal(fit$diagnostics$overid$stat, dx$j, tolerance = stata_tol$stat)
+    expect_equal(fit$diagnostics$underid$stat, dx$idstat,
+                 tolerance = stata_tol$stat)
+  })
+}
 
-test_that("abdata LIML (cluster, small=TRUE): coef, vcov, diagnostics match Stata", {
-  skip_if(!file.exists(fixture_path("ab_liml_coef_cl_small.csv")),
-          "abdata LIML cluster-small fixture not found")
-
-  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                method = "liml", clusters = ~id, small = TRUE)
-  expect_coef_fixture(fit, "ab_liml_coef_cl_small.csv")
-  expect_vcov_fixture(fit, "ab_liml_vcov_cl_small.csv")
-
-  dx <- read_diagnostics(fixture_path("ab_liml_diagnostics_cl_small.csv"))
-  expect_equal(nobs(fit), dx$N)
-  expect_equal(fit$n_clusters, dx$N_clust)
-  expect_equal(fit$lambda, dx$lambda, tolerance = stata_tol$stat)
-  expect_equal(fit$diagnostics$overid$stat, dx$j, tolerance = stata_tol$stat)
-  expect_equal(fit$diagnostics$underid$stat, dx$idstat, tolerance = stata_tol$stat)
+test_that("small correction factor is method-uniform across the k-class family", {
+  # The small-sample factor is applied in the shared .vcov_from_omega with no method branch, so the retired fuller x small/kclass x small Stata cells are pinned by this uniformity plus the klein_liml small cells; a future method-specific small branch breaks this test.
+  ratio_for <- function(method_args) {
+    fit <- do.call(ivreg2, c(list(klein_formula, data = klein, tvar = "yr",
+                                  vcov = "robust"), method_args))
+    fit_small <- do.call(ivreg2, c(list(klein_formula, data = klein,
+                                        tvar = "yr", vcov = "robust",
+                                        small = TRUE), method_args))
+    vcov(fit_small) / vcov(fit)
+  }
+  r_liml <- ratio_for(list(method = "liml"))
+  r_fuller <- ratio_for(list(method = "liml", fuller = 1))
+  r_kclass <- ratio_for(list(kclass = 1.19))
+  for (r in list(r_liml, r_fuller, r_kclass)) {
+    expect_lt(max(r) - min(r), 1e-12)
+  }
+  expect_equal(mean(r_liml), mean(r_fuller), tolerance = 1e-12)
+  expect_equal(mean(r_liml), mean(r_kclass), tolerance = 1e-12)
 })
 
 
 # ============================================================================
 # 17. Klein LIML (iid) — extras beyond H72's coverage (reused tsop fixtures)
 # ============================================================================
-# test-ts-operators.R's H72 already asserts coef/vcov/N/lambda/kclass/AR-lr
-# for this exact fit against tsop_klein_*_liml.csv; this test only covers
-# statistics H72 does not check (the Sargan overid stat, and the AR lin
-# stat/p plus the lr p-value).
+# H72 in test-ts-operators.R asserts coef/vcov/N/lambda/kclass/AR-lr against the same tsop fixtures but fits klein from tsop_klein_data.csv, whereas this test fits the bundled data(klein) (CSV/bundled coherence is pinned by test-bundled-data.R), so it asserts the full AR-overid set on the bundled-data fit plus the Sargan stat.
 
 test_that("Klein LIML (iid): Sargan and AR overid extras match Stata", {
   skip_if(!file.exists(fixture_path("tsop_klein_diagnostics_liml.csv")),
@@ -729,6 +663,7 @@ test_that("Klein LIML (iid): Sargan and AR overid extras match Stata", {
   expect_equal(fit$diagnostics$overid$stat, dx$sargan, tolerance = stata_tol$stat)
 
   aro <- fit$diagnostics$anderson_rubin_overid
+  expect_equal(aro$lr_stat, dx$arubin, tolerance = stata_tol$stat)
   expect_equal(aro$lr_p, dx$arubinp, tolerance = stata_tol$pval)
   expect_equal(aro$lin_stat, dx$arubin_lin, tolerance = stata_tol$stat)
   expect_equal(aro$lin_p, dx$arubin_linp, tolerance = stata_tol$pval)
@@ -757,38 +692,23 @@ test_that("AR LIML overid: Klein Fuller(1) overid IID matches Stata", {
 
   fit <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "liml",
                 fuller = 1)
-  compare_ar_liml_overid(fit, fixture_path("tsop_klein_diagnostics_fuller1.csv"))
+  dx <- read_diagnostics(fixture_path("tsop_klein_diagnostics_fuller1.csv"))
+  compare_ar_liml_overid(fit, dx)
 })
 
-# Klein is natively multi-endogenous (K1 = 2: profits, wagetot), so the AR
-# overid path for K1 > 1 is already exercised by the Klein LIML/Fuller(1)
-# tests above; the retired Fuller(4) and sim_multi_endo AR tests have no
-# replacement cell.
+# Klein is natively multi-endogenous (K1 = 2: profits, wagetot), so the AR overid path for K1 > 1 is already exercised by the Klein LIML/Fuller(1) tests above; the retired Fuller(4) and sim_multi_endo AR tests have no replacement cell.
 
-test_that("AR LIML overid: NULL for robust LIML", {
-  skip_if(!file.exists(fixture_path("klein_liml_coef_hc1.csv")),
-          "Klein LIML robust fixture not found")
-
-  fit <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "liml",
-                vcov = "robust")
-  expect_null(fit$diagnostics$anderson_rubin_overid)
-})
+# "AR LIML overid: NULL for robust LIML" is already covered by section 10's Klein LIML (robust) test on this exact fit; not repeated here.
 
 test_that("AR LIML overid: NULL for cluster LIML", {
-  skip_if(!file.exists(fixture_path("ab_liml_coef_cl.csv")),
-          "abdata LIML cluster fixture not found")
-
   fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
                 method = "liml", clusters = ~id)
   expect_null(fit$diagnostics$anderson_rubin_overid)
 })
 
 test_that("AR LIML overid: NULL for kclass", {
-  skip_if(!file.exists(fixture_path("klein_kclass119_coef_hc1.csv")),
-          "Klein kclass(1.19) fixture not found")
-
-  fit <- ivreg2(klein_formula, data = klein, tvar = "yr", kclass = 1.19,
-                vcov = "robust")
+  # IID is the meaningful gate here: AR overid must stay NULL because the method is kclass, not because the VCE is robust.
+  fit <- ivreg2(klein_formula, data = klein, tvar = "yr", kclass = 1.19)
   expect_null(fit$diagnostics$anderson_rubin_overid)
 })
 

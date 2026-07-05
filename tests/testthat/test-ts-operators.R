@@ -22,37 +22,6 @@ if (have_ab) {
   abdata <- read.csv(ab_path)
 }
 
-# Compare coefficients and SEs against a Stata coef fixture, matching by
-# translated term name.
-expect_coef_fixture <- function(fit, coef_file, tol_coef = stata_tol$coef,
-                                tol_se = stata_tol$se) {
-  fx <- read.csv(fixture_path(coef_file))
-  fx$term_r <- translate_stata_ts_names(fx$term)
-  b <- coef(fit)
-  se <- sqrt(diag(vcov(fit)))
-  expect_setequal(fx$term_r, names(b))
-  for (i in seq_len(nrow(fx))) {
-    nm <- fx$term_r[i]
-    expect_equal(unname(b[nm]), fx$estimate[i], tolerance = tol_coef,
-                 info = paste(coef_file, "coef", nm))
-    expect_equal(unname(se[nm]), fx$std_error[i], tolerance = tol_se,
-                 info = paste(coef_file, "se", nm))
-  }
-}
-
-# Compare the full VCV against a Stata vcov fixture, matching by name.
-expect_vcov_fixture <- function(fit, vcov_file, tol = stata_tol$vcov) {
-  fx <- read.csv(fixture_path(vcov_file))
-  stata_terms <- translate_stata_ts_names(fx$term)
-  V_s <- as.matrix(fx[, grep("^vcov_", names(fx)), drop = FALSE])
-  dimnames(V_s) <- list(stata_terms, stata_terms)
-  V_r <- vcov(fit)
-  expect_setequal(rownames(V_r), stata_terms)
-  perm <- match(rownames(V_r), stata_terms)
-  expect_vcov_match(V_r, V_s[perm, perm], tol = tol, label = vcov_file)
-}
-
-
 # ============================================================================
 # 1. Lag semantics (pure R)
 # ============================================================================
@@ -470,9 +439,6 @@ test_that("H85: GMM2S + HAC QS + orthog(l1.unem) matches Stata", {
 # ============================================================================
 # 7. Stata fixtures: Klein H72-H76 (LIML family with L.profits / L.totinc)
 # ============================================================================
-
-klein_formula <- consump ~ l(profits, 1) | profits + wagetot |
-  govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)
 
 test_that("H72: Klein LIML matches Stata", {
   skip_if(!have_klein, "klein fixture data not found")

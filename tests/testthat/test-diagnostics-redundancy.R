@@ -15,9 +15,6 @@ data(mroz, package = "ivreg2r")
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | age + mrt
 
-ab_formula <- n ~ 1 | w + k + ys |
-  d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)
-
 phil_formula <- cinf ~ 1 | unem | l(unem, 1:3)
 
 
