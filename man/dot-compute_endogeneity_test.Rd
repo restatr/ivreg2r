@@ -77,6 +77,8 @@ are treated as exogenous (and hence become their own instruments).
 The same-S-matrix constraint guarantees C >= 0: the S matrix comes from
 the restricted model (larger instrument set), and the full model's J
 is re-estimated using the appropriate submatrix of that S.
+
+Unlike \code{.compute_orthog_test}, this test deliberately has NO \code{j_full} parameter: Stata's endog test comes from a recursive call that re-estimates BOTH the full and restricted models fresh (forwarding \code{gmm2s}/\code{liml} but not \code{cue}, and passing no smatrix from the outer model, ado:1576-1601), so the outer model's own J never enters \code{e(estat)}; the internal fixed-omega computations here mirror that exactly, and the sw_cue endog fixture verifies the CUE case to 8 digits.
 }
 \note{
 The C-statistic for IID models is computed using large-sample

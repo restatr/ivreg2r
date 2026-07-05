@@ -488,29 +488,17 @@
       opt_nm <- stats::optim(par = opt_bfgs$par, fn = cue_obj,
                              method = "Nelder-Mead",
                              control = list(maxit = 5000L * K, reltol = 1e-14))
-      # Keep the better of the two stage results (Nelder-Mead starts at the
-      # BFGS point, so its best vertex can never be worse; this is defensive).
-      opt <- if (opt_nm$value <= opt_bfgs$value) opt_nm else opt_bfgs
-      beta <- opt$par
-      j_from_opt <- opt$value
+      # Nelder-Mead starts at the BFGS point, which is a vertex of its initial simplex, and its tracked best vertex is monotonically non-increasing, so opt_nm can never be worse than opt_bfgs — take it unconditionally.
+      beta <- opt_nm$par
+      j_from_opt <- opt_nm$value
 
-      # Convergence ruling (the wp_sw_cue / M-17 spurious-flag finding):
-      # Nelder-Mead exits with code 10 (simplex degeneracy) when started at an
-      # already-converged BFGS optimum on low-dimensional problems. When BFGS
-      # converged (its certificate at reltol 1e-12) and the Nelder-Mead restart
-      # moved the objective by no more than 1e-6 relative — i.e. both
-      # optimizers agree on the optimum's location, with the residual gap being
-      # BFGS's finite-difference gradient noise that Nelder-Mead walks off
-      # before its simplex collapses — the fit HAS converged and code 10 is an
-      # artifact of the restart. A larger Nelder-Mead improvement means the
-      # BFGS certificate did not hold (the H22 griliches pathology, where
-      # Nelder-Mead keeps descending across a flat valley), and code 1 (maxit)
-      # is never forgiven.
-      nm_improved <- (opt_bfgs$value - opt_nm$value) >
-        (abs(opt_bfgs$value) + 1e-12) * 1e-6
+      # Convergence ruling (the wp_sw_cue / M-17 spurious-flag finding): Nelder-Mead exits with code 10 (simplex degeneracy) when started at an already-converged BFGS optimum on low-dimensional problems. Forgive code 10 only when BFGS converged AND the restart provably moved the objective by no more than 1e-6 relative (plus a 1e-10 absolute floor for near-zero J) — i.e. both optimizers agree on the optimum's location. The 1e-6 bound is derived, not fitted: BFGS's finite-difference gradients leave it short of the optimum by O(sqrt(machine eps)) ~ 1.5e-8 relative on the objective, so genuine refinement noise sits two orders below the bound, while a real basin or valley traversal (the H22 griliches pathology) moves the objective by many orders more. isTRUE() keeps a non-finite objective from being forgiven. Code 1 (maxit) is never forgiven: an optimizer still improving at its iteration cap is genuinely unconverged.
+      improvement_small <- isTRUE(
+        (opt_bfgs$value - opt_nm$value) <= abs(opt_bfgs$value) * 1e-6 + 1e-10
+      )
       convergence <- if (opt_nm$convergence == 0L ||
                          (opt_nm$convergence == 10L &&
-                          opt_bfgs$convergence == 0L && !nm_improved)) {
+                          opt_bfgs$convergence == 0L && improvement_small)) {
         0L
       } else {
         opt_nm$convergence

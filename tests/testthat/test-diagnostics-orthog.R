@@ -95,6 +95,26 @@ test_that("testing all but one overid instrument gives C = J_full when restricte
   expect_identical(fit$diagnostics$orthog$df, 3L)
 })
 
+test_that("orthog under LIML: C = LIML Hansen J - fixed-S restricted minimum (j_full pass-through)", {
+  # Stata's recursive orthog call does not forward liml (ado:1521-1538), so cstat = the LIML model's own Hansen J minus the fixed-S restricted minimum — this pins the j_full pass-through added at M-17, which has no LIML Stata fixture.
+  fit <- ivreg2(gril_formula, data = griliches, method = "liml",
+                vcov = "robust", orthog = c("age", "mrt"))
+  p <- ivreg2r:::.parse_formula(gril_formula, data = griliches)
+  Z <- p$Z
+  X <- p$X
+  y <- p$y
+  N <- p$N
+  Omega_full <- ivreg2r:::.compute_omega(Z, fit$residuals, NULL, NULL, N,
+                                         dofminus = 0L)
+  tested <- c("age", "mrt")
+  keep_idx <- setdiff(seq_len(ncol(Z)), match(tested, colnames(Z)))
+  Z_r <- Z[, keep_idx, drop = FALSE]
+  Omega_sub <- Omega_full[keep_idx, keep_idx, drop = FALSE]
+  J_r <- ivreg2r:::.compute_j_with_omega(Z_r, X, y, Omega_sub, NULL, N)
+  expect_equal(fit$diagnostics$orthog$stat,
+               fit$diagnostics$overid$stat - J_r, tolerance = 1e-10)
+})
+
 test_that("orthog appears in glance output", {
   fit <- ivreg2(gril_formula, data = griliches, orthog = c("age", "mrt"))
   g <- glance(fit)

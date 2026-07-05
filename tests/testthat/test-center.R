@@ -204,19 +204,6 @@ for (cell in center_full_cells) {
 #
 # These two families' Stata statistics (e(estat), e(cstat)) are invariant to `small`. The generator re-ran both cells with `small` added and asserted e(estat)/e(estatp) and e(cstat)/e(cstatp) reproduce to reldif < 1e-12 with exact df equality, so a single fixture backs both fits; the shared test_stata_fixture_cells() harness fits small = FALSE and small = TRUE and additionally pins the two fits' diagnostics equal at machine precision.
 
-compare_center_endog <- function(fit, fixture) {
-  d <- fit$diagnostics$endogeneity
-  expect_false(is.null(d))
-  expect_equal(d$stat, fixture$endog_stat,
-               tolerance = stata_tol$stat, info = "endog stat")
-  expect_equal(d$p, fixture$endog_p,
-               tolerance = stata_tol$pval, info = "endog p")
-  expect_identical(d$df, as.integer(fixture$endog_df))
-  # Sanity that the endogeneity test rides on the centered J.
-  expect_equal(fit$diagnostics$overid$stat, fixture$overid_stat,
-               tolerance = stata_tol$stat, info = "overid stat (centered)")
-}
-
 center_endog_cells <- list(
   list(name = "griliches robust center endog(iq)",
        fixture = "gril_center_endog_diagnostics_robust.csv",
@@ -224,7 +211,7 @@ center_endog_cells <- list(
                        center = TRUE, endog = "iq"))
 )
 
-test_stata_fixture_cells(center_endog_cells, compare_center_endog,
+test_stata_fixture_cells(center_endog_cells, compare_endog_fixture,
                          slot = "endogeneity",
                          label_prefix = "center endogeneity matches Stata")
 

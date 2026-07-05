@@ -314,8 +314,7 @@ save_orthog_results, prefix(sw_cue) suffix(robust) outdir(`outdir')
 
 
 /*===========================================================================
-  Generation-time small-invariance assertions (cells 7 and 8).
-  This is the evidence the R tests' double-small-fit harness relies on: it certifies that adding `small` leaves the endogeneity C-statistic (cell 7) and the orthogonality C-statistic (cell 8) unchanged, so a single fixture serves both small = FALSE and small = TRUE R fits. On assert failure the batch run errors and the main loop treats it as a gate finding.
+  Generation-time small-invariance assertions (cells 7 and 8) — see the file header for the full rationale.
 ===========================================================================*/
 
 // --- Cell 7 small-invariance: re-run cue robust endog(UR) WITH small and certify e(estat)/e(estatp) reldif < 1e-12, e(estatdf) exact ---

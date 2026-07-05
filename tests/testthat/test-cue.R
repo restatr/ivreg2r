@@ -15,6 +15,10 @@ data(klein, package = "ivreg2r")
 # sw_formula (BSS 2007 p. 480), ab_formula (H88), klein_formula (H72-H76), and
 # the stockwatson_swwt weighted data object are provided by helper-fixtures.R.
 
+# Shared fits for the fixture-free behavioral sections below (CUE optimization is expensive; M-22 hoisting precedent). The fixture-comparison cells keep their own fits behind skip guards.
+sw_cue_fit_iid <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+sw_cue_fit_robust <- ivreg2(sw_formula, data = stockwatson, method = "cue", vcov = "robust")
+
 # CUE involves nonlinear optimization, which adds a layer of numerical noise
 # beyond direct estimation (2SLS/LIML). For small-magnitude coefficients, even
 # tiny absolute differences (2e-8) can breach relative tolerances. We use
@@ -85,6 +89,9 @@ for (cell in cue_full_cells) {
       fit, paste0(cell$prefix, "_diagnostics_", cell$suffix, ".csv"),
       tol_coef = cue_tol$coef
     )
+    # For CUE the overid statistic is always the Hansen J (covers the abdata
+    # cluster cell; asserted unconditionally since it holds for every cell).
+    expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
   })
 }
 
@@ -112,19 +119,6 @@ test_that("klein CUE-IID VCV and Hansen J match Stata (H74 complement)", {
 #
 # These two families' Stata statistics (e(estat), e(cstat)) are invariant to `small`. The generator (generate-cue-fixtures.do) re-ran both cells with `small` added and certified at generation time that e(estat)/e(estatp) and e(cstat)/e(cstatp) reproduce to reldif < 1e-12 with exact df equality, so a single fixture backs both fits; the shared test_stata_fixture_cells() harness fits small = FALSE and small = TRUE and additionally pins the two fits' diagnostics equal at machine precision.
 
-compare_cue_endog <- function(fit, fixture) {
-  d <- fit$diagnostics$endogeneity
-  expect_false(is.null(d))
-  expect_equal(d$stat, fixture$endog_stat,
-               tolerance = stata_tol$stat, info = "endog stat")
-  expect_equal(d$p, fixture$endog_p,
-               tolerance = stata_tol$pval, info = "endog p")
-  expect_identical(d$df, as.integer(fixture$endog_df))
-  # Sanity that the endogeneity test rides on the CUE J.
-  expect_equal(fit$diagnostics$overid$stat, fixture$overid_stat,
-               tolerance = stata_tol$stat, info = "overid stat (CUE)")
-}
-
 cue_endog_cells <- list(
   list(name = "stockwatson robust CUE endog(UR)",
        fixture = "sw_cue_endog_diagnostics_robust.csv",
@@ -132,7 +126,7 @@ cue_endog_cells <- list(
                        vcov = "robust", endog = "UR"))
 )
 
-test_stata_fixture_cells(cue_endog_cells, compare_cue_endog,
+test_stata_fixture_cells(cue_endog_cells, compare_endog_fixture,
                          slot = "endogeneity",
                          label_prefix = "CUE endogeneity matches Stata")
 
@@ -180,22 +174,18 @@ test_that("endog() leaves CUE estimation invariant", {
   # endog() is diagnostics-only and does not enter the CUE objective, so the point estimates and VCE are untouched; the optimizer is deterministic from identical inputs, so the comparison is exact (this is why the endog cell exports diagnostics only; M-16/M-18 pattern).
   fit_endog <- ivreg2(sw_formula, data = stockwatson, method = "cue",
                       vcov = "robust", endog = "UR")
-  fit_plain <- ivreg2(sw_formula, data = stockwatson, method = "cue",
-                      vcov = "robust")
 
-  expect_identical(coef(fit_endog), coef(fit_plain))
-  expect_identical(vcov(fit_endog), vcov(fit_plain))
+  expect_identical(coef(fit_endog), coef(sw_cue_fit_robust))
+  expect_identical(vcov(fit_endog), vcov(sw_cue_fit_robust))
 })
 
 test_that("orthog() leaves CUE estimation invariant", {
   # orthog() is likewise diagnostics-only: the reported C-statistic re-optimizes a restricted model, but the fitted full model does not change.
   fit_orthog <- ivreg2(sw_formula, data = stockwatson, method = "cue",
                        vcov = "robust", orthog = "TBON_1")
-  fit_plain <- ivreg2(sw_formula, data = stockwatson, method = "cue",
-                      vcov = "robust")
 
-  expect_identical(coef(fit_orthog), coef(fit_plain))
-  expect_identical(vcov(fit_orthog), vcov(fit_plain))
+  expect_identical(coef(fit_orthog), coef(sw_cue_fit_robust))
+  expect_identical(vcov(fit_orthog), vcov(sw_cue_fit_robust))
 })
 
 # ============================================================================
@@ -203,7 +193,7 @@ test_that("orthog() leaves CUE estimation invariant", {
 # ============================================================================
 
 test_that("CUE uses LIML Stock-Yogo tables", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+  fit <- sw_cue_fit_iid
 
   sy <- fit$diagnostics$weak_id_sy
   expect_false(is.null(sy))
@@ -218,19 +208,11 @@ test_that("CUE uses LIML Stock-Yogo tables", {
 # ============================================================================
 
 test_that("CUE overid is always Hansen J", {
-  # IID
-  fit_iid <- ivreg2(sw_formula, data = stockwatson, method = "cue")
-  expect_equal(fit_iid$diagnostics$overid$test_name, "Hansen J")
-
-  # Robust
-  fit_robust <- ivreg2(sw_formula, data = stockwatson, method = "cue",
-                       vcov = "robust")
-  expect_equal(fit_robust$diagnostics$overid$test_name, "Hansen J")
-
-  # Cluster (abdata H88 base; the sw arc has no natural cluster variable)
-  fit_cl <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                   method = "cue", clusters = ~id)
-  expect_equal(fit_cl$diagnostics$overid$test_name, "Hansen J")
+  # IID and robust via the shared fits; the cluster case is asserted in the
+  # section-1 fixture loop below (for CUE the overid test_name is always
+  # "Hansen J", so the loop asserts it unconditionally for every cell).
+  expect_equal(sw_cue_fit_iid$diagnostics$overid$test_name, "Hansen J")
+  expect_equal(sw_cue_fit_robust$diagnostics$overid$test_name, "Hansen J")
 })
 
 # ============================================================================
@@ -238,8 +220,7 @@ test_that("CUE overid is always Hansen J", {
 # ============================================================================
 
 test_that("CUE populates identification diagnostics", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue",
-                vcov = "robust")
+  fit <- sw_cue_fit_robust
 
   # Overid
   expect_false(is.null(fit$diagnostics$overid))
@@ -465,7 +446,7 @@ test_that("b0 + uppercase '2SLS' auto-promotes to CUE", {
 # ============================================================================
 
 test_that("CUE convergence code = 0 for well-specified model", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+  fit <- sw_cue_fit_iid
 
   expect_equal(fit$cue_convergence, 0L)
   expect_false(is.null(fit$cue_message))
@@ -483,7 +464,7 @@ test_that("CUE convergence fields are NULL for non-CUE", {
 # ============================================================================
 
 test_that("tidy works for CUE", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+  fit <- sw_cue_fit_iid
   td <- tidy(fit)
 
   expect_s3_class(td, "tbl_df")
@@ -493,7 +474,7 @@ test_that("tidy works for CUE", {
 })
 
 test_that("glance works for CUE and includes cue_convergence", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+  fit <- sw_cue_fit_iid
   gl <- glance(fit)
 
   expect_s3_class(gl, "tbl_df")
@@ -511,7 +492,7 @@ test_that("glance cue_convergence is NA for non-CUE", {
 })
 
 test_that("augment works for CUE", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+  fit <- sw_cue_fit_iid
   aug <- augment(fit)
 
   expect_s3_class(aug, "tbl_df")
@@ -523,7 +504,7 @@ test_that("augment works for CUE", {
 # ============================================================================
 
 test_that("CUE method field is 'cue'", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+  fit <- sw_cue_fit_iid
 
   expect_equal(fit$method, "cue")
 })
@@ -535,7 +516,7 @@ test_that("CUE method field is 'cue'", {
 # ============================================================================
 
 test_that("summary prints for CUE without error", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+  fit <- sw_cue_fit_iid
 
   out <- capture.output(summary(fit))
   expect_true(any(grepl("CUE Estimation", out)))
@@ -552,7 +533,7 @@ test_that("summary prints for CUE with b0", {
 })
 
 test_that("print method works for CUE", {
-  fit <- ivreg2(sw_formula, data = stockwatson, method = "cue")
+  fit <- sw_cue_fit_iid
 
   out <- capture.output(print(fit))
   expect_true(any(grepl("CUE Estimation", out)))

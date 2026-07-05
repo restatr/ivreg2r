@@ -271,6 +271,10 @@ expect_diagnostics_fixture <- function(fit, diag_file,
     expect_equal(fit$rss, dx$rss,
                  tolerance = tol_coef, info = "rss")
   }
+  if (!is.na(dx$r2) && !is.null(fit$r.squared)) {
+    expect_equal(fit$r.squared, dx$r2,
+                 tolerance = tol_coef, info = "r2")
+  }
   expect_identical(nobs(fit), as.integer(dx$N))
 }
 
@@ -288,6 +292,19 @@ compare_orthog_fixture <- function(fit, fixture) {
     expect_equal(orth$p, fixture$cstatp, tolerance = stata_tol$pval)
     expect_identical(orth$df, as.integer(fixture$cstatdf))
   }
+}
+
+# Compare endog() diagnostics against a fixture's endog_stat/endog_p/endog_df columns, plus the fixture's own overid_stat as a cross-cell consistency tripwire; promoted from the two per-file copies (test-center.R and test-cue.R) at the M-17 review.
+compare_endog_fixture <- function(fit, fixture) {
+  d <- fit$diagnostics$endogeneity
+  expect_false(is.null(d))
+  expect_equal(d$stat, fixture$endog_stat,
+               tolerance = stata_tol$stat, info = "endog stat")
+  expect_equal(d$p, fixture$endog_p,
+               tolerance = stata_tol$pval, info = "endog p")
+  expect_identical(d$df, as.integer(fixture$endog_df))
+  expect_equal(fit$diagnostics$overid$stat, fixture$overid_stat,
+               tolerance = stata_tol$stat, info = "overid stat (consistency)")
 }
 
 # Shared klein/abdata fixture formulas (one source of truth, M-25 promotion precedent): klein_formula anchors help-file case H72, ab_formula anchors H88.

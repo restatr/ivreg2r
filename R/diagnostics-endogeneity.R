@@ -12,6 +12,8 @@
 #' the restricted model (larger instrument set), and the full model's J
 #' is re-estimated using the appropriate submatrix of that S.
 #'
+#' Unlike \code{.compute_orthog_test}, this test deliberately has NO `j_full` parameter: Stata's endog test comes from a recursive call that re-estimates BOTH the full and restricted models fresh (forwarding `gmm2s`/`liml` but not `cue`, and passing no smatrix from the outer model, ado:1576-1601), so the outer model's own J never enters `e(estat)`; the internal fixed-omega computations here mirror that exactly, and the sw_cue endog fixture verifies the CUE case to 8 digits.
+#'
 #' @param Z N x L instrument matrix (full model).
 #' @param X N x K regressor matrix.
 #' @param y N x 1 response vector.

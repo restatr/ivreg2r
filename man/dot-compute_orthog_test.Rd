@@ -62,16 +62,7 @@ When non-NULL (GMM2S/CUE paths), used directly instead of recomputing
 from residuals. This ensures the C-statistic uses the same first-step
 Omega as the main model's J statistic (Hayashi 2000, p. 220).}
 
-\item{j_full}{The full model's own overidentification statistic (Stata's
-\code{e(j)}/\code{e(sargan)}), or NULL. Stata computes the C-statistic as
-\code{cstat = j - cj} (ivreg2.ado:1547) where \code{j} is the main model's reported
-statistic — NOT a re-minimization of the fixed-S quadratic. The two
-coincide for 2SLS/GMM2S (the model estimate minimizes that quadratic),
-but differ for CUE (whose optimum solves the self-consistent objective),
-b0 (fixed evaluation point), and LIML (Sargan at the LIML estimate) —
-and Stata's recursive orthog call forwards \code{gmm2s} but not \code{cue}/\code{liml}
-(ado:1521-1538), so only the restricted side is a fixed-S minimization.
-When non-NULL and finite, used as J_full directly.}
+\item{j_full}{The full model's own overidentification statistic (Stata's \code{e(j)}/\code{e(sargan)}), or NULL. Stata computes the C-statistic as \code{cstat = j - cj} (ivreg2.ado:1547) where \code{j} is the main model's reported statistic, not a re-minimization of the fixed-S quadratic; the two coincide for 2SLS/GMM2S but differ for CUE (optimum of the self-consistent objective) and LIML (Sargan at the LIML estimate), since the recursive orthog call forwards \code{gmm2s} but not \code{cue}/\code{liml} (ado:1521-1538). When non-NULL and finite, used as J_full directly.}
 }
 \value{
 Named list with \code{stat}, \code{p}, \code{df}, \code{test_name}, \code{tested_vars},
