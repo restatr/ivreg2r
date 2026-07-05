@@ -1,125 +1,71 @@
 # ============================================================================
-# Tests: Two-step efficient GMM estimation (Ticket N1)
+# Tests: Two-step efficient GMM estimation (Ticket N1; M-16 fixture re-base)
+#
+# The M-16 fixture re-base moved the GMM2S Stata-parity cells off Card/synthetic fixtures onto griliches H06 (robust plus aweight/dofminus/endog option-variations), abdata H88 (cluster plus aweight), and phillips D5a (kernel-without-robust AC) option-variation cells. The canonical gmm2s parity lives elsewhere and is not re-asserted here: gmm2s robust in the hf suite (test-helpfile-examples.R H06), gmm2s + orthog in the hf suite (H25/H26), gmm2s cluster in tsop_ab (test-ts-operators.R H88), and gmm2s + HAC in tsop_phil (H84/H85) plus the M-19 ts_wmat_autobiw cells. Card is retained only for fixture-free identity and behavioral tests.
 # ============================================================================
 
-# --- Helpers ---
-card_path <- fixture_path("card_data.csv")
+data(card, package = "ivreg2r")
+data(griliches, package = "ivreg2r")
+data(abdata, package = "ivreg2r")
+data(phillips, package = "ivreg2r")
 
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
+# H06 model formula (help.txt:1154); mirrors the inline formula in
+# test-helpfile-examples.R's H06 test -- keep the two in sync.
+gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq |
+  med + kww + age + mrt
+
+# D5a phillips model, shared with the M-19/tsop_phil GMM2S+HAC cells.
+phil_formula <- cinf ~ 1 | unem | l(unem, 1:3)
+
+# Compare the full VCV against a Stata gmm2s vcov fixture. These fixtures
+# carry no term column -- just v1..vK columns whose order matches the
+# companion coef fixture's term order -- so this reads that coef fixture for
+# term order (translating both ts-operator and xi names), reorders vcov(fit)
+# to match, and compares the whole matrix in one call.
+expect_gmm_vcov_fixture <- function(fit, vcov_file, coef_file, tol = stata_tol$vcov) {
+  coef_fx <- read.csv(fixture_path(coef_file))
+  term_order <- translate_stata_xi_names(translate_stata_ts_names(coef_fx$term))
+  V_r <- vcov(fit)[term_order, term_order]
+  V_stata <- unname(as.matrix(read.csv(fixture_path(vcov_file))))
+  expect_equal(V_r, V_stata, tolerance = tol, ignore_attr = TRUE)
 }
 
+
 # ============================================================================
-# 1. IID GMM2S — coefficients differ from 2SLS algebraically when IID omega
-#    is used, because the IID omega (sigma^2 * Z'Z/N) gives the same
-#    weighting as 2SLS. So GMM2S + IID should match 2SLS.
+# 1. IID GMM2S — algebraic equivalence to 2SLS (fixture-free identity)
 # ============================================================================
 
-test_that("GMM2S IID matches 2SLS coefficients (algebraic equivalence)", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
+test_that("GMM2S IID matches 2SLS coefficients (compositional-retirement pin)", {
+  # Pins the retired card_overid_gmm2s_coef/vcov_iid(_small) fixtures: the
+  # Stata-side coefficient agreement in those CSVs was ~2.7e-11 (2SLS parity
+  # itself is owned by M-10), so GMM2S+IID's Stata parity holds transitively
+  # through this algebraic identity plus 2SLS's own parity coverage.
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                      data = card)
   fit_gmm <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                     data = card, method = "gmm2s")
 
-  # Coefficients should be nearly identical (same algebra, different code path)
   expect_equal(coef(fit_gmm), coef(fit_2sls), tolerance = 1e-10)
-})
+  expect_equal(vcov(fit_gmm), vcov(fit_2sls), tolerance = 1e-10)
+  expect_equal(fit_gmm$diagnostics$overid$stat, fit_2sls$diagnostics$overid$stat,
+               tolerance = 1e-10)
+  expect_equal(fit_gmm$diagnostics$overid$test_name, "Sargan")
+  expect_equal(fit_2sls$diagnostics$overid$test_name, "Sargan")
 
-test_that("GMM2S IID coefficients match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_coef_iid.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S IID fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s")
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
-
-test_that("GMM2S IID diagnostics match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_diagnostics_iid.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S IID diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s")
-  diag <- read.csv(fixture_path)
-
-  # Overid (Sargan for IID)
-  expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
-               tolerance = stata_tol$stat, info = "Sargan stat")
-  expect_equal(fit$diagnostics$overid$p, diag$overid_p,
-               tolerance = stata_tol$pval, info = "Sargan p")
-  expect_equal(fit$diagnostics$overid$df, diag$overid_df, info = "Sargan df")
-  expect_equal(fit$diagnostics$overid$test_name, "Sargan")
-
-  # Underid
-  expect_equal(fit$diagnostics$underid$stat, diag$underid_stat,
-               tolerance = stata_tol$stat, info = "underid stat")
-
-  # Weak id
-  expect_equal(fit$diagnostics$weak_id$stat, diag$weak_id_cd_f,
-               tolerance = stata_tol$stat, info = "CD F")
-
-  # Summary stats
-  expect_equal(fit$sigma, diag$sigma, tolerance = stata_tol$coef,
-               info = "sigma")
-  expect_equal(fit$rss, diag$rss, tolerance = stata_tol$coef,
-               info = "rss")
-  expect_equal(fit$r.squared, diag$r2, tolerance = stata_tol$coef,
-               info = "r2")
-  expect_equal(fit$nobs, diag$N, info = "N")
+  fit_2sls_small <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                           data = card, small = TRUE)
+  fit_gmm_small <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                          data = card, method = "gmm2s", small = TRUE)
+  expect_equal(coef(fit_gmm_small), coef(fit_2sls_small), tolerance = 1e-10)
+  expect_equal(vcov(fit_gmm_small), vcov(fit_2sls_small), tolerance = 1e-10)
 })
 
 
 # ============================================================================
-# 2. Robust GMM2S — coefficients differ from 2SLS
+# 2. Robust GMM2S — coefficients differ from 2SLS (behavioral, fixture-free)
 # ============================================================================
-
-test_that("GMM2S robust coefficients match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_coef_robust.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S robust fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust")
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
 
 test_that("GMM2S robust coefficients differ from 2SLS", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                      data = card, vcov = "robust")
   fit_gmm <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -131,221 +77,24 @@ test_that("GMM2S robust coefficients differ from 2SLS", {
                                 tolerance = 1e-4)))
 })
 
-test_that("GMM2S robust diagnostics match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_diagnostics_robust.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S robust diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust")
-  diag <- read.csv(fixture_path)
-
-  # Overid (Hansen J for robust)
-  expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
-               tolerance = stata_tol$stat, info = "Hansen J stat")
-  expect_equal(fit$diagnostics$overid$p, diag$overid_p,
-               tolerance = stata_tol$pval, info = "Hansen J p")
-  expect_equal(fit$diagnostics$overid$df, diag$overid_df, info = "Hansen J df")
-  expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
-
-  # Underid (KP rk LM for robust)
-  expect_equal(fit$diagnostics$underid$stat, diag$underid_stat,
-               tolerance = stata_tol$stat, info = "KP rk LM")
-
-  # Weak id
-  expect_equal(fit$diagnostics$weak_id$stat, diag$weak_id_cd_f,
-               tolerance = stata_tol$stat, info = "CD F")
-  expect_equal(fit$diagnostics$weak_id_robust$stat, diag$weak_id_kp_f,
-               tolerance = stata_tol$stat, info = "KP rk Wald F")
-
-  # Summary stats
-  expect_equal(fit$sigma, diag$sigma, tolerance = stata_tol$coef)
-  expect_equal(fit$rss, diag$rss, tolerance = stata_tol$coef)
-  expect_equal(fit$r.squared, diag$r2, tolerance = stata_tol$coef)
-
-  # Model F
-  expect_equal(fit$model_f, diag$model_f, tolerance = stata_tol$stat,
-               info = "model F")
-})
-
 
 # ============================================================================
-# 3. GMM2S robust small
-# ============================================================================
-
-test_that("GMM2S robust small coefficients match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_coef_robust_small.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S robust small fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust", small = TRUE)
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  # Coefficients same as non-small (small only affects SEs)
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
-
-test_that("GMM2S robust small diagnostics match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_diagnostics_robust_small.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S robust small diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust", small = TRUE)
-  diag <- read.csv(fixture_path)
-
-  expect_equal(fit$sigma, diag$sigma, tolerance = stata_tol$coef, info = "sigma")
-  expect_equal(fit$model_f, diag$model_f, tolerance = stata_tol$stat,
-               info = "model F")
-})
-
-
-# ============================================================================
-# 4. IID small
-# ============================================================================
-
-test_that("GMM2S IID small SEs match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_coef_iid_small.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S IID small fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", small = TRUE)
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
-
-
-# ============================================================================
-# 5. Cluster GMM2S
-# ============================================================================
-
-test_that("GMM2S cluster coefficients and SEs match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_coef_cluster.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S cluster fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", clusters = ~age)
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
-
-test_that("GMM2S cluster diagnostics match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_diagnostics_cluster.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S cluster diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", clusters = ~age)
-  diag <- read.csv(fixture_path)
-
-  expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
-               tolerance = stata_tol$stat, info = "J stat")
-  expect_equal(fit$diagnostics$overid$p, diag$overid_p,
-               tolerance = stata_tol$pval, info = "J p")
-  expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
-  expect_equal(fit$sigma, diag$sigma, tolerance = stata_tol$coef)
-  expect_equal(fit$rss, diag$rss, tolerance = stata_tol$coef)
-})
-
-test_that("GMM2S cluster small SEs match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_coef_cluster_small.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S cluster small fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", clusters = ~age, small = TRUE)
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
-
-
-# ============================================================================
-# 6. Just-identified GMM2S (should equal 2SLS)
+# 3. Just-identified GMM2S — equals 2SLS regardless of omega (fixture-free)
 # ============================================================================
 
 test_that("Just-identified GMM2S equals 2SLS coefficients", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
+  # Pins the retired card_justid_gmm2s_coef/vcov_robust(_small) fixtures: the
+  # Stata-side coefficient agreement in those CSVs was ~7e-12.
   fit_2sls <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                      data = card, vcov = "robust")
   fit_gmm <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                     data = card, method = "gmm2s", vcov = "robust")
 
-  # Just-identified: GMM2S = 2SLS regardless of omega
   expect_equal(coef(fit_gmm), coef(fit_2sls), tolerance = 1e-10)
-})
-
-test_that("Just-identified GMM2S matches Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_justid_gmm2s_coef_robust.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S justid fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, method = "gmm2s", vcov = "robust")
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-  }
+  expect_equal(vcov(fit_gmm), vcov(fit_2sls), tolerance = 1e-10)
 })
 
 test_that("Just-identified GMM2S J stat is zero", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, method = "gmm2s", vcov = "robust")
 
@@ -356,358 +105,161 @@ test_that("Just-identified GMM2S J stat is zero", {
 
 
 # ============================================================================
-# 7. Weighted GMM2S
+# Retired-fixture disposition (M-16 re-base)
 # ============================================================================
-
-test_that("GMM2S aweight robust matches Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_weighted_coef_aw_robust.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S aweight fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust", weights = age)
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
-
-test_that("GMM2S aweight cluster matches Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_weighted_coef_aw_cluster.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S aweight cluster fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", clusters = ~age, weights = weight)
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
-
-test_that("GMM2S pweight robust matches Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_weighted_coef_pw_robust.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S pweight fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", weight_type = "pweight", weights = age)
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
+# gmm2s+orthog parity lives in the hf suite (test-helpfile-examples.R H25/H26); gmm2s+HAC lives in tsop_phil (test-ts-operators.R H84/H85) plus the M-19 ts_wmat_autobiw cells; gmm2s robust lives in the hf suite H06; gmm2s cluster lives in tsop_ab (test-ts-operators.R H88). No dedicated orthog test previously existed in this file to delete; this comment documents the owner for anyone searching here.
 
 
 # ============================================================================
-# 8. dofminus threading
+# 4. Griliches H06 GMM2S parity (M-16 re-base)
 # ============================================================================
 
-test_that("GMM2S dofminus matches Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_dofminus_coef_robust.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S dofminus fixture not found")
+test_that("Griliches GMM2S robust small: coef, vcov, diagnostics match Stata", {
+  skip_if(!file.exists(fixture_path("gril_gmm2s_coef_robust_small.csv")),
+          "GMM2S robust-small fixture not found")
+  fit <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
+                vcov = "robust", small = TRUE)
+  expect_coef_fixture(fit, "gril_gmm2s_coef_robust_small.csv")
+  expect_gmm_vcov_fixture(fit, "gril_gmm2s_vcov_robust_small.csv",
+                          "gril_gmm2s_coef_robust_small.csv")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust", dofminus = 2L)
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
+  dx <- read_diagnostics(fixture_path("gril_gmm2s_diagnostics_robust_small.csv"))
+  expect_equal(fit$sigma, dx$sigma, tolerance = stata_tol$coef, info = "sigma")
+  expect_equal(fit$rss, dx$rss, tolerance = stata_tol$coef, info = "rss")
+  expect_equal(fit$model_f, dx$model_f, tolerance = stata_tol$stat, info = "model F")
+  expect_equal(fit$diagnostics$overid$stat, dx$overid_stat,
+               tolerance = stata_tol$stat, info = "Hansen J stat")
+  expect_equal(fit$diagnostics$overid$p, dx$overid_p,
+               tolerance = stata_tol$pval, info = "Hansen J p")
 })
 
-test_that("GMM2S dofminus diagnostics match Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_dofminus_diagnostics_robust.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S dofminus diagnostics fixture not found")
+test_that("Griliches GMM2S aweight robust: coef, vcov, diagnostics match Stata; pweight equivalence", {
+  skip_if(!file.exists(fixture_path("gril_gmm2s_aw_coef_robust.csv")),
+          "GMM2S aweight fixture not found")
+  fit_aw <- ivreg2(gril_formula, data = griliches_awt, method = "gmm2s",
+                   vcov = "robust", weights = awt)
+  expect_coef_fixture(fit_aw, "gril_gmm2s_aw_coef_robust.csv")
+  expect_gmm_vcov_fixture(fit_aw, "gril_gmm2s_aw_vcov_robust.csv",
+                          "gril_gmm2s_aw_coef_robust.csv")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust", dofminus = 2L)
-  diag <- read.csv(fixture_path)
+  dx <- read_diagnostics(fixture_path("gril_gmm2s_aw_diagnostics_robust.csv"))
+  expect_equal(fit_aw$sigma, dx$sigma, tolerance = stata_tol$coef, info = "sigma")
+  expect_equal(fit_aw$rss, dx$rss, tolerance = stata_tol$coef, info = "rss")
+  expect_equal(fit_aw$diagnostics$overid$stat, dx$overid_stat,
+               tolerance = stata_tol$stat, info = "overid stat")
 
-  expect_equal(fit$sigma, diag$sigma, tolerance = stata_tol$coef,
+  # Stata `[aw] gmm2s robust` == `[pw] gmm2s` was verified byte-identical in
+  # the retired card fixtures (M-11 invariance rule), so the pweight variant
+  # is pinned by this direct equality plus the aweight fixture above.
+  fit_pw <- ivreg2(gril_formula, data = griliches_awt, method = "gmm2s",
+                   weights = awt, weight_type = "pweight")
+  expect_equal(coef(fit_pw), coef(fit_aw))
+  expect_equal(vcov(fit_pw), vcov(fit_aw))
+  expect_equal(fit_pw$diagnostics$overid$stat, fit_aw$diagnostics$overid$stat)
+})
+
+test_that("Griliches GMM2S dofminus robust: coef, vcov, diagnostics match Stata", {
+  skip_if(!file.exists(fixture_path("gril_gmm2s_dof_coef_robust.csv")),
+          "GMM2S dofminus fixture not found")
+  fit <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
+                vcov = "robust", dofminus = 2L)
+  expect_coef_fixture(fit, "gril_gmm2s_dof_coef_robust.csv")
+  expect_gmm_vcov_fixture(fit, "gril_gmm2s_dof_vcov_robust.csv",
+                          "gril_gmm2s_dof_coef_robust.csv")
+
+  dx <- read_diagnostics(fixture_path("gril_gmm2s_dof_diagnostics_robust.csv"))
+  expect_equal(fit$sigma, dx$sigma, tolerance = stata_tol$coef,
                info = "sigma with dofminus")
-  expect_equal(fit$rss, diag$rss, tolerance = stata_tol$coef,
+  expect_equal(fit$rss, dx$rss, tolerance = stata_tol$coef,
                info = "rss with dofminus")
-  expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
-               tolerance = stata_tol$stat, info = "J stat with dofminus")
+  expect_equal(fit$diagnostics$overid$stat, dx$overid_stat,
+               tolerance = stata_tol$stat, info = "overid stat with dofminus")
 })
 
+test_that("Griliches GMM2S endog(iq) robust: endogeneity test, coef, vcov match Stata", {
+  skip_if(!file.exists(fixture_path("gril_gmm2s_endog_coef_robust.csv")),
+          "GMM2S endog fixture not found")
+  fit <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
+                vcov = "robust", endog = "iq")
+  expect_coef_fixture(fit, "gril_gmm2s_endog_coef_robust.csv")
+  expect_gmm_vcov_fixture(fit, "gril_gmm2s_endog_vcov_robust.csv",
+                          "gril_gmm2s_endog_coef_robust.csv")
 
-# ============================================================================
-# 9. HAC GMM2S
-# ============================================================================
-
-test_that("GMM2S HAC Bartlett bw=3 matches Stata fixture", {
-  ts_path <- fixture_path("ts_gmm_data.csv")
-  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  fixture_path <- fixture_path("ts_gmm2s_coef_hac_bartlett_bw3.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S HAC fixture not found")
-
-  ts_data <- read.csv(ts_path)
-  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
-                method = "gmm2s", vcov = "robust",
-                kernel = "bartlett", bw = 3, tvar = "t")
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-})
-
-test_that("GMM2S HAC diagnostics match Stata fixture", {
-  ts_path <- fixture_path("ts_gmm_data.csv")
-  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  fixture_path <- fixture_path("ts_gmm2s_diagnostics_hac_bartlett_bw3.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S HAC diagnostics fixture not found")
-
-  ts_data <- read.csv(ts_path)
-  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
-                method = "gmm2s", vcov = "robust",
-                kernel = "bartlett", bw = 3, tvar = "t")
-  diag <- read.csv(fixture_path)
-
-  expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
-               tolerance = stata_tol$stat, info = "J stat HAC")
-  expect_equal(fit$sigma, diag$sigma, tolerance = stata_tol$coef,
-               info = "sigma HAC")
-})
-
-
-# ============================================================================
-# 9b. AC GMM2S (kernel without robust)
-# ============================================================================
-
-test_that("GMM2S AC Bartlett bw=3 coefficients match Stata fixture", {
-  ts_path <- fixture_path("ts_gmm_data.csv")
-  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  fixture_path <- fixture_path("ts_gmm2s_coef_ac_bartlett_bw3.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S AC fixture not found")
-
-  ts_data <- read.csv(ts_path)
-  # No vcov = "robust" → AC path (kernel + iid → AC)
-  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
-                method = "gmm2s", kernel = "bartlett", bw = 3, tvar = "t")
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("AC coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("AC SE mismatch:", r_names[i])
-    )
-  }
-})
-
-test_that("GMM2S AC Bartlett bw=3 diagnostics match Stata fixture", {
-  ts_path <- fixture_path("ts_gmm_data.csv")
-  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  fixture_path <- fixture_path("ts_gmm2s_diagnostics_ac_bartlett_bw3.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S AC diagnostics fixture not found")
-
-  ts_data <- read.csv(ts_path)
-  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
-                method = "gmm2s", kernel = "bartlett", bw = 3, tvar = "t")
-  diag <- read.csv(fixture_path)
-
-  expect_equal(fit$diagnostics$overid$stat, diag$overid_stat,
-               tolerance = stata_tol$stat, info = "Sargan stat AC")
-  expect_equal(fit$sigma, diag$sigma, tolerance = stata_tol$coef,
-               info = "sigma AC")
-})
-
-
-# ============================================================================
-# 10. Endogeneity test
-# ============================================================================
-
-test_that("GMM2S endogeneity test matches Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fixture_path <- fixture_path("card_overid_gmm2s_endog_diagnostics_robust.csv")
-  skip_if(!file.exists(fixture_path), "GMM2S endog fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust", endog = "educ")
-  diag <- read.csv(fixture_path)
-
-  expect_equal(fit$diagnostics$endogeneity$stat, diag$endog_stat,
+  dx <- read_diagnostics(fixture_path("gril_gmm2s_endog_diagnostics_robust.csv"))
+  expect_equal(fit$diagnostics$endogeneity$stat, dx$endog_stat,
                tolerance = stata_tol$stat, info = "endog stat")
-  expect_equal(fit$diagnostics$endogeneity$p, diag$endog_p,
+  expect_equal(fit$diagnostics$endogeneity$p, dx$endog_p,
                tolerance = stata_tol$pval, info = "endog p")
-  expect_equal(fit$diagnostics$endogeneity$df, diag$endog_df,
-               info = "endog df")
+  expect_equal(fit$diagnostics$endogeneity$df, dx$endog_df, info = "endog df")
 })
 
 
 # ============================================================================
-# 11. VCV matrix parity
+# 5. abdata H88 GMM2S parity (M-16 re-base)
 # ============================================================================
 
-test_that("GMM2S robust VCV matches Stata fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- fixture_path("card_overid_gmm2s_vcov_robust.csv")
-  coef_path <- fixture_path("card_overid_gmm2s_coef_robust.csv")
-  skip_if(!file.exists(vcov_path), "GMM2S VCV fixture not found")
-  skip_if(!file.exists(coef_path), "GMM2S coef fixture not found")
+test_that("abdata GMM2S cluster small: coef, vcov, diagnostics match Stata", {
+  skip_if(!file.exists(fixture_path("ab_gmm2s_coef_cl_small.csv")),
+          "GMM2S cluster-small fixture not found")
+  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                method = "gmm2s", clusters = ~id, small = TRUE)
+  expect_coef_fixture(fit, "ab_gmm2s_coef_cl_small.csv")
+  expect_gmm_vcov_fixture(fit, "ab_gmm2s_vcov_cl_small.csv",
+                          "ab_gmm2s_coef_cl_small.csv")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, method = "gmm2s", vcov = "robust")
-  V_stata <- unname(as.matrix(read.csv(vcov_path)))
-  V_r <- vcov(fit)
-
-  # The Stata VCV fixture uses v1..vK columns without term names.
- # Get Stata variable ordering from the coefficient fixture.
-  coef_fixture <- read.csv(coef_path)
-  stata_order <- ifelse(coef_fixture$term == "_cons", "(Intercept)", coef_fixture$term)
-
-  # Reorder R's VCV to match Stata's variable ordering
-  V_r_reordered <- V_r[stata_order, stata_order]
-
-  # Match dimensions
-  expect_equal(nrow(V_r_reordered), nrow(V_stata))
-  expect_equal(ncol(V_r_reordered), ncol(V_stata))
-
-  # Element-wise comparison
-  for (i in seq_len(nrow(V_r_reordered))) {
-    for (j in seq_len(ncol(V_r_reordered))) {
-      expect_equal(unname(V_r_reordered[i, j]), V_stata[i, j],
-                   tolerance = stata_tol$vcov,
-                   info = paste("VCV mismatch:", i, j))
-    }
-  }
+  dx <- read_diagnostics(fixture_path("ab_gmm2s_diagnostics_cl_small.csv"))
+  expect_equal(nobs(fit), dx$N, info = "N")
+  expect_equal(fit$model_f, dx$model_f, tolerance = stata_tol$stat, info = "model F")
+  expect_equal(fit$diagnostics$overid$stat, dx$overid_stat,
+               tolerance = stata_tol$stat, info = "overid stat")
+  expect_equal(fit$diagnostics$overid$p, dx$overid_p,
+               tolerance = stata_tol$pval, info = "overid p")
+  expect_equal(fit$diagnostics$underid$stat, dx$underid_stat,
+               tolerance = stata_tol$stat, info = "underid stat")
 })
 
+test_that("abdata GMM2S aweight cluster: coef, vcov, diagnostics match Stata", {
+  skip_if(!file.exists(fixture_path("ab_gmm2s_aw_coef_cl.csv")),
+          "GMM2S aweight-cluster fixture not found")
+  fit <- ivreg2(ab_formula, data = abdata_awt, tvar = "year", ivar = "id",
+                method = "gmm2s", clusters = ~id, weights = abwt)
+  expect_coef_fixture(fit, "ab_gmm2s_aw_coef_cl.csv")
+  expect_gmm_vcov_fixture(fit, "ab_gmm2s_aw_vcov_cl.csv",
+                          "ab_gmm2s_aw_coef_cl.csv")
 
-test_that("GMM2S HAC VCV matches Stata fixture", {
-  ts_path <- fixture_path("ts_gmm_data.csv")
-  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  vcov_path <- fixture_path("ts_gmm2s_vcov_hac_bartlett_bw3.csv")
-  coef_path <- fixture_path("ts_gmm2s_coef_hac_bartlett_bw3.csv")
-  skip_if(!file.exists(vcov_path), "GMM2S HAC VCV fixture not found")
-  skip_if(!file.exists(coef_path), "GMM2S HAC coef fixture not found")
-
-  ts_data <- read.csv(ts_path)
-  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
-                method = "gmm2s", vcov = "robust",
-                kernel = "bartlett", bw = 3, tvar = "t")
-  V_stata <- unname(as.matrix(read.csv(vcov_path)))
-  V_r <- vcov(fit)
-
-  coef_fixture <- read.csv(coef_path)
-  stata_order <- ifelse(coef_fixture$term == "_cons", "(Intercept)", coef_fixture$term)
-  V_r_reordered <- V_r[stata_order, stata_order]
-
-  expect_equal(nrow(V_r_reordered), nrow(V_stata))
-  expect_equal(ncol(V_r_reordered), ncol(V_stata))
-
-  for (i in seq_len(nrow(V_r_reordered))) {
-    for (j in seq_len(ncol(V_r_reordered))) {
-      expect_equal(unname(V_r_reordered[i, j]), V_stata[i, j],
-                   tolerance = stata_tol$vcov,
-                   info = paste("HAC VCV mismatch:", i, j))
-    }
-  }
-})
-
-test_that("GMM2S AC VCV matches Stata fixture", {
-  ts_path <- fixture_path("ts_gmm_data.csv")
-  skip_if(!file.exists(ts_path), "ts_gmm_data not found")
-  vcov_path <- fixture_path("ts_gmm2s_vcov_ac_bartlett_bw3.csv")
-  coef_path <- fixture_path("ts_gmm2s_coef_ac_bartlett_bw3.csv")
-  skip_if(!file.exists(vcov_path), "GMM2S AC VCV fixture not found")
-  skip_if(!file.exists(coef_path), "GMM2S AC coef fixture not found")
-
-  ts_data <- read.csv(ts_path)
-  fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
-                method = "gmm2s", kernel = "bartlett", bw = 3, tvar = "t")
-  V_stata <- unname(as.matrix(read.csv(vcov_path)))
-  V_r <- vcov(fit)
-
-  coef_fixture <- read.csv(coef_path)
-  stata_order <- ifelse(coef_fixture$term == "_cons", "(Intercept)", coef_fixture$term)
-  V_r_reordered <- V_r[stata_order, stata_order]
-
-  expect_equal(nrow(V_r_reordered), nrow(V_stata))
-  expect_equal(ncol(V_r_reordered), ncol(V_stata))
-
-  for (i in seq_len(nrow(V_r_reordered))) {
-    for (j in seq_len(ncol(V_r_reordered))) {
-      expect_equal(unname(V_r_reordered[i, j]), V_stata[i, j],
-                   tolerance = stata_tol$vcov,
-                   info = paste("AC VCV mismatch:", i, j))
-    }
-  }
+  dx <- read_diagnostics(fixture_path("ab_gmm2s_aw_diagnostics_cl.csv"))
+  expect_equal(nobs(fit), dx$N, info = "N")
+  expect_equal(fit$diagnostics$overid$stat, dx$overid_stat,
+               tolerance = stata_tol$stat, info = "overid stat")
+  expect_equal(fit$sigma, dx$sigma, tolerance = stata_tol$coef, info = "sigma")
 })
 
 
 # ============================================================================
-# 12. Input validation
+# 6. Phillips GMM2S-AC parity (M-16 re-base)
+# ============================================================================
+# Kernel without robust must dispatch the AC (homoskedastic Kronecker) omega.
+# This cell is the regression guard for the GMM2S-AC weighting-matrix bug
+# (commit 0a405e8), which once produced ~15% coefficient errors.
+
+test_that("Phillips GMM2S AC bw=3: coef, vcov, diagnostics match Stata", {
+  skip_if(!file.exists(fixture_path("phil_gmm2s_coef_ac_bw3.csv")),
+          "GMM2S AC fixture not found")
+  fit <- ivreg2(phil_formula, data = phillips, tvar = "year",
+                method = "gmm2s", kernel = "bartlett", bw = 3)
+  expect_coef_fixture(fit, "phil_gmm2s_coef_ac_bw3.csv")
+  expect_gmm_vcov_fixture(fit, "phil_gmm2s_vcov_ac_bw3.csv",
+                          "phil_gmm2s_coef_ac_bw3.csv")
+
+  dx <- read_diagnostics(fixture_path("phil_gmm2s_diagnostics_ac_bw3.csv"))
+  expect_equal(fit$diagnostics$overid$stat, dx$overid_stat,
+               tolerance = stata_tol$stat, info = "overid stat")
+  expect_equal(fit$sigma, dx$sigma, tolerance = stata_tol$coef, info = "sigma")
+})
+
+
+# ============================================================================
+# 7. Input validation (fixture-free)
 # ============================================================================
 
 test_that("GMM2S requires IV model", {
@@ -718,7 +270,6 @@ test_that("GMM2S requires IV model", {
 })
 
 test_that("GMM2S incompatible with fuller", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "gmm2s", fuller = 1),
@@ -727,7 +278,6 @@ test_that("GMM2S incompatible with fuller", {
 })
 
 test_that("GMM2S incompatible with kclass", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "gmm2s", kclass = 0.5),
@@ -736,7 +286,6 @@ test_that("GMM2S incompatible with kclass", {
 })
 
 test_that("GMM2S method stored in return object", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "gmm2s", vcov = "robust")
   expect_equal(fit$method, "gmm2s")
@@ -744,11 +293,10 @@ test_that("GMM2S method stored in return object", {
 
 
 # ============================================================================
-# 13. Display
+# 8. Display (fixture-free)
 # ============================================================================
 
 test_that("GMM2S print shows correct estimation label", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "gmm2s", vcov = "robust")
   output <- capture.output(print(summary(fit)))
@@ -758,11 +306,10 @@ test_that("GMM2S print shows correct estimation label", {
 
 
 # ============================================================================
-# 14. Stock-Yogo tables (should use IV tables for gmm2s)
+# 9. Stock-Yogo tables (should use IV tables for gmm2s; fixture-free)
 # ============================================================================
 
 test_that("GMM2S gets IV Stock-Yogo tables", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "gmm2s")
   sy <- fit$diagnostics$weak_id_sy

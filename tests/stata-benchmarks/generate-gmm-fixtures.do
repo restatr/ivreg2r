@@ -1,14 +1,21 @@
 /*===========================================================================
   generate-gmm-fixtures.do
   ------------------------
-  Generates CSV benchmark fixtures for GMM2S estimation testing in ivreg2r.
-  Run in Stata with ivreg2 installed (ssc install ivreg2).
+  Generates CSV benchmark fixtures for GMM2S estimation testing (M-16 re-base): D5a option-variations layered on the griliches76 H06, abdata H88, and phillips GMM+HAC canonical bases. The canonical cells themselves live elsewhere: hf_gril H06/H25/H26 in generate-helpfile-fixtures.do, and tsop_ab_gmm2s_cl / tsop_phil in generate-ts-operator-fixtures.do.
+
+  gmm2s+iid and just-identified gmm2s cells retired: GMM2S with an IID weighting matrix equals 2SLS algebraically and just-identified GMM2S equals 2SLS for any weighting matrix; both identities are asserted fixture-free in test-gmm2s.R, Stata's own agreement was verified at ~3e-11 in the retired fixtures, and 2SLS Stata parity is owned by the M-10 family.
+
+  gmm2s robust cell retired to hf_gril H06 (compare_hf asserts coef/SE/VCV and every diagnostics column); gmm2s+orthog cells retired to hf H25/H26 (M-22 ruling); gmm2s cluster cell retired to tsop_ab H88; gmm2s+HAC cells retired to tsop_phil H84/H85 plus the M-19 autobandwidth gmm2s cells.
+
+  pweight cell retired by invariance: Stata `[aw=w] ... gmm2s robust` and `[pw=w] ... gmm2s` produced byte-identical coef/vcov/diagnostics CSVs in the retired card fixtures (verified 2026-07-05); R fits the pweight variant against the aweight fixture and asserts direct equality with the aweight fit (M-11 rule).
+
+  The synthetic seed-12345 time-series DGP moved to generate-cue-fixtures.do, which still consumes it for the ts_cue cells (M-17 will retire both).
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
   Usage (CWD must be the package root, i.e. pkg/):
-    cd /path/to/ivreg2r/pkg
-    do tests/stata-benchmarks/generate-gmm-fixtures.do
+    /Applications/StataNow/StataSE.app/Contents/MacOS/stata-se -b \
+      tests/stata-benchmarks/generate-gmm-fixtures.do
 ===========================================================================*/
 
 clear all
@@ -19,19 +26,53 @@ version 14
 local outdir "tests/stata-benchmarks/fixtures"
 capture mkdir "`outdir'"
 
-// Pre-load Card data and save before defining programs.
-// bcuse internally calls "clear all" which drops user-defined programs.
-capture bcuse card, clear
-if _rc != 0 {
-    display as error "Could not load Card dataset via bcuse."
-    display as error "Install bcuse (ssc install bcuse) and rerun."
-    exit 601
+
+/*===========================================================================
+  Load all three datasets FIRST, before the program is defined (data loads can interact with programs, so mirror the orthog generator's ordering: every use/save block ahead of "program define").
+===========================================================================*/
+
+// --- griliches76: local cache, then BC.edu web fallback (per the H06 base model) ---
+capture use "../validation/data/griliches76.dta", clear
+if _rc {
+    capture use http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta, clear
+    if _rc {
+        display as error "Could not load griliches76 dataset (no local cache, no network)."
+        exit 601
+    }
 }
-save "`outdir'/_card_gmm_temp.dta", replace
+quietly xi i.year
+gen double awt = mod(age, 5) + 1
+save "`outdir'/_gmm_gril_temp.dta", replace
+
+// --- abdata: local cache, then BC.edu web fallback (per the H88 base model) ---
+capture use "../validation/data/abdata.dta", clear
+if _rc {
+    capture use http://fmwww.bc.edu/ec-p/data/macro/abdata.dta, clear
+    if _rc {
+        display as error "Could not load abdata dataset (no local cache, no network)."
+        exit 601
+    }
+}
+quietly tsset id year
+gen double abwt = mod(year, 3) + 1
+save "`outdir'/_gmm_ab_temp.dta", replace
+
+// --- phillips: local cache, then BC.edu web fallback (per the H83-H85 base model) ---
+capture use "../validation/data/phillips.dta", clear
+if _rc {
+    capture use http://fmwww.bc.edu/ec-p/data/macro/phillips.dta, clear
+    if _rc {
+        display as error "Could not load phillips dataset (no local cache, no network)."
+        exit 601
+    }
+}
+quietly tsset year
+save "`outdir'/_gmm_phil_temp.dta", replace
+
 
 /*---------------------------------------------------------------------------
   Helper program: extract ivreg2 results and save to CSV
-  (Same structure as other fixture generators)
+  (Same structure as other fixture generators; reused verbatim -- the R tests parse these column names, so do not change this program.)
 ---------------------------------------------------------------------------*/
 capture program drop save_ivreg2_results
 program define save_ivreg2_results
@@ -159,158 +200,75 @@ end
 
 
 /*===========================================================================
-  GMM2S fixtures using Card data (overidentified model)
-  Model: lwage ~ exper expersq black south (educ = nearc2 nearc4)
+  BLOCK 1: griliches76
+  Base model = help-file H06:
+    ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s robust
 ===========================================================================*/
 
-// --- GMM2S IID (no robust) ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s
-save_ivreg2_results, prefix(card_overid_gmm2s) suffix(iid) outdir(`outdir')
+// --- D5a: gmm2s robust small -- GMM2S applies its small-sample corrections on a method-specific path, so small x gmm2s needs its own fixture ---
+use "`outdir'/_gmm_gril_temp.dta", clear
+display _newline(2) "=== griliches H06 + gmm2s robust small ==="
+ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s robust small
+save_ivreg2_results, prefix(gril_gmm2s) suffix(robust_small) outdir(`outdir')
 
-// --- GMM2S IID small ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s small
-save_ivreg2_results, prefix(card_overid_gmm2s) suffix(iid_small) outdir(`outdir')
+// --- D5a: deterministic aweight; also serves the retired pweight cell via the byte-identity noted above ---
+use "`outdir'/_gmm_gril_temp.dta", clear
+display _newline(2) "=== griliches H06 + [aw=awt] gmm2s robust ==="
+ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt) [aw=awt], gmm2s robust
+save_ivreg2_results, prefix(gril_gmm2s_aw) suffix(robust) outdir(`outdir')
 
-// --- GMM2S robust (HC0) ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s robust
-save_ivreg2_results, prefix(card_overid_gmm2s) suffix(robust) outdir(`outdir')
+// --- D5a: dofminus(2) ---
+use "`outdir'/_gmm_gril_temp.dta", clear
+display _newline(2) "=== griliches H06 + gmm2s robust dofminus(2) ==="
+ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s robust dofminus(2)
+save_ivreg2_results, prefix(gril_gmm2s_dof) suffix(robust) outdir(`outdir')
 
-// --- GMM2S robust small (HC1) ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s robust small
-save_ivreg2_results, prefix(card_overid_gmm2s) suffix(robust_small) outdir(`outdir')
-
-// --- GMM2S cluster(age) ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s cluster(age)
-save_ivreg2_results, prefix(card_overid_gmm2s) suffix(cluster) outdir(`outdir')
-
-// --- GMM2S cluster(age) small ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s cluster(age) small
-save_ivreg2_results, prefix(card_overid_gmm2s) suffix(cluster_small) outdir(`outdir')
+// --- D5a: endog(iq) -- iq is the endogenous regressor ---
+use "`outdir'/_gmm_gril_temp.dta", clear
+display _newline(2) "=== griliches H06 + gmm2s robust endog(iq) ==="
+ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s robust endog(iq)
+save_ivreg2_results, prefix(gril_gmm2s_endog) suffix(robust) outdir(`outdir')
 
 
 /*===========================================================================
-  Just-identified GMM2S (should equal 2SLS)
-  Model: lwage ~ exper expersq black south (educ = nearc4)
+  BLOCK 2: abdata
+  Base model = help-file H88:
+    ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), gmm2s cluster(id)
 ===========================================================================*/
 
-// --- Just-identified GMM2S robust ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc4), gmm2s robust
-save_ivreg2_results, prefix(card_justid_gmm2s) suffix(robust) outdir(`outdir')
+// --- D5a: gmm2s cluster(id) small -- the non-small cluster cell is tsop_ab_gmm2s_cl ---
+use "`outdir'/_gmm_ab_temp.dta", clear
+quietly tsset id year
+display _newline(2) "=== abdata H88 + gmm2s cluster(id) small ==="
+ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), gmm2s cluster(id) small
+save_ivreg2_results, prefix(ab_gmm2s) suffix(cl_small) outdir(`outdir')
 
-// --- Just-identified GMM2S robust small ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc4), gmm2s robust small
-save_ivreg2_results, prefix(card_justid_gmm2s) suffix(robust_small) outdir(`outdir')
+// --- D5a: weighted x cluster x gmm2s intersection, replacing the retired card [aw=weight] cluster(age) cell ---
+use "`outdir'/_gmm_ab_temp.dta", clear
+quietly tsset id year
+display _newline(2) "=== abdata H88 + [aw=abwt] gmm2s cluster(id) ==="
+ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys) [aw=abwt], gmm2s cluster(id)
+save_ivreg2_results, prefix(ab_gmm2s_aw) suffix(cl) outdir(`outdir')
 
 
 /*===========================================================================
-  Weighted GMM2S
+  BLOCK 3: phillips
+  Base model family = help-file H83-H85: ivreg2 cinf (unem = l(1/3).unem), ...
 ===========================================================================*/
 
-// --- GMM2S aweight robust ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [aw=age], gmm2s robust
-save_ivreg2_results, prefix(card_overid_gmm2s_weighted) suffix(aw_robust) outdir(`outdir')
-
-// --- GMM2S aweight cluster ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [aw=weight], gmm2s cluster(age)
-save_ivreg2_results, prefix(card_overid_gmm2s_weighted) suffix(aw_cluster) outdir(`outdir')
-
-// --- GMM2S pweight robust ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [pw=age], gmm2s robust
-save_ivreg2_results, prefix(card_overid_gmm2s_weighted) suffix(pw_robust) outdir(`outdir')
+// --- D5a variation on H83/H84: kernel defaults to Bartlett, NO robust, so this exercises the AC (homoskedastic-kernel) weighting-matrix path -- regression guard for the GMM2S-AC weighting-matrix bug fixed in commit 0a405e8 ---
+use "`outdir'/_gmm_phil_temp.dta", clear
+quietly tsset year
+display _newline(2) "=== phillips + gmm2s bw(3) (AC path, no robust) ==="
+ivreg2 cinf (unem = l(1/3).unem), gmm2s bw(3)
+save_ivreg2_results, prefix(phil_gmm2s) suffix(ac_bw3) outdir(`outdir')
 
 
 /*===========================================================================
-  GMM2S with dofminus
+  Clean up temp files and done
 ===========================================================================*/
-
-// --- GMM2S robust dofminus(2) ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s robust dofminus(2)
-save_ivreg2_results, prefix(card_overid_gmm2s_dofminus) suffix(robust) outdir(`outdir')
-
-
-/*===========================================================================
-  GMM2S with endog test
-===========================================================================*/
-
-// --- GMM2S robust with endog test ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s robust endog(educ)
-save_ivreg2_results, prefix(card_overid_gmm2s_endog) suffix(robust) outdir(`outdir')
-
-
-/*===========================================================================
-  GMM2S with orthog test
-===========================================================================*/
-
-// --- GMM2S robust with orthog test ---
-use "`outdir'/_card_gmm_temp.dta", clear
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), gmm2s robust orthog(nearc2)
-save_ivreg2_results, prefix(card_overid_gmm2s_orthog) suffix(robust) outdir(`outdir')
-
-
-/*===========================================================================
-  HAC GMM2S (using time-series data from HAC fixtures)
-===========================================================================*/
-
-// Generate simulated time-series IV data
-clear
-set seed 12345
-set obs 200
-gen t = _n
-tsset t
-
-// Generate instruments
-gen z1 = rnormal()
-gen z2 = rnormal()
-
-// AR(1) errors
-gen u = rnormal()
-replace u = 0.5 * u[_n-1] + rnormal() if t > 1
-
-// Endogenous regressor
-gen x = 0.3*z1 + 0.2*z2 + 0.5*u + rnormal()
-
-// Outcome
-gen y = 1.5 + 2.0*x + u
-
-// Exogenous regressor
-gen w = rnormal()
-
-save "`outdir'/_ts_gmm_temp.dta", replace
-export delimited using "`outdir'/ts_gmm_data.csv", replace
-
-// --- HAC GMM2S Bartlett bw=3 ---
-use "`outdir'/_ts_gmm_temp.dta", clear
-ivreg2 y w (x = z1 z2), gmm2s bw(3) kernel(bartlett) robust
-save_ivreg2_results, prefix(ts_gmm2s) suffix(hac_bartlett_bw3) outdir(`outdir')
-
-
-/*===========================================================================
-  AC GMM2S (kernel without robust → AC path)
-===========================================================================*/
-
-// --- AC GMM2S Bartlett bw=3 (no robust) ---
-use "`outdir'/_ts_gmm_temp.dta", clear
-ivreg2 y w (x = z1 z2), gmm2s bw(3) kernel(bartlett)
-save_ivreg2_results, prefix(ts_gmm2s) suffix(ac_bartlett_bw3) outdir(`outdir')
-
-
-/*===========================================================================
-  Clean up temp files
-===========================================================================*/
-capture erase "`outdir'/_card_gmm_temp.dta"
-capture erase "`outdir'/_ts_gmm_temp.dta"
-
-display "GMM fixture generation complete."
+capture erase "`outdir'/_gmm_gril_temp.dta"
+capture erase "`outdir'/_gmm_ab_temp.dta"
+capture erase "`outdir'/_gmm_phil_temp.dta"
+display _newline(2) "=== All GMM fixtures generated ==="
+display "Output directory: `outdir'"

@@ -275,6 +275,9 @@ gen w = rnormal()
 
 save "`outdir'/_ts_cue_temp.dta", replace
 
+// ts_gmm_data.csv was historically exported by generate-gmm-fixtures.do from this same seed-12345 DGP; the M-16 re-base removed that generator's synthetic block, so the export moves here where test-cue.R's consumers live until the M-17 CUE re-base retires it. (Deliberately plain export without %21.0g to remain byte-compatible with the existing committed file -- regenerating must not churn it.)
+export delimited using "`outdir'/ts_gmm_data.csv", replace
+
 // --- HAC CUE Bartlett bw=3 ---
 use "`outdir'/_ts_cue_temp.dta", clear
 ivreg2 y w (x = z1 z2), cue bw(3) kernel(bartlett) robust
