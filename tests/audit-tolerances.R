@@ -375,6 +375,14 @@ phil_f <- cinf ~ 1 | unem | l(unem, 1:3)
   ivreg2(ab_f, data = abdata, tvar = "year", ivar = "id", method = "gmm2s",
          clusters = ~id, center = TRUE),
   "ab_gmm2s_center", "cl")
+.audit_model("center_ab_cl",
+  ivreg2(ab_f, data = abdata, tvar = "year", ivar = "id", clusters = ~id,
+         center = TRUE),
+  "ab_center", "cl")
+.audit_model("center_phil_hac",
+  ivreg2(phil_f, data = phillips, tvar = "year", vcov = "robust",
+         kernel = "bartlett", bw = 3, center = TRUE),
+  "phil_center", "hac_bw3")
 
 # =====================================================================
 #  SUMMARY

@@ -116,22 +116,7 @@ test_that("orthog is NA in glance when not requested", {
 # Fixture comparisons
 # ============================================================================
 #
-# compare_orthog() makes plain assertions (no test_that) so each cell below is one test_that block that skips cleanly if its fixture is missing, reads the fixture once, and fits the model only when the fixture exists — matching the structure of the other re-based families (see test-stdp.R).
-
-compare_orthog <- function(fit, fixture) {
-  orth <- fit$diagnostics$orthog
-  expect_false(is.null(orth))
-  if (fixture$cstat == 0) {
-    # Underidentified restricted model: Stata reports cstat=0 with missing
-    # p/df; R returns stat=0 with df=0
-    expect_equal(orth$stat, 0)
-    expect_identical(orth$df, 0L)
-  } else {
-    expect_equal(orth$stat, fixture$cstat, tolerance = stata_tol$stat)
-    expect_equal(orth$p, fixture$cstatp, tolerance = stata_tol$pval)
-    expect_identical(orth$df, as.integer(fixture$cstatdf))
-  }
-}
+# compare_orthog_fixture() (helper-fixtures.R, promoted from this file's local compare_orthog at the M-18 review) makes plain assertions (no test_that) so each cell below is one test_that block that skips cleanly if its fixture is missing, reads the fixture once, and fits the model only when the fixture exists — matching the structure of the other re-based families (see test-stdp.R).
 
 orthog_cells <- list(
   list(name = "gril_orthog1 iid",
@@ -167,7 +152,7 @@ orthog_cells <- list(
                        clusters = ~idcode + year, orthog = "south"))
 )
 
-test_stata_fixture_cells(orthog_cells, compare_orthog, slot = "orthog",
+test_stata_fixture_cells(orthog_cells, compare_orthog_fixture, slot = "orthog",
                          label_prefix = "orthog matches Stata")
 
 

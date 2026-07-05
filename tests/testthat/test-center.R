@@ -91,10 +91,7 @@ test_that("center does not change 2SLS coefficients, sigma, or rss", {
 # ============================================================================
 
 test_that("GMM2S: center changes the coefficients", {
-  # center reaches the second-step GMM weighting matrix, so it moves the point
-  # estimates (unlike plain 2SLS where it touches only the VCE). Assert against
-  # a small positive floor rather than a bare inequality so a genuine (tiny but
-  # nonzero) shift is required.
+  # center reaches the second-step GMM weighting matrix, so it moves the point estimates (unlike plain 2SLS where it touches only the VCE). Assert against a small positive floor rather than a bare inequality so a genuine (tiny but nonzero) shift is required.
   fit_no <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
                    vcov = "robust", center = FALSE)
   fit_yes <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
@@ -105,9 +102,7 @@ test_that("GMM2S: center changes the coefficients", {
 })
 
 test_that("endog() leaves estimation invariant under center", {
-  # endog() is diagnostics-only and Stata does not forward center to the
-  # recursive endog call, so the point estimates and VCE are untouched (this is
-  # why the endog cell exports diagnostics only; M-16 pattern).
+  # endog() is diagnostics-only and Stata does not forward center to the recursive endog call, so the point estimates and VCE are untouched (this is why the endog cell exports diagnostics only; M-16 pattern).
   fit_endog <- ivreg2(gril_formula, data = griliches, vcov = "robust",
                       center = TRUE, endog = "iq")
   fit_plain <- ivreg2(gril_formula, data = griliches, vcov = "robust",
@@ -118,8 +113,7 @@ test_that("endog() leaves estimation invariant under center", {
 })
 
 test_that("orthog() leaves estimation invariant under center", {
-  # orthog() is likewise diagnostics-only: the reported C-statistic changes but
-  # the fitted model does not.
+  # orthog() is likewise diagnostics-only: the reported C-statistic changes but the fitted model does not.
   fit_orthog <- ivreg2(gril_formula, data = griliches, vcov = "robust",
                        center = TRUE, orthog = c("age", "mrt"))
   fit_plain <- ivreg2(gril_formula, data = griliches, vcov = "robust",
@@ -154,54 +148,7 @@ test_that("glance includes center column", {
 # 6. Full-cell Stata parity (coef + vcov + diagnostics)
 # ============================================================================
 #
-# Shared diagnostics-comparison helper: asserts the diagnostics that vary
-# across these cells, each guarded on the fixture column being present (NA
-# where inapplicable) and on the corresponding fit slot existing. df and N are
-# compared exactly as integers.
-expect_center_diagnostics <- function(fit, prefix, suffix) {
-  dx <- read_diagnostics(fixture_path(paste0(prefix, "_diagnostics_", suffix, ".csv")))
-  d <- fit$diagnostics
-
-  if (!is.na(dx$overid_stat)) {
-    expect_equal(d$overid$stat, dx$overid_stat,
-                 tolerance = stata_tol$stat, info = "overid stat")
-    expect_equal(d$overid$p, dx$overid_p,
-                 tolerance = stata_tol$pval, info = "overid p")
-    expect_identical(d$overid$df, as.integer(dx$overid_df))
-  }
-  if (!is.na(dx$underid_stat)) {
-    expect_equal(d$underid$stat, dx$underid_stat,
-                 tolerance = stata_tol$stat, info = "underid stat")
-    expect_equal(d$underid$p, dx$underid_p,
-                 tolerance = stata_tol$pval, info = "underid p")
-  }
-  if (!is.na(dx$weak_id_kp_f) && !is.null(d$weak_id_robust)) {
-    expect_equal(d$weak_id_robust$stat, dx$weak_id_kp_f,
-                 tolerance = stata_tol$stat, info = "KP widstat")
-  }
-  if (!is.na(dx$endog_stat) && !is.null(d$endogeneity)) {
-    expect_equal(d$endogeneity$stat, dx$endog_stat,
-                 tolerance = stata_tol$stat, info = "endog stat")
-  }
-  if (!is.na(dx$model_f)) {
-    expect_equal(fit$model_f, dx$model_f,
-                 tolerance = stata_tol$stat, info = "model F")
-  }
-  if (!is.na(dx$sigma)) {
-    expect_equal(fit$sigma, dx$sigma,
-                 tolerance = stata_tol$coef, info = "sigma")
-  }
-  if (!is.na(dx$rss)) {
-    expect_equal(fit$rss, dx$rss,
-                 tolerance = stata_tol$coef, info = "rss")
-  }
-  expect_identical(nobs(fit), as.integer(dx$N))
-}
-
-# Eight full cells across the three canonical bases. A table drives the
-# repeated coef/vcov/diagnostics shell; the heterogeneous fit arguments
-# (method, tvar/ivar/clusters, kernel/bw) live in each cell's fit_args and are
-# spliced in with do.call, keeping every cell readable.
+# Eight full cells across the three canonical bases. A table drives the repeated coef/vcov/diagnostics shell; the heterogeneous fit arguments (method, tvar/ivar/clusters, kernel/bw) live in each cell's fit_args and are spliced in with do.call, keeping every cell readable.
 center_full_cells <- list(
   list(name = "griliches robust",
        prefix = "gril_center", suffix = "robust",
@@ -246,7 +193,7 @@ for (cell in center_full_cells) {
     fit <- do.call(ivreg2, cell$fit_args)
     expect_coef_fixture(fit, coef_file)
     expect_vcov_fixture(fit, paste0(cell$prefix, "_vcov_", cell$suffix, ".csv"))
-    expect_center_diagnostics(fit, cell$prefix, cell$suffix)
+    expect_diagnostics_fixture(fit, paste0(cell$prefix, "_diagnostics_", cell$suffix, ".csv"))
   })
 }
 
@@ -255,12 +202,7 @@ for (cell in center_full_cells) {
 # 7. endog() and orthog() C-statistics under center (small-invariance harness)
 # ============================================================================
 #
-# These two families' Stata statistics (e(estat), e(cstat)) are invariant to
-# `small`. The generator re-ran both cells with `small` added and asserted
-# e(estat)/e(estatp) and e(cstat)/e(cstatp) reproduce to reldif < 1e-12 with
-# exact df equality, so a single fixture backs both fits; the shared
-# test_stata_fixture_cells() harness fits small = FALSE and small = TRUE and
-# additionally pins the two fits' diagnostics equal at machine precision.
+# These two families' Stata statistics (e(estat), e(cstat)) are invariant to `small`. The generator re-ran both cells with `small` added and asserted e(estat)/e(estatp) and e(cstat)/e(cstatp) reproduce to reldif < 1e-12 with exact df equality, so a single fixture backs both fits; the shared test_stata_fixture_cells() harness fits small = FALSE and small = TRUE and additionally pins the two fits' diagnostics equal at machine precision.
 
 compare_center_endog <- function(fit, fixture) {
   d <- fit$diagnostics$endogeneity
@@ -287,11 +229,7 @@ test_stata_fixture_cells(center_endog_cells, compare_center_endog,
                          label_prefix = "center endogeneity matches Stata")
 
 compare_center_orthog <- function(fit, fixture) {
-  orth <- fit$diagnostics$orthog
-  expect_false(is.null(orth))
-  expect_equal(orth$stat, fixture$cstat, tolerance = stata_tol$stat)
-  expect_equal(orth$p, fixture$cstatp, tolerance = stata_tol$pval)
-  expect_identical(orth$df, as.integer(fixture$cstatdf))
+  compare_orthog_fixture(fit, fixture)
   # Sanity that the C-statistic rides on the centered full-model J.
   expect_equal(fit$diagnostics$overid$stat, fixture$j,
                tolerance = stata_tol$stat, info = "overid J (centered)")

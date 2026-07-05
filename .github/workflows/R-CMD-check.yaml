@@ -20,11 +20,7 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-    # Ubuntu and Windows jobs are non-blocking (2026-06-11): all fail on
-    # the single known CUE+cluster+center optimizer-basin divergence at
-    # test-center.R:501/508 (one fit; macOS happens to land in Stata's
-    # basin), deferred to the Tranche 3 fixture re-base. Remove
-    # `nonblocking` everywhere once that lands.
+    # Ubuntu and Windows jobs are non-blocking (2026-06-11): all fail on the known optimizer-basin-sensitive card CUE cells in test-cue.R (macOS happens to land in Stata's basin), slated for deletion at the M-17 fixture re-base. Remove `nonblocking` everywhere once that lands.
     continue-on-error: ${{ matrix.config.nonblocking == true }}
 
     strategy:

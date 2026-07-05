@@ -225,6 +225,65 @@ expect_vcov_fixture <- function(fit, vcov_file, tol = stata_tol$vcov) {
   expect_vcov_match(V_r, V_s[perm, perm], tol = tol, label = vcov_file)
 }
 
+# Shared diagnostics-comparison helper for Stata-parity full cells: asserts overid, underid, Cragg-Donald and Kleibergen-Paap weak-ID stats, model F, sigma, rss, and N against a diagnostics fixture, each guarded on the fixture column being present (NA where inapplicable); promoted from test-center.R's local expect_center_diagnostics at the M-18 review, with the dead endog_stat block dropped and the CD assertion restored.
+expect_diagnostics_fixture <- function(fit, diag_file) {
+  dx <- read_diagnostics(fixture_path(diag_file))
+  d <- fit$diagnostics
+
+  if (!is.na(dx$overid_stat)) {
+    expect_equal(d$overid$stat, dx$overid_stat,
+                 tolerance = stata_tol$stat, info = "overid stat")
+    expect_equal(d$overid$p, dx$overid_p,
+                 tolerance = stata_tol$pval, info = "overid p")
+    expect_identical(d$overid$df, as.integer(dx$overid_df))
+  }
+  if (!is.na(dx$underid_stat)) {
+    expect_equal(d$underid$stat, dx$underid_stat,
+                 tolerance = stata_tol$stat, info = "underid stat")
+    expect_equal(d$underid$p, dx$underid_p,
+                 tolerance = stata_tol$pval, info = "underid p")
+  }
+  if (!is.na(dx$weak_id_cd_f)) {
+    expect_false(is.null(d$weak_id))
+    expect_equal(d$weak_id$stat, dx$weak_id_cd_f,
+                 tolerance = stata_tol$stat, info = "CD weak-ID F")
+  }
+  if (!is.na(dx$weak_id_kp_f)) {
+    expect_false(is.null(d$weak_id_robust))
+    expect_equal(d$weak_id_robust$stat, dx$weak_id_kp_f,
+                 tolerance = stata_tol$stat, info = "KP widstat")
+  }
+  if (!is.na(dx$model_f)) {
+    expect_equal(fit$model_f, dx$model_f,
+                 tolerance = stata_tol$stat, info = "model F")
+  }
+  if (!is.na(dx$sigma)) {
+    expect_equal(fit$sigma, dx$sigma,
+                 tolerance = stata_tol$coef, info = "sigma")
+  }
+  if (!is.na(dx$rss)) {
+    expect_equal(fit$rss, dx$rss,
+                 tolerance = stata_tol$coef, info = "rss")
+  }
+  expect_identical(nobs(fit), as.integer(dx$N))
+}
+
+# Compare orthog() diagnostics against a Stata cstat/cstatp/cstatdf fixture; promoted from test-diagnostics-orthog.R's local compare_orthog() at the M-18 review because test-center.R needs the same comparator for its orthog-under-center cell.
+compare_orthog_fixture <- function(fit, fixture) {
+  orth <- fit$diagnostics$orthog
+  expect_false(is.null(orth))
+  if (fixture$cstat == 0) {
+    # Underidentified restricted model: Stata reports cstat=0 with missing
+    # p/df; R returns stat=0 with df=0
+    expect_equal(orth$stat, 0)
+    expect_identical(orth$df, 0L)
+  } else {
+    expect_equal(orth$stat, fixture$cstat, tolerance = stata_tol$stat)
+    expect_equal(orth$p, fixture$cstatp, tolerance = stata_tol$pval)
+    expect_identical(orth$df, as.integer(fixture$cstatdf))
+  }
+}
+
 # Shared klein/abdata fixture formulas (one source of truth, M-25 promotion precedent): klein_formula anchors help-file case H72, ab_formula anchors H88.
 klein_formula <- consump ~ l(profits, 1) | profits + wagetot |
   govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)
