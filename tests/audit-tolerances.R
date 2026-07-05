@@ -336,20 +336,6 @@ card_fwt <- transform(card, fwt = age %% 5 + 1)
   ivreg2(f_overid, data = card, method = "cue", weights = age, vcov = "robust"),
   "card_overid_cue_weighted", "aw_robust")
 
-# --- Center ---
-.audit_model("center_hc0",
-  ivreg2(f_overid, data = card, vcov = "robust", center = TRUE),
-  "card_overid", "center_hc0")
-.audit_model("center_hc1_small",
-  ivreg2(f_overid, data = card, vcov = "robust", small = TRUE, center = TRUE),
-  "card_overid", "center_hc1_small")
-.audit_model("center_cue_hc0",
-  ivreg2(f_overid, data = card, method = "cue", vcov = "robust", center = TRUE),
-  "card_overid", "center_cue_hc0")
-.audit_model("center_cue_cl",
-  ivreg2(f_overid, data = card, method = "cue", clusters = ~smsa66, center = TRUE),
-  "card_overid", "center_cue_cl")
-
 # Note: dofminus fixtures use lwage (pre-computed) and sdofminus=1, which
 # can't be easily reproduced from the bundled card dataset. Those configs
 # are covered by the test suite but excluded from this audit script.
@@ -372,6 +358,23 @@ phil_f <- cinf ~ 1 | unem | l(unem, 1:3)
   ivreg2(phil_f, data = phillips, tvar = "year", method = "gmm2s",
          kernel = "bartlett", bw = 3),
   "phil_gmm2s", "ac_bw3")
+
+# --- Center (M-18 re-base): re-pointed off card f_overid onto the M-16 canonical bases (griliches H06, abdata H88). The retired card CUE+center audit configs died with the deleted CUE x center cells -- CUE parity on card_overid_cue remains M-17's; this block placed after the GMM2S section because gril_f is defined there.
+.audit_model("center_gril_robust",
+  ivreg2(gril_f, data = griliches, vcov = "robust", center = TRUE),
+  "gril_center", "robust")
+.audit_model("center_gril_robust_small",
+  ivreg2(gril_f, data = griliches, vcov = "robust", small = TRUE,
+         center = TRUE),
+  "gril_center", "robust_small")
+.audit_model("center_gril_gmm2s",
+  ivreg2(gril_f, data = griliches, method = "gmm2s", vcov = "robust",
+         center = TRUE),
+  "gril_gmm2s_center", "robust")
+.audit_model("center_ab_gmm2s_cl",
+  ivreg2(ab_f, data = abdata, tvar = "year", ivar = "id", method = "gmm2s",
+         clusters = ~id, center = TRUE),
+  "ab_gmm2s_center", "cl")
 
 # =====================================================================
 #  SUMMARY

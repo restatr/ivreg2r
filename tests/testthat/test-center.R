@@ -1,137 +1,20 @@
 # ============================================================================
-# Tests: Center Option — Ticket N4
+# Tests: Center Option (Ticket N4; M-18 fixture re-base)
+#
+# The M-18 fixture re-base moved the center-option Stata-parity cells off the Card fixtures onto the M-16 canonical bases (planning/22-spec-matrix.md): griliches H06 (robust, robust+small, gmm2s+robust, dofminus, endog, orthog option-variations), abdata H88 (cluster, cluster+small, gmm2s+cluster), and phillips (kernel-without-robust HAC) -- all D5a option-variations, since Stata documents center with no worked example.
+#
+# Both CUE x center cells were DELETED, not ported: CUE x center coverage moves to M-17's canonical bases (the retired CUE+cluster+center cell was the known-dirty ubuntu CI basin-pathology cell, and CUE robust+center was the same card-CUE known-dirty class). The just-identified and (vacuous) card orthog/endog center cells were likewise retired -- center enters only through the shared meat helpers, so the identification-specific card cells added no distinct code path; the griliches endog/orthog cells below pin the C-statistics under center for the first time.
 # ============================================================================
 
-# --- Helpers ---
-card_path <- fixture_path("card_data.csv")
+data(griliches, package = "ivreg2r")
+data(abdata, package = "ivreg2r")
+data(phillips, package = "ivreg2r")
 
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+# gril_formula (H06, help.txt:1154), ab_formula (H88), and phil_formula are provided by helper-fixtures.R.
 
-# CUE tolerance (optimization noise; centering changes the GMM objective,
-# so the optimizer may converge to a slightly different point than Stata's)
-cue_tol <- list(
-  coef = 2e-5,
-  se   = 2e-5,
-  vcov = 2e-5,
-  stat = stata_tol$stat,
-  pval = stata_tol$pval
-)
-
-# Helper: compare coefficients and SEs against fixture
-check_coef_fixture <- function(fit, fixture_path, tol = stata_tol) {
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-}
-
-# Helper: compare VCV against fixture
-check_vcov_fixture <- function(fit, vcov_path, coef_path, tol = stata_tol) {
-  V_stata <- read_vcov_fixture(vcov_path)
-  stata_terms <- read.csv(coef_path)$term
-  r_names <- ifelse(stata_terms == "_cons", "(Intercept)", stata_terms)
-  r_order <- match(names(coef(fit)), r_names)
-  V_stata <- V_stata[r_order, r_order]
-
-  for (i in seq_len(nrow(V_stata))) {
-    for (j in seq_len(ncol(V_stata))) {
-      expect_equal(
-        unname(vcov(fit)[i, j]), unname(V_stata[i, j]),
-        tolerance = tol$vcov,
-        info = paste0("VCV[", i, ",", j, "] mismatch")
-      )
-    }
-  }
-}
-
-# Helper: compare diagnostics against fixture
-check_diag_fixture <- function(fit, fixture_path, tol = stata_tol) {
-  fixture <- read.csv(fixture_path)
-  diag <- fit$diagnostics
-
-  # Overid
-  if (!is.null(diag$overid) && diag$overid$df > 0L && !is.na(fixture$overid_stat)) {
-    expect_equal(diag$overid$stat, fixture$overid_stat,
-                 tolerance = tol$stat, info = "overid stat")
-    expect_equal(diag$overid$p, fixture$overid_p,
-                 tolerance = tol$pval, info = "overid p")
-  }
-
-  # Underid
-  if (!is.null(diag$underid) && !is.na(fixture$underid_stat)) {
-    expect_equal(diag$underid$stat, fixture$underid_stat,
-                 tolerance = tol$stat, info = "underid stat")
-    expect_equal(diag$underid$p, fixture$underid_p,
-                 tolerance = tol$pval, info = "underid p")
-  }
-
-  # Weak ID (Cragg-Donald)
-  if (!is.null(diag$weak_id) && !is.na(fixture$weak_id_cd_f)) {
-    expect_equal(diag$weak_id$stat, fixture$weak_id_cd_f,
-                 tolerance = tol$stat, info = "CD F")
-  }
-
-  # Weak ID robust (KP)
-  if (!is.null(diag$weak_id_robust) && !is.na(fixture$weak_id_kp_f)) {
-    expect_equal(diag$weak_id_robust$stat, fixture$weak_id_kp_f,
-                 tolerance = tol$stat, info = "KP F")
-  }
-
-  # Anderson-Rubin
-  if (!is.null(diag$anderson_rubin) && !is.na(fixture$ar_f)) {
-    expect_equal(diag$anderson_rubin$f_stat, fixture$ar_f,
-                 tolerance = tol$stat, info = "AR F")
-    expect_equal(diag$anderson_rubin$f_p, fixture$ar_f_p,
-                 tolerance = tol$pval, info = "AR F p")
-    expect_equal(diag$anderson_rubin$chi2_stat, fixture$ar_chi2,
-                 tolerance = tol$stat, info = "AR chi2")
-  }
-
-  # Stock-Wright
-  if (!is.null(diag$stock_wright) && !is.na(fixture$sw_stat)) {
-    expect_equal(diag$stock_wright$stat, fixture$sw_stat,
-                 tolerance = tol$stat, info = "SW stat")
-    expect_equal(diag$stock_wright$p, fixture$sw_p,
-                 tolerance = tol$pval, info = "SW p")
-  }
-
-  # Endogeneity
-  if (!is.null(diag$endogeneity) && !is.na(fixture$endog_stat)) {
-    expect_equal(diag$endogeneity$stat, fixture$endog_stat,
-                 tolerance = tol$stat, info = "endogeneity stat")
-    expect_equal(diag$endogeneity$p, fixture$endog_p,
-                 tolerance = tol$pval, info = "endogeneity p")
-  }
-
-  # Model F
-  if (!is.null(fit$model_f) && !is.na(fixture$model_f)) {
-    expect_equal(fit$model_f, fixture$model_f,
-                 tolerance = tol$stat, info = "model F")
-  }
-
-  # Sigma
-  if (!is.na(fixture$sigma)) {
-    expect_equal(fit$sigma, fixture$sigma,
-                 tolerance = tol$coef, info = "sigma")
-  }
-}
 
 # ============================================================================
-# 1. Input validation
+# 1. Input validation (fixture-free; mtcars is fine here)
 # ============================================================================
 
 test_that("center must be TRUE or FALSE", {
@@ -151,7 +34,7 @@ test_that("center must be TRUE or FALSE", {
 
 
 # ============================================================================
-# 2. Warning for no-op configurations
+# 2. Warning for no-op configurations (fixture-free)
 # ============================================================================
 
 test_that("center = TRUE + IID gives warning", {
@@ -161,7 +44,7 @@ test_that("center = TRUE + IID gives warning", {
   )
 })
 
-test_that("center = TRUE + HC0 gives no warning", {
+test_that("center = TRUE + robust gives no warning", {
   expect_no_warning(
     ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "robust", center = TRUE)
   )
@@ -175,20 +58,14 @@ test_that("center = FALSE gives no warning (iid)", {
 
 
 # ============================================================================
-# 3. Regression: center = FALSE identical to omitting center
+# 3. Identity: center = FALSE identical to omitting center; center does not
+#    move the point estimates (re-pointed to griliches H06)
 # ============================================================================
 
 test_that("center = FALSE gives identical results to default", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit_default <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust"
-  )
-  fit_false <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = FALSE
-  )
+  fit_default <- ivreg2(gril_formula, data = griliches, vcov = "robust")
+  fit_false <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+                      center = FALSE)
 
   expect_identical(coef(fit_default), coef(fit_false))
   expect_identical(vcov(fit_default), vcov(fit_false))
@@ -197,22 +74,11 @@ test_that("center = FALSE gives identical results to default", {
                    fit_false$diagnostics$overid$stat)
 })
 
-
-# ============================================================================
-# 4. Coefficient invariance: center affects VCE only, not point estimates
-# ============================================================================
-
-test_that("center does not change 2SLS coefficients", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit_no <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = FALSE
-  )
-  fit_yes <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = TRUE
-  )
+test_that("center does not change 2SLS coefficients, sigma, or rss", {
+  fit_no <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+                   center = FALSE)
+  fit_yes <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+                    center = TRUE)
 
   expect_identical(coef(fit_no), coef(fit_yes))
   expect_identical(fit_no$sigma, fit_yes$sigma)
@@ -221,7 +87,51 @@ test_that("center does not change 2SLS coefficients", {
 
 
 # ============================================================================
-# 5. Storage and exposure
+# 4. Property tests: where center DOES bite (griliches H06)
+# ============================================================================
+
+test_that("GMM2S: center changes the coefficients", {
+  # center reaches the second-step GMM weighting matrix, so it moves the point
+  # estimates (unlike plain 2SLS where it touches only the VCE). Assert against
+  # a small positive floor rather than a bare inequality so a genuine (tiny but
+  # nonzero) shift is required.
+  fit_no <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
+                   vcov = "robust", center = FALSE)
+  fit_yes <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
+                    vcov = "robust", center = TRUE)
+
+  max_abs_diff <- max(abs(coef(fit_yes) - coef(fit_no)))
+  expect_gt(max_abs_diff, 1e-8)
+})
+
+test_that("endog() leaves estimation invariant under center", {
+  # endog() is diagnostics-only and Stata does not forward center to the
+  # recursive endog call, so the point estimates and VCE are untouched (this is
+  # why the endog cell exports diagnostics only; M-16 pattern).
+  fit_endog <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+                      center = TRUE, endog = "iq")
+  fit_plain <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+                      center = TRUE)
+
+  expect_identical(coef(fit_endog), coef(fit_plain))
+  expect_identical(vcov(fit_endog), vcov(fit_plain))
+})
+
+test_that("orthog() leaves estimation invariant under center", {
+  # orthog() is likewise diagnostics-only: the reported C-statistic changes but
+  # the fitted model does not.
+  fit_orthog <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+                       center = TRUE, orthog = c("age", "mrt"))
+  fit_plain <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+                      center = TRUE)
+
+  expect_identical(coef(fit_orthog), coef(fit_plain))
+  expect_identical(vcov(fit_orthog), vcov(fit_plain))
+})
+
+
+# ============================================================================
+# 5. Storage and exposure (fixture-free)
 # ============================================================================
 
 test_that("center is stored in fit object", {
@@ -241,381 +151,159 @@ test_that("glance includes center column", {
 
 
 # ============================================================================
-# 6. HC0 + center: VCE matches Stata
+# 6. Full-cell Stata parity (coef + vcov + diagnostics)
 # ============================================================================
+#
+# Shared diagnostics-comparison helper: asserts the diagnostics that vary
+# across these cells, each guarded on the fixture column being present (NA
+# where inapplicable) and on the corresponding fit slot existing. df and N are
+# compared exactly as integers.
+expect_center_diagnostics <- function(fit, prefix, suffix) {
+  dx <- read_diagnostics(fixture_path(paste0(prefix, "_diagnostics_", suffix, ".csv")))
+  d <- fit$diagnostics
 
-test_that("HC0 + center: coefficients and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_hc0.csv")
-  skip_if(!file.exists(fp), "HC0 center fixture not found")
+  if (!is.na(dx$overid_stat)) {
+    expect_equal(d$overid$stat, dx$overid_stat,
+                 tolerance = stata_tol$stat, info = "overid stat")
+    expect_equal(d$overid$p, dx$overid_p,
+                 tolerance = stata_tol$pval, info = "overid p")
+    expect_identical(d$overid$df, as.integer(dx$overid_df))
+  }
+  if (!is.na(dx$underid_stat)) {
+    expect_equal(d$underid$stat, dx$underid_stat,
+                 tolerance = stata_tol$stat, info = "underid stat")
+    expect_equal(d$underid$p, dx$underid_p,
+                 tolerance = stata_tol$pval, info = "underid p")
+  }
+  if (!is.na(dx$weak_id_kp_f) && !is.null(d$weak_id_robust)) {
+    expect_equal(d$weak_id_robust$stat, dx$weak_id_kp_f,
+                 tolerance = stata_tol$stat, info = "KP widstat")
+  }
+  if (!is.na(dx$endog_stat) && !is.null(d$endogeneity)) {
+    expect_equal(d$endogeneity$stat, dx$endog_stat,
+                 tolerance = stata_tol$stat, info = "endog stat")
+  }
+  if (!is.na(dx$model_f)) {
+    expect_equal(fit$model_f, dx$model_f,
+                 tolerance = stata_tol$stat, info = "model F")
+  }
+  if (!is.na(dx$sigma)) {
+    expect_equal(fit$sigma, dx$sigma,
+                 tolerance = stata_tol$coef, info = "sigma")
+  }
+  if (!is.na(dx$rss)) {
+    expect_equal(fit$rss, dx$rss,
+                 tolerance = stata_tol$coef, info = "rss")
+  }
+  expect_identical(nobs(fit), as.integer(dx$N))
+}
 
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = TRUE
-  )
-  check_coef_fixture(fit, fp)
-})
+# Eight full cells across the three canonical bases. A table drives the
+# repeated coef/vcov/diagnostics shell; the heterogeneous fit arguments
+# (method, tvar/ivar/clusters, kernel/bw) live in each cell's fit_args and are
+# spliced in with do.call, keeping every cell readable.
+center_full_cells <- list(
+  list(name = "griliches robust",
+       prefix = "gril_center", suffix = "robust",
+       fit_args = list(gril_formula, data = griliches,
+                       vcov = "robust", center = TRUE)),
+  list(name = "griliches robust small",
+       prefix = "gril_center", suffix = "robust_small",
+       fit_args = list(gril_formula, data = griliches,
+                       vcov = "robust", small = TRUE, center = TRUE)),
+  list(name = "griliches gmm2s robust",
+       prefix = "gril_gmm2s_center", suffix = "robust",
+       fit_args = list(gril_formula, data = griliches, method = "gmm2s",
+                       vcov = "robust", center = TRUE)),
+  list(name = "griliches robust dofminus(2)",
+       prefix = "gril_center_dof", suffix = "robust",
+       fit_args = list(gril_formula, data = griliches,
+                       vcov = "robust", center = TRUE, dofminus = 2L)),
+  list(name = "abdata cluster(id)",
+       prefix = "ab_center", suffix = "cl",
+       fit_args = list(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                       clusters = ~id, center = TRUE)),
+  list(name = "abdata cluster(id) small",
+       prefix = "ab_center", suffix = "cl_small",
+       fit_args = list(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                       clusters = ~id, small = TRUE, center = TRUE)),
+  list(name = "abdata gmm2s cluster(id)",
+       prefix = "ab_gmm2s_center", suffix = "cl",
+       fit_args = list(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                       method = "gmm2s", clusters = ~id, center = TRUE)),
+  list(name = "phillips HAC bartlett bw=3",
+       prefix = "phil_center", suffix = "hac_bw3",
+       fit_args = list(phil_formula, data = phillips, tvar = "year",
+                       vcov = "robust", kernel = "bartlett", bw = 3,
+                       center = TRUE))
+)
 
-test_that("HC0 + center: VCV matches Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- fixture_path("card_overid_vcov_center_hc0.csv")
-  cp <- fixture_path("card_overid_coef_center_hc0.csv")
-  skip_if(!file.exists(vp), "HC0 center VCV fixture not found")
+for (cell in center_full_cells) {
+  test_that(paste0("center parity: ", cell$name), {
+    coef_file <- paste0(cell$prefix, "_coef_", cell$suffix, ".csv")
+    skip_if(!file.exists(fixture_path(coef_file)), "center fixture not found")
 
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = TRUE
-  )
-  check_vcov_fixture(fit, vp, cp)
-})
-
-test_that("HC0 + center: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- fixture_path("card_overid_diagnostics_center_hc0.csv")
-  skip_if(!file.exists(dp), "HC0 center diag fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = TRUE
-  )
-  check_diag_fixture(fit, dp)
-})
-
-
-# ============================================================================
-# 7. HC1 + small + center: VCE matches Stata
-# ============================================================================
-
-test_that("HC1 + small + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_hc1_small.csv")
-  skip_if(!file.exists(fp), "HC1 small center fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", small = TRUE, center = TRUE
-  )
-  check_coef_fixture(fit, fp)
-})
-
-test_that("HC1 + small + center: VCV matches Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- fixture_path("card_overid_vcov_center_hc1_small.csv")
-  cp <- fixture_path("card_overid_coef_center_hc1_small.csv")
-  skip_if(!file.exists(vp), "HC1 small center VCV fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", small = TRUE, center = TRUE
-  )
-  check_vcov_fixture(fit, vp, cp)
-})
-
-
-# ============================================================================
-# 8. Cluster + center: VCE matches Stata
-# ============================================================================
-
-test_that("Cluster + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_cl.csv")
-  skip_if(!file.exists(fp), "Cluster center fixture not found")
-
-  # M=2 clusters → expected rank-deficient diagnostics
-  fit <- muffle_rank_warnings(ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, clusters = ~smsa, center = TRUE
-  ))
-  check_coef_fixture(fit, fp)
-})
-
-test_that("Cluster + center: VCV matches Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- fixture_path("card_overid_vcov_center_cl.csv")
-  cp <- fixture_path("card_overid_coef_center_cl.csv")
-  skip_if(!file.exists(vp), "Cluster center VCV fixture not found")
-
-  fit <- muffle_rank_warnings(ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, clusters = ~smsa, center = TRUE
-  ))
-  check_vcov_fixture(fit, vp, cp)
-})
-
-test_that("Cluster + center: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- fixture_path("card_overid_diagnostics_center_cl.csv")
-  skip_if(!file.exists(dp), "Cluster center diag fixture not found")
-
-  fit <- muffle_rank_warnings(ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, clusters = ~smsa, center = TRUE
-  ))
-  check_diag_fixture(fit, dp)
-})
+    fit <- do.call(ivreg2, cell$fit_args)
+    expect_coef_fixture(fit, coef_file)
+    expect_vcov_fixture(fit, paste0(cell$prefix, "_vcov_", cell$suffix, ".csv"))
+    expect_center_diagnostics(fit, cell$prefix, cell$suffix)
+  })
+}
 
 
 # ============================================================================
-# 9. Cluster + small + center
+# 7. endog() and orthog() C-statistics under center (small-invariance harness)
 # ============================================================================
+#
+# These two families' Stata statistics (e(estat), e(cstat)) are invariant to
+# `small`. The generator re-ran both cells with `small` added and asserted
+# e(estat)/e(estatp) and e(cstat)/e(cstatp) reproduce to reldif < 1e-12 with
+# exact df equality, so a single fixture backs both fits; the shared
+# test_stata_fixture_cells() harness fits small = FALSE and small = TRUE and
+# additionally pins the two fits' diagnostics equal at machine precision.
 
-test_that("Cluster + small + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_cl_small.csv")
-  skip_if(!file.exists(fp), "Cluster small center fixture not found")
+compare_center_endog <- function(fit, fixture) {
+  d <- fit$diagnostics$endogeneity
+  expect_false(is.null(d))
+  expect_equal(d$stat, fixture$endog_stat,
+               tolerance = stata_tol$stat, info = "endog stat")
+  expect_equal(d$p, fixture$endog_p,
+               tolerance = stata_tol$pval, info = "endog p")
+  expect_identical(d$df, as.integer(fixture$endog_df))
+  # Sanity that the endogeneity test rides on the centered J.
+  expect_equal(fit$diagnostics$overid$stat, fixture$overid_stat,
+               tolerance = stata_tol$stat, info = "overid stat (centered)")
+}
 
-  fit <- muffle_rank_warnings(ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, clusters = ~smsa, small = TRUE, center = TRUE
-  ))
-  check_coef_fixture(fit, fp)
-})
+center_endog_cells <- list(
+  list(name = "griliches robust center endog(iq)",
+       fixture = "gril_center_endog_diagnostics_robust.csv",
+       fit_args = list(gril_formula, data = griliches, vcov = "robust",
+                       center = TRUE, endog = "iq"))
+)
 
+test_stata_fixture_cells(center_endog_cells, compare_center_endog,
+                         slot = "endogeneity",
+                         label_prefix = "center endogeneity matches Stata")
 
-# ============================================================================
-# 10. Just-identified HC0 + center
-# ============================================================================
+compare_center_orthog <- function(fit, fixture) {
+  orth <- fit$diagnostics$orthog
+  expect_false(is.null(orth))
+  expect_equal(orth$stat, fixture$cstat, tolerance = stata_tol$stat)
+  expect_equal(orth$p, fixture$cstatp, tolerance = stata_tol$pval)
+  expect_identical(orth$df, as.integer(fixture$cstatdf))
+  # Sanity that the C-statistic rides on the centered full-model J.
+  expect_equal(fit$diagnostics$overid$stat, fixture$j,
+               tolerance = stata_tol$stat, info = "overid J (centered)")
+}
 
-test_that("Just-identified HC0 + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_justid_coef_center_hc0.csv")
-  skip_if(!file.exists(fp), "Just-id center fixture not found")
+center_orthog_cells <- list(
+  list(name = "griliches robust center orthog(age mrt)",
+       fixture = "gril_center_orthog_robust.csv",
+       fit_args = list(gril_formula, data = griliches, vcov = "robust",
+                       center = TRUE, orthog = c("age", "mrt")))
+)
 
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc4,
-    data = card, vcov = "robust", center = TRUE
-  )
-  check_coef_fixture(fit, fp)
-})
-
-
-# ============================================================================
-# 11. GMM2S robust + center
-# ============================================================================
-
-test_that("GMM2S HC0 + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_gmm2s_hc0.csv")
-  skip_if(!file.exists(fp), "GMM2S HC0 center fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "gmm2s", vcov = "robust", center = TRUE
-  )
-  check_coef_fixture(fit, fp)
-})
-
-test_that("GMM2S HC0 + center: VCV matches Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- fixture_path("card_overid_vcov_center_gmm2s_hc0.csv")
-  cp <- fixture_path("card_overid_coef_center_gmm2s_hc0.csv")
-  skip_if(!file.exists(vp), "GMM2S HC0 center VCV fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "gmm2s", vcov = "robust", center = TRUE
-  )
-  check_vcov_fixture(fit, vp, cp)
-})
-
-test_that("GMM2S HC0 + center: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- fixture_path("card_overid_diagnostics_center_gmm2s_hc0.csv")
-  skip_if(!file.exists(dp), "GMM2S HC0 center diag fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "gmm2s", vcov = "robust", center = TRUE
-  )
-  check_diag_fixture(fit, dp)
-})
-
-
-# ============================================================================
-# 12. GMM2S cluster + center
-# ============================================================================
-
-test_that("GMM2S cluster + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_gmm2s_cl.csv")
-  skip_if(!file.exists(fp), "GMM2S cluster center fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "gmm2s", clusters = ~age, center = TRUE
-  )
-  check_coef_fixture(fit, fp)
-})
-
-test_that("GMM2S cluster + center: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- fixture_path("card_overid_diagnostics_center_gmm2s_cl.csv")
-  skip_if(!file.exists(dp), "GMM2S cluster center diag fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "gmm2s", clusters = ~age, center = TRUE
-  )
-  check_diag_fixture(fit, dp)
-})
-
-
-# ============================================================================
-# 13. CUE robust + center
-# ============================================================================
-
-test_that("CUE HC0 + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_cue_hc0.csv")
-  skip_if(!file.exists(fp), "CUE HC0 center fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "cue", vcov = "robust", center = TRUE
-  )
-  check_coef_fixture(fit, fp, tol = cue_tol)
-})
-
-test_that("CUE HC0 + center: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- fixture_path("card_overid_diagnostics_center_cue_hc0.csv")
-  skip_if(!file.exists(dp), "CUE HC0 center diag fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, method = "cue", vcov = "robust", center = TRUE
-  )
-  check_diag_fixture(fit, dp, tol = cue_tol)
-})
-
-
-# ============================================================================
-# 14. CUE cluster + center
-# ============================================================================
-
-test_that("CUE cluster + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_cue_cl.csv")
-  skip_if(!file.exists(fp), "CUE cluster center fixture not found")
-
-  expect_warning(
-    fit <- ivreg2(
-      lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-      data = card, method = "cue", clusters = ~age, center = TRUE
-    ),
-    "CUE optimization did not converge"
-  )
-  check_coef_fixture(fit, fp, tol = cue_tol)
-})
-
-
-# ============================================================================
-# 15. Endogeneity test + center
-# ============================================================================
-
-test_that("Endogeneity test + center: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- fixture_path("card_overid_diagnostics_center_endog.csv")
-  skip_if(!file.exists(dp), "Endogeneity center fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = TRUE, endog = "educ"
-  )
-  check_diag_fixture(fit, dp)
-})
-
-
-# ============================================================================
-# 16. Orthogonality test + center
-# ============================================================================
-
-test_that("Orthogonality test + center: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- fixture_path("card_overid_diagnostics_center_orthog.csv")
-  skip_if(!file.exists(dp), "Orthogonality center fixture not found")
-
-  fixture <- read.csv(dp)
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = TRUE, orthog = "nearc2"
-  )
-
-  # Orthogonality test is stored in diagnostics$orthog in the fixture
-  # but extracted from e(cstat)/e(cstatp)/e(cstatdf) in Stata
-  # The fixture extracts overid_stat which is the J stat, not the orthog C stat.
-  # Check overall diagnostics first:
-  check_diag_fixture(fit, dp)
-})
-
-
-# ============================================================================
-# 17. dofminus + center
-# ============================================================================
-
-test_that("dofminus + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_dofminus.csv")
-  skip_if(!file.exists(fp), "dofminus center fixture not found")
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card, vcov = "robust", center = TRUE, dofminus = 1L
-  )
-  check_coef_fixture(fit, fp)
-})
-
-
-# ============================================================================
-# 18. HAC Bartlett + center
-# ============================================================================
-
-test_that("HAC Bartlett + center: coefs and SEs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  fp <- fixture_path("card_overid_coef_center_hac_bartlett.csv")
-  skip_if(!file.exists(fp), "HAC center fixture not found")
-
-  card_ts <- card
-  card_ts$t <- seq_len(nrow(card_ts))
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card_ts, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "t",
-    center = TRUE
-  )
-  check_coef_fixture(fit, fp)
-})
-
-test_that("HAC Bartlett + center: VCV matches Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vp <- fixture_path("card_overid_vcov_center_hac_bartlett.csv")
-  cp <- fixture_path("card_overid_coef_center_hac_bartlett.csv")
-  skip_if(!file.exists(vp), "HAC center VCV fixture not found")
-
-  card_ts <- card
-  card_ts$t <- seq_len(nrow(card_ts))
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card_ts, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "t",
-    center = TRUE
-  )
-  check_vcov_fixture(fit, vp, cp)
-})
-
-test_that("HAC Bartlett + center: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  dp <- fixture_path("card_overid_diagnostics_center_hac_bartlett.csv")
-  skip_if(!file.exists(dp), "HAC center diag fixture not found")
-
-  card_ts <- card
-  card_ts$t <- seq_len(nrow(card_ts))
-
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-    data = card_ts, vcov = "robust", kernel = "bartlett", bw = 3, tvar = "t",
-    center = TRUE
-  )
-  check_diag_fixture(fit, dp)
-})
+test_stata_fixture_cells(center_orthog_cells, compare_center_orthog,
+                         slot = "orthog",
+                         label_prefix = "center orthogonality matches Stata")
