@@ -24,6 +24,31 @@ STANDARD_TOL <- list(coef = 1e-6, se = 1e-6, vcov = 1e-6, stat = 1e-4, pval = 1e
 # --- Helpers ---
 .stata_to_r <- function(x) ifelse(x == "_cons", "(Intercept)", x)
 
+# ts-operator name translator ("L.profits" -> "l(profits, 1)", "D2.w" ->
+# "d(w, 2)"). This standalone script cannot source the testthat helpers, so
+# this is a copy of translate_stata_ts_names() from helper-fixtures.R (same
+# precedent as the card_fwt comment below) -- keep the two in sync.
+.translate_ts_names <- function(x) {
+  out <- character(length(x))
+  for (i in seq_along(x)) {
+    s <- x[i]
+    if (s %in% c("_cons", "(Intercept)")) {
+      out[i] <- "(Intercept)"
+      next
+    }
+    m <- regexec("^([LDld])([0-9]*)\\.(.+)$", s)
+    parts <- regmatches(s, m)[[1L]]
+    if (length(parts) == 0L) {
+      out[i] <- s
+      next
+    }
+    op <- if (toupper(parts[2L]) == "L") "l" else "d"
+    k <- if (parts[3L] == "") 1L else as.integer(parts[3L])
+    out[i] <- paste0(op, "(", parts[4L], ", ", k, ")")
+  }
+  out
+}
+
 .rel_err <- function(r_val, stata_val) {
   if (is.na(r_val) || is.na(stata_val)) return(NA_real_)
   if (abs(stata_val) < 1e-15) return(abs(r_val))
@@ -32,18 +57,21 @@ STANDARD_TOL <- list(coef = 1e-6, se = 1e-6, vcov = 1e-6, stat = 1e-4, pval = 1e
 
 .read_coef_fixture <- function(path) {
   d <- read.csv(path, stringsAsFactors = FALSE)
-  d$term <- .stata_to_r(d$term)
+  d$term <- .translate_ts_names(d$term)
   d
 }
 
 .read_vcov_fixture <- function(path) {
   d <- read.csv(path, stringsAsFactors = FALSE)
-  terms <- .stata_to_r(d$term)
+  terms <- .translate_ts_names(d$term)
   vcov_cols <- grep("^vcov_", names(d), value = TRUE)
   V <- as.matrix(d[, vcov_cols])
   rownames(V) <- terms
-  col_names <- sub("^vcov_", "", vcov_cols)
-  colnames(V) <- .stata_to_r(col_names)
+  # Column order matches row order (both derive from e(b)'s column order in
+  # the .do generator), so reuse the row-derived terms for column names too --
+  # the vcov_ prefixed header names have dots replaced by underscores and
+  # can't be round-tripped through the ts-operator regex directly.
+  colnames(V) <- terms
   V
 }
 
@@ -187,6 +215,8 @@ results <- data.frame(
 #  MODEL CONFIGURATIONS
 # =====================================================================
 data(card)
+data(klein)
+data(abdata)
 
 # Fit the stored lwage, not log(wage): card.dta stores lwage as float32, and
 # every Stata fixture was generated from that stored variable. Recomputing
@@ -198,6 +228,16 @@ data(card)
 # sides saw, exactly as the test files do.
 f_justid <- lwage ~ exper + expersq + black + south | educ | nearc4
 f_overid <- lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2
+
+# klein/abdata LIML fixture family (M-15 re-base): klein carries the native
+# K1=2 multi-endogenous + panel-lag LIML/Fuller cells; abdata carries the
+# K1=3 multi-endogenous cluster cell. See helper-fixtures.R's card_wt/fwt
+# comment for the same "keep in sync" precedent on the awt formula below.
+klein$awt <- klein$yr %% 5 + 1
+klein_f <- consump ~ l(profits, 1) | profits + wagetot |
+  govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)
+ab_f <- n ~ 1 | w + k + ys | d(w, 1) + d(k, 1) + d(ys, 1) +
+  d(w, 2) + d(k, 2) + d(ys, 2)
 
 cat("Running model configurations...\n\n")
 
@@ -223,21 +263,27 @@ cat("Running model configurations...\n\n")
   ivreg2(f_overid, data = card, vcov = "robust", small = TRUE),
   "card_overid", "hc1_small")
 
-# --- LIML ---
-.audit_model("liml_overid_iid",
-  ivreg2(f_overid, data = card, method = "liml"),
-  "card_liml_overid")
-.audit_model("liml_overid_hc1",
-  ivreg2(f_overid, data = card, method = "liml", vcov = "robust"),
-  "card_liml_overid", "hc1")
-.audit_model("liml_overid_cl_small",
-  ivreg2(f_overid, data = card, method = "liml", clusters = ~smsa66, small = TRUE),
-  "card_liml_overid", "cl_small")
+# --- LIML (klein/abdata, M-15 re-base) ---
+.audit_model("liml_klein_iid",
+  ivreg2(klein_f, data = klein, tvar = "yr", method = "liml"),
+  "tsop_klein", "liml")
+.audit_model("liml_klein_hc1",
+  ivreg2(klein_f, data = klein, tvar = "yr", method = "liml", vcov = "robust"),
+  "klein_liml", "hc1")
+.audit_model("liml_ab_cl_small",
+  ivreg2(ab_f, data = abdata, tvar = "year", ivar = "id", method = "liml",
+         clusters = ~id, small = TRUE),
+  "ab_liml", "cl_small")
 
-# --- Fuller ---
-.audit_model("fuller1_overid_iid",
-  ivreg2(f_overid, data = card, method = "liml", fuller = 1),
-  "card_fuller1_overid")
+# --- Fuller (klein) ---
+.audit_model("fuller1_klein_iid",
+  ivreg2(klein_f, data = klein, tvar = "yr", fuller = 1),
+  "tsop_klein", "fuller1")
+
+# --- Weighted LIML (klein) ---
+.audit_model("liml_klein_aw_iid",
+  ivreg2(klein_f, data = klein, tvar = "yr", weights = awt, method = "liml"),
+  "klein_liml_aw", "iid")
 
 # --- Weighted (M-11 re-based cells: fweight fwt = mod(age,5)+1; pweight = genuine NLS sampling weight) ---
 # This standalone script cannot source the testthat helpers, so the fwt

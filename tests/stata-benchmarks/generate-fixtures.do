@@ -13,7 +13,7 @@
     - *_firststage_*.csv  (first-stage diagnostics per combo)
 
   Execution-order dependency: the sim_multi_endo_data.csv and
-  sim_cluster_data.csv exports written here are IMPORTED by the rf, liml,
+  sim_cluster_data.csv exports written here are IMPORTED by the rf,
   redundancy, and orthog generators (see planning/18-fixture-audit.md's
   cross-file dependency table). Run this file before those; do not delete the
   sim data sections without checking the downstream consumers.

@@ -1,16 +1,15 @@
 /*===========================================================================
   generate-liml-fixtures.do
   -------------------------
-  Generates CSV benchmark fixtures for LIML, Fuller, and k-class estimation
-  in the ivreg2r R package.
-
-  Reuses the helper programs from generate-fixtures.do.
-
-  Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
+  M-15 re-base: D5a option-variations on the klein H72-H76 LIML-family base and the abdata H88 base; canonical IID cells live in generate-ts-operator-fixtures.do as tsop_klein_*.
 
   Usage (CWD must be the package root, i.e. pkg/):
     cd /path/to/ivreg2r/pkg
     do tests/stata-benchmarks/generate-liml-fixtures.do
+
+  Retired cells (planning/22-spec-matrix.md): Fuller(4) and kclass(0.5) were deleted as anti-pattern cells per the spec matrix's delete table — they duplicated the option-variation shape of Fuller(1)/kclass(1.19) without adding new coverage.
+  Just-identified LIML and kclass(1) cells are also retired: plain just-identified LIML short-circuits to 2SLS in R (a bit-identical identity test), and kclass(1) is a fixture-free identity with 2SLS itself; Stata parity for 2SLS is owned by the M-10 family, so neither needs a dedicated LIML-family fixture here.
+  coviv x cluster, coviv x small, fuller x cluster, kclass x cluster, and weighted x small cells are retired compositionally: coviv only swaps the VCV bread and is already pinned at iid by the tsop H73 cell and at robust by klein_liml_coviv/hc1 here; fuller/kclass only change the k-class bread, and the k-class-bread x cluster-meat assembly is pinned by the ab_liml cluster cells; the small finite-sample correction is uniform across weight types and is pinned by the klein small cells (iid_small, hc1_small, cl_small).
 ===========================================================================*/
 
 clear all
@@ -21,24 +20,17 @@ version 14
 local outdir "tests/stata-benchmarks/fixtures"
 capture mkdir "`outdir'"
 
-// Pre-load Card data before defining programs (bcuse calls clear all)
-capture bcuse card, clear
-if _rc != 0 {
-    display as error "Could not load Card dataset via bcuse."
-    display as error "Install bcuse (ssc install bcuse) and rerun."
-    exit 601
-}
-save "`outdir'/_card_liml_temp.dta", replace
-
 /*---------------------------------------------------------------------------
-  Helper program: extract all results from ivreg2 and save to CSV
-  (Same as generate-fixtures.do but adds kclass/lambda/fuller columns)
+  Helper program: extract ivreg2 results and save to CSV
+  (Same as generate-ts-operator-fixtures.do: includes kclass/lambda/fuller
+  and AR-LIML overid columns, plus a small-sample flag column since this
+  generator's suffixes include iid_small/hc1_small/cl_small. First-stage
+  matrix export omitted — not consumed by these tests.)
 ---------------------------------------------------------------------------*/
 capture program drop save_ivreg2_results
 program define save_ivreg2_results
     syntax, prefix(string) suffix(string) outdir(string)
 
-    // Number of observations
     local N = e(N)
     local K = e(rankxx)
     local L = e(rankzz)
@@ -89,7 +81,7 @@ program define save_ivreg2_results
         restore
     }
 
-    // --- Diagnostics (extended with LIML metadata) ---
+    // --- Diagnostics ---
     quietly {
         preserve
         clear
@@ -105,13 +97,12 @@ program define save_ivreg2_results
         gen double r2c = e(r2c)
         gen double rss = e(rss)
         gen double rmse = e(rmse)
-        gen double sigmasq = e(rmse)^2
         gen double F_stat = e(F)
         gen double F_p = e(Fp)
         gen double F_df1 = e(Fdf1)
         gen double F_df2 = e(Fdf2)
 
-        // Initialize all conditional columns to missing
+        // Initialize conditional columns to missing
         gen double sargan = .
         gen double sarganp = .
         gen double sargandf = .
@@ -132,55 +123,34 @@ program define save_ivreg2_results
         gen double cstat = .
         gen double cstatp = .
         gen double cstatdf = .
+        gen double sstat = .
+        gen double sstatp = .
+        gen double sstatdf = .
         gen double N_clust = .
 
-        // Overidentification
         capture replace sargan = e(sargan)
         capture replace sarganp = e(sarganp)
         capture replace sargandf = e(sargandf)
         capture replace j = e(j)
         capture replace jp = e(jp)
         capture replace jdf = e(jdf)
-
-        // Underidentification
         capture replace idstat = e(idstat)
         capture replace idp = e(idp)
         capture replace iddf = e(iddf)
-
-        // Weak identification
         capture replace cdf = e(cdf)
         capture replace widstat = e(widstat)
-
-        // Anderson-Rubin
         capture replace arf = e(arf)
         capture replace arfp = e(arfp)
         capture replace archi2 = e(archi2)
         capture replace archi2p = e(archi2p)
         capture replace ardf = e(ardf)
         capture replace ardf_r = e(ardf_r)
-
-        // Endogeneity / C-statistic
         capture replace cstat = e(cstat)
         capture replace cstatp = e(cstatp)
         capture replace cstatdf = e(cstatdf)
-
-        // Endogeneity test (endog() option)
-        gen double estat = .
-        gen double estatp = .
-        gen double estatdf = .
-        capture replace estat = e(estat)
-        capture replace estatp = e(estatp)
-        capture replace estatdf = e(estatdf)
-
-        // Stock-Wright S statistic
-        gen double sstat = .
-        gen double sstatp = .
-        gen double sstatdf = .
         capture replace sstat = e(sstat)
         capture replace sstatp = e(sstatp)
         capture replace sstatdf = e(sstatdf)
-
-        // Cluster info
         capture replace N_clust = e(N_clust)
 
         // Small option flag
@@ -188,7 +158,7 @@ program define save_ivreg2_results
                             "`suffix'" == "hc1_small" | ///
                             "`suffix'" == "cl_small")
 
-        // --- LIML/k-class metadata ---
+        // LIML / k-class metadata
         gen double kclass = .
         gen double lambda = .
         gen double fuller = .
@@ -196,7 +166,7 @@ program define save_ivreg2_results
         capture replace lambda = e(lambda)
         capture replace fuller = e(fuller)
 
-        // --- AR LIML overidentification (H3) ---
+        // Anderson-Rubin LIML overid
         gen double arubin = .
         gen double arubinp = .
         gen double arubin_lin = .
@@ -212,375 +182,78 @@ program define save_ivreg2_results
             "`outdir'/`prefix'_diagnostics_`suffix'.csv", replace
         restore
     }
-
-    // --- First-stage diagnostics (if IV model) ---
-    capture confirm matrix e(first)
-    if _rc == 0 {
-        quietly {
-            preserve
-            clear
-
-            matrix F = e(first)
-            local frows = rowsof(F)
-            local fcols = colsof(F)
-            local fnames : colnames F
-            local rnames : rownames F
-
-            set obs `frows'
-            gen str32 statistic = ""
-            forvalues i = 1/`frows' {
-                local rn : word `i' of `rnames'
-                replace statistic = "`rn'" in `i'
-            }
-
-            forvalues j = 1/`fcols' {
-                local cn : word `j' of `fnames'
-                local cnclean = subinstr("`cn'", ".", "_", .)
-                gen double `cnclean' = .
-                forvalues i = 1/`frows' {
-                    replace `cnclean' = F[`i', `j'] in `i'
-                }
-            }
-
-            export delimited using ///
-                "`outdir'/`prefix'_firststage_`suffix'.csv", replace
-            restore
-        }
-    }
 end
 
-
-/*===========================================================================
-  FIXTURE 1: card_liml_overid
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south (educ = nearc2 nearc4), liml
-  Purpose: LIML overidentified, IID + small
-===========================================================================*/
-display _newline(2) "=== FIXTURE 1: card_liml_overid ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml first
-save_ivreg2_results, prefix(card_liml_overid) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml first small
-save_ivreg2_results, prefix(card_liml_overid) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 2: card_liml_justid
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south (educ = nearc4), liml
-  Purpose: Exactly-identified LIML → lambda=1, should equal 2SLS
-===========================================================================*/
-display _newline(2) "=== FIXTURE 2: card_liml_justid ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc4), liml first
-save_ivreg2_results, prefix(card_liml_justid) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc4), liml first small
-save_ivreg2_results, prefix(card_liml_justid) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 3: card_fuller1_overid
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south (educ = nearc2 nearc4), fuller(1)
-  Purpose: Fuller(1) modification
-===========================================================================*/
-display _newline(2) "=== FIXTURE 3: card_fuller1_overid ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) first
-save_ivreg2_results, prefix(card_fuller1_overid) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) first small
-save_ivreg2_results, prefix(card_fuller1_overid) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 4: card_fuller4_overid
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south (educ = nearc2 nearc4), fuller(4)
-  Purpose: Larger Fuller alpha
-===========================================================================*/
-display _newline(2) "=== FIXTURE 4: card_fuller4_overid ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(4) first
-save_ivreg2_results, prefix(card_fuller4_overid) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(4) first small
-save_ivreg2_results, prefix(card_fuller4_overid) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 5: card_kclass_half
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south (educ = nearc2 nearc4), kclass(0.5)
-  Purpose: Arbitrary k value
-===========================================================================*/
-display _newline(2) "=== FIXTURE 5: card_kclass_half ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), kclass(0.5) first
-save_ivreg2_results, prefix(card_kclass_half) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), kclass(0.5) first small
-save_ivreg2_results, prefix(card_kclass_half) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 6: card_kclass_1
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south (educ = nearc2 nearc4), kclass(1)
-  Purpose: k=1 must equal 2SLS
-===========================================================================*/
-display _newline(2) "=== FIXTURE 6: card_kclass_1 ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), kclass(1) first
-save_ivreg2_results, prefix(card_kclass_1) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), kclass(1) first small
-save_ivreg2_results, prefix(card_kclass_1) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 7: card_liml_weighted
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south (educ = nearc2 nearc4) [aw=weight], liml
-  Purpose: Weighted LIML
-===========================================================================*/
-display _newline(2) "=== FIXTURE 7: card_liml_weighted ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- IID, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [aw=weight], liml first
-save_ivreg2_results, prefix(card_liml_weighted) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [aw=weight], liml first small
-save_ivreg2_results, prefix(card_liml_weighted) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 8: sim_multi_endo_liml
-  Simulated data with 2 endogenous variables and 4 excluded IVs
-  Purpose: Multi-endogenous LIML (K1>1 eigenvalue)
-===========================================================================*/
-display _newline(2) "=== FIXTURE 8: sim_multi_endo_liml ==="
-
-import delimited using "`outdir'/sim_multi_endo_data.csv", clear
-
-// --- IID, small=FALSE ---
-ivreg2 y x1 x2 (endo1 endo2 = z1 z2 z3 z4), liml first
-save_ivreg2_results, prefix(sim_multi_endo_liml) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 y x1 x2 (endo1 endo2 = z1 z2 z3 z4), liml first small
-save_ivreg2_results, prefix(sim_multi_endo_liml) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 9: sim_multi_endo_fuller1
-  Multi-endogenous + Fuller(1)
-===========================================================================*/
-display _newline(2) "=== FIXTURE 9: sim_multi_endo_fuller1 ==="
-
-import delimited using "`outdir'/sim_multi_endo_data.csv", clear
-
-// --- IID, small=FALSE ---
-ivreg2 y x1 x2 (endo1 endo2 = z1 z2 z3 z4), fuller(1) first
-save_ivreg2_results, prefix(sim_multi_endo_fuller1) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE ---
-ivreg2 y x1 x2 (endo1 endo2 = z1 z2 z3 z4), fuller(1) first small
-save_ivreg2_results, prefix(sim_multi_endo_fuller1) suffix(iid_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 10: card_liml_overid — robust/cluster
-  Purpose: LIML overid with HC and cluster VCE
-===========================================================================*/
-display _newline(2) "=== FIXTURE 10: card_liml_overid robust/cluster ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- HC1 (Stata robust), small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml robust first
-save_ivreg2_results, prefix(card_liml_overid) suffix(hc1) outdir(`outdir')
-
-// --- HC1, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml robust small first
-save_ivreg2_results, prefix(card_liml_overid) suffix(hc1_small) outdir(`outdir')
-
-// --- Cluster on smsa66, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml cluster(smsa66) first
-save_ivreg2_results, prefix(card_liml_overid) suffix(cl) outdir(`outdir')
-
-// --- Cluster on smsa66, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml cluster(smsa66) small first
-save_ivreg2_results, prefix(card_liml_overid) suffix(cl_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 11: card_liml_overid_coviv
-  Purpose: LIML overid with COVIV (coviv option), all VCE types
-===========================================================================*/
-display _newline(2) "=== FIXTURE 11: card_liml_overid_coviv ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- IID, small=FALSE, coviv ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml coviv first
-save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(iid) outdir(`outdir')
-
-// --- IID, small=TRUE, coviv ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml coviv small first
-save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(iid_small) outdir(`outdir')
-
-// --- HC1, small=FALSE, coviv ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml robust coviv first
-save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(hc1) outdir(`outdir')
-
-// --- HC1, small=TRUE, coviv ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml robust small coviv first
-save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(hc1_small) outdir(`outdir')
-
-// --- Cluster, small=FALSE, coviv ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml cluster(smsa66) coviv first
-save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(cl) outdir(`outdir')
-
-// --- Cluster, small=TRUE, coviv ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), liml cluster(smsa66) small coviv first
-save_ivreg2_results, prefix(card_liml_overid_coviv) suffix(cl_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 12: card_liml_justid — robust/cluster
-  Purpose: Just-identified LIML (k=1), verifies LIML=2SLS under robust/cluster
-===========================================================================*/
-display _newline(2) "=== FIXTURE 12: card_liml_justid robust/cluster ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- HC1, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc4), liml robust first
-save_ivreg2_results, prefix(card_liml_justid) suffix(hc1) outdir(`outdir')
-
-// --- HC1, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc4), liml robust small first
-save_ivreg2_results, prefix(card_liml_justid) suffix(hc1_small) outdir(`outdir')
-
-// --- Cluster, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc4), liml cluster(smsa66) first
-save_ivreg2_results, prefix(card_liml_justid) suffix(cl) outdir(`outdir')
-
-// --- Cluster, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc4), liml cluster(smsa66) small first
-save_ivreg2_results, prefix(card_liml_justid) suffix(cl_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 13: card_fuller1_overid — robust/cluster
-  Purpose: Fuller(1) + robust/cluster VCE
-===========================================================================*/
-display _newline(2) "=== FIXTURE 13: card_fuller1_overid robust/cluster ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- HC1, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) robust first
-save_ivreg2_results, prefix(card_fuller1_overid) suffix(hc1) outdir(`outdir')
-
-// --- HC1, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) robust small first
-save_ivreg2_results, prefix(card_fuller1_overid) suffix(hc1_small) outdir(`outdir')
-
-// --- Cluster, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) cluster(smsa66) first
-save_ivreg2_results, prefix(card_fuller1_overid) suffix(cl) outdir(`outdir')
-
-// --- Cluster, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), fuller(1) cluster(smsa66) small first
-save_ivreg2_results, prefix(card_fuller1_overid) suffix(cl_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 14: card_kclass_half — robust
-  Purpose: kclass(0.5) + robust VCE
-===========================================================================*/
-display _newline(2) "=== FIXTURE 14: card_kclass_half robust ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- HC1, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), kclass(0.5) robust first
-save_ivreg2_results, prefix(card_kclass_half) suffix(hc1) outdir(`outdir')
-
-// --- HC1, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4), kclass(0.5) robust small first
-save_ivreg2_results, prefix(card_kclass_half) suffix(hc1_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 15: card_liml_weighted — robust
-  Purpose: Weighted LIML + robust VCE
-===========================================================================*/
-display _newline(2) "=== FIXTURE 15: card_liml_weighted robust ==="
-
-use "`outdir'/_card_liml_temp.dta", clear
-
-// --- HC1, small=FALSE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [aw=weight], liml robust first
-save_ivreg2_results, prefix(card_liml_weighted) suffix(hc1) outdir(`outdir')
-
-// --- HC1, small=TRUE ---
-ivreg2 lwage exper expersq black south (educ = nearc2 nearc4) [aw=weight], liml robust small first
-save_ivreg2_results, prefix(card_liml_weighted) suffix(hc1_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 16: sim_multi_endo_liml — robust
-  Purpose: Multi-endogenous LIML + robust VCE
-===========================================================================*/
-display _newline(2) "=== FIXTURE 16: sim_multi_endo_liml robust ==="
-
-import delimited using "`outdir'/sim_multi_endo_data.csv", clear
-
-// --- HC1, small=FALSE ---
-ivreg2 y x1 x2 (endo1 endo2 = z1 z2 z3 z4), liml robust first
-save_ivreg2_results, prefix(sim_multi_endo_liml) suffix(hc1) outdir(`outdir')
-
-// --- HC1, small=TRUE ---
-ivreg2 y x1 x2 (endo1 endo2 = z1 z2 z3 z4), liml robust small first
-save_ivreg2_results, prefix(sim_multi_endo_liml) suffix(hc1_small) outdir(`outdir')
-
-
-/*===========================================================================
-  Clean up
-===========================================================================*/
-capture erase "`outdir'/_card_liml_temp.dta"
-
-display _newline(2) "=== All LIML fixtures generated ==="
-display "Output directory: `outdir'"
+/*---------------------------------------------------------------------------
+  Klein data (H72-H76): LIML/Fuller/k-class option-variations
+  tsset yr. R side uses the bundled klein dataset (no data export here).
+---------------------------------------------------------------------------*/
+capture use "../validation/data/klein.dta", clear
+if _rc {
+    webuse klein, clear
+}
+tsset yr
+
+// Deterministic analytic weight (M-12/M-23 precedent) for the weighted cells
+gen double awt = mod(yr, 5) + 1
+
+// --- D5a option-variation on H72 (help.txt:1462): LIML + small ---
+ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
+    wagegovt capital1 L.totinc), liml small
+save_ivreg2_results, prefix(klein_liml) suffix(iid_small) outdir(`outdir')
+
+// --- D5a option-variation on H72 (help.txt:1462): LIML + robust ---
+ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
+    wagegovt capital1 L.totinc), liml robust
+save_ivreg2_results, prefix(klein_liml) suffix(hc1) outdir(`outdir')
+
+// --- D5a option-variation on H72 (help.txt:1462): LIML + robust + small ---
+ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
+    wagegovt capital1 L.totinc), liml robust small
+save_ivreg2_results, prefix(klein_liml) suffix(hc1_small) outdir(`outdir')
+
+// --- D5a option-variation on H73 (help.txt:1469): LIML + COVIV + robust ---
+ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
+    wagegovt capital1 L.totinc), liml coviv robust
+save_ivreg2_results, prefix(klein_liml_coviv) suffix(hc1) outdir(`outdir')
+
+// --- D5a option-variation on H75 (help.txt:1480): Fuller(1) + robust ---
+ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
+    wagegovt capital1 L.totinc), fuller(1) robust
+save_ivreg2_results, prefix(klein_fuller1) suffix(hc1) outdir(`outdir')
+
+// --- D5a option-variation on H76 (help.txt:1487): k-class 1.19 + robust ---
+ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
+    wagegovt capital1 L.totinc), kclass(1.19) robust
+save_ivreg2_results, prefix(klein_kclass119) suffix(hc1) outdir(`outdir')
+
+// --- D5a option-variation on H72 (help.txt:1462): weighted LIML, iid ---
+ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
+    wagegovt capital1 L.totinc) [aw=awt], liml
+save_ivreg2_results, prefix(klein_liml_aw) suffix(iid) outdir(`outdir')
+
+// --- D5a option-variation on H72 (help.txt:1462): weighted LIML, robust ---
+ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
+    wagegovt capital1 L.totinc) [aw=awt], liml robust
+save_ivreg2_results, prefix(klein_liml_aw) suffix(hc1) outdir(`outdir')
+
+/*---------------------------------------------------------------------------
+  abdata (H88): LIML on the same panel-difference instrument set used by
+  the gmm2s cell in generate-ts-operator-fixtures.do (help.txt:1541).
+  tsset id year. R side uses the bundled abdata dataset (no data export here).
+---------------------------------------------------------------------------*/
+capture use "../validation/data/abdata.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/macro/abdata.dta, clear
+}
+tsset id year
+
+// --- D5a option-variation on H88 (help.txt:1541): LIML + cluster(id) ---
+ivreg2 n (w k ys = D.w D.k D.ys D2.w D2.k D2.ys), liml cluster(id)
+save_ivreg2_results, prefix(ab_liml) suffix(cl) outdir(`outdir')
+
+// --- D5a option-variation on H88 (help.txt:1541): LIML + cluster(id) + small ---
+ivreg2 n (w k ys = D.w D.k D.ys D2.w D2.k D2.ys), liml cluster(id) small
+save_ivreg2_results, prefix(ab_liml) suffix(cl_small) outdir(`outdir')
+
+display "LIML fixture generation complete"
