@@ -48,18 +48,34 @@ if _rc != 0 {
     exit 601
 }
 save "`outdir'/_card_temp.dta", replace
-// Full-precision export: the default `export delimited` writes numeric
-// columns at 8-digit precision, which truncates float32 bit patterns
-// (see ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
-quietly ds, has(type numeric)
-format `r(varlist)' %21.0g
-export delimited using "`outdir'/card_data.csv", replace datafmt
 
 /*---------------------------------------------------------------------------
-  Pre-load abdata (H88 panel) and save before defining programs, for the
-  new ab_cl cells (M-13 re-base). Imitates the card pre-load above; falls
-  back to the bc.edu mirror when the bundled validation copy is absent
-  (see the abdata block in generate-liml-fixtures.do for precedent).
+  Helper program: full-precision data export. The default `export delimited`
+  writes numeric columns at 8-digit precision, which truncates float32 bit
+  patterns (ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
+  Defined here, immediately after the bcuse card load above and before its
+  export below (bcuse's clear-all already happened, so program definitions
+  are safe from this point on).
+---------------------------------------------------------------------------*/
+capture program drop export_full_precision
+program define export_full_precision
+    // Full-precision data export: the default `export delimited` writes
+    // numeric columns at 8-digit precision, which truncates float32 bit
+    // patterns (ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
+    syntax using/
+    quietly ds, has(type numeric)
+    format `r(varlist)' %21.0g
+    export delimited using "`using'", replace datafmt
+end
+
+export_full_precision using "`outdir'/card_data.csv"
+
+/*---------------------------------------------------------------------------
+  Pre-load abdata (H88 panel) and save before defining the remaining
+  programs, for the new ab_cl cells (M-13 re-base). Imitates the card
+  pre-load above; falls back to the bc.edu mirror when the bundled
+  validation copy is absent (see the abdata block in
+  generate-liml-fixtures.do for precedent).
 ---------------------------------------------------------------------------*/
 capture use "../validation/data/abdata.dta", clear
 if _rc {
@@ -346,6 +362,13 @@ run_all_vce_combos, ///
     outdir(`outdir') ///
     endogopt(educ)
 
+// e(first) exports are orphans since the M-25 re-base (M-25 owns
+// first-stage fixtures; the M-10 re-base owns the structural fix) --
+// erase them so a full re-run cannot recreate untracked orphans.
+foreach s in iid iid_small hc1 hc1_small {
+    erase "`outdir'/card_just_id_firststage_`s'.csv"
+}
+
 
 /*===========================================================================
   FIXTURE 2: card_overid
@@ -366,6 +389,11 @@ run_all_vce_combos, ///
     prefix(card_overid) ///
     outdir(`outdir') ///
     endogopt(educ)
+
+// same M-25 orphan erase as card_just_id above
+foreach s in iid iid_small hc1 hc1_small {
+    erase "`outdir'/card_overid_firststage_`s'.csv"
+}
 
 
 /*===========================================================================
@@ -401,13 +429,9 @@ gen endo2 = 0.4*z2 + 0.3*z3 + 0.2*z4 + 0.1*x2 + 0.7*v2 + 0.2*u
 // Outcome
 gen y = 1.0 + 0.5*x1 - 0.3*x2 + 1.2*endo1 - 0.8*endo2 + u
 
-// Save simulated data. Full-precision export: the default `export
-// delimited` truncates float32 bit patterns at 8-digit precision (ticket
-// F4 / the CSV float-truncation gotcha in CLAUDE.md) -- this data.csv is
-// re-imported downstream (generate-rf-fixtures.do), so precision matters.
-quietly ds, has(type numeric)
-format `r(varlist)' %21.0g
-export delimited using "`outdir'/sim_multi_endo_data.csv", replace datafmt
+// Save simulated data. This data.csv is re-imported downstream
+// (generate-rf-fixtures.do), so full precision matters.
+export_full_precision using "`outdir'/sim_multi_endo_data.csv"
 
 global ivreg2_depvar "y"
 global ivreg2_exog "x1 x2"
@@ -418,6 +442,11 @@ run_all_vce_combos, ///
     prefix(sim_multi_endo) ///
     outdir(`outdir') ///
     endogopt(endo1 endo2)
+
+// same M-25 orphan erase as card_just_id above
+foreach s in iid iid_small hc1 hc1_small {
+    erase "`outdir'/sim_multi_endo_firststage_`s'.csv"
+}
 
 
 /*===========================================================================
@@ -440,11 +469,8 @@ gen u = rnormal()
 gen endo1 = 0.6*z1 + 0.4*z2 + 0.3*x1 + 0.7*v + 0.2*u
 gen y = 2.0*x1 + 1.5*endo1 + u
 
-// Save simulated data. Full-precision export (see the F4 CSV
-// float-truncation gotcha in CLAUDE.md) -- avoids truncating float32 bits.
-quietly ds, has(type numeric)
-format `r(varlist)' %21.0g
-export delimited using "`outdir'/sim_no_constant_data.csv", replace datafmt
+// Save simulated data.
+export_full_precision using "`outdir'/sim_no_constant_data.csv"
 
 global ivreg2_depvar "y"
 global ivreg2_exog "x1"
@@ -457,6 +483,11 @@ run_all_vce_combos, ///
     outdir(`outdir') ///
     endogopt(endo1) ///
     modelopts(noconstant)
+
+// same M-25 orphan erase as card_just_id above
+foreach s in iid iid_small hc1 hc1_small {
+    erase "`outdir'/sim_no_constant_firststage_`s'.csv"
+}
 
 
 /*===========================================================================
@@ -490,13 +521,9 @@ gen endo1 = 0.5*z1 + 0.3*z2 + 0.2*x1 + 0.6*v + 0.3*u
 // Outcome
 gen y = 1.0 + 0.8*x1 + 1.5*endo1 + u
 
-// Save simulated data. Full-precision export (see the F4 CSV
-// float-truncation gotcha in CLAUDE.md) -- this data.csv is re-imported
-// downstream (generate-rf-fixtures.do and FIXTURE 9 below), so precision
-// matters.
-quietly ds, has(type numeric)
-format `r(varlist)' %21.0g
-export delimited using "`outdir'/sim_cluster_data.csv", replace datafmt
+// Save simulated data. This data.csv is re-imported downstream
+// (generate-rf-fixtures.do and FIXTURE 9 below), so full precision matters.
+export_full_precision using "`outdir'/sim_cluster_data.csv"
 
 // M-13 re-base (2026-07-05): the estimation cells formerly generated here
 // via run_all_vce_combos (iid/iid_small/hc1/hc1_small/cl/cl_small) were

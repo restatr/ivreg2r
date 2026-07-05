@@ -19,6 +19,13 @@ if (file.exists(sim_multi_path)) {
 
 data(abdata, package = "ivreg2r")
 
+# Shared fits (M-17 hoisting precedent, see test-vcov-cluster.R): the ab_cl
+# cluster fit is reused across the four tests below instead of being refit.
+fit_ab_cl <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                     clusters = ~id, endog = "w")
+fit_ab_cl_small <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                          clusters = ~id, small = TRUE, endog = "w")
+
 
 # ============================================================================
 # Anderson LM — IID
@@ -231,8 +238,7 @@ test_that("KP rk LM matches Stata ab_cl cl fixture", {
   diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                clusters = ~id, endog = "w")
+  fit <- fit_ab_cl
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$underid$test_name,
@@ -253,8 +259,7 @@ test_that("KP rk Wald F matches Stata ab_cl cl fixture", {
   diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                clusters = ~id, endog = "w")
+  fit <- fit_ab_cl
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id_robust$stat, fixture$widstat,
@@ -285,8 +290,7 @@ test_that("Cragg-Donald F present alongside KP stats (cluster)", {
   diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                clusters = ~id, endog = "w")
+  fit <- fit_ab_cl
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
@@ -354,10 +358,8 @@ test_that("small does not change KP rk LM statistic (HC1)", {
 })
 
 test_that("small does not change KP stats (cluster)", {
-  fit1 <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                 clusters = ~id, small = FALSE, endog = "w")
-  fit2 <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                 clusters = ~id, small = TRUE, endog = "w")
+  fit1 <- fit_ab_cl
+  fit2 <- fit_ab_cl_small
   expect_equal(fit1$diagnostics$underid$stat, fit2$diagnostics$underid$stat)
   expect_equal(fit1$diagnostics$weak_id_robust$stat,
                fit2$diagnostics$weak_id_robust$stat)

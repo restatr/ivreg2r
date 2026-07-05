@@ -13,6 +13,13 @@ if (file.exists(card_path)) {
 
 data(abdata, package = "ivreg2r")
 
+# Shared fits (M-17 hoisting precedent, see test-vcov-cluster.R): the ab_cl
+# cluster fit is reused across the three tests below instead of being refit.
+fit_ab_cl <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                     clusters = ~id, endog = "w")
+fit_ab_cl_small <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                          clusters = ~id, small = TRUE, endog = "w")
+
 
 # ============================================================================
 # Sargan test: IID, card_overid
@@ -122,8 +129,7 @@ test_that("Hansen J stat matches Stata ab_cl cl fixture", {
   diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                clusters = ~id, endog = "w")
+  fit <- fit_ab_cl
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
@@ -138,8 +144,7 @@ test_that("Hansen J stat matches Stata ab_cl cl_small fixture", {
   diag_path <- fixture_path("ab_cl_diagnostics_cl_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                clusters = ~id, small = TRUE, endog = "w")
+  fit <- fit_ab_cl_small
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, fixture$j,
@@ -149,10 +154,8 @@ test_that("Hansen J stat matches Stata ab_cl cl_small fixture", {
 })
 
 test_that("small does not change Hansen J statistic (cluster)", {
-  fit1 <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                 clusters = ~id, small = FALSE, endog = "w")
-  fit2 <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
-                 clusters = ~id, small = TRUE, endog = "w")
+  fit1 <- fit_ab_cl
+  fit2 <- fit_ab_cl_small
   expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
 })
 
