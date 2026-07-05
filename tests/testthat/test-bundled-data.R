@@ -5,9 +5,11 @@
 # planning/25-data-provenance.md, and cross-checks klein/abdata against the
 # full-precision fixture data exports from the ts-operator fixture generator
 # (tsop_klein_data.csv / tsop_ab_data.csv, ticket F4) to prove the bundled
-# .rda and the fixture CSVs carry identical numbers. cigar is cross-checked
-# directly against its cached source-of-record .dta file (validation/data/
-# cigar.dta), since it has no fixture CSV export.
+# .rda and the fixture CSVs carry identical numbers. cigar's bit-identity
+# cross-check against its cached source-of-record .dta file (validation/data/
+# cigar.dta) runs at build time in data-raw/cigar.R instead of here: a test
+# gated on that git-ignored cache would SKIP on any checkout without it
+# (public repo, fresh clones), which violates the 0-skips rule.
 # ============================================================================
 
 expect_matches_fixture_csv <- function(data, csv_name, label) {
@@ -76,18 +78,4 @@ test_that("bundled klein matches the tsop_klein_data.csv fixture export", {
 test_that("bundled abdata matches the tsop_ab_data.csv fixture export", {
   data(abdata)
   expect_matches_fixture_csv(abdata, "tsop_ab_data.csv", "abdata")
-})
-
-test_that("bundled cigar matches the cached validation/data/cigar.dta source", {
-  skip_if_not_installed("haven")
-  dta_path <- file.path(testthat::test_path(), "..", "..", "..", "validation",
-                         "data", "cigar.dta")
-  skip_if(!file.exists(dta_path), "cigar.dta source-of-record not found")
-  data(cigar)
-  src <- as.data.frame(haven::read_dta(dta_path))
-  expect_equal(nrow(cigar), nrow(src))
-  for (col in names(cigar)) {
-    expect_equal(cigar[[col]], as.numeric(src[[col]]), tolerance = 1e-12,
-                 info = paste("cigar column", col))
-  }
 })

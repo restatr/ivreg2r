@@ -22,39 +22,30 @@
 #   cl2_small adds `small`; cl2_wt adds `[aw=cwt]` with cwt = mod(state,4)+1;
 #   cl2_dof adds `dofminus(2) sdofminus(1)`.
 
-data(cigar, package = "ivreg2r")
-
-cigar2 <- transform(
-  cigar,
-  lsales  = log(sales),
-  lrprice = log(price / cpi),
-  lrndi   = log(ndi / cpi),
-  lrpimin = log(pimin / cpi),
-  cwt     = state %% 4 + 1
-)
-
-cigar_formula <- lsales ~ lrndi | lrprice | lrpimin + l(lrprice, 1)
+# cigar_formula and cigar_real (log-transformed regressors plus the
+# deterministic two-way aweight cwt) are shared objects in
+# helper-fixtures.R, next to klein_formula/ab_formula/card_wt.
 
 # Shared fits (M-17 hoisting precedent): each configuration is fit once here
 # and reused across the parity, metadata, and property sections below.
-fit_cl2       <- ivreg2(cigar_formula, data = cigar2, tvar = "year",
+fit_cl2       <- ivreg2(cigar_formula, data = cigar_real, tvar = "year",
                          ivar = "state", clusters = ~state + year,
                          endog = "lrprice")
-fit_cl2_small <- ivreg2(cigar_formula, data = cigar2, tvar = "year",
+fit_cl2_small <- ivreg2(cigar_formula, data = cigar_real, tvar = "year",
                          ivar = "state", clusters = ~state + year,
                          endog = "lrprice", small = TRUE)
-fit_cl2_wt    <- ivreg2(cigar_formula, data = cigar2, tvar = "year",
+fit_cl2_wt    <- ivreg2(cigar_formula, data = cigar_real, tvar = "year",
                          ivar = "state", clusters = ~state + year,
                          endog = "lrprice", weights = cwt)
-fit_cl2_dof   <- ivreg2(cigar_formula, data = cigar2, tvar = "year",
+fit_cl2_dof   <- ivreg2(cigar_formula, data = cigar_real, tvar = "year",
                          ivar = "state", clusters = ~state + year,
                          endog = "lrprice", dofminus = 2L, sdofminus = 1L)
-fit_cl1       <- ivreg2(cigar_formula, data = cigar2, tvar = "year",
+fit_cl1       <- ivreg2(cigar_formula, data = cigar_real, tvar = "year",
                          ivar = "state", clusters = ~state,
                          endog = "lrprice")
-fit_iid       <- ivreg2(cigar_formula, data = cigar2, tvar = "year",
+fit_iid       <- ivreg2(cigar_formula, data = cigar_real, tvar = "year",
                          ivar = "state", endog = "lrprice")
-fit_hc1       <- ivreg2(cigar_formula, data = cigar2, tvar = "year",
+fit_hc1       <- ivreg2(cigar_formula, data = cigar_real, tvar = "year",
                          ivar = "state", vcov = "robust", endog = "lrprice")
 
 
@@ -243,14 +234,21 @@ test_that("two-way cluster first-stage F matches Stata cigar cl2 fixture", {
 # Section 6: Metadata
 # ============================================================================
 
-test_that("n_clusters = min(M1, M2) for two-way clustering", {
-  expect_identical(fit_cl2$n_clusters, 29L)
-  expect_identical(fit_cl2$n_clusters1, 46L)
-  expect_identical(fit_cl2$n_clusters2, 29L)
+# Pinned to Stata's own per-dimension cluster counts (N_clust1/N_clust2 in
+# the cl2 diagnostics fixture) rather than bare literals, so a bug that
+# swaps or miscounts either dimension is caught against ground truth instead
+# of against a hand-copied number.
+test_that("n_clusters1/n_clusters2 match Stata's N_clust1/N_clust2 for two-way clustering", {
+  diag_path <- fixture_path("cigar_diagnostics_cl2.csv")
+  skip_if(!file.exists(diag_path), "Diagnostics fixture not found")
+  dx <- read_diagnostics(diag_path)
+  expect_identical(fit_cl2$n_clusters1, as.integer(dx$N_clust1))
+  expect_identical(fit_cl2$n_clusters2, as.integer(dx$N_clust2))
+  expect_identical(fit_cl2$n_clusters, min(fit_cl2$n_clusters1, fit_cl2$n_clusters2))
 })
 
 test_that("df.residual = M - 1 for two-way clustering", {
-  expect_identical(fit_cl2$df.residual, 28L)
+  expect_identical(fit_cl2$df.residual, fit_cl2$n_clusters - 1L)
 })
 
 test_that("vcov_type is 'CL' when two-way clustered", {
@@ -308,6 +306,25 @@ test_that("small=TRUE two-way cluster VCV equals small=FALSE times correction fa
   M <- fit_cl2$n_clusters
   correction <- ((N - 1) / (N - K)) * (M / (M - 1))
   expect_equal(fit_cl2_small$vcov, fit_cl2$vcov * correction,
+               tolerance = .Machine$double.eps^0.5)
+})
+
+# NEW test (code-review fix): restores the OLS x two-way x small intersection
+# retired with the sim_twoway cl2_ols_small cell -- OLS parity itself is
+# hf-owned (H104), and the small correction has no OLS/IV branch, so this
+# identity pins the OLS-side dof bookkeeping without duplicating Stata parity
+# coverage. Mirrors the IV variant directly above.
+test_that("OLS: small=TRUE two-way cluster VCV equals small=FALSE times correction factor", {
+  fit_no <- ivreg2(lsales ~ lrndi + lrprice, data = cigar_real,
+                    tvar = "year", ivar = "state", clusters = ~state + year)
+  fit_sm <- ivreg2(lsales ~ lrndi + lrprice, data = cigar_real,
+                    tvar = "year", ivar = "state", clusters = ~state + year,
+                    small = TRUE)
+  N <- fit_no$nobs
+  K <- length(coef(fit_no))
+  M <- min(fit_no$n_clusters1, fit_no$n_clusters2)
+  correction <- ((N - 1) / (N - K)) * (M / (M - 1))
+  expect_equal(fit_sm$vcov, fit_no$vcov * correction,
                tolerance = .Machine$double.eps^0.5)
 })
 

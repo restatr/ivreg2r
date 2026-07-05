@@ -276,7 +276,13 @@ end
 ===========================================================================*/
 display _newline(2) "=== Loading cigar panel data ==="
 
-use "../validation/data/cigar.dta", clear
+capture use "../validation/data/cigar.dta", clear
+if _rc {
+    display as error "cigar.dta cache not found at ../validation/data/."
+    display as error "Regenerate it from plm::Cigar by running, from the repo root:"
+    display as error `"  Rscript -e "setwd('pkg'); source('data-raw/cigar.R')""'
+    exit 601
+}
 quietly tsset state year
 
 // Derived columns in double precision, exactly as the R tests construct

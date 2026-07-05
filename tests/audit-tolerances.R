@@ -342,7 +342,9 @@ card_fwt <- transform(card, fwt = age %% 5 + 1)
 # spec (D5a), replacing the retired non-reproducible sim_twoway draw. No
 # `small` here, matching the ab_cl audit config's convention above; the
 # small-sample cl2_small cell is covered by the test suite (property test)
-# but not separately audited here.
+# but not separately audited here. This standalone script cannot source the
+# testthat helpers, so cigar_f and the log/cwt construction mirror
+# helper-fixtures.R's cigar_formula / cigar_real -- keep the two in sync.
 cigar_f <- lsales ~ lrndi | lrprice | lrpimin + l(lrprice, 1)
 cigar$lsales  <- log(cigar$sales)
 cigar$lrprice <- log(cigar$price / cigar$cpi)

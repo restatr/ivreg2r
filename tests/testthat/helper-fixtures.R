@@ -336,3 +336,16 @@ sw_formula <- dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1
 
 # Shared weighted-klein data object mirroring the griliches_awt/abdata_awt pattern; matches generate-liml-fixtures.do's `gen double awt = mod(yr, 5) + 1`.
 klein_awt <- transform(ivreg2r::klein, awt = yr %% 5 + 1)
+
+# Shared cigar two-way cluster fixture formula (M-14 re-base): anchors the Baltagi-Levin/Baltagi-Griffin-Xiong cigarette-demand spec used by generate-twoway-fixtures.do, ivreg2 lsales lrndi (lrprice = lrpimin l.lrprice).
+cigar_formula <- lsales ~ lrndi | lrprice | lrpimin + l(lrprice, 1)
+
+# Shared transformed cigar data object mirroring the card_wt precedent: data(cigar) plus the log-transformed regressors (lsales/lrprice/lrndi/lrpimin) and the deterministic two-way aweight cwt = mod(state, 4) + 1. Mirrors the `gen double` block in generate-twoway-fixtures.do and the fixture aweight construction (M-11/M-12/M-17 precedent) exactly, so the R and Stata sides compute from the same double-precision numbers.
+cigar_real <- transform(
+  ivreg2r::cigar,
+  lsales  = log(sales),
+  lrprice = log(price / cpi),
+  lrndi   = log(ndi / cpi),
+  lrpimin = log(pimin / cpi),
+  cwt     = state %% 4 + 1
+)

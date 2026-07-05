@@ -23,16 +23,21 @@ library(haven)
 # R plm package, so regenerate the cache from plm::Cigar when absent and
 # re-verify bit-identity either way (planning/25 ground rule for this
 # dataset's reversed provenance direction).
+data(Cigar, package = "plm")
 cache <- "../validation/data/cigar.dta"
 if (!file.exists(cache)) {
-  data(Cigar, package = "plm")
   write_dta(Cigar, cache)
 }
 d <- read_dta(cache)
 
-data(Cigar, package = "plm")
+# tolerance = 0 makes this bit-exact for the numeric payloads (not just
+# "close enough"); check.attributes = FALSE strips only haven's
+# format/type-storage attributes picked up by the .dta round trip, which are
+# not part of the data itself (verified necessary and sufficient: dropping
+# it makes attribute differences fail the check, and no other diffs remain
+# once it is set).
 stopifnot(isTRUE(all.equal(as.data.frame(Cigar), as.data.frame(d),
-                           check.attributes = FALSE)))
+                           check.attributes = FALSE, tolerance = 0)))
 
 cigar <- data.frame(
   state = as.integer(d$state),
