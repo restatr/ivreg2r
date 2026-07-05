@@ -12,23 +12,23 @@ data(abdata, package = "ivreg2r")
 data(phillips, package = "ivreg2r")
 data(mroz, package = "ivreg2r")
 
-gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
+# Weak-instrument variant (BSS 2007 pp. 490-493), distinct from the shared H06 gril_formula in helper-fixtures.R: drops med + kww from the excluded instruments.
+gril_weak_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | age + mrt
 
-phil_formula <- cinf ~ 1 | unem | l(unem, 1:3)
-
+# phil_formula is now provided by helper-fixtures.R.
 
 # ============================================================================
 # Structural tests (no fixtures) — griliches base model
 # ============================================================================
 
 test_that("redundancy is NULL when not requested", {
-  fit <- ivreg2(gril_formula, data = griliches)
+  fit <- ivreg2(gril_weak_formula, data = griliches)
   expect_null(fit$diagnostics$redundancy)
 })
 
 test_that("redundant = character(0) is silently skipped", {
-  fit <- ivreg2(gril_formula, data = griliches, redundant = character(0))
+  fit <- ivreg2(gril_weak_formula, data = griliches, redundant = character(0))
   expect_null(fit$diagnostics$redundancy)
 })
 
@@ -38,7 +38,7 @@ test_that("redundancy is NULL for OLS models", {
 })
 
 test_that("redundancy has all expected fields", {
-  fit <- ivreg2(gril_formula, data = griliches, redundant = "mrt")
+  fit <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt")
   red <- fit$diagnostics$redundancy
   expect_type(red, "list")
   expect_named(red, c("stat", "p", "df", "test_name", "tested_vars"),
@@ -50,36 +50,36 @@ test_that("redundancy has all expected fields", {
 
 test_that("invalid redundant variable name produces error", {
   expect_error(
-    ivreg2(gril_formula, data = griliches, redundant = "not_a_var"),
+    ivreg2(gril_weak_formula, data = griliches, redundant = "not_a_var"),
     "not in the excluded instrument list"
   )
 })
 
 test_that("redundant rejects exogenous variable", {
   expect_error(
-    ivreg2(gril_formula, data = griliches, redundant = "expr"),
+    ivreg2(gril_weak_formula, data = griliches, redundant = "expr"),
     "not in the excluded instrument list"
   )
 })
 
 test_that("redundant rejects endogenous variable", {
   expect_error(
-    ivreg2(gril_formula, data = griliches, redundant = "iq"),
+    ivreg2(gril_weak_formula, data = griliches, redundant = "iq"),
     "not in the excluded instrument list"
   )
 })
 
 test_that("redundant must be character or NULL", {
   expect_error(
-    ivreg2(gril_formula, data = griliches, redundant = 1),
+    ivreg2(gril_weak_formula, data = griliches, redundant = 1),
     "character vector or NULL"
   )
 })
 
 test_that("duplicate redundant entries are deduplicated with warning", {
-  fit_single <- ivreg2(gril_formula, data = griliches, redundant = "mrt")
+  fit_single <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt")
   expect_warning(
-    fit_dup <- ivreg2(gril_formula, data = griliches,
+    fit_dup <- ivreg2(gril_weak_formula, data = griliches,
                       redundant = c("mrt", "mrt")),
     "duplicate entries"
   )
@@ -90,7 +90,7 @@ test_that("duplicate redundant entries are deduplicated with warning", {
 })
 
 test_that("redundancy appears in glance output", {
-  fit <- ivreg2(gril_formula, data = griliches, redundant = "mrt")
+  fit <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt")
   g <- glance(fit)
   expect_true("redundancy_stat" %in% names(g))
   expect_true("redundancy_p" %in% names(g))
@@ -99,7 +99,7 @@ test_that("redundancy appears in glance output", {
 })
 
 test_that("redundancy is NA in glance when not requested", {
-  fit <- ivreg2(gril_formula, data = griliches)
+  fit <- ivreg2(gril_weak_formula, data = griliches)
   g <- glance(fit)
   expect_true(is.na(g$redundancy_stat))
   expect_true(is.na(g$redundancy_p))
@@ -111,17 +111,17 @@ test_that("redundancy is NA in glance when not requested", {
 # ============================================================================
 
 test_that("redundancy stat is non-negative", {
-  fit <- ivreg2(gril_formula, data = griliches, redundant = "mrt")
+  fit <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt")
   expect_gte(fit$diagnostics$redundancy$stat, 0)
 })
 
 test_that("df = K1 * L_tested", {
   # K1=1, L_tested=1 -> df=1
-  fit1 <- ivreg2(gril_formula, data = griliches, redundant = "mrt")
+  fit1 <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt")
   expect_identical(fit1$diagnostics$redundancy$df, 1L)
 
   # K1=1, L_tested=2 -> df=2
-  fit2 <- ivreg2(gril_formula, data = griliches, redundant = c("age", "mrt"))
+  fit2 <- ivreg2(gril_weak_formula, data = griliches, redundant = c("age", "mrt"))
   expect_identical(fit2$diagnostics$redundancy$df, 2L)
 })
 
@@ -155,8 +155,8 @@ test_that("df = K1 * L_tested for multi-endo models", {
 })
 
 test_that("redundancy suppressed by b0 (no diagnostics)", {
-  fit0 <- ivreg2(gril_formula, data = griliches)
-  fit <- ivreg2(gril_formula, data = griliches, redundant = "mrt",
+  fit0 <- ivreg2(gril_weak_formula, data = griliches)
+  fit <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt",
                 b0 = rep(0, length(coef(fit0))))
   # b0 suppresses all identification diagnostics
   expect_null(fit$diagnostics$redundancy)
@@ -180,26 +180,26 @@ compare_redundancy <- function(fit, fixture) {
 redundancy_cells <- list(
   list(name = "gril_red mrt robust (BSS p. 493 anchor)",
        fixture = "gril_red_redundancy_mrt_robust.csv",
-       fit_args = list(gril_formula, data = griliches, vcov = "robust",
+       fit_args = list(gril_weak_formula, data = griliches, vcov = "robust",
                        redundant = "mrt")),
   list(name = "gril_red mrt iid",
        fixture = "gril_red_redundancy_mrt_iid.csv",
-       fit_args = list(gril_formula, data = griliches, redundant = "mrt")),
+       fit_args = list(gril_weak_formula, data = griliches, redundant = "mrt")),
   list(name = "gril_red both iid",
        fixture = "gril_red_redundancy_both_iid.csv",
-       fit_args = list(gril_formula, data = griliches,
+       fit_args = list(gril_weak_formula, data = griliches,
                        redundant = c("age", "mrt"))),
   list(name = "gril_red_dof mrt iid",
        fixture = "gril_red_dof_redundancy_mrt_iid.csv",
-       fit_args = list(gril_formula, data = griliches,
+       fit_args = list(gril_weak_formula, data = griliches,
                        redundant = "mrt", dofminus = 1L)),
   list(name = "gril_red_dof mrt robust",
        fixture = "gril_red_dof_redundancy_mrt_robust.csv",
-       fit_args = list(gril_formula, data = griliches, vcov = "robust",
+       fit_args = list(gril_weak_formula, data = griliches, vcov = "robust",
                        redundant = "mrt", dofminus = 1L)),
   list(name = "gril_red_aw mrt iid (aweight)",
        fixture = "gril_red_aw_redundancy_mrt_iid.csv",
-       fit_args = list(gril_formula, data = griliches_awt,
+       fit_args = list(gril_weak_formula, data = griliches_awt,
                        redundant = "mrt", weights = quote(awt))),
   list(name = "ab_red d2ys iid",
        fixture = "ab_red_redundancy_d2ys_iid.csv",
@@ -241,9 +241,9 @@ test_stata_fixture_cells(redundancy_cells, compare_redundancy,
 
 test_that("gmm2s redundancy equals 2SLS redundancy (robust)", {
   # Stata's e(redstat) is byte-identical across estimators given the VCE (verified in the retired card fixtures), so no gmm2s fixture cell exists for this family — this identity is asserted directly instead.
-  fit_2sls <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+  fit_2sls <- ivreg2(gril_weak_formula, data = griliches, vcov = "robust",
                      redundant = "mrt")
-  fit_gmm2s <- ivreg2(gril_formula, data = griliches, vcov = "robust",
+  fit_gmm2s <- ivreg2(gril_weak_formula, data = griliches, vcov = "robust",
                       redundant = "mrt", method = "gmm2s")
   expect_equal(fit_gmm2s$diagnostics$redundancy$stat,
                fit_2sls$diagnostics$redundancy$stat)
@@ -255,7 +255,7 @@ test_that("gmm2s redundancy equals 2SLS redundancy (robust)", {
 
 test_that("testing all excluded instruments makes redundancy coincide with underid (K1=1)", {
   # griliches has K1=1 endogenous (iq); testing both excluded instruments (age, mrt) makes the redundancy LM (sum of squared canonical correlations) coincide with the underid LM (min), since there is only one canonical correlation to sum/min over.
-  fit <- ivreg2(gril_formula, data = griliches, redundant = c("age", "mrt"))
+  fit <- ivreg2(gril_weak_formula, data = griliches, redundant = c("age", "mrt"))
   expect_equal(fit$diagnostics$redundancy$stat, fit$diagnostics$underid$stat)
 })
 

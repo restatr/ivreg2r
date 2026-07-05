@@ -59,6 +59,9 @@ STANDARD_TOL <- list(coef = 1e-6, se = 1e-6, vcov = 1e-6, stat = 1e-4, pval = 1e
   out
 }
 
+# Canonical composed translator: ts-operator names then xi factor names, mirroring translate_stata_names() in helper-fixtures.R.
+.translate_names <- function(x) .translate_xi_names(.translate_ts_names(x))
+
 .rel_err <- function(r_val, stata_val) {
   if (is.na(r_val) || is.na(stata_val)) return(NA_real_)
   if (abs(stata_val) < 1e-15) return(abs(r_val))
@@ -67,13 +70,13 @@ STANDARD_TOL <- list(coef = 1e-6, se = 1e-6, vcov = 1e-6, stat = 1e-4, pval = 1e
 
 .read_coef_fixture <- function(path) {
   d <- read.csv(path, stringsAsFactors = FALSE)
-  d$term <- .translate_xi_names(.translate_ts_names(d$term))
+  d$term <- .translate_names(d$term)
   d
 }
 
 .read_vcov_fixture <- function(path) {
   d <- read.csv(path, stringsAsFactors = FALSE)
-  terms <- .translate_xi_names(.translate_ts_names(d$term))
+  terms <- .translate_names(d$term)
   vcov_cols <- grep("^vcov_", names(d), value = TRUE)
   V <- as.matrix(d[, vcov_cols])
   rownames(V) <- terms
@@ -150,16 +153,20 @@ results <- data.frame(
     r2       = list(val = fit$r.squared, cat = "stat"),
     r2_a     = list(val = fit$adj.r.squared, cat = "stat"),
     rmse     = list(val = fit$sigma, cat = "stat"),
+    sigma    = list(val = fit$sigma, cat = "stat"),
     F_stat   = list(val = fit$model_f, cat = "stat"),
+    model_f  = list(val = fit$model_f, cat = "stat"),
     F_p      = list(val = fit$model_f_p, cat = "pval"),
     lambda   = list(val = fit$lambda, cat = "stat"),
     kclass   = list(val = fit$kclass_value, cat = "stat")
   )
   if (!is.null(d$overid)) {
-    mapping$sargan   <- list(val = d$overid$stat, cat = "stat")
-    mapping$sarganp  <- list(val = d$overid$p, cat = "pval")
-    mapping$j        <- list(val = d$overid$stat, cat = "stat")
-    mapping$jp       <- list(val = d$overid$p, cat = "pval")
+    mapping$sargan      <- list(val = d$overid$stat, cat = "stat")
+    mapping$sarganp     <- list(val = d$overid$p, cat = "pval")
+    mapping$j           <- list(val = d$overid$stat, cat = "stat")
+    mapping$jp          <- list(val = d$overid$p, cat = "pval")
+    mapping$overid_stat <- list(val = d$overid$stat, cat = "stat")
+    mapping$overid_p    <- list(val = d$overid$p, cat = "pval")
   }
   if (!is.null(d$underid)) {
     mapping$idstat  <- list(val = d$underid$stat, cat = "stat")
@@ -347,12 +354,8 @@ card_fwt <- transform(card, fwt = age %% 5 + 1)
 # can't be easily reproduced from the bundled card dataset. Those configs
 # are covered by the test suite but excluded from this audit script.
 
-# --- GMM2S (M-16 re-base): the retired iid config is identity-covered
-# (gmm2s+iid is algebraically identical to 2SLS, asserted in test-gmm2s.R),
-# and the retired cluster config's ERROR (rank-deficient S under the M=2
-# card clusters=~smsa66 anti-pattern) dies together with the retired cell.
-# griliches H06 model formula (help.txt:1154); mirrors the inline formula in
-# test-helpfile-examples.R's H06 test -- keep the two in sync.
+# --- GMM2S (M-16 re-base): the retired iid config is identity-covered (gmm2s+iid is algebraically identical to 2SLS, asserted in test-gmm2s.R), and the retired cluster config's ERROR (rank-deficient S under the M=2 card clusters=~smsa66 anti-pattern) dies together with the retired cell.
+# griliches H06 model formula (help.txt:1154); mirrors the inline formula in test-helpfile-examples.R's H06 test -- keep the two in sync.
 gril_f <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq |
   med + kww + age + mrt
 phil_f <- cinf ~ 1 | unem | l(unem, 1:3)

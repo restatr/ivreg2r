@@ -16,9 +16,7 @@ data(abdata, package = "ivreg2r")
 mroz_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
 mroz_justid_formula <- lwage ~ exper + expersq | educ | age
 
-gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
-  iq | med + kww + age + mrt
-
+# gril_formula (H06, help.txt:1154) is now provided by helper-fixtures.R.
 
 # ============================================================================
 # Fixture readers

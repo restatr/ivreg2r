@@ -13,8 +13,7 @@ data(griliches, package = "ivreg2r")
 data(abdata, package = "ivreg2r")
 data(nlswork, package = "ivreg2r")
 
-gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
-  iq | med + kww + age + mrt
+# gril_formula (H06, help.txt:1154) is now provided by helper-fixtures.R.
 
 abdata_formula <- n ~ 1 | w + k + ys |
   d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)

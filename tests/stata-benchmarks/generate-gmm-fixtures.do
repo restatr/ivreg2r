@@ -76,7 +76,7 @@ save "`outdir'/_gmm_phil_temp.dta", replace
 ---------------------------------------------------------------------------*/
 capture program drop save_ivreg2_results
 program define save_ivreg2_results
-    syntax, prefix(string) suffix(string) outdir(string)
+    syntax, prefix(string) suffix(string) outdir(string) [diagonly]
 
     local N = e(N)
     local K = e(rankxx)
@@ -88,6 +88,7 @@ program define save_ivreg2_results
     local names : colnames b
     local ncols = colsof(b)
 
+    if "`diagonly'" == "" {
     quietly {
         preserve
         clear
@@ -106,22 +107,27 @@ program define save_ivreg2_results
         restore
     }
 
-    // --- Full VCV matrix ---
+    // --- Full VCV matrix (term + vcov_<name> headers, the shared expect_vcov_fixture / audit-reader format; replaced the legacy v1..vK term-less export at the M-16 review) ---
     matrix V = e(V)
     quietly {
         preserve
         clear
-        local vr = rowsof(V)
-        local vc = colsof(V)
-        set obs `vr'
-        forvalues j = 1/`vc' {
-            gen double v`j' = .
-            forvalues i = 1/`vr' {
-                replace v`j' = V[`i', `j'] in `i'
-            }
+        local dim = rowsof(V)
+        svmat double V
+        gen str32 term = ""
+        forvalues i = 1/`dim' {
+            local nm : word `i' of `names'
+            replace term = "`nm'" in `i'
+        }
+        order term
+        forvalues i = 1/`dim' {
+            local nm : word `i' of `names'
+            local cnm = subinstr("`nm'", ".", "_", .)
+            rename V`i' vcov_`cnm'
         }
         export delimited using "`outdir'/`prefix'_vcov_`suffix'.csv", replace
         restore
+    }
     }
 
     // --- Diagnostics ---
@@ -223,11 +229,11 @@ display _newline(2) "=== griliches H06 + gmm2s robust dofminus(2) ==="
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s robust dofminus(2)
 save_ivreg2_results, prefix(gril_gmm2s_dof) suffix(robust) outdir(`outdir')
 
-// --- D5a: endog(iq) -- iq is the endogenous regressor ---
+// --- D5a: endog(iq) -- iq is the endogenous regressor. Diagnostics-only export: endog() does not change estimation, so the coef/vcov CSVs were byte-identical to hf_gril H06's (verified at the M-16 review); test-gmm2s.R pins that invariance fixture-free instead ---
 use "`outdir'/_gmm_gril_temp.dta", clear
 display _newline(2) "=== griliches H06 + gmm2s robust endog(iq) ==="
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s robust endog(iq)
-save_ivreg2_results, prefix(gril_gmm2s_endog) suffix(robust) outdir(`outdir')
+save_ivreg2_results, prefix(gril_gmm2s_endog) suffix(robust) outdir(`outdir') diagonly
 
 
 /*===========================================================================
@@ -238,14 +244,12 @@ save_ivreg2_results, prefix(gril_gmm2s_endog) suffix(robust) outdir(`outdir')
 
 // --- D5a: gmm2s cluster(id) small -- the non-small cluster cell is tsop_ab_gmm2s_cl ---
 use "`outdir'/_gmm_ab_temp.dta", clear
-quietly tsset id year
 display _newline(2) "=== abdata H88 + gmm2s cluster(id) small ==="
 ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), gmm2s cluster(id) small
 save_ivreg2_results, prefix(ab_gmm2s) suffix(cl_small) outdir(`outdir')
 
 // --- D5a: weighted x cluster x gmm2s intersection, replacing the retired card [aw=weight] cluster(age) cell ---
 use "`outdir'/_gmm_ab_temp.dta", clear
-quietly tsset id year
 display _newline(2) "=== abdata H88 + [aw=abwt] gmm2s cluster(id) ==="
 ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys) [aw=abwt], gmm2s cluster(id)
 save_ivreg2_results, prefix(ab_gmm2s_aw) suffix(cl) outdir(`outdir')
@@ -258,7 +262,6 @@ save_ivreg2_results, prefix(ab_gmm2s_aw) suffix(cl) outdir(`outdir')
 
 // --- D5a variation on H83/H84: kernel defaults to Bartlett, NO robust, so this exercises the AC (homoskedastic-kernel) weighting-matrix path -- regression guard for the GMM2S-AC weighting-matrix bug fixed in commit 0a405e8 ---
 use "`outdir'/_gmm_phil_temp.dta", clear
-quietly tsset year
 display _newline(2) "=== phillips + gmm2s bw(3) (AC path, no robust) ==="
 ivreg2 cinf (unem = l(1/3).unem), gmm2s bw(3)
 save_ivreg2_results, prefix(phil_gmm2s) suffix(ac_bw3) outdir(`outdir')

@@ -415,6 +415,8 @@ test_that("H84: GMM2S + AC Tukey-Hanning matches Stata", {
   dx <- read_diagnostics(fixture_path("tsop_phil_diagnostics_gmm2s_thann.csv"))
   expect_equal(nobs(fit), dx$N)
   expect_equal(fit$diagnostics$overid$stat, dx$j, tolerance = stata_tol$stat)
+  # Restores the only sigma-under-gmm2s+HAC assertion, lost with the retired ts_gmm2s HAC cell.
+  expect_equal(fit$sigma, dx$rmse, tolerance = stata_tol$coef)
 })
 
 test_that("H85: GMM2S + HAC QS + orthog(l1.unem) matches Stata", {

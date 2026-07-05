@@ -124,6 +124,9 @@ translate_stata_xi_names <- function(x) {
   out
 }
 
+# Canonical Stata->R term translation: ts-operator names then xi factor names (the two regexes are disjoint, so composition is a no-op where inapplicable). Composed at the M-16 review to replace per-call-site chaining.
+translate_stata_names <- function(x) translate_stata_xi_names(translate_stata_ts_names(x))
+
 # Read a first-stage fixture CSV; identical to read_diagnostics() (read.csv with check.names = FALSE) but kept as a separate domain name for first-stage call sites, promoted from its two per-file copies at the M-25 review.
 read_firststage <- function(path) {
   read.csv(path, check.names = FALSE)
@@ -193,11 +196,11 @@ test_stata_fixture_cells <- function(cells, compare, slot, label_prefix) {
   }
 }
 
-# Compare coefficients and SEs against a Stata coef fixture, matching by translated term name (strict: every fit term must have a matching fixture term and vice versa); translates both ts-operator and xi factor names, promoted from the two per-file copies (test-ts-operators.R and test-liml.R) at the M-15 review, keeping the stricter term-setequal semantics.
+# Compare coefficients and SEs against a Stata coef fixture, matching by translated term name (strict: every fit term must have a matching fixture term and vice versa); translates via translate_stata_names(), promoted from the two per-file copies (test-ts-operators.R and test-liml.R) at the M-15 review, keeping the stricter term-setequal semantics.
 expect_coef_fixture <- function(fit, coef_file, tol_coef = stata_tol$coef,
                                 tol_se = stata_tol$se) {
   fx <- read.csv(fixture_path(coef_file))
-  fx$term_r <- translate_stata_xi_names(translate_stata_ts_names(fx$term))
+  fx$term_r <- translate_stata_names(fx$term)
   b <- coef(fit)
   se <- sqrt(diag(vcov(fit)))
   expect_setequal(fx$term_r, names(b))
@@ -210,10 +213,10 @@ expect_coef_fixture <- function(fit, coef_file, tol_coef = stata_tol$coef,
   }
 }
 
-# Compare the full VCV against a Stata vcov fixture, matching by translated term name (strict: row names must equal the fixture's term set); translates both ts-operator and xi factor names, promoted from the two per-file copies (test-ts-operators.R and test-liml.R) at the M-15 review, keeping the stricter term-setequal semantics.
+# Compare the full VCV against a Stata vcov fixture, matching by translated term name (strict: row names must equal the fixture's term set); translates via translate_stata_names(), promoted from the two per-file copies (test-ts-operators.R and test-liml.R) at the M-15 review, keeping the stricter term-setequal semantics.
 expect_vcov_fixture <- function(fit, vcov_file, tol = stata_tol$vcov) {
   fx <- read.csv(fixture_path(vcov_file))
-  stata_terms <- translate_stata_xi_names(translate_stata_ts_names(fx$term))
+  stata_terms <- translate_stata_names(fx$term)
   V_s <- as.matrix(fx[, grep("^vcov_", names(fx)), drop = FALSE])
   dimnames(V_s) <- list(stata_terms, stata_terms)
   V_r <- vcov(fit)
@@ -227,6 +230,11 @@ klein_formula <- consump ~ l(profits, 1) | profits + wagetot |
   govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)
 ab_formula <- n ~ 1 | w + k + ys |
   d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)
+
+# Shared griliches/phillips fixture formulas (one source of truth, M-15/M-25 promotion precedent): gril_formula anchors help-file case H06 (help.txt:1154), phil_formula anchors the phillips H83-H85 base.
+gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq |
+  med + kww + age + mrt
+phil_formula <- cinf ~ 1 | unem | l(unem, 1:3)
 
 # Shared weighted-klein data object mirroring the griliches_awt/abdata_awt pattern; matches generate-liml-fixtures.do's `gen double awt = mod(yr, 5) + 1`.
 klein_awt <- transform(ivreg2r::klein, awt = yr %% 5 + 1)
