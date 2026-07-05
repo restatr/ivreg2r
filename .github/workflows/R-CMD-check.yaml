@@ -20,7 +20,7 @@ jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-    # Ubuntu and Windows jobs are non-blocking (2026-06-11): all fail on the known optimizer-basin-sensitive card CUE cells in test-cue.R (macOS happens to land in Stata's basin), slated for deletion at the M-17 fixture re-base. Remove `nonblocking` everywhere once that lands.
+    # Ubuntu and Windows jobs are non-blocking (2026-06-11): the known cause — the optimizer-basin-sensitive card CUE cells in test-cue.R — was deleted at the M-17 re-base (2026-07-05), so no platform failure is currently expected; `nonblocking` stays as a safety margin only until the Tranche 3 fixture re-base completes, then remove it everywhere.
     continue-on-error: ${{ matrix.config.nonblocking == true }}
 
     strategy:

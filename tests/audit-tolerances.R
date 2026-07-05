@@ -240,6 +240,7 @@ data(klein)
 data(abdata)
 data(griliches)
 data(phillips)
+data(stockwatson)
 
 # Fit the stored lwage, not log(wage): card.dta stores lwage as float32, and
 # every Stata fixture was generated from that stored variable. Recomputing
@@ -258,6 +259,10 @@ klein_f <- consump ~ l(profits, 1) | profits + wagetot |
   govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)
 ab_f <- n ~ 1 | w + k + ys | d(w, 1) + d(k, 1) + d(ys, 1) +
   d(w, 2) + d(k, 2) + d(ys, 2)
+
+# stockwatson CUE fixture family (M-17 re-base): the BSS 2007 p. 480 base model and the deterministic swwt analytic weight. This standalone script cannot source the testthat helpers, so sw_f and the swwt construction mirror helper-fixtures.R's sw_formula / stockwatson_swwt -- keep the two in sync.
+sw_f <- dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1
+stockwatson$swwt <- stockwatson$date %% 4 + 1
 
 cat("Running model configurations...\n\n")
 
@@ -322,19 +327,29 @@ card_fwt <- transform(card, fwt = age %% 5 + 1)
          vcov = "robust"),
   "card_pw", "hc0")
 
-# --- CUE ---
-.audit_model("cue_overid_iid",
-  ivreg2(f_overid, data = card, method = "cue"),
-  "card_overid_cue", "iid")
-.audit_model("cue_overid_robust",
-  ivreg2(f_overid, data = card, method = "cue", vcov = "robust"),
-  "card_overid_cue", "robust")
-.audit_model("cue_overid_cluster",
-  ivreg2(f_overid, data = card, method = "cue", clusters = ~smsa66),
-  "card_overid_cue", "cluster")
-.audit_model("cue_overid_weighted_aw_robust",
-  ivreg2(f_overid, data = card, method = "cue", weights = age, vcov = "robust"),
-  "card_overid_cue_weighted", "aw_robust")
+# --- CUE (M-17 re-base): re-pointed onto the canonical bases (klein H74 CUE-IID, stockwatson BSS p. 480 arc, abdata H88 cluster). The retired card CUE configs died with the deleted card cells.
+.audit_model("cue_klein_iid",
+  ivreg2(klein_f, data = klein, tvar = "yr", method = "cue"),
+  "tsop_klein", "cue")
+.audit_model("cue_sw_robust",
+  ivreg2(sw_f, data = stockwatson, method = "cue", vcov = "robust"),
+  "sw_cue", "robust")
+.audit_model("cue_sw_hac",
+  ivreg2(sw_f, data = stockwatson, method = "cue", vcov = "robust",
+         kernel = "bartlett", bw = 5, tvar = "date"),
+  "sw_cue", "hac_bw5")
+.audit_model("cue_sw_center",
+  ivreg2(sw_f, data = stockwatson, method = "cue", vcov = "robust",
+         center = TRUE),
+  "sw_cue_center", "robust")
+.audit_model("cue_sw_aw",
+  ivreg2(sw_f, data = stockwatson, method = "cue", vcov = "robust",
+         weights = swwt),
+  "sw_cue_aw", "robust")
+.audit_model("cue_ab_cluster",
+  ivreg2(ab_f, data = abdata, tvar = "year", ivar = "id", method = "cue",
+         clusters = ~id),
+  "ab_cue", "cl")
 
 # Note: dofminus fixtures use lwage (pre-computed) and sdofminus=1, which
 # can't be easily reproduced from the bundled card dataset. Those configs
@@ -359,7 +374,7 @@ phil_f <- cinf ~ 1 | unem | l(unem, 1:3)
          kernel = "bartlett", bw = 3),
   "phil_gmm2s", "ac_bw3")
 
-# --- Center (M-18 re-base): re-pointed off card f_overid onto the M-16 canonical bases (griliches H06, abdata H88). The retired card CUE+center audit configs died with the deleted CUE x center cells -- CUE parity on card_overid_cue remains M-17's; this block placed after the GMM2S section because gril_f is defined there.
+# --- Center (M-18 re-base): re-pointed off card f_overid onto the M-16 canonical bases (griliches H06, abdata H88). The retired card CUE+center audit configs died with the deleted CUE x center cells (and the card CUE configs themselves died at the M-17 re-base); this block placed after the GMM2S section because gril_f is defined there.
 .audit_model("center_gril_robust",
   ivreg2(gril_f, data = griliches, vcov = "robust", center = TRUE),
   "gril_center", "robust")

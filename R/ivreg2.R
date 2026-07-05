@@ -1800,6 +1800,7 @@
         kernel = kernel, bw = bw, time_index = time_index,
         center = center, psd = psd,
         omega = fit$omega,
+        j_full = if (!is.null(diagnostics$overid)) diagnostics$overid$stat,
         sw = sw_flag, ivar_vec = ivar_vec
       )
     }

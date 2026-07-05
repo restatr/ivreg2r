@@ -485,17 +485,41 @@
       # Stata's Mata optimize() results reliably.
       opt_bfgs <- stats::optim(par = beta_init, fn = cue_obj, method = "BFGS",
                                control = list(maxit = 500L, reltol = 1e-12))
-      opt <- stats::optim(par = opt_bfgs$par, fn = cue_obj,
-                          method = "Nelder-Mead",
-                          control = list(maxit = 5000L * K, reltol = 1e-14))
+      opt_nm <- stats::optim(par = opt_bfgs$par, fn = cue_obj,
+                             method = "Nelder-Mead",
+                             control = list(maxit = 5000L * K, reltol = 1e-14))
+      # Keep the better of the two stage results (Nelder-Mead starts at the
+      # BFGS point, so its best vertex can never be worse; this is defensive).
+      opt <- if (opt_nm$value <= opt_bfgs$value) opt_nm else opt_bfgs
       beta <- opt$par
-      convergence <- opt$convergence
+      j_from_opt <- opt$value
+
+      # Convergence ruling (the wp_sw_cue / M-17 spurious-flag finding):
+      # Nelder-Mead exits with code 10 (simplex degeneracy) when started at an
+      # already-converged BFGS optimum on low-dimensional problems. When BFGS
+      # converged (its certificate at reltol 1e-12) and the Nelder-Mead restart
+      # moved the objective by no more than 1e-6 relative — i.e. both
+      # optimizers agree on the optimum's location, with the residual gap being
+      # BFGS's finite-difference gradient noise that Nelder-Mead walks off
+      # before its simplex collapses — the fit HAS converged and code 10 is an
+      # artifact of the restart. A larger Nelder-Mead improvement means the
+      # BFGS certificate did not hold (the H22 griliches pathology, where
+      # Nelder-Mead keeps descending across a flat valley), and code 1 (maxit)
+      # is never forgiven.
+      nm_improved <- (opt_bfgs$value - opt_nm$value) >
+        (abs(opt_bfgs$value) + 1e-12) * 1e-6
+      convergence <- if (opt_nm$convergence == 0L ||
+                         (opt_nm$convergence == 10L &&
+                          opt_bfgs$convergence == 0L && !nm_improved)) {
+        0L
+      } else {
+        opt_nm$convergence
+      }
       cue_message <- if (convergence == 0L) {
         "relative convergence (4)"
       } else {
         "Nelder-Mead did not converge"
       }
-      j_from_opt <- opt$value
 
       if (convergence != 0L) {
         warning("CUE optimization did not converge.", call. = FALSE)

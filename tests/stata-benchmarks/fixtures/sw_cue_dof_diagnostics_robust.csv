@@ -1,0 +1,2 @@
+overid_stat,overid_p,overid_df,underid_stat,underid_p,underid_df,weak_id_cd_f,weak_id_kp_f,first_stage_f,ar_f,ar_f_p,ar_f_df1,ar_f_df2,ar_chi2,ar_chi2_p,sw_stat,sw_p,sw_df,endog_stat,endog_p,endog_df,model_f,model_f_p,model_f_df1,model_f_df2,sigma,rss,r2,r2_a,r2u,r2c,N,K,L
+3.648077615096406,.3020586435489254,3,35.63269590461595,3.44344961011e-07,4,22.28872210790018,22.55922281338094,22.55922281338094,,,,,,,,,,,,,4.467783781713666,.0361511641863358,1,154,.5685957145216912,50.43496950529949,.1600817943792733,.1437197514126358,.1601379446917099,.1600817943792733,158,2,5

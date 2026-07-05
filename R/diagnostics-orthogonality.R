@@ -30,6 +30,16 @@
 #'   When non-NULL (GMM2S/CUE paths), used directly instead of recomputing
 #'   from residuals. This ensures the C-statistic uses the same first-step
 #'   Omega as the main model's J statistic (Hayashi 2000, p. 220).
+#' @param j_full The full model's own overidentification statistic (Stata's
+#'   `e(j)`/`e(sargan)`), or NULL. Stata computes the C-statistic as
+#'   `cstat = j - cj` (ivreg2.ado:1547) where `j` is the main model's reported
+#'   statistic — NOT a re-minimization of the fixed-S quadratic. The two
+#'   coincide for 2SLS/GMM2S (the model estimate minimizes that quadratic),
+#'   but differ for CUE (whose optimum solves the self-consistent objective),
+#'   b0 (fixed evaluation point), and LIML (Sargan at the LIML estimate) —
+#'   and Stata's recursive orthog call forwards `gmm2s` but not `cue`/`liml`
+#'   (ado:1521-1538), so only the restricted side is a fixed-S minimization.
+#'   When non-NULL and finite, used as J_full directly.
 #' @return Named list with `stat`, `p`, `df`, `test_name`, `tested_vars`,
 #'   or NULL if this is not an IV model or orthog_vars is NULL.
 #' @keywords internal
@@ -40,7 +50,7 @@
                                   kernel = NULL, bw = NULL,
                                   time_index = NULL,
                                   center = FALSE, psd = NULL,
-                                  omega = NULL,
+                                  omega = NULL, j_full = NULL,
                                   sw = FALSE, ivar_vec = NULL) {
   q <- length(orthog_vars)
 
@@ -84,8 +94,14 @@
                                   sw = sw, ivar_vec = ivar_vec)
   }
 
-  # --- J_full: J statistic of full model ---
-  J_full <- .compute_j_with_omega(Z, X, y, Omega_full, weights, N)
+  # --- J_full: the full model's own J (Stata: cstat = j - cj, ado:1547).
+  #     Recompute via the fixed-Omega minimization only when the caller did
+  #     not supply the model's reported statistic (see @param j_full). ---
+  J_full <- if (!is.null(j_full) && is.finite(j_full)) {
+    j_full
+  } else {
+    .compute_j_with_omega(Z, X, y, Omega_full, weights, N)
+  }
   if (is.na(J_full)) {
     return(list(stat = NA_real_, p = NA_real_, df = as.integer(q),
                 test_name = "C (orthog)",

@@ -143,6 +143,9 @@ griliches_awt <- transform(ivreg2r::griliches, awt = age %% 5 + 1)
 # Deterministic synthetic analytic weight (M-12/M-23 precedent): mod(year,3)+1 matches the .do file's `gen abwt = mod(year,3)+1`; shared data object so the formula has one source of truth across the first-stage and diagnostics test files.
 abdata_awt <- transform(ivreg2r::abdata, abwt = year %% 3 + 1)
 
+# Deterministic synthetic analytic weight for the M-17 CUE weighted cell (M-12 precedent): matches generate-cue-fixtures.do's `gen double swwt = mod(date, 4) + 1`; Stata mod() and R %% agree for the negative early-sample date values, so the two constructions are byte-identical.
+stockwatson_swwt <- transform(ivreg2r::stockwatson, swwt = date %% 4 + 1)
+
 # Deterministic card derivations (M-11): region = sum of k*reg66k (the 9 Census-region dummies form a partition; M=9 cluster replacing the retired binary smsa/smsa66 M=2 anti-pattern) and fwt = mod(age,5)+1 (M-12/M-23 precedent); matches the .do file's gen lines.
 card_wt <- transform(
   ivreg2r::card,
@@ -225,45 +228,48 @@ expect_vcov_fixture <- function(fit, vcov_file, tol = stata_tol$vcov) {
   expect_vcov_match(V_r, V_s[perm, perm], tol = tol, label = vcov_file)
 }
 
-# Shared diagnostics-comparison helper for Stata-parity full cells: asserts overid, underid, Cragg-Donald and Kleibergen-Paap weak-ID stats, model F, sigma, rss, and N against a diagnostics fixture, each guarded on the fixture column being present (NA where inapplicable); promoted from test-center.R's local expect_center_diagnostics at the M-18 review, with the dead endog_stat block dropped and the CD assertion restored.
-expect_diagnostics_fixture <- function(fit, diag_file) {
+# Shared diagnostics-comparison helper for Stata-parity full cells: asserts overid, underid, Cragg-Donald and Kleibergen-Paap weak-ID stats, model F, sigma, rss, and N against a diagnostics fixture, each guarded on the fixture column being present (NA where inapplicable); promoted from test-center.R's local expect_center_diagnostics at the M-18 review, with the dead endog_stat block dropped and the CD assertion restored. The tol_stat/tol_pval/tol_coef arguments (added M-17) default to the standard Stata tolerances so existing call sites are unchanged; the CUE cells pass wider coef-class tolerances (sigma/rss use tol_coef) through them.
+expect_diagnostics_fixture <- function(fit, diag_file,
+                                       tol_stat = stata_tol$stat,
+                                       tol_pval = stata_tol$pval,
+                                       tol_coef = stata_tol$coef) {
   dx <- read_diagnostics(fixture_path(diag_file))
   d <- fit$diagnostics
 
   if (!is.na(dx$overid_stat)) {
     expect_equal(d$overid$stat, dx$overid_stat,
-                 tolerance = stata_tol$stat, info = "overid stat")
+                 tolerance = tol_stat, info = "overid stat")
     expect_equal(d$overid$p, dx$overid_p,
-                 tolerance = stata_tol$pval, info = "overid p")
+                 tolerance = tol_pval, info = "overid p")
     expect_identical(d$overid$df, as.integer(dx$overid_df))
   }
   if (!is.na(dx$underid_stat)) {
     expect_equal(d$underid$stat, dx$underid_stat,
-                 tolerance = stata_tol$stat, info = "underid stat")
+                 tolerance = tol_stat, info = "underid stat")
     expect_equal(d$underid$p, dx$underid_p,
-                 tolerance = stata_tol$pval, info = "underid p")
+                 tolerance = tol_pval, info = "underid p")
   }
   if (!is.na(dx$weak_id_cd_f)) {
     expect_false(is.null(d$weak_id))
     expect_equal(d$weak_id$stat, dx$weak_id_cd_f,
-                 tolerance = stata_tol$stat, info = "CD weak-ID F")
+                 tolerance = tol_stat, info = "CD weak-ID F")
   }
   if (!is.na(dx$weak_id_kp_f)) {
     expect_false(is.null(d$weak_id_robust))
     expect_equal(d$weak_id_robust$stat, dx$weak_id_kp_f,
-                 tolerance = stata_tol$stat, info = "KP widstat")
+                 tolerance = tol_stat, info = "KP widstat")
   }
   if (!is.na(dx$model_f)) {
     expect_equal(fit$model_f, dx$model_f,
-                 tolerance = stata_tol$stat, info = "model F")
+                 tolerance = tol_stat, info = "model F")
   }
   if (!is.na(dx$sigma)) {
     expect_equal(fit$sigma, dx$sigma,
-                 tolerance = stata_tol$coef, info = "sigma")
+                 tolerance = tol_coef, info = "sigma")
   }
   if (!is.na(dx$rss)) {
     expect_equal(fit$rss, dx$rss,
-                 tolerance = stata_tol$coef, info = "rss")
+                 tolerance = tol_coef, info = "rss")
   }
   expect_identical(nobs(fit), as.integer(dx$N))
 }
@@ -294,6 +300,9 @@ ab_formula <- n ~ 1 | w + k + ys |
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq |
   med + kww + age + mrt
 phil_formula <- cinf ~ 1 | unem | l(unem, 1:3)
+
+# Shared stockwatson CUE fixture formula (M-17 re-base): anchors the Baum, Schaffer & Stillman (2007) Stata Journal pp. 476/480 worked CUE arc, ivreg2 dinf (UR = ggdp_2 TBILL_1 ER_1 TBON_1).
+sw_formula <- dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1
 
 # Shared weighted-klein data object mirroring the griliches_awt/abdata_awt pattern; matches generate-liml-fixtures.do's `gen double awt = mod(yr, 5) + 1`.
 klein_awt <- transform(ivreg2r::klein, awt = yr %% 5 + 1)
