@@ -9,6 +9,56 @@
   Usage (CWD must be the package root, i.e. pkg/):
     cd /path/to/ivreg2r/pkg
     do tests/stata-benchmarks/generate-twoway-fixtures.do
+
+  ---------------------------------------------------------------------------
+  M-14 RE-BASE (2026-07-05)
+  ---------------------------------------------------------------------------
+  The prior base for this family, `sim_twoway` (a simulated 25-firm x 20-obs
+  panel with correlated firm/year effects), is RETIRED per Frank's ruling
+  2026-07-05 (see planning/22-spec-matrix.md, row M-14). The DGP was not
+  reproducible: covariate draws were assigned after an unstable `sort
+  year_id`, so re-running the generator remapped the seeded RNG draws to
+  different firm/year cells and the checked-in fixtures could not be
+  regenerated. The recorded known-dirty gate (Hansen J suppressed on the
+  weighted cells under a rank-deficient S) was also shown to be
+  draw-dependent rather than a stable property of the design: a re-run draw
+  instead hit a ranktest degeneracy (missing KP Wald F / first-stage SE), and
+  a stable-sort draw was dirtier still. A real-data alternative on this
+  project's existing dataset stable was probed and rejected: abdata H88 +
+  cluster(id year) is structurally rank-deficient on every cell (the d2.
+  operators leave ~7 effective years against L=7 instruments).
+
+  This family now re-bases onto the `cigar` panel (Baltagi & Levin 1992;
+  Baltagi, Griffin & Xiong 2000; distributed with the R `plm` package as
+  `Cigar`; also the empirical-example dataset in the GFIC focused-moment-
+  selection paper, which motivates the price-endogeneity specification used
+  below). The panel is 46 US states x 30 years (1963-1992), cached with
+  verified provenance at ../validation/data/cigar.dta (source of record;
+  see planning/25-data-provenance.md). No data CSV is exported here: the R
+  side tests against the bundled `data(cigar)`, and the Stata side reads the
+  same cached .dta -- both trace to one file of record, so there is nothing
+  to duplicate into a fixture CSV (machine-readable-fixtures rule; the rule
+  concerns computed *results*, not re-exporting input data that already has
+  a canonical machine-readable copy).
+
+  The canonical OLS two-way-cluster parity demo remains hf-owned (nlswork,
+  help-file cells H104/H105) and is untouched by this file. The cells below
+  are D5a: there is no upstream Stata/ivreg2 worked example of IV estimation
+  with two-way clustering, so this file supplies the only such coverage,
+  using the cigar/GFIC price-endogeneity specification as the running
+  example. Gate: expected-clean -- confirmed by probes on 2026-07-05 that
+  every cell below computes every requested diagnostic with zero warnings
+  (no rank-deficiency, no suppressed statistics, unlike the retired DGP).
+
+  Compositional retirements (documented, not generated): the wt x small and
+  dof x small intersections are NOT generated as separate cells. The small-
+  sample correction is applied uniformly in the shared R VCV assembly with
+  no weight- or dofminus-specific branch; it is exercised for the two-way
+  case by the cl2_small cell below, and the correction-factor property is
+  covered independently of any fixture by a fixture-free test in
+  test-vcov-cluster-twoway.R (M-15 review precedent). Crossing `small` with
+  `wt` or `dof` again would test the same shared code path a third/fourth
+  time without new coverage.
 ===========================================================================*/
 
 clear all
@@ -221,115 +271,79 @@ end
 
 
 /*===========================================================================
-  Simulated DGP: N=500 balanced panel, 25 firms x 20 obs (10 years x 2)
-  Cluster-correlated errors so two-way clustering differs from one-way.
+  Data: cigar panel (base per planning/22-spec-matrix.md, M-14 row)
+  46 states x 30 years (1963-1992), Baltagi-Levin / Baltagi-Griffin-Xiong.
 ===========================================================================*/
-display _newline(2) "=== Generating two-way cluster data ==="
+display _newline(2) "=== Loading cigar panel data ==="
 
-clear
-set seed 20260220
-set obs 500
+use "../validation/data/cigar.dta", clear
+quietly tsset state year
 
-// Panel structure: 25 firms x 20 obs each
-gen firm_id = ceil(_n / 20)
+// Derived columns in double precision, exactly as the R tests construct
+// them from data(cigar) (F4 coherence discipline).
+gen double lsales  = ln(sales)
+gen double lrprice = ln(price/cpi)
+gen double lrndi   = ln(ndi/cpi)
+gen double lrpimin = ln(pimin/cpi)
 
-// 10 years, cycling within firm
-gen year_id = mod(_n - 1, 10) + 1
-
-// Firm-level effects
-gen alpha_firm = rnormal() if mod(_n - 1, 20) == 0
-bysort firm_id: replace alpha_firm = alpha_firm[1]
-
-// Year-level effects
-sort year_id
-gen alpha_year = rnormal() if _n == 1 | year_id != year_id[_n-1]
-bysort year_id: replace alpha_year = alpha_year[1]
-
-// Individual-level variables
-gen x1 = rnormal() + 0.3 * alpha_firm + 0.2 * alpha_year
-gen z1 = rnormal() + 0.2 * alpha_firm + 0.1 * alpha_year
-gen z2 = rnormal() + 0.1 * alpha_firm + 0.15 * alpha_year
-gen v = rnormal()
-gen u = rnormal() + 0.5 * alpha_firm + 0.4 * alpha_year
-
-// Endogenous variable
-gen endo1 = 0.5 * z1 + 0.3 * z2 + 0.2 * x1 + 0.6 * v + 0.3 * u
-
-// Outcome
-gen y = 1.0 + 0.8 * x1 + 1.5 * endo1 + u
-
-// Weight variable (strictly positive)
-gen wt = runiform() * 3 + 0.5
-
-// Save simulated data
-sort firm_id year_id
-export delimited using "`outdir'/sim_twoway_data.csv", replace
+// Deterministic aweight (M-11/M-12/M-17 precedent)
+gen double cwt = mod(state, 4) + 1
 
 
 /*===========================================================================
   FIXTURE 1: IV overid, two-way cluster (small=FALSE)
+  D5a: no upstream worked example of IV + two-way clustering exists; this
+  is the IV x two-way parity cell, carrying the full diagnostics battery
+  (the endogenous-price-demand specification follows the Baltagi-Levin /
+  GFIC cigarette-demand lineage). This cell's firststage CSV is KEPT: it is
+  consumed by the two-way first-stage-F parity test in
+  test-vcov-cluster-twoway.R.
 ===========================================================================*/
-display _newline(2) "=== Fixture: cl2 ==="
-ivreg2 y x1 (endo1 = z1 z2), cluster(firm_id year_id) first endog(endo1)
-save_twoway_results, prefix(sim_twoway) suffix(cl2) outdir(`outdir')
+display _newline(2) "=== Fixture: cigar_cl2 ==="
+ivreg2 lsales lrndi (lrprice = lrpimin l.lrprice), cluster(state year) ///
+    first endog(lrprice)
+save_twoway_results, prefix(cigar) suffix(cl2) outdir(`outdir')
 
 
 /*===========================================================================
   FIXTURE 2: IV overid, two-way cluster (small=TRUE)
+  D5a; Baltagi-Levin lineage. Small-sample-corrected companion to cl2.
+  firststage CSV erased below: M-25 owns first-stage-F fixture coverage,
+  and planning/18's no-orphans rule says a CSV with no test consumer must
+  not be checked in.
 ===========================================================================*/
-display _newline(2) "=== Fixture: cl2_small ==="
-ivreg2 y x1 (endo1 = z1 z2), cluster(firm_id year_id) first small endog(endo1)
-save_twoway_results, prefix(sim_twoway) suffix(cl2_small) outdir(`outdir')
+display _newline(2) "=== Fixture: cigar_cl2_small ==="
+ivreg2 lsales lrndi (lrprice = lrpimin l.lrprice), cluster(state year) ///
+    first small endog(lrprice)
+save_twoway_results, prefix(cigar) suffix(cl2_small) outdir(`outdir')
+capture erase "`outdir'/cigar_firststage_cl2_small.csv"
 
 
 /*===========================================================================
-  FIXTURE 3: OLS, two-way cluster (small=FALSE)
+  FIXTURE 3: IV overid weighted, two-way cluster (small=FALSE)
+  D5a; Baltagi-Levin lineage. This intersection (weighted x two-way IV) was
+  known-dirty on the retired sim_twoway draw (Hansen J suppressed under a
+  rank-deficient S); that gate was an artifact of the retired synthetic
+  draw, not a property of weighted two-way clustering. Expected-clean here.
+  firststage CSV erased: no consumer beyond M-25.
 ===========================================================================*/
-display _newline(2) "=== Fixture: cl2_ols ==="
-ivreg2 y x1 endo1, cluster(firm_id year_id)
-save_twoway_results, prefix(sim_twoway) suffix(cl2_ols) outdir(`outdir')
+display _newline(2) "=== Fixture: cigar_cl2_wt ==="
+ivreg2 lsales lrndi (lrprice = lrpimin l.lrprice) [aw=cwt], ///
+    cluster(state year) first endog(lrprice)
+save_twoway_results, prefix(cigar) suffix(cl2_wt) outdir(`outdir')
+capture erase "`outdir'/cigar_firststage_cl2_wt.csv"
 
 
 /*===========================================================================
-  FIXTURE 4: OLS, two-way cluster (small=TRUE)
+  FIXTURE 4: IV overid dofminus(2) sdofminus(1), two-way cluster (small=FALSE)
+  D5a; Baltagi-Levin lineage. firststage CSV erased: no consumer beyond
+  M-25.
 ===========================================================================*/
-display _newline(2) "=== Fixture: cl2_ols_small ==="
-ivreg2 y x1 endo1, cluster(firm_id year_id) small
-save_twoway_results, prefix(sim_twoway) suffix(cl2_ols_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 5: IV overid weighted, two-way cluster (small=FALSE)
-===========================================================================*/
-display _newline(2) "=== Fixture: cl2_wt ==="
-ivreg2 y x1 (endo1 = z1 z2) [aw=wt], cluster(firm_id year_id) first endog(endo1)
-save_twoway_results, prefix(sim_twoway) suffix(cl2_wt) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 6: IV overid weighted, two-way cluster (small=TRUE)
-===========================================================================*/
-display _newline(2) "=== Fixture: cl2_wt_small ==="
-ivreg2 y x1 (endo1 = z1 z2) [aw=wt], cluster(firm_id year_id) first small endog(endo1)
-save_twoway_results, prefix(sim_twoway) suffix(cl2_wt_small) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 7: IV overid dofminus(1) sdofminus(1), two-way cluster (small=FALSE)
-===========================================================================*/
-display _newline(2) "=== Fixture: cl2_dof ==="
-ivreg2 y x1 (endo1 = z1 z2), cluster(firm_id year_id) first endog(endo1) ///
-    dofminus(1) sdofminus(1)
-save_twoway_results, prefix(sim_twoway) suffix(cl2_dof) outdir(`outdir')
-
-
-/*===========================================================================
-  FIXTURE 8: IV overid dofminus(1) sdofminus(1), two-way cluster (small=TRUE)
-===========================================================================*/
-display _newline(2) "=== Fixture: cl2_dof_small ==="
-ivreg2 y x1 (endo1 = z1 z2), cluster(firm_id year_id) first small endog(endo1) ///
-    dofminus(1) sdofminus(1)
-save_twoway_results, prefix(sim_twoway) suffix(cl2_dof_small) outdir(`outdir')
+display _newline(2) "=== Fixture: cigar_cl2_dof ==="
+ivreg2 lsales lrndi (lrprice = lrpimin l.lrprice), cluster(state year) ///
+    first endog(lrprice) dofminus(2) sdofminus(1)
+save_twoway_results, prefix(cigar) suffix(cl2_dof) outdir(`outdir')
+capture erase "`outdir'/cigar_firststage_cl2_dof.csv"
 
 
 /*===========================================================================

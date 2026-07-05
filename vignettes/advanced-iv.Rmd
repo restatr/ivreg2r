@@ -449,6 +449,29 @@ one category is nested within the other (e.g., counties within states), the
 two-way VCE reduces to the single-cluster VCE on the outer category, so
 two-way clustering provides no additional robustness there.
 
+### Two-way clustering with instrumental variables
+
+The help file's two-way example is estimated by ordinary least squares, but two-way clustering composes with every estimator in `ivreg2r`, so this subsection pairs it with 2SLS on a classic panel application. The Baltagi cigarette-demand data (`data(cigar)`) form an annual panel of 46 U.S. states over 1963--1992, assembled by Baltagi and Levin (1992) and revisited by Baltagi, Griffin and Xiong (2000). The specification regresses log per-capita cigarette sales on the log real price of cigarettes, with log real per-capita disposable income entering as an exogenous control. Price is plausibly endogenous, because state-level demand shocks feed back into prices, so it is instrumented by the minimum real price in adjoining states --- a spatial cost-shifter in the Baltagi--Levin tradition --- together with the one-year lag of the state's own real price. Clustering on both state and year allows arbitrary within-state serial correlation and arbitrary within-year correlation across states. The `l(lrprice, 1)` term uses the panel lag operator, which requires declaring the panel structure through `tvar` and `ivar`, as in the time-series vignette.
+
+```{r two-way-iv}
+data(cigar)
+cigar <- transform(cigar,
+  lsales  = log(sales),
+  lrprice = log(price / cpi),
+  lrndi   = log(ndi / cpi),
+  lrpimin = log(pimin / cpi)
+)
+
+fit_iv_2way <- ivreg2(
+  lsales ~ lrndi | lrprice | lrpimin + l(lrprice, 1),
+  data = cigar, tvar = "year", ivar = "state",
+  clusters = ~ state + year
+)
+summary(fit_iv_2way)
+```
+
+The summary reports both cluster dimensions --- 46 states and 29 years, the panel's first year lost to the one-period lag --- and, as in the one-way case, the effective cluster count governing the two-way asymptotics is the smaller dimension, here the 29 years. The automatically reported diagnostics carry through unchanged: the Kleibergen--Paap underidentification and weak-identification statistics and the Hansen J test of the single overidentifying restriction are all computed from the two-way cluster-robust covariance matrix. This is a methods illustration rather than a substantive demand study, and the reported price elasticity should be read in that light.
+
 ## Reduced-form regression
 
 The reduced form regresses the outcome directly on the full instrument set
@@ -716,6 +739,12 @@ see `?ivreg2`.
   Estimates of the Parameters of a Single Equation in a Complete System of
   Stochastic Equations." *Annals of Mathematical Statistics*, 21(4),
   570--582.
+- Baltagi, B.H. and Levin, D. (1992). "Cigarette Taxation: Raising Revenues
+  and Reducing Consumption." *Structural Change and Economic Dynamics*,
+  3(2), 321--335.
+- Baltagi, B.H., Griffin, J.M., and Xiong, W. (2000). "To Pool or Not to
+  Pool: Homogeneous Versus Heterogeneous Estimators Applied to Cigarette
+  Demand." *Review of Economics and Statistics*, 82(1), 117--126.
 - Baum, C.F., Schaffer, M.E., and Stillman, S. (2007). "Enhanced Routines for
   Instrumental Variables/Generalized Method of Moments Estimation and
   Testing." *Stata Journal*, 7(4), 465--506.

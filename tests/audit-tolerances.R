@@ -241,6 +241,7 @@ data(abdata)
 data(griliches)
 data(phillips)
 data(stockwatson)
+data(cigar)
 
 # Fit the stored lwage, not log(wage): card.dta stores lwage as float32, and
 # every Stata fixture was generated from that stored variable. Recomputing
@@ -336,6 +337,22 @@ card_fwt <- transform(card, fwt = age %% 5 + 1)
   ivreg2(ab_f, data = abdata, tvar = "year", ivar = "id",
          clusters = ~id, endog = "w"),
   "ab_cl", "cl")
+
+# --- 2SLS + two-way cluster (M-14 re-base): the cigar Baltagi-Levin demand
+# spec (D5a), replacing the retired non-reproducible sim_twoway draw. No
+# `small` here, matching the ab_cl audit config's convention above; the
+# small-sample cl2_small cell is covered by the test suite (property test)
+# but not separately audited here.
+cigar_f <- lsales ~ lrndi | lrprice | lrpimin + l(lrprice, 1)
+cigar$lsales  <- log(cigar$sales)
+cigar$lrprice <- log(cigar$price / cigar$cpi)
+cigar$lrndi   <- log(cigar$ndi / cigar$cpi)
+cigar$lrpimin <- log(cigar$pimin / cigar$cpi)
+
+.audit_model("2sls_cigar_twoway",
+  ivreg2(cigar_f, data = cigar, tvar = "year", ivar = "state",
+         clusters = ~state + year, endog = "lrprice"),
+  "cigar", "cl2")
 
 # --- CUE (M-17 re-base): re-pointed onto the canonical bases (klein H74 CUE-IID, stockwatson BSS p. 480 arc, abdata H88 cluster). The retired card CUE configs died with the deleted card cells.
 .audit_model("cue_klein_iid",

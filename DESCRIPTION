@@ -27,6 +27,7 @@ Imports:
     stats,
     tibble
 Suggests:
+    haven,
     ivreg,
     knitr,
     modelsummary,
