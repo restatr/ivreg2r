@@ -2,120 +2,86 @@
 # Tests: One-way cluster-robust VCV (Ticket C2)
 # ============================================================================
 #
-# Fixture naming: Stata fixtures named "cl" were generated with ivreg2's
-# `cluster()` option (no small-sample correction). Fixtures named "cl_small"
-# were generated with `cluster() small` (with (N-1)/(N-K) * M/(M-1) correction).
+# Family M-13 (re-based 2026-07-05): IV 2SLS x one-way cluster Stata parity
+# on the abdata ab_cl cells (H88 model minus gmm2s, help.txt:1541;
+# cluster(id) anchor H91, help.txt:1558; D5a). OLS x one-way cluster Stata
+# parity is owned by the hf suite (H91 abdata, H103 nlswork -- compare_hf
+# asserts coef/vcov/all diagnostics); the griliches cluster(year) M=7
+# known-dirty warning-lesson is owned by hf H27/H28.
+#
+# Fixture naming: "cl" was generated with ivreg2's `cluster()` option (no
+# small-sample correction); "cl_small" was generated with `cluster() small`
+# (with the (N-1)/(N-K) * M/(M-1) correction).
 
-# --- Load sim_cluster data ---
-sim_path <- fixture_path("sim_cluster_data.csv")
-if (file.exists(sim_path)) {
-  sim_cluster <- read.csv(sim_path)
-}
+data(abdata, package = "ivreg2r")
+
+# Shared fits (M-17 hoisting precedent): each configuration is fit once here
+# and reused across the parity, metadata, and property sections below.
+fit_cl       <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                        clusters = ~id, endog = "w")
+fit_cl_small <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                        clusters = ~id, small = TRUE, endog = "w")
+fit_iid      <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                        endog = "w")
+fit_hc1      <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                        vcov = "robust", endog = "w")
 
 
 # ============================================================================
-# Stata parity: cluster VCV (small=FALSE)
+# Stata parity: cluster VCV and coefficients/SEs (small = FALSE)
 # ============================================================================
 
-test_that("2SLS cluster VCV matches Stata sim_cluster cl fixture", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  vcov_path <- fixture_path("sim_cluster_vcov_cl.csv")
-  skip_if(!file.exists(vcov_path), "VCV fixture not found")
+test_that("2SLS cluster VCV matches Stata ab_cl cl fixture", {
+  skip_if(!file.exists(fixture_path("ab_cl_vcov_cl.csv")), "VCV fixture not found")
+  expect_vcov_fixture(fit_cl, "ab_cl_vcov_cl.csv")
+})
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
-  expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
+test_that("2SLS cluster coef/SE match Stata ab_cl cl fixture", {
+  skip_if(!file.exists(fixture_path("ab_cl_coef_cl.csv")), "Coef fixture not found")
+  expect_coef_fixture(fit_cl, "ab_cl_coef_cl.csv")
 })
 
 
 # ============================================================================
-# Stata parity: cluster VCV (small=TRUE)
+# Stata parity: cluster VCV and coefficients/SEs (small = TRUE)
 # ============================================================================
 
-test_that("2SLS cluster VCV matches Stata sim_cluster cl_small fixture", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  vcov_path <- fixture_path("sim_cluster_vcov_cl_small.csv")
-  skip_if(!file.exists(vcov_path), "VCV fixture not found")
+test_that("2SLS cluster VCV matches Stata ab_cl cl_small fixture", {
+  skip_if(!file.exists(fixture_path("ab_cl_vcov_cl_small.csv")), "VCV fixture not found")
+  expect_vcov_fixture(fit_cl_small, "ab_cl_vcov_cl_small.csv")
+})
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id, small = TRUE)
-  expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
+test_that("2SLS cluster coef/SE match Stata ab_cl cl_small fixture", {
+  skip_if(!file.exists(fixture_path("ab_cl_coef_cl_small.csv")), "Coef fixture not found")
+  expect_coef_fixture(fit_cl_small, "ab_cl_coef_cl_small.csv")
 })
 
 
 # ============================================================================
-# Stata parity: cluster SEs (small=FALSE)
+# Metadata parity
 # ============================================================================
 
-test_that("2SLS cluster SEs match Stata sim_cluster cl fixture", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  coef_path <- fixture_path("sim_cluster_coef_cl.csv")
-  skip_if(!file.exists(coef_path), "Coef fixture not found")
-
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
-
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      sqrt(fit$vcov[nm, nm]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", nm)
-    )
-  }
+test_that("n_clusters is 140 for ab_cl data", {
+  expect_identical(fit_cl$n_clusters, 140L)
 })
-
-
-# ============================================================================
-# Stata parity: cluster SEs (small=TRUE)
-# ============================================================================
-
-test_that("2SLS cluster SEs match Stata sim_cluster cl_small fixture", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  coef_path <- fixture_path("sim_cluster_coef_cl_small.csv")
-  skip_if(!file.exists(coef_path), "Coef fixture not found")
-
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id, small = TRUE)
-  fixture <- read.csv(coef_path)
-  fixture$r_name <- ifelse(fixture$term == "_cons", "(Intercept)", fixture$term)
-
-  for (i in seq_len(nrow(fixture))) {
-    nm <- fixture$r_name[i]
-    expect_equal(
-      sqrt(fit$vcov[nm, nm]), fixture$std_error[i],
-      tolerance = stata_tol$se,
-      info = paste("SE mismatch:", nm)
-    )
-  }
-})
-
-
-# ============================================================================
-# Stata parity: n_clusters = 50
-# ============================================================================
-
-test_that("n_clusters is 50 for sim_cluster data", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
-  expect_identical(fit$n_clusters, 50L)
-})
-
-
-# ============================================================================
-# Stata parity: df.residual = M - 1
-# ============================================================================
 
 test_that("df.residual is M-1 when clustered", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
+  expect_identical(fit_cl$df.residual, 139L)
+})
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
-  expect_identical(fit$df.residual, 49L)
+test_that("vcov_type is 'CL' when clustered", {
+  expect_identical(fit_cl$vcov_type, "CL")
+})
+
+test_that("cluster_var is 'id' when clustered", {
+  expect_identical(fit_cl$cluster_var, "id")
+})
+
+test_that("N matches Stata ab_cl diagnostics fixture", {
+  diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
+  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
+  dx <- read_diagnostics(diag_path)
+  expect_identical(nobs(fit_cl), as.integer(dx$N))
 })
 
 
@@ -124,13 +90,7 @@ test_that("df.residual is M-1 when clustered", {
 # ============================================================================
 
 test_that("cluster VCV differs from HC1 VCV", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-
-  fit_cl <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                   data = sim_cluster, clusters = ~cluster_id)
-  fit_hc <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                   data = sim_cluster, vcov = "robust")
-  expect_false(isTRUE(all.equal(fit_cl$vcov, fit_hc$vcov)))
+  expect_false(isTRUE(all.equal(fit_cl$vcov, fit_hc1$vcov)))
 })
 
 
@@ -139,17 +99,11 @@ test_that("cluster VCV differs from HC1 VCV", {
 # ============================================================================
 
 test_that("small=TRUE cluster VCV equals small=FALSE times correction factor", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-
-  fit_no <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                   data = sim_cluster, clusters = ~cluster_id, small = FALSE)
-  fit_sm <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                   data = sim_cluster, clusters = ~cluster_id, small = TRUE)
-  N <- fit_no$nobs
-  K <- length(coef(fit_no))
-  M <- fit_no$n_clusters
+  N <- fit_cl$nobs
+  K <- length(coef(fit_cl))
+  M <- fit_cl$n_clusters
   correction <- ((N - 1) / (N - K)) * (M / (M - 1))
-  expect_equal(fit_sm$vcov, fit_no$vcov * correction,
+  expect_equal(fit_cl_small$vcov, fit_cl$vcov * correction,
                tolerance = .Machine$double.eps^0.5)
 })
 
@@ -159,15 +113,7 @@ test_that("small=TRUE cluster VCV equals small=FALSE times correction factor", {
 # ============================================================================
 
 test_that("coefficients are identical for iid, HC1, and CL", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-
-  fit_iid <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                    data = sim_cluster, vcov = "iid")
-  fit_hc  <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                    data = sim_cluster, vcov = "robust")
-  fit_cl  <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                    data = sim_cluster, clusters = ~cluster_id)
-  expect_equal(coef(fit_hc), coef(fit_iid),
+  expect_equal(coef(fit_hc1), coef(fit_iid),
                tolerance = .Machine$double.eps^0.5)
   expect_equal(coef(fit_cl), coef(fit_iid),
                tolerance = .Machine$double.eps^0.5)
@@ -179,25 +125,8 @@ test_that("coefficients are identical for iid, HC1, and CL", {
 # ============================================================================
 
 test_that("cluster VCV is symmetric", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
-  expect_equal(fit$vcov, t(fit$vcov),
+  expect_equal(fit_cl$vcov, t(fit_cl$vcov),
                tolerance = .Machine$double.eps^0.5)
-})
-
-
-# ============================================================================
-# Property: vcov_type is "CL" when clustered
-# ============================================================================
-
-test_that("vcov_type is 'CL' when clustered", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
-  expect_identical(fit$vcov_type, "CL")
 })
 
 

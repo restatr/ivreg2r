@@ -18,6 +18,13 @@
   cross-file dependency table). Run this file before those; do not delete the
   sim data sections without checking the downstream consumers.
 
+  M-13 re-base (2026-07-05): the sim_cluster ESTIMATION cells (FIXTURE 5's
+  run_all_vce_combos call) were retired and replaced by new ab_cl cells fit
+  on abdata (see planning/22-spec-matrix.md row M-13). sim_cluster_data.csv
+  itself is RETAINED, since generate-rf-fixtures.do imports it (M-21) and
+  FIXTURE 9 (sim_cluster_dofminus) re-imports it (M-29); only the direct
+  estimation cells moved.
+
   Usage (CWD must be the package root, i.e. pkg/):
     cd /path/to/ivreg2r/pkg
     do tests/stata-benchmarks/generate-fixtures.do
@@ -44,13 +51,22 @@ save "`outdir'/_card_temp.dta", replace
 // Full-precision export: the default `export delimited` writes numeric
 // columns at 8-digit precision, which truncates float32 bit patterns
 // (see ticket F4 / the CSV float-truncation gotcha in CLAUDE.md).
-// WARNING (2026-07-04): do NOT regenerate card_data.csv until the card
-// CUE cells are deleted at M-17/M-18 -- a sub-1e-7 data perturbation
-// risks flipping the CUE optimizer basin in test-cue.R/test-center.R.
-// See the data-CSV retirement item in planning/22-spec-matrix.md.
 quietly ds, has(type numeric)
 format `r(varlist)' %21.0g
 export delimited using "`outdir'/card_data.csv", replace datafmt
+
+/*---------------------------------------------------------------------------
+  Pre-load abdata (H88 panel) and save before defining programs, for the
+  new ab_cl cells (M-13 re-base). Imitates the card pre-load above; falls
+  back to the bc.edu mirror when the bundled validation copy is absent
+  (see the abdata block in generate-liml-fixtures.do for precedent).
+---------------------------------------------------------------------------*/
+capture use "../validation/data/abdata.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/macro/abdata.dta, clear
+}
+quietly tsset id year
+save "`outdir'/_ab_temp.dta", replace
 
 /*---------------------------------------------------------------------------
   Helper program: extract all results from ivreg2 and save to CSV
@@ -385,8 +401,13 @@ gen endo2 = 0.4*z2 + 0.3*z3 + 0.2*z4 + 0.1*x2 + 0.7*v2 + 0.2*u
 // Outcome
 gen y = 1.0 + 0.5*x1 - 0.3*x2 + 1.2*endo1 - 0.8*endo2 + u
 
-// Save simulated data
-export delimited using "`outdir'/sim_multi_endo_data.csv", replace
+// Save simulated data. Full-precision export: the default `export
+// delimited` truncates float32 bit patterns at 8-digit precision (ticket
+// F4 / the CSV float-truncation gotcha in CLAUDE.md) -- this data.csv is
+// re-imported downstream (generate-rf-fixtures.do), so precision matters.
+quietly ds, has(type numeric)
+format `r(varlist)' %21.0g
+export delimited using "`outdir'/sim_multi_endo_data.csv", replace datafmt
 
 global ivreg2_depvar "y"
 global ivreg2_exog "x1 x2"
@@ -419,8 +440,11 @@ gen u = rnormal()
 gen endo1 = 0.6*z1 + 0.4*z2 + 0.3*x1 + 0.7*v + 0.2*u
 gen y = 2.0*x1 + 1.5*endo1 + u
 
-// Save simulated data
-export delimited using "`outdir'/sim_no_constant_data.csv", replace
+// Save simulated data. Full-precision export (see the F4 CSV
+// float-truncation gotcha in CLAUDE.md) -- avoids truncating float32 bits.
+quietly ds, has(type numeric)
+format `r(varlist)' %21.0g
+export delimited using "`outdir'/sim_no_constant_data.csv", replace datafmt
 
 global ivreg2_depvar "y"
 global ivreg2_exog "x1"
@@ -466,20 +490,53 @@ gen endo1 = 0.5*z1 + 0.3*z2 + 0.2*x1 + 0.6*v + 0.3*u
 // Outcome
 gen y = 1.0 + 0.8*x1 + 1.5*endo1 + u
 
-// Save simulated data
-export delimited using "`outdir'/sim_cluster_data.csv", replace
+// Save simulated data. Full-precision export (see the F4 CSV
+// float-truncation gotcha in CLAUDE.md) -- this data.csv is re-imported
+// downstream (generate-rf-fixtures.do and FIXTURE 9 below), so precision
+// matters.
+quietly ds, has(type numeric)
+format `r(varlist)' %21.0g
+export delimited using "`outdir'/sim_cluster_data.csv", replace datafmt
 
-global ivreg2_depvar "y"
-global ivreg2_exog "x1"
-global ivreg2_endo "endo1"
-global ivreg2_iv "z1 z2"
+// M-13 re-base (2026-07-05): the estimation cells formerly generated here
+// via run_all_vce_combos (iid/iid_small/hc1/hc1_small/cl/cl_small) were
+// retired -- IV 2SLS + one-way cluster Stata parity now lives on the
+// abdata-based ab_cl cells below (FIXTURE 5b), per planning/22-spec-matrix.md
+// row M-13. The DGP and sim_cluster_data.csv export above are KEPT: they
+// feed generate-rf-fixtures.do (M-21) and FIXTURE 9 (M-29).
 
-// Run all combos including cluster
-run_all_vce_combos, ///
-    prefix(sim_cluster) ///
-    outdir(`outdir') ///
-    clustervar(cluster_id) ///
-    endogopt(endo1)
+
+/*===========================================================================
+  FIXTURE 5b: ab_cl (M-13 re-base, 2026-07-05)
+  Dataset: abdata (H88 panel, help.txt:1541)
+  Model: n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys) -- the H88 model minus
+  gmm2s (M-15/M-16/M-17 precedent), i.e. plain 2SLS.
+  cluster(id) anchor: H91 (help.txt:1558).
+  Purpose: D5a option-variation (plain 2SLS x one-way cluster x K1=3
+  multi-endogenous x endog-subset). This is the IV 2SLS + one-way cluster
+  Stata-parity cell: it does not exist anywhere else post-sim-deletion
+  (ab_liml/ab_cue/tsop_ab_gmm2s are other estimators). OLS + one-way
+  cluster Stata parity is owned by the hf suite (H91/H103); the
+  griliches cluster(year) M=7 known-dirty lesson (J + Stock-Wright
+  suppressed) is owned by hf H27/H28 -- neither is duplicated here.
+  `first endog(w)` is required: `first` populates e(sstat)/e(arf)/
+  e(archi2) and endog(w) populates e(estat), feeding the five
+  cross-family diagnostics consumers (M-11 card_fw precedent). The
+  e(first) matrix itself is NOT shipped -- first-stage fixtures are
+  owned by M-25 -- so the saver-written firststage CSVs are erased
+  immediately below (hf H22 erase precedent).
+===========================================================================*/
+display _newline(2) "=== FIXTURE 5b: ab_cl ==="
+
+use "`outdir'/_ab_temp.dta", clear
+ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), cluster(id) first endog(w)
+save_ivreg2_results, prefix(ab_cl) suffix(cl) outdir(`outdir')
+erase "`outdir'/ab_cl_firststage_cl.csv"
+
+use "`outdir'/_ab_temp.dta", clear
+ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), cluster(id) small first endog(w)
+save_ivreg2_results, prefix(ab_cl) suffix(cl_small) outdir(`outdir')
+erase "`outdir'/ab_cl_firststage_cl_small.csv"
 
 
 // FIXTURE 6 (card_just_id_weighted) retired 2026-07-05 by the M-11 re-base;
@@ -562,6 +619,7 @@ run_all_vce_combos, ///
 ===========================================================================*/
 macro drop ivreg2_depvar ivreg2_exog ivreg2_endo ivreg2_iv
 capture erase "`outdir'/_card_temp.dta"
+capture erase "`outdir'/_ab_temp.dta"
 
 display _newline(2) "=== All fixtures generated ==="
 display "Output directory: `outdir'"

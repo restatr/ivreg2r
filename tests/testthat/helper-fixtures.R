@@ -164,6 +164,19 @@ card_fw_vce_cells <- list(
   list(vcov = "iid",    small = TRUE,  clusters = ~ region, suffix = "cl_small")
 )
 
+# Shared ab_cl VCE cell table (M-13 re-base): the two cluster(id) diagnostics
+# cells consumed by the cross-family loops in test-model-f.R,
+# test-summary-stats.R, test-stock-wright.R, test-diagnostics-endogeneity.R,
+# and test-diagnostics-anderson-rubin.R, plus test-vcov-cluster.R and the
+# direct overid/id fixture reads. Fits the abdata H88-minus-gmm2s model
+# (ab_formula) with clusters = ~id and endog = "w" (the fixtures were
+# generated with `endog(w)`); model/clusters/endog are constant across cells,
+# so only small and suffix vary.
+ab_cl_vce_cells <- list(
+  list(small = FALSE, suffix = "cl"),
+  list(small = TRUE,  suffix = "cl_small")
+)
+
 # Shared core Stata-parity assertion block (M-11 review): coefficients, SEs, VCV, sigma, RSS, and model F, promoted from its three per-file copies at the M-11 review (test_fweight_config and test_pw_style_config in test-weight-types.R, test_aw_cells_config in test-weights.R).
 expect_stata_parity_core <- function(fit, stata_coef, stata_vcov, stata_diag) {
   r_coef <- coef(fit)[names(stata_coef$estimate)]

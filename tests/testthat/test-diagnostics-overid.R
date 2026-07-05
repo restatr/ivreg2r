@@ -11,10 +11,7 @@ if (file.exists(card_path)) {
   card <- read.csv(card_path)
 }
 
-sim_path <- fixture_path("sim_cluster_data.csv")
-if (file.exists(sim_path)) {
-  sim_cluster <- read.csv(sim_path)
-}
+data(abdata, package = "ivreg2r")
 
 
 # ============================================================================
@@ -117,16 +114,16 @@ test_that("small does not change Hansen J statistic (HC)", {
 
 
 # ============================================================================
-# Hansen J test: Cluster, sim_cluster
+# Hansen J test: Cluster, ab_cl (family M-13, re-based: abdata H88-minus-gmm2s
+# 2SLS, cluster(id))
 # ============================================================================
 
-test_that("Hansen J stat matches Stata sim_cluster cl fixture", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  diag_path <- fixture_path("sim_cluster_diagnostics_cl.csv")
+test_that("Hansen J stat matches Stata ab_cl cl fixture", {
+  diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
+  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                clusters = ~id, endog = "w")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
@@ -137,13 +134,12 @@ test_that("Hansen J stat matches Stata sim_cluster cl fixture", {
   expect_identical(fit$diagnostics$overid$df, as.integer(fixture$jdf))
 })
 
-test_that("Hansen J stat matches Stata sim_cluster cl_small fixture", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-  diag_path <- fixture_path("sim_cluster_diagnostics_cl_small.csv")
+test_that("Hansen J stat matches Stata ab_cl cl_small fixture", {
+  diag_path <- fixture_path("ab_cl_diagnostics_cl_small.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id, small = TRUE)
+  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                clusters = ~id, small = TRUE, endog = "w")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, fixture$j,
@@ -153,12 +149,10 @@ test_that("Hansen J stat matches Stata sim_cluster cl_small fixture", {
 })
 
 test_that("small does not change Hansen J statistic (cluster)", {
-  skip_if(!file.exists(sim_path), "sim_cluster data not found")
-
-  fit1 <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                 data = sim_cluster, clusters = ~cluster_id, small = FALSE)
-  fit2 <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                 data = sim_cluster, clusters = ~cluster_id, small = TRUE)
+  fit1 <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                 clusters = ~id, small = FALSE, endog = "w")
+  fit2 <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                 clusters = ~id, small = TRUE, endog = "w")
   expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
 })
 

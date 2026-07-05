@@ -22,10 +22,7 @@ if (file.exists(sim_noconst_path)) {
   sim_noconst <- read.csv(sim_noconst_path)
 }
 
-sim_cluster_path <- fixture_path("sim_cluster_data.csv")
-if (file.exists(sim_cluster_path)) {
-  sim_cluster <- read.csv(sim_cluster_path)
-}
+data(abdata, package = "ivreg2r")
 
 
 # ============================================================================
@@ -247,27 +244,20 @@ for (vce_combo in list(
 
 
 # ============================================================================
-# sim_cluster: y ~ x1 | endo1 | z1+z2, clusters=~cluster_id
-# Includes IID, HC, and CL variants
+# ab_cl: abdata H88-minus-gmm2s 2SLS, cluster(id) (family M-13, re-based;
+# the iid/hc1 rows were retired -- unweighted iid/hc1 parity for these
+# statistics is owned by the card blocks above, family M-10)
 # ============================================================================
 
-for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, clusters = NULL,          suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  clusters = NULL,          suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, clusters = NULL,          suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  clusters = NULL,          suffix = "hc1_small"),
-  list(vcov = "iid",  small = FALSE, clusters = ~cluster_id,   suffix = "cl"),
-  list(vcov = "iid",  small = TRUE,  clusters = ~cluster_id,   suffix = "cl_small")
-)) {
+for (vce_combo in ab_cl_vce_cells) {
   fixture_file <- fixture_path(
-    paste0("sim_cluster_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("ab_cl_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("sim_cluster", vce_combo$suffix)
+  label <- paste("ab_cl", vce_combo$suffix)
 
-  if (file.exists(sim_cluster_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                  data = sim_cluster, vcov = vce_combo$vcov,
-                  small = vce_combo$small, clusters = vce_combo$clusters)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                  clusters = ~id, small = vce_combo$small, endog = "w")
     check_summary_stats(fit, fixture_file, label)
   }
 }

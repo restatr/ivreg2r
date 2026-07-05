@@ -327,6 +327,16 @@ card_fwt <- transform(card, fwt = age %% 5 + 1)
          vcov = "robust"),
   "card_pw", "hc0")
 
+# --- 2SLS + one-way cluster (M-13 re-base): restores the unweighted 2SLS x
+# cluster audit coverage lost when the sim_cluster cells were retired; fits
+# the same abdata H88-minus-gmm2s base + cluster(id) as cue_ab_cluster below,
+# with endog = "w" (the fixture's estat/estatp/estatdf columns were generated
+# with `endog(w)`).
+.audit_model("2sls_ab_cluster",
+  ivreg2(ab_f, data = abdata, tvar = "year", ivar = "id",
+         clusters = ~id, endog = "w"),
+  "ab_cl", "cl")
+
 # --- CUE (M-17 re-base): re-pointed onto the canonical bases (klein H74 CUE-IID, stockwatson BSS p. 480 arc, abdata H88 cluster). The retired card CUE configs died with the deleted card cells.
 .audit_model("cue_klein_iid",
   ivreg2(klein_f, data = klein, tvar = "yr", method = "cue"),

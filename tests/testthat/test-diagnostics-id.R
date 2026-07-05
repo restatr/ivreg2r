@@ -17,10 +17,7 @@ if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
 }
 
-sim_cluster_path <- fixture_path("sim_cluster_data.csv")
-if (file.exists(sim_cluster_path)) {
-  sim_cluster <- read.csv(sim_cluster_path)
-}
+data(abdata, package = "ivreg2r")
 
 
 # ============================================================================
@@ -226,16 +223,16 @@ test_that("KP rk Wald F matches Stata sim_multi_endo hc1 fixture", {
 
 
 # ============================================================================
-# KP rk LM — Cluster
+# KP rk LM — Cluster (family M-13, re-based: abdata H88-minus-gmm2s 2SLS,
+# cluster(id))
 # ============================================================================
 
-test_that("KP rk LM matches Stata sim_cluster cl fixture", {
-  skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
-  diag_path <- fixture_path("sim_cluster_diagnostics_cl.csv")
+test_that("KP rk LM matches Stata ab_cl cl fixture", {
+  diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
+  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                clusters = ~id, endog = "w")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$underid$test_name,
@@ -249,16 +246,15 @@ test_that("KP rk LM matches Stata sim_cluster cl fixture", {
 
 
 # ============================================================================
-# KP rk Wald F — Cluster
+# KP rk Wald F — Cluster (family M-13, re-based: abdata ab_cl)
 # ============================================================================
 
-test_that("KP rk Wald F matches Stata sim_cluster cl fixture", {
-  skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
-  diag_path <- fixture_path("sim_cluster_diagnostics_cl.csv")
+test_that("KP rk Wald F matches Stata ab_cl cl fixture", {
+  diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
+  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                clusters = ~id, endog = "w")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id_robust$stat, fixture$widstat,
@@ -286,12 +282,11 @@ test_that("Cragg-Donald F present alongside KP stats (HC1)", {
 })
 
 test_that("Cragg-Donald F present alongside KP stats (cluster)", {
-  skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
-  diag_path <- fixture_path("sim_cluster_diagnostics_cl.csv")
+  diag_path <- fixture_path("ab_cl_diagnostics_cl.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                data = sim_cluster, clusters = ~cluster_id)
+  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                clusters = ~id, endog = "w")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
@@ -359,12 +354,10 @@ test_that("small does not change KP rk LM statistic (HC1)", {
 })
 
 test_that("small does not change KP stats (cluster)", {
-  skip_if(!file.exists(sim_cluster_path), "sim_cluster data not found")
-
-  fit1 <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                 data = sim_cluster, clusters = ~cluster_id, small = FALSE)
-  fit2 <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                 data = sim_cluster, clusters = ~cluster_id, small = TRUE)
+  fit1 <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                 clusters = ~id, small = FALSE, endog = "w")
+  fit2 <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                 clusters = ~id, small = TRUE, endog = "w")
   expect_equal(fit1$diagnostics$underid$stat, fit2$diagnostics$underid$stat)
   expect_equal(fit1$diagnostics$weak_id_robust$stat,
                fit2$diagnostics$weak_id_robust$stat)
