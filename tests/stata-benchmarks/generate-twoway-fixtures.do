@@ -63,6 +63,7 @@
 
 clear all
 set more off
+set sortseed 12345  // pin sort-tie order: Stata sorts place ties in random order and the sort RNG state persists across do-files in a session (see CLAUDE.md, Stata gotchas)
 version 14
 
 // Output directory
