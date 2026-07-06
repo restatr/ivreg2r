@@ -434,9 +434,9 @@ problematic when the number of parameters to be estimated is substantial"
 followed by Nelder-Mead refinement, starting from the 2SLS estimates under
 iid weighting and from the two-step efficient GMM estimates under a
 robust/cluster/kernel VCE (matching Stata's documented behavior). In rare
-cases the optimizer may not converge or may find a different basin than
-Stata's Newton-Raphson. The `b0` argument (below) can help diagnose
-convergence issues.
+cases the optimizer may not converge.
+On ill-conditioned models the objective can also possess economically degenerate minima with negative R-squared, a documented property of CUE itself (Hausman, Lewis, Menzel & Newey, 2011); when it does, both Stata and `ivreg2r` converge to the same degenerate solution, so inspect the J statistic and R-squared before trusting a CUE fit.
+The `b0` argument (below) can help diagnose convergence issues.
 
 ### Evaluating the CUE objective at a point
 
@@ -697,6 +697,9 @@ which can be useful for verification and understanding:
 - Hansen, L.P., Heaton, J., and Yaron, A. (1996). "Finite-Sample Properties
   of Some Alternative GMM Estimators." *Journal of Business & Economic
   Statistics*, 14(3), 262--280.
+- Hausman, J., Lewis, R., Menzel, K., and Newey, W. (2011). "Properties of
+  the CUE Estimator and a Modification with Moments." *Journal of
+  Econometrics*, 165(1), 45--57.
 - Hayashi, F. (2000). *Econometrics*. Princeton University Press.
 - Kiefer, N.M. (1980). "Estimation of Fixed Effect Models for Time Series of
   Cross-Sections with Arbitrary Intertemporal Covariance." *Journal of

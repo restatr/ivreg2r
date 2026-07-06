@@ -21,11 +21,13 @@ sw_cue_fit_robust <- ivreg2(sw_formula, data = stockwatson, method = "cue", vcov
 
 # CUE cells use the STANDARD tolerances since the end-of-grind re-audit
 # (2026-07-06): the 5e-6 exception this file carried was calibrated on the
-# retired card cells, and on the re-based cells the audit-measured worst CUE
-# gap is 7.6e-7 coef / 2.0e-7 se / 4.1e-7 vcov against the 1e-6 standard.
+# retired card cells. At the same day's CUE closeout the optimizer gained
+# parscale scaling, which cut the audit-measured worst CUE gaps to
+# 9.0e-7 coef (ab_cue cl ys, the one near-tolerance item) / 1.7e-8 se /
+# 5.8e-8 vcov against the 1e-6 standard, and retired the klein H74 1e-4
+# override (its "N=21 optimizer noise" rationale was root-cause fixed).
 # A future breach is investigate-first per the CLAUDE.md escalation rule --
-# do not reintroduce a wider tolerance without a root cause. (The klein
-# N=21 vcov cell below keeps its own documented 1e-4, the H74 ruling.)
+# do not reintroduce a wider tolerance without a root cause.
 
 # ============================================================================
 # 1. Full-cell Stata parity (coef + vcov + diagnostics)
@@ -90,12 +92,12 @@ for (cell in cue_full_cells) {
 # ============================================================================
 
 test_that("klein CUE-IID VCV and Hansen J match Stata (H74 complement)", {
-  # The coef assertion and the CUE = LIML identity are owned by test-ts-operators.R's H74 test; this block adds only what that test does not assert: the full VCV and the Hansen J stat/p. The vcov tolerance is 1e-4 for the same reason H74 uses it on the coef fixture — klein N=21 CUE optimizer noise.
+  # The coef assertion and the CUE = LIML identity are owned by test-ts-operators.R's H74 test; this block adds only what that test does not assert: the full VCV and the Hansen J stat/p. The 1e-4 override this cell shared with H74 ("klein N=21 CUE optimizer noise") was retired at the 2026-07-06 CUE closeout: parscale scaling cut the observed vcov gap to 3.8e-9, so the cell runs at the standard tolerance.
   skip_if(!file.exists(fixture_path("tsop_klein_vcov_cue.csv")),
           "klein CUE fixture not found")
 
   fit <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "cue")
-  expect_vcov_fixture(fit, "tsop_klein_vcov_cue.csv", tol = 1e-4)
+  expect_vcov_fixture(fit, "tsop_klein_vcov_cue.csv")
   dx <- read_diagnostics(fixture_path("tsop_klein_diagnostics_cue.csv"))
   expect_equal(fit$diagnostics$overid$stat, dx$j,
                tolerance = stata_tol$stat, info = "Hansen J stat")

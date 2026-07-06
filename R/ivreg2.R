@@ -2043,13 +2043,18 @@
 #'   Incompatible with `fuller`, `kclass`, `wmatrix`, and `smatrix`.
 #'
 #'   **CUE optimizer note:** This package uses R's `optim()` (BFGS +
-#'   Nelder-Mead) while Stata uses Mata's `optimize()` (modified
-#'   Newton-Raphson). The CUE objective is non-convex and can have
-#'   multiple local minima, so the two optimizers may converge to
-#'   different solutions. In rare cases, Stata's Newton-Raphson can
-#'   traverse indefinite-Hessian regions and land in pathological basins
-#'   (e.g., negative R-squared). When results differ, compare the
-#'   J-statistic and R-squared to assess which solution is more sensible.
+#'   Nelder-Mead, scaled by the starting values) while Stata uses Mata's
+#'   `optimize()` (modified Newton-Raphson). The CUE objective is
+#'   non-convex and can have multiple local minima, and it can possess
+#'   economically degenerate minima (e.g., negative R-squared) -- a
+#'   documented property of the CUE ratio objective (Hausman, Lewis,
+#'   Menzel & Newey, 2011), not an optimizer failure. On every benchmarked
+#'   model the two implementations agree on the minimum, including one such
+#'   pathological case, where both converge to the same degenerate basin;
+#'   because those basins are extremely flat, coefficient agreement across
+#'   implementations there is limited to a few digits. Inspect the
+#'   J-statistic and R-squared to judge whether a CUE solution is
+#'   economically sensible.
 #' @param kclass Numeric scalar: user-supplied k value for k-class
 #'   estimation. When supplied, `method` is automatically set to `"kclass"`.
 #'   Must be non-negative. Cannot be combined with `method = "liml"` or

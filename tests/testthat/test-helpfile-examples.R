@@ -684,33 +684,45 @@ test_that("vcov(H98 Driscoll-Kraay) equals vcov(H99 cluster+bartlett bw=2)", {
 # Documented divergences
 # ============================================================================
 
-test_that("H22: Griliches CUE robust stays out of Stata's degenerate basin", {
-  # Stata's CUE optimizer lands in a known degenerate basin on this
-  # 13-regressor model (R^2 = -54.4, J = 40.1) -- a documented pathology of
-  # the CUE ratio objective, not a bug in either implementation. See
-  # planning/14-cue-optimizer-research.md and STATUS.md. R's optimizer
-  # stops at its iteration limit (hence the "did not converge" warning)
-  # at an economically sensible point (R^2 = 0.37, J = 67.5) close to
-  # GMM2S; we deliberately do NOT reproduce Stata's answer. This test is
-  # a staleness tripwire: if R's CUE optimizer ever starts agreeing with
-  # Stata's pathological basin, `expect_gt` below will fail and flag it.
+test_that("H22: Griliches CUE robust converges to Stata's basin (flat-objective cell)", {
+  # The CUE ratio objective on this 13-regressor model has its minimum in a
+  # degenerate basin (R^2 = -54, J = 40.1) -- the documented ratio-objective
+  # pathology of the CUE ESTIMATOR (Hausman et al. 2011), not an optimizer
+  # bug. Stata's Newton-Raphson has always found it. Before the parscale fix
+  # (the M-17 deferral, discharged at the 2026-07-06 CUE closeout), R's
+  # unscaled BFGS stalled at its iteration cap at J = 67.5, and that stall
+  # was recorded as an "intentional divergence" (planning/06 delta 20). With
+  # per-coordinate scaling, BFGS genuinely converges (code 0) into the same
+  # basin as Stata: J = 40.0753 here vs 40.0753 at Stata's fixture point
+  # (relative objective agreement ~9e-8), with the valley rising in every
+  # probed direction beyond. The basin is extremely flat, so coefficient
+  # agreement with the fixture is limited to flat-basin resolution
+  # (observed max 0.74% relative; a ~9e-8 relative change in J moves
+  # coefficients by ~0.3%). This is therefore deliberately NOT a 1e-6
+  # parity cell: the 2% bands below assert BASIN MEMBERSHIP -- the old
+  # stall point and the economically sensible GMM2S-like basin (iq about
+  # -0.0014, R^2 = 0.37) sit orders of magnitude outside them.
   skip_if(!have_hf_gril, "helpfile fixtures not found")
   fx <- read.csv(hf_path("gril", "coef", "H22"), stringsAsFactors = FALSE)
   fx$term_r <- translate_stata_xi_names(fx$term)
 
-  expect_warning(
+  expect_no_warning(
     fit <- ivreg2(
       lw ~ s + expr + tenure + rns + smsa + factor(year) | iq | med + kww + age + mrt,
       data = griliches, method = "cue", vcov = "robust"
-    ),
-    "did not converge"
+    )
   )
-  # (a) the returned fit carries a finite J
-  expect_true(is.finite(fit$diagnostics$overid$stat))
-  # (b) coefficients deliberately do NOT match Stata's fixture
+  # (a) the objective value pins the basin: the deep minimum is J = 40.075;
+  # the pre-parscale stall point was 67.5
+  expect_lt(abs(fit$diagnostics$overid$stat - 40.0753), 0.1)
+  # (b) coefficients and SEs agree with Stata at flat-basin resolution
   b_r <- coef(fit)[fx$term_r]
-  expect_gt(max(abs(unname(b_r) - fx$estimate)), 0.01)
-  # (c) no R-specific optimum values are asserted here by design
+  se_r <- sqrt(diag(vcov(fit)))[fx$term_r]
+  expect_lt(max(abs(unname(b_r) - fx$estimate) / abs(fx$estimate)), 0.02)
+  expect_lt(max(abs(unname(se_r) - fx$std_error) / abs(fx$std_error)), 0.02)
+  # (c) the degenerate-basin signature: negative R^2 (the sensible basin
+  # has R^2 = 0.37, so this also trips if the optimizer ever flips back)
+  expect_lt(fit$r.squared, 0)
 })
 
 test_that("H90/H92: bw(9) is rejected by both Stata and R (help.txt:1551/1561)", {

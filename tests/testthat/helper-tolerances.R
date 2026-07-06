@@ -43,25 +43,29 @@ muffle_rank_warnings <- function(expr) {
   )
 }
 
-# Worst observed values below are from the end-of-grind tolerance re-audit
-# (2026-07-06, 2022 comparisons across 36 configs on the re-based fixtures).
+# Worst observed values below are from the post-parscale audit at the CUE
+# closeout (2026-07-06, 2022 comparisons across 36 configs; same day as, and
+# superseding, the end-of-grind re-audit — the CUE optimizer's parscale
+# scaling tightened every optimizer-endpoint cell except ab_cue cl ys,
+# which moved 7.6e-7 -> 9.0e-7, still the overall worst coef).
 stata_tol <- list(
-  coef = 1e-6,   # coefficients        (worst observed: 7.6e-7, a CUE cell)
-  se   = 1e-6,   # standard errors     (worst observed: 2.0e-7, a CUE cell)
-  vcov = 1e-6,   # VCV matrix elements (worst observed: 4.1e-7, a CUE cell)
-  stat = 1e-4,   # test statistics (F, chi-sq, LM, J) — worst observed: 8.0e-7
-  pval = 1e-4    # p-values (absolute) — worst observed: 2.9e-6
+  coef = 1e-6,   # coefficients        (worst observed: 9.0e-7, a CUE cell)
+  se   = 1e-6,   # standard errors     (worst observed: 1.7e-8, a LIML cell)
+  vcov = 1e-6,   # VCV matrix elements (worst observed: 5.8e-8, a LIML cell)
+  stat = 1e-4,   # test statistics (F, chi-sq, LM, J) — worst observed: 5.0e-7
+  pval = 1e-4    # p-values (absolute) — worst observed: 2.5e-7
 )
 
 # The per-file exception tolerances (cue 5e-6, center 2e-5, dofminus 1e-5)
 # were retired at the end-of-grind re-audit (2026-07-06): every binding case
 # lived on fixture cells deleted in the Tranche 3 re-base (the card CUE and
 # CUE+center cells, the M=2 card cluster dofminus cells, the card-era
-# LIML+cluster cells). Two documented per-site overrides remain, each with
-# its rationale at the call site:
+# LIML+cluster cells). The klein CUE 1e-4 override (H74 "N=21 optimizer
+# noise" ruling) was retired at the same day's CUE closeout — parscale
+# scaling root-cause fixed the noise (observed 1.2e-7 coef / 3.8e-9 vcov).
+# One documented per-site override remains, with its rationale at the call
+# site:
 #
-#   test-cue.R / test-ts-operators.R: klein CUE coef/vcov = 1e-4
-#     (H74 ruling: klein N=21 CUE optimizer noise)
 #   test-user-matrices.R: wmatrix-vs-standard GMM fit comparison, vcov = 1e-5
 #     (R-internal fit-vs-fit identity, not Stata parity)
 #

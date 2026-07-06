@@ -452,14 +452,18 @@ test_that("H73: Klein LIML + COVIV matches Stata", {
 })
 
 test_that("H74: Klein CUE equals Stata (and LIML, the help-file demo)", {
+  # This cell carried a documented 1e-4 override ("klein N=21 CUE optimizer
+  # noise", the H74 ruling) until the 2026-07-06 CUE closeout: parscale
+  # scaling in the optimizer cut the noise to 1.2e-7 (coef) / 3.8e-9 (vcov),
+  # so the override is retired and the cell runs at standard tolerances.
   fit_cue <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "cue")
-  expect_coef_fixture(fit_cue, "tsop_klein_coef_cue.csv",
-                      tol_coef = 1e-4, tol_se = 1e-4)
+  expect_coef_fixture(fit_cue, "tsop_klein_coef_cue.csv")
   # The help file's point: CUE = LIML under iid + independence
+  # (observed post-parscale agreement 1.7e-7 relative)
   fit_liml <- ivreg2(klein_formula, data = klein, tvar = "yr",
                      method = "liml")
   expect_equal(unname(coef(fit_cue)), unname(coef(fit_liml)),
-               tolerance = 1e-4)
+               tolerance = 1e-6)
 })
 
 test_that("H75: Klein Fuller(1) matches Stata", {
