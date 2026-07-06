@@ -243,6 +243,7 @@ data(phillips)
 data(stockwatson)
 data(cigar)
 data(mroz)
+data(grunfeld)
 
 # Fit the stored lwage, not log(wage): card.dta stores lwage as float32, and
 # every Stata fixture was generated from that stored variable. Recomputing
@@ -381,9 +382,29 @@ cigar$lrpimin <- log(cigar$pimin / cigar$cpi)
          clusters = ~id),
   "ab_cue", "cl")
 
-# Note: dofminus fixtures use lwage (pre-computed) and sdofminus=1, which
-# can't be easily reproduced from the bundled card dataset. Those configs
-# are covered by the test suite but excluded from this audit script.
+# --- dofminus/sdofminus (M-29 re-base): mroz iid/robust (dofminus=1,
+# sdofminus=1, endog(educ), D5a option-variation on the mroz_overid_f base
+# above) and the grunfeld within/fe cell (small, dofminus=9, self-verified
+# against `xtreg, fe`). No ab_cl config: that cell is diagnostics-only (no
+# coef/vcov fixtures), so .audit_model would find nothing to compare there.
+.audit_model("dofminus_mroz_iid",
+  ivreg2(mroz_overid_f, data = mroz, endog = "educ",
+         dofminus = 1L, sdofminus = 1L),
+  "mroz_dofminus", "iid")
+.audit_model("dofminus_mroz_robust",
+  ivreg2(mroz_overid_f, data = mroz, endog = "educ", vcov = "robust",
+         dofminus = 1L, sdofminus = 1L),
+  "mroz_dofminus", "robust")
+
+grunfeld_w <- grunfeld
+for (v in c("invest", "mvalue", "kstock")) {
+  grunfeld_w[[paste0(v, "_w")]] <- grunfeld_w[[v]] -
+    ave(grunfeld_w[[v]], grunfeld_w$company) + mean(grunfeld_w[[v]])
+}
+.audit_model("dofminus_grun_fe",
+  ivreg2(invest_w ~ mvalue_w + kstock_w, data = grunfeld_w,
+         small = TRUE, dofminus = 9L),
+  "grun_fe_dofminus", "small")
 
 # --- GMM2S (M-16 re-base): the retired iid config is identity-covered (gmm2s+iid is algebraically identical to 2SLS, asserted in test-gmm2s.R), and the retired cluster config's ERROR (rank-deficient S under the M=2 card clusters=~smsa66 anti-pattern) dies together with the retired cell.
 # griliches H06 model formula (help.txt:1154); mirrors the inline formula in test-helpfile-examples.R's H06 test -- keep the two in sync.

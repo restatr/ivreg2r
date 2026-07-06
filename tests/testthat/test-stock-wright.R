@@ -7,22 +7,9 @@
 # fixtures (sstat, sstatp, sstatdf columns).
 
 # --- Load datasets ---
-# card_data.csv is retained here ONLY for the dofminus block below (family
-# M-29, not yet re-based); the card_just_id/card_overid diagnostics blocks
-# that used to read it were retired to mroz at family M-10 (2026-07-06).
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
-
 sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
-}
-
-sim_cluster_path <- fixture_path("sim_cluster_data.csv")
-if (file.exists(sim_cluster_path)) {
-  sim_cluster <- read.csv(sim_cluster_path)
 }
 
 data(abdata, package = "ivreg2r")
@@ -276,82 +263,65 @@ for (vce_combo in card_fw_vce_cells) {
 
 
 # ============================================================================
-# dofminus fixtures: dofminus=1, sdofminus=1
+# dofminus fixtures: family M-29, re-based 2026-07-06. sstat is
+# small-invariant (byte-diff verified on the retired fixtures), so the
+# non-small and small fits are both checked against the SAME fixture, then
+# asserted directly equal to each other.
 # ============================================================================
 
-# card_just_id with dofminus
+# mroz iid and robust: dofminus=1, sdofminus=1
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid",      clusters = NULL),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small", clusters = NULL),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1",      clusters = NULL),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small", clusters = NULL),
-  list(vcov = "iid",  small = FALSE, suffix = "cl",       clusters = ~smsa66),
-  list(vcov = "iid",  small = TRUE,  suffix = "cl_small", clusters = ~smsa66)
+  list(vcov = "iid",    suffix = "iid"),
+  list(vcov = "robust", suffix = "robust")
 )) {
   fixture_file <- fixture_path(
-    paste0("card_just_id_dofminus_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("mroz_dofminus_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("card_just_id_dofminus", vce_combo$suffix)
+  label <- paste("mroz_dofminus", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    # M=2 clusters → expected rank-deficient diagnostics
-    fit <- muffle_rank_warnings(
-      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-             data = card, vcov = vce_combo$vcov, small = vce_combo$small,
-             clusters = vce_combo$clusters,
-             dofminus = 1L, sdofminus = 1L)
-    )
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(mroz_overid_formula, data = mroz, endog = "educ",
+                  vcov = vce_combo$vcov, dofminus = 1L, sdofminus = 1L,
+                  small = FALSE)
+    fit_small <- ivreg2(mroz_overid_formula, data = mroz, endog = "educ",
+                         vcov = vce_combo$vcov, dofminus = 1L, sdofminus = 1L,
+                         small = TRUE)
     check_stock_wright(fit, fixture_file, label)
+    check_stock_wright(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("Stock-Wright direct equality: small vs non-small", label), {
+      expect_equal(fit_small$diagnostics$stock_wright$stat,
+                   fit$diagnostics$stock_wright$stat)
+      expect_equal(fit_small$diagnostics$stock_wright$p,
+                   fit$diagnostics$stock_wright$p)
+      expect_identical(fit_small$diagnostics$stock_wright$df,
+                        fit$diagnostics$stock_wright$df)
+    })
   }
 }
 
-# card_overid with dofminus
-for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid",      clusters = NULL),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small", clusters = NULL),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1",      clusters = NULL),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small", clusters = NULL),
-  list(vcov = "iid",  small = FALSE, suffix = "cl",       clusters = ~smsa66),
-  list(vcov = "iid",  small = TRUE,  suffix = "cl_small", clusters = ~smsa66)
-)) {
-  fixture_file <- fixture_path(
-    paste0("card_overid_dofminus_diagnostics_", vce_combo$suffix, ".csv")
-  )
-  label <- paste("card_overid_dofminus", vce_combo$suffix)
+# ab cluster: dofminus=1, sdofminus=1
+fixture_file <- fixture_path("ab_cl_dofminus_diagnostics_cl.csv")
+label <- "ab_cl_dofminus"
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    # M=2 clusters → expected rank-deficient diagnostics
-    fit <- muffle_rank_warnings(
-      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-             data = card, vcov = vce_combo$vcov, small = vce_combo$small,
-             clusters = vce_combo$clusters,
-             dofminus = 1L, sdofminus = 1L)
-    )
-    check_stock_wright(fit, fixture_file, label)
-  }
-}
+if (file.exists(fixture_file)) {
+  fit <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                clusters = ~id, endog = "w",
+                dofminus = 1L, sdofminus = 1L, small = FALSE)
+  fit_small <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
+                       clusters = ~id, endog = "w",
+                       dofminus = 1L, sdofminus = 1L, small = TRUE)
+  check_stock_wright(fit, fixture_file, label)
+  check_stock_wright(fit_small, fixture_file, paste(label, "small"))
 
-# sim_cluster with dofminus
-for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid",      clusters = NULL),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small", clusters = NULL),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1",      clusters = NULL),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small", clusters = NULL),
-  list(vcov = "iid",  small = FALSE, suffix = "cl",       clusters = ~cluster_id),
-  list(vcov = "iid",  small = TRUE,  suffix = "cl_small", clusters = ~cluster_id)
-)) {
-  fixture_file <- fixture_path(
-    paste0("sim_cluster_dofminus_diagnostics_", vce_combo$suffix, ".csv")
-  )
-  label <- paste("sim_cluster_dofminus", vce_combo$suffix)
-
-  if (file.exists(sim_cluster_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(y ~ x1 | endo1 | z1 + z2,
-                  data = sim_cluster, vcov = vce_combo$vcov,
-                  small = vce_combo$small, clusters = vce_combo$clusters,
-                  dofminus = 1L, sdofminus = 1L)
-    check_stock_wright(fit, fixture_file, label)
-  }
+  test_that(paste("Stock-Wright direct equality: small vs non-small", label), {
+    expect_equal(fit_small$diagnostics$stock_wright$stat,
+                 fit$diagnostics$stock_wright$stat)
+    expect_equal(fit_small$diagnostics$stock_wright$p,
+                 fit$diagnostics$stock_wright$p)
+    expect_identical(fit_small$diagnostics$stock_wright$df,
+                      fit$diagnostics$stock_wright$df)
+  })
 }
 
 

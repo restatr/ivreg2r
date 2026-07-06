@@ -21,9 +21,8 @@
   M-13 re-base (2026-07-05): the sim_cluster ESTIMATION cells (FIXTURE 5's
   run_all_vce_combos call) were retired and replaced by new ab_cl cells fit
   on abdata (see planning/22-spec-matrix.md row M-13). sim_cluster_data.csv
-  itself is RETAINED, since generate-rf-fixtures.do imports it (M-21) and
-  FIXTURE 9 (sim_cluster_dofminus) re-imports it (M-29); only the direct
-  estimation cells moved.
+  itself is RETAINED, since generate-rf-fixtures.do imports it (M-21); only
+  the direct estimation cells moved.
 
   M-10 re-base (2026-07-06): the card_just_id and card_overid baseline cells
   (formerly FIXTURE 1 and FIXTURE 2) were retired -- the card 2SLS baseline
@@ -34,6 +33,22 @@
   rmse/sigmasq (an exact N/(N-K) factor) and F_stat floating-point noise
   differed under small in the retired fixtures, with every other diagnostic
   byte-identical (verified 2026-07-06).
+
+  M-29 re-base (2026-07-06): the card_just_id_dofminus, card_overid_dofminus,
+  and sim_cluster_dofminus cells (formerly FIXTURE 7/8/9) were retired. The
+  dofminus family now lives on canonical bases (planning/22-spec-matrix.md
+  row M-29): mroz_dofminus x {iid, robust} on the hf H31 overid model
+  (FIXTURE 7), ab_cl_dofminus diagnostics-only on the M-13 ab_cl base
+  (FIXTURE 8), and grun_fe_dofminus on within-demeaned grunfeld with an
+  xtreg-fe self-check (FIXTURE 9). ALL small cells retired by invariance
+  (byte-diffs of the retired fixtures, 2026-07-06): under small only
+  rmse/sigmasq move (exactly sigma_small^2 * (N-K-dofminus-sdofminus) ==
+  sigma^2 * (N-dofminus)) plus F_stat floating-point noise (ratio exactly
+  1.0, df identical); the iid and robust small VCVs both scale by exactly
+  (N-dofminus)/(N-K-dofminus-sdofminus), and the cluster small VCV by
+  exactly (N-1)/(N-K-sdofminus) * M/(M-1) -- dofminus does not enter the
+  cluster factor. Cluster coef/vcov without small are byte-identical under
+  dofminus (invariance pinned fixture-free in the R tests).
 
   Usage (CWD must be the package root, i.e. pkg/):
     cd /path/to/ivreg2r/pkg
@@ -51,10 +66,17 @@ capture mkdir "`outdir'"
 
 // Pre-load Card data and save before defining programs.
 // bcuse internally calls "clear all" which drops user-defined programs,
-// so we must call it before any program definitions.
-capture bcuse card, clear
-if _rc != 0 {
-    display as error "Could not load Card dataset via bcuse."
+// so we must call it before any program definitions. The local validation
+// cache is tried first (generate-helpfile-fixtures.do pattern): bc.edu
+// rate-limiting has produced silent empty loads here (observed 2026-07-06,
+// r(111) at the save below with _rc == 0 from bcuse).
+capture use "../validation/data/card.dta", clear
+if _rc {
+    capture bcuse card, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load Card dataset (no local cache, bcuse failed)."
     display as error "Install bcuse (ssc install bcuse) and rerun."
     exit 601
 }
@@ -94,6 +116,25 @@ if _rc {
 }
 quietly tsset id year
 save "`outdir'/_ab_temp.dta", replace
+
+/*---------------------------------------------------------------------------
+  Pre-load mroz and grunfeld for the M-29 dofminus cells (FIXTURE 7/9),
+  keeping all data loads ahead of the program definitions (bcuse
+  clear-all convention). Both follow the generate-helpfile-fixtures.do
+  load pattern: local validation cache first, remote fallback.
+---------------------------------------------------------------------------*/
+capture use "../validation/data/mroz.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+}
+save "`outdir'/_mroz_temp.dta", replace
+
+capture use "../validation/data/grunfeld.dta", clear
+if _rc {
+    webuse grunfeld, clear
+}
+quietly tsset
+save "`outdir'/_grun_temp.dta", replace
 
 /*---------------------------------------------------------------------------
   Helper program: extract all results from ivreg2 and save to CSV
@@ -251,9 +292,7 @@ program define save_ivreg2_results
         capture replace N_clust = e(N_clust)
 
         // Small option flag
-        gen double small = ("`suffix'" == "iid_small" | ///
-                            "`suffix'" == "hc1_small" | ///
-                            "`suffix'" == "cl_small")
+        gen double small = (strpos("`suffix'", "small") > 0)
 
         export delimited using ///
             "`outdir'/`prefix'_diagnostics_`suffix'.csv", replace
@@ -477,7 +516,7 @@ gen endo1 = 0.5*z1 + 0.3*z2 + 0.2*x1 + 0.6*v + 0.3*u
 gen y = 1.0 + 0.8*x1 + 1.5*endo1 + u
 
 // Save simulated data. This data.csv is re-imported downstream
-// (generate-rf-fixtures.do and FIXTURE 9 below), so full precision matters.
+// (generate-rf-fixtures.do), so full precision matters.
 export_full_precision using "`outdir'/sim_cluster_data.csv"
 
 // M-13 re-base (2026-07-05): the estimation cells formerly generated here
@@ -485,7 +524,7 @@ export_full_precision using "`outdir'/sim_cluster_data.csv"
 // retired -- IV 2SLS + one-way cluster Stata parity now lives on the
 // abdata-based ab_cl cells below (FIXTURE 5b), per planning/22-spec-matrix.md
 // row M-13. The DGP and sim_cluster_data.csv export above are KEPT: they
-// feed generate-rf-fixtures.do (M-21) and FIXTURE 9 (M-29).
+// feed generate-rf-fixtures.do (M-21).
 
 
 /*===========================================================================
@@ -526,74 +565,114 @@ erase "`outdir'/ab_cl_firststage_cl_small.csv"
 
 
 /*===========================================================================
-  FIXTURE 7: card_just_id_dofminus
-  Dataset: Card (1995) — returns to education
-  Model: lwage ~ exper expersq black south | educ | nearc4
-  Purpose: dofminus(1) sdofminus(1) adjustments (just-identified)
+  FIXTURE 7: mroz_dofminus (M-29 re-base, 2026-07-06)
+  Dataset: mroz (help-file workhorse)
+  Model: lwage exper expersq (educ = age kidslt6 kidsge6) -- the hf H31
+  overidentified 2SLS base (help.txt:1274); robust cell anchors H41
+  (help.txt:1325).
+  Purpose: D5a option-variation dofminus(1) sdofminus(1) -- Stata documents
+  dofminus/sdofminus for xtdata-style workflows with no worked example.
+  Anchors dofminus threading into sigma/rmse, r2_a, Sargan (iid) / Hansen J
+  (robust), Anderson / KP underid, CD / KP weak-id, AR, endog C-stat,
+  Stock-Wright S, model F, F_df2, and the iid/robust VCV scalings
+  (both HC0-with-dofminus and sigma^2 use N-dofminus).
+  `first endog(educ)` is required so e(sstat)/e(arf)/e(archi2)/e(estat)
+  post for the cross-family consumers (M-11/M-13 precedent). The e(first)
+  matrix itself is NOT shipped -- first-stage fixtures are owned by M-25 --
+  so the saver-written firststage CSVs are erased immediately below.
+  Small variants retired by invariance (byte-diff evidence 2026-07-06, see
+  the header note): the R tests fit both small variants against these
+  fixtures and pin the exact sigma and (N-dofminus)/(N-K-dofminus-sdofminus)
+  VCV-factor identities fixture-free.
 ===========================================================================*/
-display _newline(2) "=== FIXTURE 7: card_just_id_dofminus ==="
+display _newline(2) "=== FIXTURE 7: mroz_dofminus ==="
 
-// Reload Card data
-use "`outdir'/_card_temp.dta", clear
+use "`outdir'/_mroz_temp.dta", clear
+ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6), ///
+    dofminus(1) sdofminus(1) first endog(educ)
+save_ivreg2_results, prefix(mroz_dofminus) suffix(iid) outdir(`outdir')
+erase "`outdir'/mroz_dofminus_firststage_iid.csv"
 
-global ivreg2_depvar "lwage"
-global ivreg2_exog "exper expersq black south"
-global ivreg2_endo "educ"
-global ivreg2_iv "nearc4"
-
-run_all_vce_combos, ///
-    prefix(card_just_id_dofminus) ///
-    outdir(`outdir') ///
-    clustervar(smsa66) ///
-    endogopt(educ) ///
-    modelopts(dofminus(1) sdofminus(1))
+use "`outdir'/_mroz_temp.dta", clear
+ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6), ///
+    robust dofminus(1) sdofminus(1) first endog(educ)
+save_ivreg2_results, prefix(mroz_dofminus) suffix(robust) outdir(`outdir')
+erase "`outdir'/mroz_dofminus_firststage_robust.csv"
 
 
 /*===========================================================================
-  FIXTURE 8: card_overid_dofminus
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south | educ | nearc2 nearc4
-  Purpose: dofminus(1) sdofminus(1) adjustments (overidentified)
+  FIXTURE 8: ab_cl_dofminus (M-29 re-base, 2026-07-06) -- DIAGNOSTICS ONLY
+  Dataset: abdata (H88 panel, help.txt:1541)
+  Model: the FIXTURE 5b ab_cl base -- n (w k ys = d.w d.k d.ys d2.w d2.k
+  d2.ys), cluster(id) (cluster anchor H91, help.txt:1558) -- with
+  dofminus(1) sdofminus(1) added (D5a option-variation).
+  Purpose: the cluster x dofminus diagnostics intersection. WITHOUT small,
+  the cluster-VCE coef/vcov are byte-identical under dofminus (verified on
+  the retired sim_cluster fixtures, 2026-07-06) -- the R test pins that
+  invariance fixture-free by asserting the dofminus fit's coef/vcov
+  directly equal the ab_cl fit's (which is fixture-anchored) -- so only
+  the diagnostics CSV is shipped: cdf, widstat, arf, rmse/sigmasq, r2_a,
+  and F DO move under cluster + dofminus. The coef/vcov/firststage CSVs
+  the saver writes are erased below (hf H36 diagnostics-only precedent).
+  The cl_small x dofminus cell is retired to the exact factor identity
+  (N-1)/(N-K-sdofminus) * M/(M-1) -- dofminus does not enter the cluster
+  small factor (measured on the retired sim and card fixtures 2026-07-06).
 ===========================================================================*/
-display _newline(2) "=== FIXTURE 8: card_overid_dofminus ==="
+display _newline(2) "=== FIXTURE 8: ab_cl_dofminus ==="
 
-// Reload Card data
-use "`outdir'/_card_temp.dta", clear
-global ivreg2_depvar "lwage"
-global ivreg2_exog "exper expersq black south"
-global ivreg2_endo "educ"
-global ivreg2_iv "nearc2 nearc4"
-
-run_all_vce_combos, ///
-    prefix(card_overid_dofminus) ///
-    outdir(`outdir') ///
-    clustervar(smsa66) ///
-    endogopt(educ) ///
-    modelopts(dofminus(1) sdofminus(1))
+use "`outdir'/_ab_temp.dta", clear
+ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), ///
+    cluster(id) dofminus(1) sdofminus(1) first endog(w)
+save_ivreg2_results, prefix(ab_cl_dofminus) suffix(cl) outdir(`outdir')
+erase "`outdir'/ab_cl_dofminus_coef_cl.csv"
+erase "`outdir'/ab_cl_dofminus_vcov_cl.csv"
+erase "`outdir'/ab_cl_dofminus_firststage_cl.csv"
 
 
 /*===========================================================================
-  FIXTURE 9: sim_cluster_dofminus
-  Simulated data with group structure (50 clusters)
-  Purpose: dofminus(1) sdofminus(1) with cluster-robust
+  FIXTURE 9: grun_fe_dofminus (M-29 re-base, 2026-07-06)
+  Dataset: grunfeld (help-file panel base, help.txt:1569-1601)
+  Purpose: the pedagogically authentic dofminus cell -- the xtdata-style
+  fixed-effects workflow dofminus exists for (D5a: documented, no worked
+  example). Each variable is within-demeaned by company with the grand
+  mean added back (all arithmetic in double; the collapse-stores-float32
+  gotcha does not arise with egen double), then the pooled regression
+  with small dofminus(9) must reproduce xtreg, fe exactly: the within
+  transform consumed N_g - 1 = 9 degrees of freedom beyond the retained
+  constant (N=200, K=2 slopes + _cons, df_r = 200 - 3 - 9 = 188 =
+  e(df_r) of xtreg fe). The self-check below asserts slope coefficients
+  and SEs match xtreg at reldif < 1e-10 BEFORE the fixture is written,
+  so the exported cell is self-verifying, not just recorded output.
 ===========================================================================*/
-display _newline(2) "=== FIXTURE 9: sim_cluster_dofminus ==="
+display _newline(2) "=== FIXTURE 9: grun_fe_dofminus ==="
 
-// Reload simulated cluster data
-import delimited using "`outdir'/sim_cluster_data.csv", clear
+use "`outdir'/_grun_temp.dta", clear
 
-global ivreg2_depvar "y"
-global ivreg2_exog "x1"
-global ivreg2_endo "endo1"
-global ivreg2_iv "z1 z2"
+foreach v in invest mvalue kstock {
+    quietly egen double `v'_gm = mean(`v')
+    quietly bysort company: egen double `v'_pm = mean(`v')
+    quietly gen double `v'_w = `v' - `v'_pm + `v'_gm
+}
+sort company year
 
-// Run all combos including cluster
-run_all_vce_combos, ///
-    prefix(sim_cluster_dofminus) ///
-    outdir(`outdir') ///
-    clustervar(cluster_id) ///
-    endogopt(endo1) ///
-    modelopts(dofminus(1) sdofminus(1))
+// Reference within estimator (grunfeld is already xtset via tsset)
+quietly xtreg invest mvalue kstock, fe
+matrix b_xt = e(b)
+matrix V_xt = e(V)
+
+ivreg2 invest_w mvalue_w kstock_w, small dofminus(9)
+
+// Self-check: slopes and their SEs must match xtreg fe to float precision.
+// b_xt/V_xt column order: mvalue kstock _cons.
+assert reldif(_b[mvalue_w], b_xt[1,1]) < 1e-10
+assert reldif(_b[kstock_w], b_xt[1,2]) < 1e-10
+assert reldif(_se[mvalue_w], sqrt(V_xt[1,1])) < 1e-10
+assert reldif(_se[kstock_w], sqrt(V_xt[2,2])) < 1e-10
+display "grun_fe_dofminus self-check vs xtreg fe: PASSED"
+display "  _cons comparison (informational): ivreg2 " _b[_cons] " se " _se[_cons] ///
+    " | xtreg " b_xt[1,3] " se " sqrt(V_xt[3,3])
+
+save_ivreg2_results, prefix(grun_fe_dofminus) suffix(small) outdir(`outdir')
 
 
 /*===========================================================================
@@ -602,6 +681,8 @@ run_all_vce_combos, ///
 macro drop ivreg2_depvar ivreg2_exog ivreg2_endo ivreg2_iv
 capture erase "`outdir'/_card_temp.dta"
 capture erase "`outdir'/_ab_temp.dta"
+capture erase "`outdir'/_mroz_temp.dta"
+capture erase "`outdir'/_grun_temp.dta"
 
 display _newline(2) "=== All fixtures generated ==="
 display "Output directory: `outdir'"
