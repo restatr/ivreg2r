@@ -522,10 +522,8 @@ test_that("all-zero Omega returns NA J instead of crashing", {
 })
 
 test_that("HAC truncated + psd0 matches Stata", {
-  phil_path <- fixture_path("phillips_data.csv")
-  skip_if_not(file.exists(phil_path))
-  phil <- read.csv(phil_path)
-  fit <- ivreg2(cinf ~ 1 | unem | unem_1 + unem_2, data = phil,
+  data(phillips)
+  fit <- ivreg2(cinf ~ 1 | unem | unem_1 + unem_2, data = phillips,
                 vcov = "robust", kernel = "truncated", bw = 2,
                 tvar = "year", psd = "psd0")
   check_psd_fixture(fit, "hac_tru2_psd0", prefix = "phil_psd",

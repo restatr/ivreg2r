@@ -12,7 +12,7 @@
   Each block also logs the minimum eigenvalue of e(S) ("MINEIG <label>:")
   so binding status is documented in the .log.
 
-  Data: wagepan loads cache-first from ../validation/data/wagepan.dta, the file of record from which pkg/data-raw/wagepan.R builds the bundled data(wagepan) bit-identically, so Stata and the R tests still compute on identical inputs, now at full precision (wp_ck_data.csv was a truncated 8-digit export and was retired 2026-07-06; the wp_psd fixtures were verified byte-identical under the full-precision load at that retirement). The load is hoisted above the program define blocks so its bcuse fallback (which calls clear all) is safe. phillips still imports from phillips_data.csv, which carries constructed lag columns and is owned by the M-27/M-43 families.
+  Data: wagepan loads cache-first from ../validation/data/wagepan.dta, the file of record from which pkg/data-raw/wagepan.R builds the bundled data(wagepan) bit-identically, so Stata and the R tests still compute on identical inputs, now at full precision (wp_ck_data.csv was a truncated 8-digit export and was retired 2026-07-06; the wp_psd fixtures were verified byte-identical under the full-precision load at that retirement). The load is hoisted above the program define blocks so its bcuse fallback (which calls clear all) is safe. phillips loads cache-first from ../validation/data/phillips.dta (its constructed lag columns ship inside the .dta), re-pointed off the retired phillips_data.csv snapshot at the M-27 re-base 2026-07-06.
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -256,7 +256,10 @@ save_ivreg2_results, prefix(wp_psd) suffix(twoway_psd0) outdir(`outdir')
 /*===========================================================================
   HAC truncated kernel + psd0 probe (overidentified time series, phillips)
 ===========================================================================*/
-import delimited "`outdir'/phillips_data.csv", clear case(preserve)
+capture use "../validation/data/phillips.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta, clear
+}
 tsset year
 
 ivreg2 cinf (unem = unem_1 unem_2), robust kernel(tru) bw(2) psd0

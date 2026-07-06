@@ -358,22 +358,22 @@ test_that("mroz OLS robust fit$S/fit$W match Stata e(S)/e(W)", {
 test_that("griliches gmm2s robust fit$S/fit$W match Stata e(S)/e(W)", {
   skip_if(!sm_fixture_ready("griliches_eS_gmm2s_robust.csv",
                             "griliches_eW_gmm2s_robust.csv",
-                            "griliches_inames.csv", "griliches_data.csv"),
+                            "griliches_inames.csv"),
           "Fixtures not found")
-  gril <- read.csv(fixture_path("griliches_data.csv"))
+  data(griliches)
   fit <- ivreg2(lw ~ s + expr + tenure + rns + smsa | iq |
                   med + kww + age + mrt,
-                data = gril, method = "gmm2s", vcov = "robust")
+                data = griliches, method = "gmm2s", vcov = "robust")
   expect_sw_match(fit, "griliches_eS_gmm2s_robust.csv",
                   "griliches_eW_gmm2s_robust.csv", "griliches_inames.csv")
 })
 
 test_that("phillips AC fit$S/fit$W match Stata e(S)/e(W)", {
   skip_if(!sm_fixture_ready("phillips_eS_ac_bw3.csv", "phillips_eW_ac_bw3.csv",
-                            "phillips_inames.csv", "phillips_data.csv"),
+                            "phillips_inames.csv"),
           "Fixtures not found")
-  phil <- read.csv(fixture_path("phillips_data.csv"))
-  fit <- ivreg2(cinf ~ unem, data = phil,
+  data(phillips)
+  fit <- ivreg2(cinf ~ unem, data = phillips,
                 kernel = "bartlett", bw = 3, tvar = "year")
   expect_sw_match(fit, "phillips_eS_ac_bw3.csv", "phillips_eW_ac_bw3.csv",
                   "phillips_inames.csv")
@@ -382,10 +382,10 @@ test_that("phillips AC fit$S/fit$W match Stata e(S)/e(W)", {
 test_that("phillips HAC fit$S/fit$W match Stata e(S)/e(W)", {
   skip_if(!sm_fixture_ready("phillips_eS_hac_bw3.csv",
                             "phillips_eW_hac_bw3.csv",
-                            "phillips_inames.csv", "phillips_data.csv"),
+                            "phillips_inames.csv"),
           "Fixtures not found")
-  phil <- read.csv(fixture_path("phillips_data.csv"))
-  fit <- ivreg2(cinf ~ unem, data = phil, vcov = "robust",
+  data(phillips)
+  fit <- ivreg2(cinf ~ unem, data = phillips, vcov = "robust",
                 kernel = "bartlett", bw = 3, tvar = "year")
   expect_sw_match(fit, "phillips_eS_hac_bw3.csv", "phillips_eW_hac_bw3.csv",
                   "phillips_inames.csv")
@@ -393,17 +393,22 @@ test_that("phillips HAC fit$S/fit$W match Stata e(S)/e(W)", {
 
 test_that("stockwatson CUE HAC fit$S/fit$W match Stata e(S)/e(W)", {
   skip_if(!sm_fixture_ready("stockwatson_eS_cue.csv", "stockwatson_eW_cue.csv",
-                            "stockwatson_inames.csv", "stockwatson_data.csv"),
+                            "stockwatson_inames.csv"),
           "Fixtures not found")
-  sw_dat <- read.csv(fixture_path("stockwatson_data.csv"))
+  data(stockwatson)
   fit <- ivreg2(dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1,
-                data = sw_dat, method = "cue", vcov = "robust",
+                data = stockwatson, method = "cue", vcov = "robust",
                 kernel = "bartlett", bw = 5, tvar = "date")
-  # CUE: S/W are evaluated at the converged beta, so they inherit
-  # optimizer-path sensitivity (test-cue.R precedent). Measured agreement
-  # is much tighter; 1e-4 leaves margin while catching scaling errors.
+  # Standard VCV parity tolerance (stata_tol$vcov = 1e-6), like the mroz /
+  # griliches / phillips siblings above. The prior 1e-4 override predated
+  # parscale, which removed the CUE optimizer-endpoint noise that once pushed
+  # these differences above 1e-6 (the klein CUE override was retired to
+  # standard for the same reason). Measured R-vs-fixture agreement is 7e-8.
+  # Regression sensitivity for the S/W computation lives in the R-vs-R
+  # identity tests (W %*% S = I, gmm2s S = 2SLS S) and the fixture diff, not
+  # in this cross-platform parity number.
   expect_sw_match(fit, "stockwatson_eS_cue.csv", "stockwatson_eW_cue.csv",
-                  "stockwatson_inames.csv", tol = 1e-4)
+                  "stockwatson_inames.csv")
 })
 
 # ============================================================================

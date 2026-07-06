@@ -5,7 +5,7 @@
   (ticket F1). One block per canonical configuration; canonical base specs
   with a single option varying (fixture-design rule).
 
-  Data: CSV exports of the BUNDLED package datasets (written by R from the .rda files), so Stata and R compute on byte-identical inputs, except mroz: mroz_data.csv was retired 2026-07-06, and mroz now loads from ../validation/data/mroz.dta, the cached file of record from which the bundled data(mroz) is built bit-identically. No bcuse (the mroz load sits after this file's program define blocks).
+  Data: all datasets load from the cached .dta files of record under ../validation/data/ from which the bundled data() objects are built bit-identically (M-27 re-base 2026-07-06 retired the griliches_data.csv, phillips_data.csv, and stockwatson_data.csv snapshots). stockwatson's derived columns are constructed in Stata from macrodat.dta EXACTLY as pkg/data-raw/stockwatson.R builds them (the same construction generate-cue-fixtures.do uses), so only the R data-raw script and one Stata construction recipe remain, both from the same float32 macrodat source. All loads use `use` (not bcuse), so they are safe after this file's program define blocks.
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -113,7 +113,10 @@ save_matrix_names, mat(S4) outfile("`outdir'/mroz_ols_inames.csv")
   5. Griliches: gmm2s robust (help.txt:1154, minus the xi year dummies --
      deviation disclosed; the year-dummy variant lives in the vignettes)
 ===========================================================================*/
-import delimited "`outdir'/griliches_data.csv", clear case(preserve)
+capture use "../validation/data/griliches76.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta, clear
+}
 
 ivreg2 lw s expr tenure rns smsa (iq = med kww age mrt), gmm2s robust
 matrix S5 = e(S)
@@ -125,7 +128,10 @@ save_matrix_names, mat(S5) outfile("`outdir'/griliches_inames.csv")
 /*===========================================================================
   6-7. Phillips: AC (help.txt:1501) and HAC (help.txt:1511), Bartlett bw 3
 ===========================================================================*/
-import delimited "`outdir'/phillips_data.csv", clear case(preserve)
+capture use "../validation/data/phillips.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta, clear
+}
 tsset year
 
 ivreg2 cinf unem, bw(3) kernel(bartlett)
@@ -144,8 +150,23 @@ save_matrix, mat(W7) outfile("`outdir'/phillips_eW_hac_bw3.csv")
 /*===========================================================================
   8. Stock-Watson: CUE, HAC Bartlett bw 5 (BSS 2007 SS4.3, p. 480)
 ===========================================================================*/
-import delimited "`outdir'/stockwatson_data.csv", clear case(preserve)
+capture use "../validation/data/macrodat.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/stockwatson/macrodat.dta, clear
+}
+* Construct the derived columns EXACTLY as pkg/data-raw/stockwatson.R does, in
+* double precision, so the Stata data is numerically coherent with the bundled
+* data(stockwatson) the R test fits on (F4 precision-lesson discipline: both
+* sides compute in double from the same float32 macrodat source).
+sort date
 tsset date
+gen double inf = 100 * ln(CPI / L4.CPI)
+gen double ggdp = 100 * ln(GDP / L4.GDP)
+gen double dinf = inf - L.inf
+gen double ggdp_2 = L2.ggdp
+gen double TBILL_1 = L.TBILL
+gen double ER_1 = L.ER
+gen double TBON_1 = L.TBON
 
 ivreg2 dinf (UR = ggdp_2 TBILL_1 ER_1 TBON_1), cue robust kernel(bartlett) bw(5)
 matrix S8 = e(S)
