@@ -22,10 +22,12 @@ sw_cue_fit_robust <- ivreg2(sw_formula, data = stockwatson, method = "cue", vcov
 # CUE cells use the STANDARD tolerances since the end-of-grind re-audit
 # (2026-07-06): the 5e-6 exception this file carried was calibrated on the
 # retired card cells. At the same day's CUE closeout the optimizer gained
-# parscale scaling, which cut the audit-measured worst CUE gaps to
-# 9.0e-7 coef (ab_cue cl ys, the one near-tolerance item) / 1.7e-8 se /
-# 5.8e-8 vcov against the 1e-6 standard, and retired the klein H74 1e-4
-# override (its "N=21 optimizer noise" rationale was root-cause fixed).
+# parscale scaling: the audit-measured worst CUE coef gap is 9.0e-7
+# (ab_cue cl ys, the one near-tolerance item), and every CUE se/vcov gap
+# sits at or below the overall audit worsts of 1.7e-8 se / 5.8e-8 vcov
+# (both attained by LIML cells). The klein H74 1e-4 override was retired
+# in the same pass (its "N=21 optimizer noise" rationale was root-cause
+# fixed).
 # A future breach is investigate-first per the CLAUDE.md escalation rule --
 # do not reintroduce a wider tolerance without a root cause.
 
@@ -529,4 +531,48 @@ test_that("print method works for CUE", {
 
   out <- capture.output(print(fit))
   expect_true(any(grepl("CUE Estimation", out)))
+})
+
+# ============================================================================
+# 15. Convergence-ruling unit tests (.cue_convergence, fixture-free)
+# ============================================================================
+#
+# Added at the 2026-07-06 CUE closeout review: after parscale, no bundled
+# fixture drives the non-convergence path (H22 moved into Stata's basin and
+# now exercises the code-10 forgiveness path), so the decision logic is
+# pinned directly here with synthetic optim results. Only the one-line
+# warning emission in .fit_gmm_cue remains fixture-uncovered (recorded in
+# planning/22 M-17). The M-17 refutation of a synthetic near-threshold
+# non-convergence FIT stands -- these tests exercise the ruling, not the
+# optimizer.
+
+test_that(".cue_convergence implements the code-10 forgiveness ruling", {
+  opt <- function(code, value) list(convergence = code, value = value)
+
+  # NM converged outright: always 0, regardless of BFGS
+  expect_identical(.cue_convergence(opt(1L, 5), opt(0L, 5)), 0L)
+
+  # Forgiven: NM code 10 at a converged BFGS optimum, objective essentially
+  # unmoved (the stockwatson/wagepan/H22 fixture class)
+  expect_identical(.cue_convergence(opt(0L, 5), opt(10L, 5 - 1e-9)), 0L)
+
+  # Not forgiven: BFGS itself did not converge
+  expect_identical(.cue_convergence(opt(1L, 5), opt(10L, 5 - 1e-9)), 10L)
+
+  # Not forgiven: the restart moved the objective by more than 1e-6 relative
+  # (a real basin or valley traversal, the pre-parscale H22 class)
+  expect_identical(.cue_convergence(opt(0L, 67.5), opt(10L, 40.1)), 10L)
+
+  # Not forgiven: huge-J scale -- relative movement is tiny but absolute
+  # movement exceeds the ceiling of 1 (chi-square-scale movement)
+  expect_identical(.cue_convergence(opt(0L, 1e9), opt(10L, 1e9 - 2)), 10L)
+
+  # Forgiven: near-zero J, movement under the 1e-10 absolute floor
+  expect_identical(.cue_convergence(opt(0L, 5e-11), opt(10L, 0)), 0L)
+
+  # Not forgiven: non-finite objective can never satisfy the guard (isTRUE)
+  expect_identical(.cue_convergence(opt(0L, NaN), opt(10L, NaN)), 10L)
+
+  # Code 1 (maxit) is never forgiven, even with the objective unmoved
+  expect_identical(.cue_convergence(opt(0L, 5), opt(1L, 5)), 1L)
 })

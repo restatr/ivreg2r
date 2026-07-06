@@ -463,7 +463,7 @@ test_that("H74: Klein CUE equals Stata (and LIML, the help-file demo)", {
   fit_liml <- ivreg2(klein_formula, data = klein, tvar = "yr",
                      method = "liml")
   expect_equal(unname(coef(fit_cue)), unname(coef(fit_liml)),
-               tolerance = 1e-6)
+               tolerance = stata_tol$coef)
 })
 
 test_that("H75: Klein Fuller(1) matches Stata", {

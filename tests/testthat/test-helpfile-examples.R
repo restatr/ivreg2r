@@ -699,29 +699,42 @@ test_that("H22: Griliches CUE robust converges to Stata's basin (flat-objective 
   # agreement with the fixture is limited to flat-basin resolution
   # (observed max 0.74% relative; a ~9e-8 relative change in J moves
   # coefficients by ~0.3%). This is therefore deliberately NOT a 1e-6
-  # parity cell: the 2% bands below assert BASIN MEMBERSHIP -- the old
+  # parity cell: the bands below assert BASIN MEMBERSHIP -- the old
   # stall point and the economically sensible GMM2S-like basin (iq about
   # -0.0014, R^2 = 0.37) sit orders of magnitude outside them.
   skip_if(!have_hf_gril, "helpfile fixtures not found")
   fx <- read.csv(hf_path("gril", "coef", "H22"), stringsAsFactors = FALSE)
   fx$term_r <- translate_stata_xi_names(fx$term)
+  h22_formula <-
+    lw ~ s + expr + tenure + rns + smsa + factor(year) | iq | med + kww + age + mrt
 
   expect_no_warning(
-    fit <- ivreg2(
-      lw ~ s + expr + tenure + rns + smsa + factor(year) | iq | med + kww + age + mrt,
-      data = griliches, method = "cue", vcov = "robust"
-    )
+    fit <- ivreg2(h22_formula, data = griliches, method = "cue", vcov = "robust")
   )
-  # (a) the objective value pins the basin: the deep minimum is J = 40.075;
-  # the pre-parscale stall point was 67.5
-  expect_lt(abs(fit$diagnostics$overid$stat - 40.0753), 0.1)
-  # (b) coefficients and SEs agree with Stata at flat-basin resolution
+  # (a) the objective value pins the basin, anchored to the fixture itself:
+  # evaluate the CUE objective at Stata's own coefficient vector (b0 skips
+  # optimization), so the target is machine-traceable to the CSV rather than
+  # a transcribed constant. Observed |J_fit - J_at_fixture| ~ 3.5e-6; the
+  # pre-parscale stall point sits 27 J-units away, so the 0.1 band has ~275x
+  # discriminating margin while any point in the flat basin passes.
+  fit_at_fx <- ivreg2(h22_formula, data = griliches, method = "cue",
+                      vcov = "robust", b0 = setNames(fx$estimate, fx$term_r))
+  expect_lt(abs(fit$diagnostics$overid$stat - fit_at_fx$diagnostics$overid$stat),
+            0.1)
+  # (b) coefficients and SEs agree with Stata at flat-basin resolution.
+  # Band derivation: coordinate displacement near a quadratic minimum scales
+  # as sqrt of the objective gap, so a cross-platform J agreement of ~1e-6
+  # relative (vs the 9e-8 observed here) predicts ~sqrt(1e-6/9e-8) * 0.74%
+  # ~ 2.5% spread; 5% covers that while staying ~380x below the iq
+  # separation from the other basin.
   b_r <- coef(fit)[fx$term_r]
   se_r <- sqrt(diag(vcov(fit)))[fx$term_r]
-  expect_lt(max(abs(unname(b_r) - fx$estimate) / abs(fx$estimate)), 0.02)
-  expect_lt(max(abs(unname(se_r) - fx$std_error) / abs(fx$std_error)), 0.02)
-  # (c) the degenerate-basin signature: negative R^2 (the sensible basin
-  # has R^2 = 0.37, so this also trips if the optimizer ever flips back)
+  expect_lt(max(abs(unname(b_r) - fx$estimate) / abs(fx$estimate)), 0.05)
+  expect_lt(max(abs(unname(se_r) - fx$std_error) / abs(fx$std_error)), 0.05)
+  # (c) the degenerate-basin signature: negative R^2 (the sensible basin has
+  # R^2 = 0.37). For the two known basins this is implied by (a) -- R^2 is a
+  # function of beta -- and is kept as self-documenting belt-and-suspenders
+  # that survives any future loosening of the J band.
   expect_lt(fit$r.squared, 0)
 })
 

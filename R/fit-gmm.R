@@ -380,6 +380,35 @@
 
 
 # --------------------------------------------------------------------------
+# .cue_convergence
+# --------------------------------------------------------------------------
+#' Decide the CUE convergence code from the two optimizer results
+#'
+#' Convergence ruling (the wp_sw_cue / M-17 spurious-flag finding): Nelder-Mead exits with code 10 (simplex degeneracy) when started at an already-converged BFGS optimum on low-dimensional problems. Forgive code 10 only when BFGS converged AND the restart provably moved the OBJECTIVE by no more than 1e-6 relative (plus a 1e-10 absolute floor for near-zero J; J >= 0 bounds the forgivable movement by J itself there). The agreement tested is on the objective value, deliberately not on the parameter vectors: in a flat CUE valley two well-separated betas can share the same J, but that non-uniqueness is weak identification — surfaced by the KP/AR identification diagnostics — not an optimization failure, and the reported coefficients are always the Nelder-Mead point regardless of this flag. The 1e-6 bound is derived, not fitted: BFGS's finite-difference gradients leave it short of the optimum by O(sqrt(machine eps)) ~ 1.5e-8 relative on the objective, so genuine refinement noise sits two orders below the bound, while a real basin or valley traversal moves the objective by many orders more (the pre-parscale H22 griliches trajectory moved J from the 67.5 stall point to the 40.1 basin; post-parscale BFGS reaches that basin itself and H22 exercises this forgiveness path, so no bundled fixture fires the non-convergence warning — the decision logic below is instead pinned by direct unit tests in test-cue.R, leaving only the one-line warning emission in .fit_gmm_cue fixture-uncovered, see planning/22 M-17). The additional absolute ceiling of 1 closes the huge-J scale gap (at J ~ 1e9 a purely relative bound would forgive chi-square-scale movement; movement that could visibly change a J p-value is never forgiven) — flagged by the 2026-07-05 Codex second opinion, which otherwise confirmed this ruling against ~12,000 adversarial counterexample trials. isTRUE() keeps a non-finite objective from being forgiven. Code 1 (maxit) is never forgiven: an optimizer still improving at its iteration cap is genuinely unconverged.
+#'
+#' @param opt_bfgs `stats::optim()` result of the BFGS stage (uses
+#'   `$convergence`, `$value`).
+#' @param opt_nm `stats::optim()` result of the Nelder-Mead restart (uses
+#'   `$convergence`, `$value`).
+#' @return Integer convergence code: `0L` for convergence (including forgiven
+#'   code-10 exits), otherwise the Nelder-Mead code.
+#' @noRd
+.cue_convergence <- function(opt_bfgs, opt_nm) {
+  improvement <- opt_bfgs$value - opt_nm$value
+  improvement_small <- isTRUE(
+    improvement <= abs(opt_bfgs$value) * 1e-6 + 1e-10 && improvement <= 1
+  )
+  if (opt_nm$convergence == 0L ||
+      (opt_nm$convergence == 10L &&
+       opt_bfgs$convergence == 0L && improvement_small)) {
+    0L
+  } else {
+    opt_nm$convergence
+  }
+}
+
+
+# --------------------------------------------------------------------------
 # .fit_cue
 # --------------------------------------------------------------------------
 #' Fit Continuously Updated GMM Estimator (CUE)
@@ -483,9 +512,14 @@
       # for robust refinement. nlminb struggles with the CUE ratio objective
       # due to noisy finite-difference gradients; this combination matches
       # Stata's Mata optimize() results reliably.
-      # Per-coordinate scaling (the M-17 parscale deferral, discharged at the CUE closeout): optim's Nelder-Mead builds its initial simplex with a SINGLE scalar step — 0.1 * max|scaled coefficient| applied to every coordinate (nmmin C source, established at the 2026-07-05 second opinion) — and BFGS takes its finite-difference gradient steps (ndeps) in scaled units, so under the default parscale = 1 a coefficient vector of mixed magnitudes gets a distorted simplex and gradient geometry. Scaling by the starting values makes every scaled coordinate O(1), so both optimizers step proportionally to each coefficient's own magnitude. A zero start coefficient carries no scale information and falls back to optim's default scale of 1 (parscale must be nonzero — optim divides by it).
+      # Per-coordinate scaling (the M-17 parscale deferral, discharged at the CUE closeout): optim's Nelder-Mead builds its initial simplex with a SINGLE scalar step — 0.1 * max|scaled coefficient| applied to every coordinate (nmmin C source, established at the 2026-07-05 second opinion) — and BFGS takes its finite-difference gradient steps (ndeps) in scaled units, so under the default parscale = 1 a coefficient vector of mixed magnitudes gets a distorted simplex and gradient geometry. Scaling by the starting values makes every scaled coordinate O(1), so both optimizers step proportionally to each coefficient's own magnitude. The floor at 1e-4 of the largest |coefficient| (a closeout review finding) covers the start coefficients that carry no usable scale of their own — exact zeros, and coordinates accidentally started many orders below the rest, which an unfloored parscale would near-freeze (BFGS reads a ~zero gradient through a ~zero scale). The floor is inert on every benchmarked model (observed min/max coefficient ratios are all >= 3.2e-4) and caps the scale spread the optimizers must handle at 1e4. An all-zero start (no scale information at all) falls back to optim's default scale of 1. Non-finite starts are NOT handled here: optim rejects them identically with or without parscale ("non-finite value supplied by optim", verified), so a guard would be dead code.
       parscale <- abs(beta_init)
-      parscale[parscale == 0] <- 1
+      scale_ref <- max(parscale)
+      if (scale_ref == 0) {
+        parscale <- rep(1, length(parscale))
+      } else {
+        parscale <- pmax(parscale, 1e-4 * scale_ref)
+      }
       opt_bfgs <- stats::optim(par = beta_init, fn = cue_obj, method = "BFGS",
                                control = list(maxit = 500L, reltol = 1e-12,
                                               parscale = parscale))
@@ -497,18 +531,7 @@
       beta <- opt_nm$par
       j_from_opt <- opt_nm$value
 
-      # Convergence ruling (the wp_sw_cue / M-17 spurious-flag finding): Nelder-Mead exits with code 10 (simplex degeneracy) when started at an already-converged BFGS optimum on low-dimensional problems. Forgive code 10 only when BFGS converged AND the restart provably moved the OBJECTIVE by no more than 1e-6 relative (plus a 1e-10 absolute floor for near-zero J; J >= 0 bounds the forgivable movement by J itself there). The agreement tested is on the objective value, deliberately not on the parameter vectors: in a flat CUE valley two well-separated betas can share the same J, but that non-uniqueness is weak identification — surfaced by the KP/AR identification diagnostics — not an optimization failure, and the reported coefficients are always the Nelder-Mead point regardless of this flag. The 1e-6 bound is derived, not fitted: BFGS's finite-difference gradients leave it short of the optimum by O(sqrt(machine eps)) ~ 1.5e-8 relative on the objective, so genuine refinement noise sits two orders below the bound, while a real basin or valley traversal moves the objective by many orders more (the pre-parscale H22 griliches trajectory moved J from the 67.5 stall point to the 40.1 basin; post-parscale BFGS reaches that basin itself and H22 exercises this forgiveness path, so no bundled fixture currently fires the non-convergence warning -- a recorded coverage gap, see planning/22 M-17). The additional absolute ceiling of 1 closes the huge-J scale gap (at J ~ 1e9 a purely relative bound would forgive chi-square-scale movement; movement that could visibly change a J p-value is never forgiven) — flagged by the 2026-07-05 Codex second opinion, which otherwise confirmed this ruling against ~12,000 adversarial counterexample trials. isTRUE() keeps a non-finite objective from being forgiven. Code 1 (maxit) is never forgiven: an optimizer still improving at its iteration cap is genuinely unconverged.
-      improvement <- opt_bfgs$value - opt_nm$value
-      improvement_small <- isTRUE(
-        improvement <= abs(opt_bfgs$value) * 1e-6 + 1e-10 && improvement <= 1
-      )
-      convergence <- if (opt_nm$convergence == 0L ||
-                         (opt_nm$convergence == 10L &&
-                          opt_bfgs$convergence == 0L && improvement_small)) {
-        0L
-      } else {
-        opt_nm$convergence
-      }
+      convergence <- .cue_convergence(opt_bfgs, opt_nm)
       cue_message <- if (convergence == 0L) {
         "relative convergence (4)"
       } else {
