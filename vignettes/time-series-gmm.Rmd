@@ -31,9 +31,9 @@ data(wagepan)
 
 ## HAC and AC standard errors
 
-The `phillips` dataset contains 49 annual U.S. observations (1948--1996) on inflation and unemployment. A simple expectations-augmented Phillips curve regresses the change in inflation on the unemployment rate. We pass the data frame as-is: `ivreg2()` drops incomplete cases per specification, exactly as Stata does, so each fit uses the largest estimation sample its own variables allow. Running `na.omit()` on the whole data frame first would also drop rows whose only missing values are in *unused* lag columns, silently changing the estimation sample.
+The `phillips` dataset contains `r nrow(phillips)` annual U.S. observations (`r min(phillips$year)`--`r max(phillips$year)`) on inflation and unemployment. A simple expectations-augmented Phillips curve regresses the change in inflation on the unemployment rate. We pass the data frame as-is: `ivreg2()` drops incomplete cases per specification, exactly as Stata does, so each fit uses the largest estimation sample its own variables allow. Running `na.omit()` on the whole data frame first would also drop rows whose only missing values are in *unused* lag columns, silently changing the estimation sample.
 
-Kernel-based inference is requested with `kernel`, `bw` (bandwidth), and `tvar` (the time variable). The type of variance estimator follows the `vcov` setting. With `vcov = "iid"` a kernel gives autocorrelation-consistent (AC) standard errors, which assume homoskedasticity but allow serial correlation. With `vcov = "robust"` the same kernel gives HAC standard errors, which allow both. This matches Stata's `ivreg2`, where `bw`/`kernel` alone produces AC and combining `robust` with a bandwidth produces HAC. The following three fits use the same Phillips curve and differ only in the variance estimator:
+Kernel-based inference is requested with `kernel`, `bw` (bandwidth), and `tvar` (the time variable). The type of variance estimator follows the `vcov` setting. With `vcov = "iid"` a kernel gives autocorrelation-consistent (AC) standard errors, which assume homoskedasticity but allow serial correlation. With `vcov = "robust"` the same kernel gives HAC standard errors, which allow both. This matches Stata's `ivreg2`, where `bw`/`kernel` alone produces AC and combining `robust` with a bandwidth produces HAC. The explicit values `vcov = "AC"` and `vcov = "HAC"` request the same two estimators by name, which is how the AC fit below is written. The following three fits use the same Phillips curve and differ only in the variance estimator:
 
 ```{r hac-compare}
 f_ph <- cinf ~ unem
@@ -84,11 +84,9 @@ fit_auto$bw
 Kernel-based standard errors work with every estimation method. Instrumenting unemployment with its own first three lags gives an overidentified model with two overidentifying restrictions:
 
 ```{r hac-iv}
-fit_iv_hac <- ivreg2(
-  cinf ~ 1 | unem | l(unem, 1) + l(unem, 2) + l(unem, 3),
-  data = phillips, tvar = "year",
-  vcov = "robust", kernel = "bartlett", bw = 3
-)
+f_ph_iv <- cinf ~ 1 | unem | l(unem, 1) + l(unem, 2) + l(unem, 3)
+fit_iv_hac <- ivreg2(f_ph_iv, data = phillips, tvar = "year",
+                     vcov = "robust", kernel = "bartlett", bw = 3)
 summary(fit_iv_hac)
 ```
 
@@ -140,13 +138,15 @@ fit_kiefer <- ivreg2(n ~ w + k, data = abdata, kiefer = TRUE,
 summary(fit_kiefer)
 ```
 
-The equivalence is exact. Modern Stata, like this package, rejects any bandwidth that does not fall strictly below the timespan, so the maximum usable lag is $T - 1 = `r length(unique(abdata$year)) - 1`$; the truncated kernel at `bw = 8` weights the same within-panel lags Kiefer does:
+The equivalence is exact. Modern Stata, like this package, rejects any bandwidth that does not fall strictly below the timespan, so the maximum usable lag is $T - 1 = `r length(unique(abdata$year)) - 1`$; the truncated kernel at that maximum bandwidth weights the same within-panel lags Kiefer does:
 
 ```{r kiefer-equiv}
-fit_tru8 <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated", bw = 8,
+bw_max <- length(unique(abdata$year)) - 1
+fit_tru8 <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated", bw = bw_max,
                    tvar = "year", ivar = "id")
-stopifnot(isTRUE(all.equal(vcov(fit_kiefer), vcov(fit_tru8))))
-all.equal(vcov(fit_kiefer), vcov(fit_tru8))
+eq <- all.equal(vcov(fit_kiefer), vcov(fit_tru8))
+stopifnot(isTRUE(eq))
+eq
 ```
 
 Use Kiefer when conditional homoskedasticity is plausible but arbitrary within-unit serial correlation is not; if heteroskedasticity is also a concern, use Driscoll-Kraay or cluster-plus-kernel instead. The heteroskedastic counterpart of that equivalence also holds: clustering on the unit with robust standard errors is the same as a robust truncated kernel at the maximum bandwidth, since both weight every within-unit lag equally:
@@ -154,10 +154,12 @@ Use Kiefer when conditional homoskedasticity is plausible but arbitrary within-u
 ```{r cluster-kernel-equiv}
 fit_cl_rob  <- ivreg2(n ~ w + k, data = abdata, clusters = ~ id,
                       vcov = "robust")
-fit_tru_rob <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated", bw = 8,
-                      vcov = "robust", tvar = "year", ivar = "id")
-stopifnot(isTRUE(all.equal(vcov(fit_cl_rob), vcov(fit_tru_rob))))
-all.equal(vcov(fit_cl_rob), vcov(fit_tru_rob))
+fit_tru_rob <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated",
+                      bw = bw_max, vcov = "robust",
+                      tvar = "year", ivar = "id")
+eq <- all.equal(vcov(fit_cl_rob), vcov(fit_tru_rob))
+stopifnot(isTRUE(eq))
+eq
 ```
 
 
@@ -177,8 +179,9 @@ The `dkraay` argument sets the bandwidth: here Bartlett with bandwidth 2, i.e. a
 fit_dk_ck <- ivreg2(invest ~ mvalue + kstock, data = grunfeld,
                     clusters = ~ year, kernel = "bartlett", bw = 2,
                     small = TRUE, tvar = "year", ivar = "company")
-stopifnot(isTRUE(all.equal(vcov(fit_dk), vcov(fit_dk_ck))))
-all.equal(vcov(fit_dk), vcov(fit_dk_ck))
+eq <- all.equal(vcov(fit_dk), vcov(fit_dk_ck))
+stopifnot(isTRUE(eq))
+eq
 ```
 
 Even $T = `r length(unique(grunfeld$year))`$ is not very large, so Driscoll-Kraay results on panels of this length should be read with caution.
@@ -235,26 +238,28 @@ We follow the worked example of Baum, Schaffer & Stillman (2007, p. 476): a quar
 ```{r sw-2sls}
 sw_formula <- dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1
 fit_sw_2sls <- ivreg2(sw_formula, data = stockwatson)
-tidy(fit_sw_2sls)[tidy(fit_sw_2sls)$term == "UR", ]
+tidy(fit_sw_2sls) |> filter(term == "UR")
 ```
 
 ```{r gmm2s}
 fit_gmm <- ivreg2(sw_formula, data = stockwatson, method = "gmm2s",
                   vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date")
+ur_gmm <- tidy(fit_gmm) |> filter(term == "UR")
 summary(fit_gmm)
 ```
 
-The first step estimates the model by 2SLS and forms the optimal weighting matrix from the residuals; the second step re-estimates with that weighting, and the Hansen (1982) J statistic tests the overidentifying restrictions. Following the published narrative, the i.i.d. 2SLS estimate of the unemployment coefficient is `r sprintf("%.3f", coef(fit_sw_2sls)["UR"])` and clearly significant, while the HAC-GMM estimate falls to `r sprintf("%.3f", coef(fit_gmm)["UR"])` (p = `r round(tidy(fit_gmm)$p.value[tidy(fit_gmm)$term == "UR"], 3)`): once the serial correlation is accounted for, the apparent significance disappears.
+The first step estimates the model by 2SLS and forms the optimal weighting matrix from the residuals; the second step re-estimates with that weighting, and the Hansen (1982) J statistic tests the overidentifying restrictions. Following the published narrative, the i.i.d. 2SLS estimate of the unemployment coefficient is `r sprintf("%.3f", coef(fit_sw_2sls)["UR"])` and clearly significant, while the HAC-GMM estimate falls to `r sprintf("%.3f", ur_gmm$estimate)` (p = `r round(ur_gmm$p.value, 3)`): once the serial correlation is accounted for, the apparent significance disappears.
 
 The continuously-updated estimator (CUE) completes the arc. CUE jointly optimizes the GMM objective over the parameter vector and the weighting matrix, and is the GMM generalization of LIML to non-i.i.d. errors. Continuing the same equation:
 
 ```{r cue}
 fit_cue <- ivreg2(sw_formula, data = stockwatson, method = "cue",
                   vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date")
+ur_cue <- tidy(fit_cue) |> filter(term == "UR")
 summary(fit_cue)
 ```
 
-The unemployment coefficient traces a clear path: 2SLS `r sprintf("%.3f", coef(fit_sw_2sls)["UR"])` (significant), HAC GMM `r sprintf("%.3f", coef(fit_gmm)["UR"])` (p = `r round(tidy(fit_gmm)$p.value[tidy(fit_gmm)$term == "UR"], 3)`), and CUE `r sprintf("%.3f", coef(fit_cue)["UR"])` (p = `r round(tidy(fit_cue)$p.value[tidy(fit_cue)$term == "UR"], 3)`), with the Hansen J at `r round(fit_cue$diagnostics$overid$stat, 3)` (p = `r round(fit_cue$diagnostics$overid$p, 3)`).
+CUE moves the coefficient further in the same direction, to `r sprintf("%.3f", ur_cue$estimate)` (p = `r round(ur_cue$p.value, 3)`), with the Hansen J at `r round(fit_cue$diagnostics$overid$stat, 3)` (p = `r round(fit_cue$diagnostics$overid$p, 3)`) leaving the overidentifying restrictions comfortably unrejected.
 
 Like LIML, CUE has no finite moments of any order regardless of the degree of overidentification, and its finite-sample distribution can have very heavy tails (Hansen, Heaton & Yaron 1996). Its objective can have multiple local optima, and Baum, Schaffer & Stillman (2007, p. 479) warn that CUE estimation can be slow and problematic when the number of parameters is substantial. `ivreg2r` uses BFGS optimization with Nelder-Mead refinement, starting from the 2SLS estimates under i.i.d. weighting and from the two-step GMM estimates under a robust, cluster, or kernel variance, matching Stata's documented behavior. On ill-conditioned models the objective can possess economically degenerate minima with negative R-squared, a documented property of CUE itself (Hausman, Lewis, Menzel & Newey 2011); when it does, both Stata and `ivreg2r` converge to the same degenerate solution, so inspect the J statistic and R-squared before trusting a CUE fit.
 
@@ -267,7 +272,7 @@ gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | med + kww + age + mrt
 fit_g_gmm <- ivreg2(gril_formula, data = griliches,
                     method = "gmm2s", vcov = "robust")
-tidy(fit_g_gmm)[tidy(fit_g_gmm)$term == "iq", ]
+tidy(fit_g_gmm) |> filter(term == "iq")
 ```
 
 Every fit stores the estimated moment-condition covariance as `fit$S` and the GMM weighting matrix as `fit$W`, matching Stata's `e(S)` and `e(W)`. This makes the help file's weighting-matrix reuse workflow direct. A robust 2SLS fit of the same equation computes the very moment covariance the two-step estimator uses in its second step, so passing that `S` back through `smatrix` reproduces the GMM fit exactly:
@@ -287,24 +292,25 @@ Supplying `wmatrix` instead sets the *first-step* weighting matrix rather than f
 
 ### Centering the moment conditions
 
-The `center` option subtracts the mean of the moment conditions before forming the variance and the covariance matrix `S` that feeds the diagnostics, which can improve the finite-sample behavior of the standard errors and the J test. No canonical example exists — the option postdates the help-file examples and both Baum-Schaffer-Stillman papers — so we show its effect directly on the Griliches GMM fit:
+The `center` option subtracts the mean of the moment conditions before forming the covariance matrix `S` that feeds the variance and the diagnostics, which can improve the finite-sample behavior of the standard errors and the J test. No canonical example exists — the option postdates the help-file examples and both Baum-Schaffer-Stillman papers — so we show its effect directly on the Griliches GMM fit:
 
 ```{r gril-center}
 fit_g_cen <- ivreg2(gril_formula, data = griliches,
                     method = "gmm2s", vcov = "robust", center = TRUE)
-c(J_uncentered  = fit_g_gmm$diagnostics$overid$stat,
-  J_centered    = fit_g_cen$diagnostics$overid$stat,
-  se_iq_uncent  = sqrt(diag(vcov(fit_g_gmm)))["iq"],
-  se_iq_cent    = sqrt(diag(vcov(fit_g_cen)))["iq"])
+c(max_coef_shift = max(abs(coef(fit_g_cen) - coef(fit_g_gmm))),
+  J_uncentered   = fit_g_gmm$diagnostics$overid$stat,
+  J_centered     = fit_g_cen$diagnostics$overid$stat,
+  se_iq_uncent   = sqrt(diag(vcov(fit_g_gmm)))["iq"],
+  se_iq_cent     = sqrt(diag(vcov(fit_g_cen)))["iq"])
 ```
 
-Centering leaves the coefficients unchanged. It shifts the J statistic — here from `r round(fit_g_gmm$diagnostics$overid$stat, 1)` to `r round(fit_g_cen$diagnostics$overid$stat, 1)` — and the standard errors, though on this fit the standard-error change is slight, because both quantities are built from the moment covariance that centering modifies.
+Because two-step GMM uses `S` as its second-step weighting matrix, centering changes the coefficients as well as the inference — here by at most `r signif(max(abs(coef(fit_g_cen) - coef(fit_g_gmm))), 2)` — and shifts the J statistic from `r round(fit_g_gmm$diagnostics$overid$stat, 1)` to `r round(fit_g_cen$diagnostics$overid$stat, 1)`, with a slight change in the standard errors. For estimators whose coefficients do not depend on `S`, such as 2SLS with a centered robust variance, only the standard errors and the J statistic move.
 
 ## Partialling out regressors
 
 The `partial` argument removes specified exogenous regressors from every variable — dependent, endogenous, and excluded instruments — by Frisch-Waugh-Lovell projection before estimation, which absorbs high-dimensional fixed effects without carrying them as reported coefficients. The coefficients on partialled-out variables are not reported, but the remaining coefficients are numerically identical to including those variables directly, for 2SLS, LIML, and two-step GMM (the identity does not extend to CUE or to iterated GMM beyond two steps).
 
-Partialling also has a substantive role that the Griliches wage equation illustrates. Clustering that equation on `year` gives only 7 clusters against 15 instruments, so the cluster-robust moment covariance is singular and the overidentification statistics cannot be computed. The warnings are the point, not a malfunction: they report exactly the rank deficiency that Baum, Schaffer & Stillman (2007, pp. 484--485) describe. Partialling out the year dummies leaves the reported coefficients unchanged but does not by itself repair the deficiency: the projection absorbs the year dummies and the constant from both the regressor and instrument sets, and the eight moment conditions that remain still exceed the seven clusters:
+Partialling also has a substantive role that the Griliches wage equation illustrates. Clustering that equation on `year` gives far fewer clusters than moment conditions, so the cluster-robust moment covariance is singular and the overidentification statistics cannot be computed. The warnings are the point, not a malfunction: they report exactly the rank deficiency that Baum, Schaffer & Stillman (2007, pp. 484--485) describe. Partialling out the year dummies leaves the reported coefficients unchanged but, as the counts after the fit show, does not by itself repair the deficiency:
 
 ```{r partial-fwl, warning = TRUE}
 gril_cl <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
@@ -316,7 +322,7 @@ shared <- c("s", "expr", "tenure", "rns", "smsa", "iq")
 all.equal(coef(fit_full)[shared], coef(fit_partial)[shared])
 ```
 
-The two fits agree on the shared coefficients to floating-point precision, confirming the projection identity even though both leave the Hansen J uncomputed. Two-step GMM is stricter: it must invert the moment covariance, so with more instruments than clusters it fails outright, reproducing Stata's `r(506)` error rather than proceeding with a singular weighting matrix:
+The two fits agree on the shared coefficients to floating-point precision, confirming the projection identity even though both leave the Hansen J uncomputed. The counts explain why partialling alone does not help: the full fit has `r ncol(fit_full$S)` moment conditions against `r fit_full$n_clusters` clusters, and the projection — which absorbs the year dummies and the constant from both the regressor and instrument sets — still leaves `r ncol(fit_partial$S)` moment conditions against the same `r fit_partial$n_clusters` clusters. Two-step GMM is stricter than 2SLS here: it must invert the moment covariance, so with more moment conditions than clusters it fails outright, reproducing Stata's `r(506)` error rather than proceeding with a singular weighting matrix:
 
 ```{r partial-gmm-fail, error = TRUE}
 ivreg2(gril_cl, data = griliches, clusters = ~ year,
@@ -337,7 +343,7 @@ The special tokens `"_cons"` (partial out the constant, equivalent to demeaning 
 
 ## PSD corrections
 
-Kernels outside the Bartlett/Parzen/Quadratic-Spectral family do not guarantee a positive semi-definite estimate of `S`, the covariance of the orthogonality conditions that feeds both the variance and the chi-squared diagnostics. When `S` has negative eigenvalues, `psd` applies an eigenvalue correction: `psd = "psd0"` sets negative eigenvalues to zero (Politis 2007), and `psd = "psda"` replaces them with their absolute values (Stock & Watson 2008, Remark 8). Driscoll-Kraay with its default Bartlett kernel is positive semi-definite by construction, but the truncated kernel carries no such guarantee. On `wagepan`, Driscoll-Kraay with a truncated kernel produces an indefinite `S` — a genuinely binding case. The rank-deficient `S` makes the Hansen J and Stock-Wright statistics uncomputable, so they are reported as `NA`, exactly as Stata leaves them blank:
+Kernels outside the Bartlett/Parzen/Quadratic-Spectral family do not guarantee a positive semi-definite estimate of `S`, the covariance of the orthogonality conditions that feeds both the variance and the chi-squared diagnostics. When `S` has negative eigenvalues, `psd` applies an eigenvalue correction: `psd = "psd0"` sets negative eigenvalues to zero (Politis 2007), and `psd = "psda"` replaces them with their absolute values (Stock & Watson 2008, Remark 8). Driscoll-Kraay with its default Bartlett kernel is positive semi-definite by construction, but the truncated kernel carries no such guarantee. On `wagepan`, Driscoll-Kraay with a truncated kernel produces an indefinite `S` — a genuinely binding case, and here `S` is also singular, so the Hansen J and Stock-Wright (2000) S statistics cannot be computed and are reported as `NA`, exactly as Stata leaves them blank:
 
 ```{r psd-binding, warning = TRUE}
 psd_formula <- lwage ~ exper + expersq + married + union | hours | educ + black
@@ -372,8 +378,7 @@ Two quantities are deliberately untouched, again matching Stata: the conventiona
 For simulation loops where the identification diagnostics are not needed, `noid = TRUE` suppresses the underidentification and weak-identification statistics (and the redundancy test), saving the rank computations they require:
 
 ```{r noid}
-fit_noid <- ivreg2(cinf ~ 1 | unem | l(unem, 1) + l(unem, 2) + l(unem, 3),
-                   data = phillips, tvar = "year", noid = TRUE)
+fit_noid <- ivreg2(f_ph_iv, data = phillips, tvar = "year", noid = TRUE)
 is.null(fit_noid$diagnostics$underid)
 ```
 
@@ -410,5 +415,6 @@ Several estimators coincide under specific conditions, which is useful for verif
 - Newey, W.K. and West, K.D. (1994). "Automatic Lag Selection in Covariance Matrix Estimation." *Review of Economic Studies*, 61(4), 631--653.
 - Politis, D.N. (2007). "Higher-Order Accurate, Positive Semi-Definite Estimation of Large-Sample Covariance and Spectral Density Matrices." Working paper, UC San Diego; published (2011) in *Econometric Theory*, 27(4), 703--744.
 - Stock, J.H. and Watson, M.W. (2008). "Heteroskedasticity-Robust Standard Errors for Fixed Effects Panel Data Regression." *Econometrica*, 76(1), 155--174.
+- Stock, J.H. and Wright, J.H. (2000). "GMM with Weak Identification." *Econometrica*, 68(5), 1055--1096.
 - Stock, J.H. and Yogo, M. (2005). "Testing for Weak Instruments in Linear IV Regression." In D.W.K. Andrews and J.H. Stock (Eds.), *Identification and Inference for Econometric Models: Essays in Honor of Thomas Rothenberg*. Cambridge University Press.
 - Thompson, S.B. (2011). "Simple Formulas for Standard Errors that Cluster by Both Firm and Time." *Journal of Financial Economics*, 99(1), 1--10.
