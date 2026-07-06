@@ -257,8 +257,13 @@ save_ivreg2_results, prefix(wp_psd) suffix(twoway_psd0) outdir(`outdir')
   HAC truncated kernel + psd0 probe (overidentified time series, phillips)
 ===========================================================================*/
 capture use "../validation/data/phillips.dta", clear
-if _rc {
-    use http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta, clear
+if _rc | _N == 0 {
+    capture use http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load phillips (no local cache, bc.edu fetch failed)."
+    exit 601
 }
 tsset year
 

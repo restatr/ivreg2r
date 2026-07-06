@@ -114,8 +114,13 @@ save_matrix_names, mat(S4) outfile("`outdir'/mroz_ols_inames.csv")
      deviation disclosed; the year-dummy variant lives in the vignettes)
 ===========================================================================*/
 capture use "../validation/data/griliches76.dta", clear
-if _rc {
-    use http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta, clear
+if _rc | _N == 0 {
+    capture use http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load griliches76 (no local cache, bc.edu fetch failed)."
+    exit 601
 }
 
 ivreg2 lw s expr tenure rns smsa (iq = med kww age mrt), gmm2s robust
@@ -129,8 +134,13 @@ save_matrix_names, mat(S5) outfile("`outdir'/griliches_inames.csv")
   6-7. Phillips: AC (help.txt:1501) and HAC (help.txt:1511), Bartlett bw 3
 ===========================================================================*/
 capture use "../validation/data/phillips.dta", clear
-if _rc {
-    use http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta, clear
+if _rc | _N == 0 {
+    capture use http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load phillips (no local cache, bc.edu fetch failed)."
+    exit 601
 }
 tsset year
 
@@ -151,8 +161,13 @@ save_matrix, mat(W7) outfile("`outdir'/phillips_eW_hac_bw3.csv")
   8. Stock-Watson: CUE, HAC Bartlett bw 5 (BSS 2007 SS4.3, p. 480)
 ===========================================================================*/
 capture use "../validation/data/macrodat.dta", clear
-if _rc {
-    use http://fmwww.bc.edu/ec-p/data/stockwatson/macrodat.dta, clear
+if _rc | _N == 0 {
+    capture use http://fmwww.bc.edu/ec-p/data/stockwatson/macrodat.dta, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load stockwatson (macrodat) (no local cache, bc.edu fetch failed)."
+    exit 601
 }
 * Construct the derived columns EXACTLY as pkg/data-raw/stockwatson.R does, in
 * double precision, so the Stata data is numerically coherent with the bundled
