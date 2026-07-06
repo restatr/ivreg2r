@@ -3,12 +3,7 @@
 # ============================================================================
 
 # --- Helper: load Card data ---
-card_path <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures", "card_data.csv"
-)
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+data(card)
 
 # ============================================================================
 # mtcars: basic OLS with intercept
@@ -147,14 +142,12 @@ test_that("no-intercept coefficients match lm()", {
 # ============================================================================
 
 test_that("Card data OLS coefficients match lm()", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ educ + exper + expersq + black + south, data = card)
   lm_fit <- lm(lwage ~ educ + exper + expersq + black + south, data = card)
   expect_equal(coef(fit), coef(lm_fit), tolerance = .Machine$double.eps^0.5)
 })
 
 test_that("Card data OLS vcov (small=TRUE) matches lm()", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ educ + exper + expersq + black + south,
                 data = card, small = TRUE)
   lm_fit <- lm(lwage ~ educ + exper + expersq + black + south, data = card)

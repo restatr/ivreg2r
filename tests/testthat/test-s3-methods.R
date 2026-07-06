@@ -3,12 +3,7 @@
 # ============================================================================
 
 # --- Helper: load Card data ---
-card_path <- file.path(
-  testthat::test_path(), "..", "stata-benchmarks", "fixtures", "card_data.csv"
-)
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+data(card)
 
 
 # ============================================================================
@@ -58,7 +53,6 @@ test_that("formula() returns the original formula", {
 })
 
 test_that("formula() forwards ... to formula.Formula (rhs subsetting)", {
-  skip_if_not(file.exists(card_path), "Card data not available")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card)
   # Full formula preserves multi-part structure

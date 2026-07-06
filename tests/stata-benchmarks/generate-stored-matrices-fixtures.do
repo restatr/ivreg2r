@@ -5,8 +5,7 @@
   (ticket F1). One block per canonical configuration; canonical base specs
   with a single option varying (fixture-design rule).
 
-  Data: CSV exports of the BUNDLED package datasets (written by R from the
-  .rda files), so Stata and R compute on byte-identical inputs. No bcuse.
+  Data: CSV exports of the BUNDLED package datasets (written by R from the .rda files), so Stata and R compute on byte-identical inputs, except mroz: mroz_data.csv was retired 2026-07-06, and mroz now loads from ../validation/data/mroz.dta, the cached file of record from which the bundled data(mroz) is built bit-identically. No bcuse (the mroz load sits after this file's program define blocks).
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -69,7 +68,12 @@ end
   1-3. Mroz: 2SLS iid / 2SLS robust / LIML (help.txt:1274 baseline)
        ivreg2 drops the 325 missing-lwage rows -> N = 428
 ===========================================================================*/
-import delimited "`outdir'/mroz_data.csv", clear case(preserve)
+capture use "../validation/data/mroz.dta", clear
+if _rc | _N == 0 {
+    display as error "Cannot load ../validation/data/mroz.dta (the cached source of record)."
+    display as error "Regenerate the cache by running the data-export chunk of validation/validate-helpfile.qmd (or: bcuse mroz, then save ../validation/data/mroz.dta)."
+    exit 601
+}
 
 ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6)
 matrix S1 = e(S)

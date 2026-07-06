@@ -1,29 +1,8 @@
 # ============================================================================
 # Tests: bundled datasets (klein, grunfeld, abdata, nlswork, cigar) -- coherence
 #
-# Checks dims/column names for each of the datasets bundled alongside
-# planning/25-data-provenance.md, and cross-checks klein/abdata against the
-# full-precision fixture data exports from the ts-operator fixture generator
-# (tsop_klein_data.csv / tsop_ab_data.csv, ticket F4) to prove the bundled
-# .rda and the fixture CSVs carry identical numbers. cigar's bit-identity
-# cross-check against its cached source-of-record .dta file (validation/data/
-# cigar.dta) runs at build time in data-raw/cigar.R instead of here: a test
-# gated on that git-ignored cache would SKIP on any checkout without it
-# (public repo, fresh clones), which violates the 0-skips rule.
+# Checks dims/column names for each of the datasets bundled alongside planning/25-data-provenance.md. The klein/abdata cross-checks against the ts-operator fixture CSVs (tsop_klein_data.csv / tsop_ab_data.csv, ticket F4) were retired 2026-07-06 along with those CSVs (data-CSV retirement): coherence is now structural, because the fixture generator loads the same ../validation/data/klein.dta and abdata.dta files from which pkg/data-raw builds the bundled .rda, following the M-14 precedent of doing source-of-record verification at build time in data-raw rather than in live tests. cigar's bit-identity cross-check against its cached source-of-record .dta file (validation/data/cigar.dta) runs at build time in data-raw/cigar.R for the same reason: a test gated on that git-ignored cache would SKIP on any checkout without it (public repo, fresh clones), which violates the 0-skips rule.
 # ============================================================================
-
-expect_matches_fixture_csv <- function(data, csv_name, label) {
-  path <- fixture_path(csv_name)
-  skip_if(!file.exists(path))
-  fx <- read.csv(path, na.strings = c("", "."))
-  shared <- intersect(names(data), names(fx))
-  expect_true(length(shared) > 0)
-  expect_equal(nrow(data), nrow(fx))
-  for (col in shared) {
-    expect_equal(data[[col]], fx[[col]], tolerance = 1e-12,
-                 info = paste(label, "column", col))
-  }
-}
 
 test_that("klein has the documented dimensions and column names", {
   data(klein)
@@ -68,14 +47,4 @@ test_that("cigar has the documented dimensions and column names", {
                         "ndi", "sales", "pimin"))
   expect_equal(length(unique(cigar$state)), 46L)
   expect_equal(length(unique(cigar$year)), 30L)
-})
-
-test_that("bundled klein matches the tsop_klein_data.csv fixture export", {
-  data(klein)
-  expect_matches_fixture_csv(klein, "tsop_klein_data.csv", "klein")
-})
-
-test_that("bundled abdata matches the tsop_ab_data.csv fixture export", {
-  data(abdata)
-  expect_matches_fixture_csv(abdata, "tsop_ab_data.csv", "abdata")
 })

@@ -3,10 +3,8 @@
 # ============================================================================
 
 # --- Data loading ---
-wp_sw_data_path <- fixture_path("wagepan_data.csv")
-if (file.exists(wp_sw_data_path)) {
-  wp_sw <- read.csv(wp_sw_data_path)
-}
+data(wagepan)
+wp_sw <- wagepan
 
 # Helper: check SW fixture against fitted model
 check_sw_fixture <- function(fit, prefix) {
@@ -129,7 +127,6 @@ check_sw_fixture <- function(fit, prefix) {
 # ============================================================================
 
 test_that("sw must be logical", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper | hours | educ, data = wp_sw, sw = "yes", ivar = "nr"),
     "must be TRUE or FALSE"
@@ -141,7 +138,6 @@ test_that("sw must be logical", {
 })
 
 test_that("sw requires ivar", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper | hours | educ, data = wp_sw, sw = TRUE),
     "requires panel data"
@@ -149,7 +145,6 @@ test_that("sw requires ivar", {
 })
 
 test_that("sw blocks clustering", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
            sw = TRUE, ivar = "nr", clusters = ~nr),
@@ -158,7 +153,6 @@ test_that("sw blocks clustering", {
 })
 
 test_that("sw blocks kernel", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
            sw = TRUE, ivar = "nr", kernel = "bartlett", bw = 3, tvar = "year"),
@@ -167,7 +161,6 @@ test_that("sw blocks kernel", {
 })
 
 test_that("sw blocks fweight", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   wp_sw$fw <- 1L
   expect_error(
     ivreg2(lwage ~ exper | hours | educ, data = wp_sw, weights = fw,
@@ -177,7 +170,6 @@ test_that("sw blocks fweight", {
 })
 
 test_that("sw blocks iweight", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper | hours | educ, data = wp_sw, weights = hours,
            sw = TRUE, ivar = "nr", weight_type = "iweight"),
@@ -186,7 +178,6 @@ test_that("sw blocks iweight", {
 })
 
 test_that("sw blocks kiefer", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
            sw = TRUE, ivar = "nr", kiefer = TRUE, tvar = "year"),
@@ -195,7 +186,6 @@ test_that("sw blocks kiefer", {
 })
 
 test_that("sw blocks dkraay", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
            sw = TRUE, ivar = "nr", dkraay = 3, tvar = "year"),
@@ -204,7 +194,6 @@ test_that("sw blocks dkraay", {
 })
 
 test_that("sw forces robust VCE", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
                 sw = TRUE, ivar = "nr")
   expect_equal(fit$vcov_type, "robust")
@@ -215,35 +204,30 @@ test_that("sw forces robust VCE", {
 # ============================================================================
 
 test_that("SW just-identified matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
                 sw = TRUE, ivar = "nr")
   check_sw_fixture(fit, "wp_sw_justid")
 })
 
 test_that("SW just-identified + small matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
                 sw = TRUE, ivar = "nr", small = TRUE)
   check_sw_fixture(fit, "wp_sw_justid_small")
 })
 
 test_that("SW overidentified matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr")
   check_sw_fixture(fit, "wp_sw_overid")
 })
 
 test_that("SW overidentified + small matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr", small = TRUE)
   check_sw_fixture(fit, "wp_sw_overid_small")
 })
 
 test_that("SW + aweight matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   wp_sw$aw <- wp_sw$hours + 10
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 weights = aw, sw = TRUE, ivar = "nr")
@@ -251,42 +235,36 @@ test_that("SW + aweight matches Stata", {
 })
 
 test_that("SW + LIML matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr", method = "liml")
   check_sw_fixture(fit, "wp_sw_liml")
 })
 
 test_that("SW + dofminus matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr", dofminus = 1L)
   check_sw_fixture(fit, "wp_sw_dofminus")
 })
 
 test_that("SW + endogeneity test matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr", endog = "hours")
   check_sw_fixture(fit, "wp_sw_endog")
 })
 
 test_that("SW + center matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr", center = TRUE)
   check_sw_fixture(fit, "wp_sw_center")
 })
 
 test_that("SW + gmm2s matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr", method = "gmm2s")
   check_sw_fixture(fit, "wp_sw_gmm2s")
 })
 
 test_that("SW + cue matches Stata", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr", method = "cue")
   check_sw_fixture(fit, "wp_sw_cue")
@@ -297,7 +275,6 @@ test_that("SW + cue matches Stata", {
 # ============================================================================
 
 test_that("SW + center + system RF produces symmetric system VCV", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                 sw = TRUE, ivar = "nr", center = TRUE,
                 reduced_form = "system")
@@ -312,7 +289,6 @@ test_that("SW + center + system RF produces symmetric system VCV", {
 })
 
 test_that("SW + center + system RF matches non-center up to centering effect", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit_c <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
                   sw = TRUE, ivar = "nr", center = TRUE,
                   reduced_form = "system")
@@ -330,14 +306,12 @@ test_that("SW + center + system RF matches non-center up to centering effect", {
 # ============================================================================
 
 test_that("sw is stored on the return object", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
                 sw = TRUE, ivar = "nr")
   expect_true(fit$sw)
 })
 
 test_that("glance includes sw column", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
                 sw = TRUE, ivar = "nr")
   g <- glance(fit)
@@ -346,7 +320,6 @@ test_that("glance includes sw column", {
 })
 
 test_that("summary shows SW VCV description", {
-  skip_if(!file.exists(wp_sw_data_path), "wagepan data not found")
   fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
                 sw = TRUE, ivar = "nr")
   out <- capture.output(summary(fit))

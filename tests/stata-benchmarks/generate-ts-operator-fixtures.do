@@ -208,24 +208,13 @@ save_ivreg2_results, prefix(tsop_phil) suffix(gmm2s_qs_orthog) outdir(`outdir')
 
 /*---------------------------------------------------------------------------
   Klein data (H72-H76): LIML-family estimators with L.profits / L.totinc
-  tsset yr. Estimation columns exported for the R tests (klein is not
-  bundled until Tranche 2).
+  tsset yr. klein is now bundled, and the R tests fit data(klein), built by pkg/data-raw from this same ../validation/data/klein.dta file, so the CSV export was retired 2026-07-06 (data-CSV retirement).
 ---------------------------------------------------------------------------*/
 capture use "../validation/data/klein.dta", clear
 if _rc {
     webuse klein, clear
 }
 tsset yr
-
-// Export estimation data for the R side. Full-precision export (%21.0g +
-// datafmt): the default ~8-digit export does not round-trip float storage,
-// which alone shifts the kclass(1.19) profits coefficient by 3e-6 relative
-// (the validation F2 lesson, planning/13-validation-findings.md).
-preserve
-keep yr consump profits wagetot govt taxnetx year wagegovt capital1 totinc
-format consump profits wagetot govt taxnetx year wagegovt capital1 totinc %21.0g
-export delimited using "`outdir'/tsop_klein_data.csv", replace datafmt
-restore
 
 // --- H72 (:1462): LIML ---
 ivreg2 consump L.profits (profits wagetot = govt taxnetx year ///
@@ -254,20 +243,13 @@ save_ivreg2_results, prefix(tsop_klein) suffix(kclass119) outdir(`outdir')
 
 /*---------------------------------------------------------------------------
   abdata (H88): panel differences as excluded instruments
-  tsset id year. Estimation columns exported for the R tests.
+  tsset id year. abdata is now bundled, and the R tests fit data(abdata), built by pkg/data-raw from this same ../validation/data/abdata.dta file, so the CSV export was retired 2026-07-06 (data-CSV retirement).
 ---------------------------------------------------------------------------*/
 capture use "../validation/data/abdata.dta", clear
 if _rc {
     use http://fmwww.bc.edu/ec-p/data/macro/abdata.dta, clear
 }
 tsset id year
-
-// Export estimation data for the R side (full precision; see klein note)
-preserve
-keep id year n w k ys
-format n w k ys %21.0g
-export delimited using "`outdir'/tsop_ab_data.csv", replace datafmt
-restore
 
 // --- H88 (:1541): two-step GMM, cluster(id), d. and d2. instruments ---
 ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), gmm2s cluster(id)

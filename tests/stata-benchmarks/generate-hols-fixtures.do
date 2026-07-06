@@ -14,8 +14,7 @@
 
   Probe blocks (logged, no fixtures): liml with (=z); saverf with (=z).
 
-  Data: mroz_data.csv — the same CSV the R tests read (753 rows incl.
-  missing lwage; ivreg2 drops those rows -> N = 428).
+  Data: loads from ../validation/data/mroz.dta, the cached file of record from which the bundled data(mroz) is built bit-identically (753 rows incl. missing lwage; ivreg2 drops those rows -> N = 428). mroz_data.csv was retired 2026-07-06.
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -185,9 +184,14 @@ program define save_s_names
 end
 
 /*===========================================================================
-  Load mroz (same CSV the R tests read)
+  Load mroz (cached source of record; also feeds the bundled data(mroz))
 ===========================================================================*/
-import delimited "`outdir'/mroz_data.csv", clear case(preserve)
+capture use "../validation/data/mroz.dta", clear
+if _rc | _N == 0 {
+    display as error "Cannot load ../validation/data/mroz.dta (the cached source of record)."
+    display as error "Regenerate the cache by running the data-export chunk of validation/validate-helpfile.qmd (or: bcuse mroz, then save ../validation/data/mroz.dta)."
+    exit 601
+}
 
 /*===========================================================================
   Canonical HOLS base: lwage exper expersq educ (=age kidslt6 kidsge6)

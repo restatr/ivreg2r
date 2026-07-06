@@ -641,7 +641,7 @@ test_that("small correction factor is method-uniform across the k-class family",
 # ============================================================================
 # 17. Klein LIML (iid) — extras beyond H72's coverage (reused tsop fixtures)
 # ============================================================================
-# H72 in test-ts-operators.R asserts coef/vcov/N/lambda/kclass/AR-lr against the same tsop fixtures but fits klein from tsop_klein_data.csv, whereas this test fits the bundled data(klein) (CSV/bundled coherence is pinned by test-bundled-data.R), so it asserts the full AR-overid set on the bundled-data fit plus the Sargan stat.
+# H72 in test-ts-operators.R asserts coef/vcov/N/lambda/kclass/AR-lr against the same tsop fixtures; both files now fit the bundled data(klein) (the tsop data CSVs and the test-bundled-data.R coherence tests were retired 2026-07-06, since coherence is now structural via the shared validation/data source), so this test asserts the full AR-overid set on the bundled-data fit plus the Sargan stat.
 
 test_that("Klein LIML (iid): Sargan and AR overid extras match Stata", {
   skip_if(!file.exists(fixture_path("tsop_klein_diagnostics_liml.csv")),

@@ -27,23 +27,14 @@ stata_z_order_overid <- c("nearc2", "nearc4", "exper", "expersq", "black",
 r_z_order_overid <- c("(Intercept)", "exper", "expersq", "black", "south",
                       "nearc2", "nearc4")
 
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
-
-mroz_path <- fixture_path("mroz_data.csv")
-have_mroz <- file.exists(mroz_path)
-if (have_mroz) {
-  mroz_fix <- read.csv(mroz_path)
-}
+data(card)
+data(mroz)
 
 # ============================================================================
 # 1. Dimnames and presence across estimation paths
 # ============================================================================
 
 test_that("S and W carry instrument dimnames for IV fits", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card)
   expect_identical(colnames(fit$S), colnames(fit$W))
@@ -60,7 +51,6 @@ test_that("OLS fit stores S and W named by the X columns", {
 })
 
 test_that("just-identified 2SLS stores S and W (no diagnostics omega path)", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card)
   expect_true(is.matrix(fit$S))
@@ -105,7 +95,6 @@ test_that("small = TRUE does not change S or W", {
 # ============================================================================
 
 test_that("aweight robust S equals the weighted score crossproduct / (N - dofminus)", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, weights = weight, vcov = "robust")
   cc <- card[stats::complete.cases(
@@ -129,7 +118,6 @@ test_that("aweight robust S equals the weighted score crossproduct / (N - dofmin
 # ============================================================================
 
 test_that("gmm2s: W %*% S = I and S is the step-1 omega", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "gmm2s", vcov = "robust")
   L <- ncol(fit$S)
@@ -142,7 +130,6 @@ test_that("gmm2s: W %*% S = I and S is the step-1 omega", {
 })
 
 test_that("CUE and b0: W is the inverse of the converged/evaluated S", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit_cue <- ivreg2(lwage ~ exper + expersq + black + south | educ |
                       nearc2 + nearc4,
                     data = card, method = "cue", vcov = "robust")
@@ -164,7 +151,6 @@ test_that("CUE and b0: W is the inverse of the converged/evaluated S", {
 # ============================================================================
 
 test_that("LIML, Fuller, and kclass store S but no W", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   for (args in list(list(method = "liml"),
                     list(fuller = 1),
@@ -176,7 +162,6 @@ test_that("LIML, Fuller, and kclass store S but no W", {
 })
 
 test_that("LIML iid S uses the k-class residuals (matches s_liml)", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ |
                   nearc2 + nearc4,
                 data = card, method = "liml")
@@ -197,7 +182,6 @@ test_that("LIML iid S uses the k-class residuals (matches s_liml)", {
 # ============================================================================
 
 test_that("refitting with smatrix = fit$S reproduces the gmm2s fit exactly", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   fit <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust")
   refit <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust",
@@ -213,7 +197,6 @@ test_that("refitting with smatrix = fit$S reproduces the gmm2s fit exactly", {
 # ============================================================================
 
 test_that("user smatrix is echoed as fit$S with dimnames; smatrix field unchanged", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   base <- ivreg2(f, data = card, vcov = "robust")
   S_user <- unname(base$S)               # strip names: echo must restore them
@@ -227,7 +210,6 @@ test_that("user smatrix is echoed as fit$S with dimnames; smatrix field unchange
 })
 
 test_that("user wmatrix is echoed as fit$W for gmmw and gmm2s+wmatrix", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   W_user <- diag(7)
   fit_w <- ivreg2(f, data = card, vcov = "robust", wmatrix = W_user)
@@ -243,7 +225,6 @@ test_that("user wmatrix is echoed as fit$W for gmmw and gmm2s+wmatrix", {
 })
 
 test_that("ignored wmatrix (iid, no gmm2s) leaves W on the 1-step formula", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   expect_warning(
     fit <- ivreg2(f, data = card, wmatrix = diag(7)),
@@ -259,7 +240,6 @@ test_that("ignored wmatrix (iid, no gmm2s) leaves W on the 1-step formula", {
 # ============================================================================
 
 test_that("noid does not change S or W", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   fit  <- ivreg2(f, data = card, vcov = "robust")
   fitn <- ivreg2(f, data = card, vcov = "robust", noid = TRUE)
@@ -277,7 +257,6 @@ test_that("noid does not change S or W", {
 test_that("robust 2SLS fit$S matches Stata e(S) [card_overid_smat_S_robust]", {
   fixture <- fixture_path("card_overid_smat_S_robust.csv")
   skip_if(!file.exists(fixture), "Fixture not found")
-  skip_if(!file.exists(card_path), "Card dataset not found")
   # Generated by: ivreg2 lwage exper expersq black south (educ=nearc2 nearc4),
   #               robust gmm2s   (generate-wmatrix-fixtures.do:219-221)
   S_stata <- load_stata_matrix(fixture, stata_z_order_overid, r_z_order_overid)
@@ -290,7 +269,6 @@ test_that("robust 2SLS fit$S matches Stata e(S) [card_overid_smat_S_robust]", {
 test_that("iid 2SLS fit$S matches Stata e(S) [card_overid_wmat_from_iid_W]", {
   fixture <- fixture_path("card_overid_wmat_from_iid_W.csv")
   skip_if(!file.exists(fixture), "Fixture not found")
-  skip_if(!file.exists(card_path), "Card dataset not found")
   # Despite the file name, this IS e(S) from an iid run:
   # ivreg2 lwage exper expersq black south (educ=nearc2 nearc4)
   # (generate-wmatrix-fixtures.do:267-269)
@@ -304,7 +282,6 @@ test_that("iid 2SLS fit$S matches Stata e(S) [card_overid_wmat_from_iid_W]", {
 test_that("cluster fit$S matches Stata e(S) [card_overid_smat_S_cluster]", {
   fixture <- fixture_path("card_overid_smat_S_cluster.csv")
   skip_if(!file.exists(fixture), "Fixture not found")
-  skip_if(!file.exists(card_path), "Card dataset not found")
   # Generated by: ivreg2 ..., cluster(age) gmm2s
   # (generate-wmatrix-fixtures.do:298-300)
   S_stata <- load_stata_matrix(fixture, stata_z_order_overid, r_z_order_overid)
@@ -339,9 +316,8 @@ sm_fixture_ready <- function(...) {
 
 test_that("mroz 2SLS iid fit$S/fit$W match Stata e(S)/e(W)", {
   skip_if(!sm_fixture_ready("mroz_iv_eS_iid.csv", "mroz_iv_eW_iid.csv",
-                            "mroz_iv_inames.csv", "mroz_data.csv"),
+                            "mroz_iv_inames.csv"),
           "Fixtures not found")
-  mroz <- read.csv(mroz_path)
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz)
   expect_sw_match(fit, "mroz_iv_eS_iid.csv", "mroz_iv_eW_iid.csv",
@@ -350,9 +326,8 @@ test_that("mroz 2SLS iid fit$S/fit$W match Stata e(S)/e(W)", {
 
 test_that("mroz 2SLS robust fit$S/fit$W match Stata e(S)/e(W)", {
   skip_if(!sm_fixture_ready("mroz_iv_eS_robust.csv", "mroz_iv_eW_robust.csv",
-                            "mroz_iv_inames.csv", "mroz_data.csv"),
+                            "mroz_iv_inames.csv"),
           "Fixtures not found")
-  mroz <- read.csv(mroz_path)
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz, vcov = "robust")
   expect_sw_match(fit, "mroz_iv_eS_robust.csv", "mroz_iv_eW_robust.csv",
@@ -360,10 +335,8 @@ test_that("mroz 2SLS robust fit$S/fit$W match Stata e(S)/e(W)", {
 })
 
 test_that("mroz LIML fit$S matches Stata e(S); Stata posts no e(W)", {
-  skip_if(!sm_fixture_ready("mroz_iv_eS_liml.csv", "mroz_iv_inames.csv",
-                            "mroz_data.csv"),
+  skip_if(!sm_fixture_ready("mroz_iv_eS_liml.csv", "mroz_iv_inames.csv"),
           "Fixtures not found")
-  mroz <- read.csv(mroz_path)
   fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                 data = mroz, method = "liml")
   expect_sw_match(fit, "mroz_iv_eS_liml.csv", NULL, "mroz_iv_inames.csv")
@@ -374,9 +347,8 @@ test_that("mroz LIML fit$S matches Stata e(S); Stata posts no e(W)", {
 test_that("mroz OLS robust fit$S/fit$W match Stata e(S)/e(W)", {
   skip_if(!sm_fixture_ready("mroz_ols_eS_robust.csv",
                             "mroz_ols_eW_robust.csv",
-                            "mroz_ols_inames.csv", "mroz_data.csv"),
+                            "mroz_ols_inames.csv"),
           "Fixtures not found")
-  mroz <- read.csv(mroz_path)
   # Stata's run drops missing-lwage rows; mirror the estimation sample
   fit <- ivreg2(lwage ~ exper + expersq, data = mroz, vcov = "robust")
   expect_sw_match(fit, "mroz_ols_eS_robust.csv", "mroz_ols_eW_robust.csv",
@@ -440,7 +412,6 @@ test_that("stockwatson CUE HAC fit$S/fit$W match Stata e(S)/e(W)", {
 # ============================================================================
 
 test_that("named smatrix in shuffled order is matched by name", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   base <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust")
   S <- base$S
@@ -456,7 +427,6 @@ test_that("named smatrix in shuffled order is matched by name", {
 })
 
 test_that("named wmatrix in shuffled order is matched by name", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   base <- ivreg2(f, data = card, vcov = "robust")
   inames <- colnames(base$S)
@@ -471,7 +441,6 @@ test_that("named wmatrix in shuffled order is matched by name", {
 })
 
 test_that("named user matrix with missing instrument names errors", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   S <- diag(7)
   bad <- c("(Intercept)", "exper", "expersq", "black", "south",
@@ -484,7 +453,6 @@ test_that("named user matrix with missing instrument names errors", {
 })
 
 test_that("mislabeled rows surface as a symmetry error after sorting", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   # Relabeling rows without moving the values makes the name-sorted matrix
   # genuinely asymmetric; like Stata (matsort, then issymmetric), the
   # symmetry check fires on the sorted matrix.
@@ -499,7 +467,6 @@ test_that("mislabeled rows surface as a symmetry error after sorting", {
 })
 
 test_that("independently ordered row/column names are matched per axis", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   # Stata's matsort selects each axis separately, so S[rev(nm), nm] --
   # not literally symmetric as stored -- is valid input; symmetry is
   # checked AFTER sorting (ivreg2.ado:4281-4292).
@@ -517,7 +484,6 @@ test_that("independently ordered row/column names are matched per axis", {
 })
 
 test_that("legacy fit$smatrix/fit$wmatrix echo the RAW user matrices", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   f <- lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4
   base <- ivreg2(f, data = card, method = "gmm2s", vcov = "robust")
   S <- base$S

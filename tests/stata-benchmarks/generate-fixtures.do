@@ -101,7 +101,7 @@ program define export_full_precision
     export delimited using "`using'", replace datafmt
 end
 
-export_full_precision using "`outdir'/card_data.csv"
+// card_data.csv retired 2026-07-06 (data-CSV retirement): R tests fit the bundled data(card).
 
 /*---------------------------------------------------------------------------
   Pre-load abdata (H88 panel) and save before defining the remaining

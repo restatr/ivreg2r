@@ -3,11 +3,7 @@
 # ============================================================================
 
 # --- Helpers ---
-card_path <- fixture_path("card_data.csv")
-
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+data(card)
 
 # Stata's instrument order for the Card overid model is:
 #   exper, expersq, black, south, _cons, nearc2, nearc4
@@ -49,7 +45,6 @@ load_stata_matrix <- function(path, stata_order, r_order) {
 # ============================================================================
 
 test_that("wmatrix rejects non-matrix input", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, vcov = "robust", wmatrix = 1:7),
@@ -58,7 +53,6 @@ test_that("wmatrix rejects non-matrix input", {
 })
 
 test_that("smatrix rejects non-matrix input", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, vcov = "robust", smatrix = "foo"),
@@ -67,7 +61,6 @@ test_that("smatrix rejects non-matrix input", {
 })
 
 test_that("wmatrix wrong dimensions", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, vcov = "robust", wmatrix = diag(3)),
@@ -76,7 +69,6 @@ test_that("wmatrix wrong dimensions", {
 })
 
 test_that("smatrix wrong dimensions", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, vcov = "robust", smatrix = diag(3)),
@@ -85,7 +77,6 @@ test_that("smatrix wrong dimensions", {
 })
 
 test_that("wmatrix non-symmetric", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   W <- diag(7)
   W[1, 2] <- 999
   expect_error(
@@ -96,7 +87,6 @@ test_that("wmatrix non-symmetric", {
 })
 
 test_that("smatrix non-symmetric", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   S <- diag(7)
   S[1, 2] <- 999
   expect_error(
@@ -107,7 +97,6 @@ test_that("smatrix non-symmetric", {
 })
 
 test_that("wmatrix + liml errors", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, method = "liml", wmatrix = diag(7)),
@@ -116,7 +105,6 @@ test_that("wmatrix + liml errors", {
 })
 
 test_that("smatrix + kclass errors", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, kclass = 0.5, smatrix = diag(7)),
@@ -125,7 +113,6 @@ test_that("smatrix + kclass errors", {
 })
 
 test_that("wmatrix + fuller errors", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, fuller = 1, wmatrix = diag(7)),
@@ -134,7 +121,6 @@ test_that("wmatrix + fuller errors", {
 })
 
 test_that("smatrix + fuller errors", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
            data = card, fuller = 1, smatrix = diag(7)),
@@ -143,7 +129,6 @@ test_that("smatrix + fuller errors", {
 })
 
 test_that("wmatrix requires IV model", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq, data = card, vcov = "robust",
            wmatrix = diag(3)),
@@ -152,7 +137,6 @@ test_that("wmatrix requires IV model", {
 })
 
 test_that("smatrix requires IV model", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq, data = card, vcov = "robust",
            smatrix = diag(3)),
@@ -161,7 +145,6 @@ test_that("smatrix requires IV model", {
 })
 
 test_that("wmatrix + IID warns and is ignored", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   # wmatrix without robust/cluster/HAC/gmm2s → warning, then 2SLS
   expect_warning(
     fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
@@ -177,21 +160,18 @@ test_that("wmatrix + IID warns and is ignored", {
 # ============================================================================
 
 test_that("wmatrix alone → method = 'gmmw'", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", wmatrix = diag(7))
   expect_equal(fit$method, "gmmw")
 })
 
 test_that("smatrix alone → method = 'gmm2s'", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", smatrix = diag(7))
   expect_equal(fit$method, "gmm2s")
 })
 
 test_that("wmatrix + gmm2s → method = 'gmm2s'", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", method = "gmm2s", wmatrix = diag(7))
   expect_equal(fit$method, "gmm2s")
@@ -203,7 +183,6 @@ test_that("wmatrix + gmm2s → method = 'gmm2s'", {
 # ============================================================================
 
 test_that("gmmw has correct estimation label", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", wmatrix = diag(7))
   out <- capture.output(print(fit))
@@ -211,7 +190,6 @@ test_that("gmmw has correct estimation label", {
 })
 
 test_that("smatrix has correct estimation label", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", smatrix = diag(7))
   out <- capture.output(print(fit))
@@ -219,7 +197,6 @@ test_that("smatrix has correct estimation label", {
 })
 
 test_that("wmatrix + gmm2s has correct estimation label", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", method = "gmm2s", wmatrix = diag(7))
   out <- capture.output(print(fit))
@@ -232,7 +209,6 @@ test_that("wmatrix + gmm2s has correct estimation label", {
 # ============================================================================
 
 test_that("smatrix(S_from_gmm2s) reproduces standard gmm2s", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   # Run standard GMM2S to get Omega
   fit_std <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                     data = card, vcov = "robust", method = "gmm2s", x = TRUE)
@@ -260,7 +236,6 @@ test_that("smatrix(S_from_gmm2s) reproduces standard gmm2s", {
 })
 
 test_that("just-identified: wmatrix + gmm2s equals standard gmm2s", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   # For just-identified, the first-step weighting matrix doesn't matter
   # (only one solution). So wmatrix(I) + gmm2s should match standard gmm2s.
   fit_std <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -287,7 +262,6 @@ test_that("just-identified: wmatrix + gmm2s equals standard gmm2s", {
 # Use stata_tol$stat (1e-4) for comparisons in wmatrix fixture tests.
 
 test_that("wmatrix identity robust: coefs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_ident_coef_robust.csv")
   skip_if(!file.exists(fixture_path), "wmatrix fixture not found")
 
@@ -312,7 +286,6 @@ test_that("wmatrix identity robust: coefs match Stata", {
 })
 
 test_that("wmatrix identity robust: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_ident_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path), "wmatrix diagnostics fixture not found")
 
@@ -335,7 +308,6 @@ test_that("wmatrix identity robust: diagnostics match Stata", {
 })
 
 test_that("wmatrix identity robust: VCV matches Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_ident_vcov_robust.csv")
   skip_if(!file.exists(fixture_path), "wmatrix VCV fixture not found")
 
@@ -361,7 +333,6 @@ test_that("wmatrix identity robust: VCV matches Stata", {
 # ============================================================================
 
 test_that("wmatrix identity robust small: coefs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_ident_coef_robust_small.csv")
   skip_if(!file.exists(fixture_path), "wmatrix robust_small fixture not found")
 
@@ -386,7 +357,6 @@ test_that("wmatrix identity robust small: coefs match Stata", {
 })
 
 test_that("wmatrix identity robust small: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_ident_diagnostics_robust_small.csv")
   skip_if(!file.exists(fixture_path), "wmatrix robust_small diagnostics fixture not found")
 
@@ -406,7 +376,6 @@ test_that("wmatrix identity robust small: diagnostics match Stata", {
 # ============================================================================
 
 test_that("smatrix robust: coefs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_smat_coef_robust.csv")
   s_path <- fixture_path("card_overid_smat_S_robust.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
@@ -436,7 +405,6 @@ test_that("smatrix robust: coefs match Stata", {
 })
 
 test_that("smatrix robust: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_smat_diagnostics_robust.csv")
   s_path <- fixture_path("card_overid_smat_S_robust.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
@@ -462,7 +430,6 @@ test_that("smatrix robust: diagnostics match Stata", {
 # ============================================================================
 
 test_that("wmatrix + gmm2s robust: coefs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_gmm2s_coef_robust.csv")
   skip_if(!file.exists(fixture_path), "wmat_gmm2s fixture not found")
 
@@ -487,7 +454,6 @@ test_that("wmatrix + gmm2s robust: coefs match Stata", {
 })
 
 test_that("wmatrix + gmm2s robust: diagnostics match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_gmm2s_diagnostics_robust.csv")
   skip_if(!file.exists(fixture_path), "wmat_gmm2s diagnostics fixture not found")
 
@@ -515,7 +481,6 @@ test_that("wmatrix from IID robust: runs without error", {
   # use different LAPACK implementations, so divergence at this condition
   # number is expected. We verify the code runs without error and produces
   # the correct method classification.
-  skip_if(!file.exists(card_path), "Card dataset not found")
   w_path <- fixture_path("card_overid_wmat_from_iid_W.csv")
   skip_if(!file.exists(w_path), "wmat_from_iid fixture not found")
 
@@ -533,7 +498,6 @@ test_that("wmatrix from IID robust: runs without error", {
 # ============================================================================
 
 test_that("smatrix just-identified robust: coefs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_justid_smat_coef_robust.csv")
   s_path <- fixture_path("card_justid_smat_S_robust.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
@@ -562,7 +526,6 @@ test_that("smatrix just-identified robust: coefs match Stata", {
 # ============================================================================
 
 test_that("wmatrix identity cluster: coefs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_ident_coef_cluster.csv")
   skip_if(!file.exists(fixture_path), "wmatrix cluster fixture not found")
 
@@ -592,7 +555,6 @@ test_that("wmatrix identity cluster: coefs match Stata", {
 # ============================================================================
 
 test_that("smatrix cluster: coefs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_smat_coef_cluster.csv")
   s_path <- fixture_path("card_overid_smat_S_cluster.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
@@ -626,7 +588,6 @@ test_that("smatrix cluster: coefs match Stata", {
 # ============================================================================
 
 test_that("wmatrix + smatrix robust: coefs match Stata", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fixture_path <- fixture_path("card_overid_wmat_smat_coef_robust.csv")
   s_path <- fixture_path("card_overid_wmat_smat_S_robust.csv")
   skip_if(!file.exists(fixture_path) || !file.exists(s_path),
@@ -661,7 +622,6 @@ test_that("wmatrix + smatrix robust: coefs match Stata", {
 # ============================================================================
 
 test_that("glance works for gmmw method", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", wmatrix = diag(7))
   g <- glance(fit)
@@ -671,7 +631,6 @@ test_that("glance works for gmmw method", {
 })
 
 test_that("tidy works for gmmw method", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, vcov = "robust", wmatrix = diag(7))
   t <- tidy(fit)
@@ -680,7 +639,6 @@ test_that("tidy works for gmmw method", {
 })
 
 test_that("wmatrix/smatrix stored in return object", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   W <- diag(7)
   S <- diag(7)
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,

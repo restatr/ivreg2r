@@ -12,8 +12,7 @@
   Each block also logs the minimum eigenvalue of e(S) ("MINEIG <label>:")
   so binding status is documented in the .log.
 
-  Data: the SAME CSVs the R tests read (wp_ck_data.csv, phillips_data.csv),
-  so Stata and R compute on byte-identical inputs. No bcuse.
+  Data: wagepan loads from ../validation/data/wagepan.dta, the cached file of record from which pkg/data-raw/wagepan.R builds the bundled data(wagepan) bit-identically, so Stata and the R tests still compute on identical inputs, now at full precision (wp_ck_data.csv was a truncated 8-digit export and was retired 2026-07-06; the wp_psd fixtures were regenerated from the full-precision cache at that retirement). phillips still imports from phillips_data.csv, which carries constructed lag columns and is owned by the M-27/M-43 families. No bcuse: the loads below sit after this file's program define blocks, and bcuse calls clear all.
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -193,7 +192,12 @@ end
   Overid model: lwage exper expersq married union (hours = educ black)
   Panel: nr (individual), year (time)
 ===========================================================================*/
-import delimited "`outdir'/wp_ck_data.csv", clear case(preserve)
+capture use "../validation/data/wagepan.dta", clear
+if _rc | _N == 0 {
+    display as error "Cannot load ../validation/data/wagepan.dta (the cached source of record)."
+    display as error "Regenerate the cache by running the data-export chunk of validation/validate-helpfile.qmd (or: bcuse wagepan, then save ../validation/data/wagepan.dta)."
+    exit 601
+}
 save "`outdir'/_wp_psd_temp.dta", replace
 
 // --- Baseline (no psd): document binding via min eigenvalue of e(S) ---

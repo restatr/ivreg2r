@@ -3,9 +3,7 @@
 # ============================================================================
 
 # --- Helper: standard IV fit on Card data ---
-card_path <- fixture_path("card_data.csv")
-skip_if_not(file.exists(card_path), "Card fixture not found")
-card <- read.csv(card_path)
+data(card)
 
 base_args <- list(
   formula = lwage ~ exper + expersq + black + south + smsa + smsa66 |

@@ -9,18 +9,8 @@
 # ============================================================================
 
 data(phillips)
-
-klein_path <- fixture_path("tsop_klein_data.csv")
-have_klein <- file.exists(klein_path)
-if (have_klein) {
-  klein <- read.csv(klein_path)
-}
-
-ab_path <- fixture_path("tsop_ab_data.csv")
-have_ab <- file.exists(ab_path)
-if (have_ab) {
-  abdata <- read.csv(ab_path)
-}
+data(klein)
+data(abdata)
 
 # ============================================================================
 # 1. Lag semantics (pure R)
@@ -443,7 +433,6 @@ test_that("H85: GMM2S + HAC QS + orthog(l1.unem) matches Stata", {
 # ============================================================================
 
 test_that("H72: Klein LIML matches Stata", {
-  skip_if(!have_klein, "klein fixture data not found")
   fit <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "liml")
   expect_coef_fixture(fit, "tsop_klein_coef_liml.csv")
   expect_vcov_fixture(fit, "tsop_klein_vcov_liml.csv")
@@ -456,7 +445,6 @@ test_that("H72: Klein LIML matches Stata", {
 })
 
 test_that("H73: Klein LIML + COVIV matches Stata", {
-  skip_if(!have_klein, "klein fixture data not found")
   fit <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "liml",
                 coviv = TRUE)
   expect_coef_fixture(fit, "tsop_klein_coef_liml_coviv.csv")
@@ -464,7 +452,6 @@ test_that("H73: Klein LIML + COVIV matches Stata", {
 })
 
 test_that("H74: Klein CUE equals Stata (and LIML, the help-file demo)", {
-  skip_if(!have_klein, "klein fixture data not found")
   fit_cue <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "cue")
   expect_coef_fixture(fit_cue, "tsop_klein_coef_cue.csv",
                       tol_coef = 1e-4, tol_se = 1e-4)
@@ -476,7 +463,6 @@ test_that("H74: Klein CUE equals Stata (and LIML, the help-file demo)", {
 })
 
 test_that("H75: Klein Fuller(1) matches Stata", {
-  skip_if(!have_klein, "klein fixture data not found")
   fit <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "liml",
                 fuller = 1)
   expect_coef_fixture(fit, "tsop_klein_coef_fuller1.csv")
@@ -486,7 +472,6 @@ test_that("H75: Klein Fuller(1) matches Stata", {
 })
 
 test_that("H76: Klein kclass(1.19) matches Stata", {
-  skip_if(!have_klein, "klein fixture data not found")
   fit <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "kclass",
                 kclass = 1.19)
   expect_coef_fixture(fit, "tsop_klein_coef_kclass119.csv")
@@ -499,7 +484,6 @@ test_that("H76: Klein kclass(1.19) matches Stata", {
 # ============================================================================
 
 test_that("H88: GMM2S + cluster(id) with d./d2. instruments matches Stata", {
-  skip_if(!have_ab, "abdata fixture data not found")
   fit <- ivreg2(n ~ 1 | w + k + ys |
                   d(w, 1) + d(k, 1) + d(ys, 1) +
                   d(w, 2) + d(k, 2) + d(ys, 2),
@@ -516,7 +500,6 @@ test_that("H88: GMM2S + cluster(id) with d./d2. instruments matches Stata", {
 })
 
 test_that("H88 sample: differences shrink the panel exactly as in Stata", {
-  skip_if(!have_ab, "abdata fixture data not found")
   # d2 needs two consecutive prior periods within the unit
   fit <- ivreg2(n ~ d(w, 2), data = abdata, tvar = "year", ivar = "id")
   ab_sorted <- abdata[order(abdata$id, abdata$year), ]

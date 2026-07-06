@@ -3,10 +3,8 @@
 # ============================================================================
 
 # --- Helpers and data ---
-wp_data_path <- fixture_path("wp_ck_data.csv")
-if (file.exists(wp_data_path)) {
-  wp <- read.csv(wp_data_path)
-}
+data(wagepan)
+wp <- wagepan
 
 # Helper: read VCV fixture (no term column — just v1, v2, ...)
 read_ck_vcov <- function(path) {
@@ -128,7 +126,6 @@ test_that("kiefer requires panel data (tvar + ivar)", {
 })
 
 test_that("kiefer is incompatible with robust VCE or clustering", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq | hours | educ, data = wp,
            kiefer = TRUE, vcov = "robust", tvar = "year", ivar = "nr"),
@@ -142,7 +139,6 @@ test_that("kiefer is incompatible with robust VCE or clustering", {
 })
 
 test_that("kiefer is incompatible with non-Truncated kernel", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq | hours | educ, data = wp,
            kiefer = TRUE, kernel = "Bartlett", tvar = "year", ivar = "nr"),
@@ -151,7 +147,6 @@ test_that("kiefer is incompatible with non-Truncated kernel", {
 })
 
 test_that("kiefer is incompatible with explicit bw", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq | hours | educ, data = wp,
            kiefer = TRUE, bw = 3, tvar = "year", ivar = "nr"),
@@ -160,7 +155,6 @@ test_that("kiefer is incompatible with explicit bw", {
 })
 
 test_that("dkraay must be positive numeric scalar", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq | hours | educ, data = wp,
            dkraay = -1, tvar = "year", ivar = "nr"),
@@ -181,7 +175,6 @@ test_that("dkraay requires panel data (tvar + ivar)", {
 })
 
 test_that("cannot specify both dkraay and bw", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq | hours | educ, data = wp,
            dkraay = 3, bw = 5, tvar = "year", ivar = "nr"),
@@ -190,7 +183,6 @@ test_that("cannot specify both dkraay and bw", {
 })
 
 test_that("cluster+kernel requires cluster vars to match ivar and tvar", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   wp$other <- rep(1:10, length.out = nrow(wp))
   expect_error(
     ivreg2(lwage ~ exper + expersq | hours | educ, data = wp,
@@ -201,7 +193,6 @@ test_that("cluster+kernel requires cluster vars to match ivar and tvar", {
 })
 
 test_that("one-way cluster+kernel requires clustering on tvar", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   expect_error(
     ivreg2(lwage ~ exper + expersq | hours | educ, data = wp,
            clusters = ~nr, kernel = "bartlett", bw = 3,
@@ -216,7 +207,6 @@ test_that("one-way cluster+kernel requires clustering on tvar", {
 # ============================================================================
 
 test_that("kiefer=TRUE is equivalent to AC+Truncated+fullBW", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
 
   fit_kiefer <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
@@ -251,7 +241,6 @@ test_that("kiefer=TRUE is equivalent to AC+Truncated+fullBW", {
 # ============================================================================
 
 test_that("dkraay=3 is equivalent to explicit cluster+kernel on tvar", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
 
   fit_dk <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
@@ -276,7 +265,6 @@ test_that("dkraay=3 is equivalent to explicit cluster+kernel on tvar", {
 # ============================================================================
 
 test_that("Kiefer overid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, kiefer = TRUE, tvar = "year", ivar = "nr"
@@ -285,7 +273,6 @@ test_that("Kiefer overid matches Stata", {
 })
 
 test_that("Kiefer overid small matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, kiefer = TRUE, small = TRUE, tvar = "year", ivar = "nr"
@@ -294,7 +281,6 @@ test_that("Kiefer overid small matches Stata", {
 })
 
 test_that("Kiefer justid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ,
     data = wp, kiefer = TRUE, tvar = "year", ivar = "nr"
@@ -308,7 +294,6 @@ test_that("Kiefer justid matches Stata", {
 # ============================================================================
 
 test_that("DK Bartlett bw=3 overid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, dkraay = 3, tvar = "year", ivar = "nr"
@@ -317,7 +302,6 @@ test_that("DK Bartlett bw=3 overid matches Stata", {
 })
 
 test_that("DK Bartlett bw=3 overid small matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, dkraay = 3, small = TRUE, tvar = "year", ivar = "nr"
@@ -326,7 +310,6 @@ test_that("DK Bartlett bw=3 overid small matches Stata", {
 })
 
 test_that("DK Parzen bw=4 overid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, dkraay = 4, kernel = "parzen", tvar = "year", ivar = "nr"
@@ -335,7 +318,6 @@ test_that("DK Parzen bw=4 overid matches Stata", {
 })
 
 test_that("DK Truncated bw=2 overid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   # DK with short panel → expected rank-deficient diagnostics
   fit <- muffle_rank_warnings(ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
@@ -345,7 +327,6 @@ test_that("DK Truncated bw=2 overid matches Stata", {
 })
 
 test_that("DK Bartlett bw=3 justid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ,
     data = wp, dkraay = 3, tvar = "year", ivar = "nr"
@@ -359,7 +340,6 @@ test_that("DK Bartlett bw=3 justid matches Stata", {
 # ============================================================================
 
 test_that("Thompson Bartlett bw=3 overid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, clusters = ~nr + year, kernel = "bartlett", bw = 3,
@@ -369,7 +349,6 @@ test_that("Thompson Bartlett bw=3 overid matches Stata", {
 })
 
 test_that("Thompson Bartlett bw=3 overid small matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, clusters = ~nr + year, kernel = "bartlett", bw = 3,
@@ -379,7 +358,6 @@ test_that("Thompson Bartlett bw=3 overid small matches Stata", {
 })
 
 test_that("Thompson Parzen bw=4 overid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   # Thompson two-way cluster → expected rank-deficient diagnostics
   fit <- muffle_rank_warnings(ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
@@ -390,7 +368,6 @@ test_that("Thompson Parzen bw=4 overid matches Stata", {
 })
 
 test_that("Thompson Bartlett bw=3 justid matches Stata", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ,
     data = wp, clusters = ~nr + year, kernel = "bartlett", bw = 3,
@@ -405,7 +382,6 @@ test_that("Thompson Bartlett bw=3 justid matches Stata", {
 # ============================================================================
 
 test_that("kiefer sets vcov_type to AC", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, kiefer = TRUE, tvar = "year", ivar = "nr"
@@ -415,7 +391,6 @@ test_that("kiefer sets vcov_type to AC", {
 })
 
 test_that("dkraay sets vcov_type to CL and stores dkraay", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, dkraay = 3, tvar = "year", ivar = "nr"
@@ -427,7 +402,6 @@ test_that("dkraay sets vcov_type to CL and stores dkraay", {
 })
 
 test_that("Thompson two-way sets vcov_type to CL", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, clusters = ~nr + year, kernel = "bartlett", bw = 3,
@@ -439,7 +413,6 @@ test_that("Thompson two-way sets vcov_type to CL", {
 })
 
 test_that("glance includes kiefer and dkraay columns", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wp, dkraay = 3, tvar = "year", ivar = "nr"
@@ -451,7 +424,6 @@ test_that("glance includes kiefer and dkraay columns", {
 })
 
 test_that("Thompson normalizes cluster order (ivar first)", {
-  skip_if(!file.exists(wp_data_path), "wagepan data not found")
 
   # Specify in reverse order: year + nr instead of nr + year
   fit <- ivreg2(

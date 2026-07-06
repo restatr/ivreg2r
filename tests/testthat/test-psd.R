@@ -3,11 +3,7 @@
 # ============================================================================
 
 # --- Helpers ---
-card_path <- fixture_path("card_data.csv")
-
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+data(card)
 
 # ============================================================================
 # Unit tests for .psd_correct()
@@ -133,7 +129,6 @@ test_that(".psd_correct ignores floating-point noise near zero", {
 # ============================================================================
 
 test_that("psd parameter validation works", {
-  skip_if_not(file.exists(card_path))
   expect_error(
     ivreg2(lwage ~ exper + expersq | educ | nearc4, data = card,
            vcov = "robust", psd = "invalid"),
@@ -142,7 +137,6 @@ test_that("psd parameter validation works", {
 })
 
 test_that("psd = NULL is the default and changes nothing", {
-  skip_if_not(file.exists(card_path))
   fit_default <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                          data = card, vcov = "robust")
   fit_null <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
@@ -154,7 +148,6 @@ test_that("psd = NULL is the default and changes nothing", {
 })
 
 test_that("psd is stored in the returned object", {
-  skip_if_not(file.exists(card_path))
   fit0 <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                   data = card, vcov = "robust", psd = "psd0")
   fita <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
@@ -164,7 +157,6 @@ test_that("psd is stored in the returned object", {
 })
 
 test_that("psd appears in glance() output", {
-  skip_if_not(file.exists(card_path))
   fit0 <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                   data = card, vcov = "robust", psd = "psd0")
   gl <- glance(fit0)
@@ -178,7 +170,6 @@ test_that("psd appears in glance() output", {
 })
 
 test_that("psd appears in summary footer", {
-  skip_if_not(file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                  data = card, vcov = "robust", psd = "psda")
   out <- capture.output(print(summary(fit)))
@@ -187,7 +178,6 @@ test_that("psd appears in summary footer", {
 })
 
 test_that("non-pathological model: psd has no effect (VCV already PSD)", {
-  skip_if_not(file.exists(card_path))
   # Card dataset with robust VCE: VCV should already be PSD
   fit_plain <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                        data = card, vcov = "robust")
@@ -208,7 +198,6 @@ test_that("non-pathological model: psd has no effect (VCV already PSD)", {
 })
 
 test_that("psd works with clustered VCE", {
-  skip_if_not(file.exists(card_path))
   # Should not error; for well-conditioned data, results are the same
   # M=2 clusters → expected rank-deficient diagnostics
   fit <- muffle_rank_warnings(
@@ -220,7 +209,6 @@ test_that("psd works with clustered VCE", {
 })
 
 test_that("psd works with iid VCE", {
-  skip_if_not(file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                  data = card, vcov = "iid", psd = "psda")
   expect_equal(fit$psd, "psda")
@@ -228,7 +216,6 @@ test_that("psd works with iid VCE", {
 })
 
 test_that("psd works with GMM2S", {
-  skip_if_not(file.exists(card_path))
   fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4 + nearc2,
                  data = card, method = "gmm2s", vcov = "robust", psd = "psd0")
   expect_equal(fit$psd, "psd0")
@@ -236,7 +223,6 @@ test_that("psd works with GMM2S", {
 })
 
 test_that("psd works with OLS model", {
-  skip_if_not(file.exists(card_path))
   # OLS with psd should not error (no-op for IID VCV)
   fit <- ivreg2(lwage ~ exper + expersq, data = card, psd = "psd0")
   expect_equal(fit$psd, "psd0")
@@ -253,10 +239,8 @@ test_that("psd works with OLS model", {
 # The binding configuration below (Driscoll-Kraay + truncated kernel on the
 # wagepan panel) produces an indefinite S, so the correction actually fires.
 
-wp_psd_path <- fixture_path("wp_ck_data.csv")
-if (file.exists(wp_psd_path)) {
-  wp_psd <- read.csv(wp_psd_path)
-}
+data(wagepan)
+wp_psd <- wagepan
 
 # Capture-all-warnings fitter. The binding DK config legitimately warns from
 # several distinct sites (one psd correction per corrected matrix, plus the
@@ -301,7 +285,6 @@ vcov_from_stored_s <- function(fit, small_factor = 1) {
 }
 
 test_that("binding case: psd correction fires at the S level", {
-  skip_if_not(file.exists(wp_psd_path))
 
   res_null <- dk_binding_fit(psd = NULL)
   res_psd0 <- dk_binding_fit(psd = "psd0")
@@ -329,7 +312,6 @@ test_that("binding case: psd correction fires at the S level", {
 })
 
 test_that("binding case: correction site is S, not the final VCV", {
-  skip_if_not(file.exists(wp_psd_path))
 
   res_null <- dk_binding_fit(psd = NULL)
   res_psd0 <- dk_binding_fit(psd = "psd0")
@@ -341,7 +323,6 @@ test_that("binding case: correction site is S, not the final VCV", {
 })
 
 test_that("plain-path VCV equals the sandwich rebuilt from fit$S", {
-  skip_if_not(file.exists(wp_psd_path))
 
   # Binding DK case (cluster family, small = FALSE: factor 1)
   res_psd0 <- dk_binding_fit(psd = "psd0")
@@ -365,7 +346,6 @@ test_that("plain-path VCV equals the sandwich rebuilt from fit$S", {
 })
 
 test_that("non-binding robust path: psd inert; VCV-from-S identity holds", {
-  skip_if_not(file.exists(card_path))
 
   fit_null <- ivreg2(lwage ~ exper + expersq | educ | nearc4 + nearc2,
                      data = card, vcov = "robust")
@@ -381,7 +361,6 @@ test_that("non-binding robust path: psd inert; VCV-from-S identity holds", {
 })
 
 test_that("Stock-Watson path: psd routes through the L x L SW omega", {
-  skip_if_not(file.exists(wp_psd_path))
 
   fit_sw <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + married + union | hours | educ + black,
@@ -393,7 +372,6 @@ test_that("Stock-Watson path: psd routes through the L x L SW omega", {
 })
 
 test_that("KP identification stats are never psd-corrected (ranktest parity)", {
-  skip_if_not(file.exists(wp_psd_path))
 
   # Stata's ranktest does not receive the psd option (ivreg2.ado:1639-1650),
   # so underid/weak-id statistics must be identical across psd settings even
@@ -413,7 +391,6 @@ test_that("KP identification stats are never psd-corrected (ranktest parity)", {
 })
 
 test_that("iid VCV is never psd-corrected (Stata m_omega parity)", {
-  skip_if_not(file.exists(card_path))
 
   fit_null <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                      data = card, vcov = "iid")
@@ -500,27 +477,23 @@ check_psd_fixture <- function(fit, suffix, prefix = "wp_psd",
 }
 
 test_that("binding DK + truncated psd0 matches Stata", {
-  skip_if_not(file.exists(wp_psd_path))
   res <- dk_binding_fit(psd = "psd0")
   expect_true(any(grepl("corrected via psd0", res$warnings)))
   check_psd_fixture(res$fit, "dk_tru2_psd0", skip_model_f = TRUE)
 })
 
 test_that("binding DK + truncated psda matches Stata", {
-  skip_if_not(file.exists(wp_psd_path))
   res <- dk_binding_fit(psd = "psda")
   expect_true(any(grepl("corrected via psda", res$warnings)))
   check_psd_fixture(res$fit, "dk_tru2_psda")
 })
 
 test_that("binding DK + truncated psd0 + small matches Stata", {
-  skip_if_not(file.exists(wp_psd_path))
   res <- dk_binding_fit(psd = "psd0", small = TRUE)
   check_psd_fixture(res$fit, "dk_tru2_psd0_small", skip_model_f = TRUE)
 })
 
 test_that("Stock-Watson + psda matches Stata", {
-  skip_if_not(file.exists(wp_psd_path))
   fit <- ivreg2(lwage ~ exper + expersq + married + union | hours |
                   educ + black,
                 data = wp_psd, sw = TRUE, ivar = "nr", psd = "psda")
@@ -528,7 +501,6 @@ test_that("Stock-Watson + psda matches Stata", {
 })
 
 test_that("two-way cluster + psd0 matches Stata", {
-  skip_if_not(file.exists(wp_psd_path))
   fit <- ivreg2(lwage ~ exper + expersq + married + union | hours |
                   educ + black,
                 data = wp_psd, clusters = ~nr + year, psd = "psd0")

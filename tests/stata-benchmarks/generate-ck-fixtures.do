@@ -150,13 +150,6 @@ end
 
 
 /*---------------------------------------------------------------------------
-  Export wagepan data as CSV (for R tests)
----------------------------------------------------------------------------*/
-use "`outdir'/_wp_temp.dta", clear
-export delimited using "`outdir'/wp_ck_data.csv", replace
-
-
-/*---------------------------------------------------------------------------
   Kiefer fixtures
   Kiefer = AC with kernel=truncated, bw=T (time span)
   Panel: nr (individual), year (time)

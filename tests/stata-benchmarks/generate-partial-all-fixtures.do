@@ -6,8 +6,7 @@
   noconstant models with no included exogenous regressors).
   Run in Stata with ivreg2 installed (ssc install ivreg2).
 
-  Data: mroz_data.csv — the same CSV the R tests read (753 rows incl.
-  missing lwage; ivreg2 drops those rows -> N = 428).
+  Data: loads from ../validation/data/mroz.dta, the cached file of record from which the bundled data(mroz) is built bit-identically (753 rows incl. missing lwage; ivreg2 drops those rows -> N = 428). mroz_data.csv was retired 2026-07-06.
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -162,7 +161,12 @@ end
 /*===========================================================================
   Load data
 ===========================================================================*/
-import delimited "`outdir'/mroz_data.csv", clear case(preserve)
+capture use "../validation/data/mroz.dta", clear
+if _rc | _N == 0 {
+    display as error "Cannot load ../validation/data/mroz.dta (the cached source of record)."
+    display as error "Regenerate the cache by running the data-export chunk of validation/validate-helpfile.qmd (or: bcuse mroz, then save ../validation/data/mroz.dta)."
+    exit 601
+}
 
 /*===========================================================================
   1. partial(_all) with K1 > 0 — F5 ticket repro, IID

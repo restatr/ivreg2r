@@ -399,10 +399,9 @@ test_that("IV overidentified dimensions", {
 # ==========================================================================
 # 10. Integration with Card data
 # ==========================================================================
+data(card)
+
 test_that("Card data: just-identified IV spec matches expected dimensions", {
-  card_path <- test_path("..", "stata-benchmarks", "fixtures", "card_data.csv")
-  skip_if(!file.exists(card_path), "card data not found")
-  card <- read.csv(card_path)
   result <- .parse_formula(
     lwage ~ exper + expersq + black + south | educ | nearc4,
     data = card
@@ -423,9 +422,6 @@ test_that("Card data: just-identified IV spec matches expected dimensions", {
 })
 
 test_that("Card data: OLS spec produces correct structure", {
-  card_path <- test_path("..", "stata-benchmarks", "fixtures", "card_data.csv")
-  skip_if(!file.exists(card_path), "card data not found")
-  card <- read.csv(card_path)
   result <- .parse_formula(
     lwage ~ exper + expersq + black + south + educ,
     data = card
@@ -437,9 +433,6 @@ test_that("Card data: OLS spec produces correct structure", {
 })
 
 test_that("Card data: overidentified IV spec", {
-  card_path <- test_path("..", "stata-benchmarks", "fixtures", "card_data.csv")
-  skip_if(!file.exists(card_path), "card data not found")
-  card <- read.csv(card_path)
   result <- .parse_formula(
     lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
     data = card
@@ -452,17 +445,11 @@ test_that("Card data: overidentified IV spec", {
 })
 
 test_that("Card data: response vector matches data column", {
-  card_path <- test_path("..", "stata-benchmarks", "fixtures", "card_data.csv")
-  skip_if(!file.exists(card_path), "card data not found")
-  card <- read.csv(card_path)
   result <- .parse_formula(lwage ~ educ + exper, data = card)
   expect_equal(as.numeric(result$y), card$lwage)
 })
 
 test_that("Card data: variable names in return match formula", {
-  card_path <- test_path("..", "stata-benchmarks", "fixtures", "card_data.csv")
-  skip_if(!file.exists(card_path), "card data not found")
-  card <- read.csv(card_path)
   result <- .parse_formula(
     lwage ~ exper + expersq + black + south | educ | nearc4,
     data = card
