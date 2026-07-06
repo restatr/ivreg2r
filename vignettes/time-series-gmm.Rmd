@@ -149,7 +149,7 @@ stopifnot(isTRUE(eq))
 eq
 ```
 
-Use Kiefer when conditional homoskedasticity is plausible but arbitrary within-unit serial correlation is not; if heteroskedasticity is also a concern, use Driscoll-Kraay or cluster-plus-kernel instead. The heteroskedastic counterpart of that equivalence also holds: clustering on the unit with robust standard errors is the same as a robust truncated kernel at the maximum bandwidth, since both weight every within-unit lag equally:
+Use Kiefer when conditional homoskedasticity is plausible but within-unit serial correlation of arbitrary form cannot be ruled out; if heteroskedasticity is also a concern, use Driscoll-Kraay or cluster-plus-kernel instead. The heteroskedastic counterpart of that equivalence also holds: clustering on the unit with robust standard errors is the same as a robust truncated kernel at the maximum bandwidth, since both weight every within-unit lag equally:
 
 ```{r cluster-kernel-equiv}
 fit_cl_rob  <- ivreg2(n ~ w + k, data = abdata, clusters = ~ id,
@@ -206,12 +206,13 @@ The gap warning is expected: the NLS interviews were not conducted every calenda
 For a within-transformed fixed-effects panel regression, Stock & Watson (2008) derive a bias-adjusted heteroskedasticity-robust variance that corrects the degrees-of-freedom bias of the usual cluster-robust estimator when $T$ is fixed and $N$ is large. Request it with `sw = TRUE` and an `ivar`. Because this regime is $N \to \infty$ with fixed $T$, a large-$N$, short-$T$ panel is the appropriate home; we use `wagepan` (`r length(unique(wagepan$nr))` men over `r length(unique(wagepan$year))` years):
 
 ```{r sw}
+# Upstream provenance: ivreg2.ado line 2222 labels sw "BETA VERSION"
 fit_sw <- ivreg2(lwage ~ exper + expersq + married + union,
                  data = wagepan, sw = TRUE, ivar = "nr", tvar = "year")
 summary(fit_sw)
 ```
 
-The `sw` option forces robust standard errors and is incompatible with clustering, kernels, Kiefer, and Driscoll-Kraay. It appears in neither the help file nor the Baum, Schaffer & Stillman papers and is labeled a beta feature in the Stata source; the correction itself is standard (Stock & Watson 2008). It is unrelated to the Sanderson-Windmeijer "SW" first-stage F statistic.
+The `sw` option forces robust standard errors and is incompatible with clustering, kernels, Kiefer, and Driscoll-Kraay. It appears in neither the help file nor the Baum, Schaffer & Stillman papers, and upstream `ivreg2` labels it a beta feature; the correction itself is standard (Stock & Watson 2008). It is unrelated to the Sanderson-Windmeijer "SW" first-stage F statistic.
 
 ### When to use which
 
@@ -275,7 +276,7 @@ fit_g_gmm <- ivreg2(gril_formula, data = griliches,
 tidy(fit_g_gmm) |> filter(term == "iq")
 ```
 
-Every fit stores the estimated moment-condition covariance as `fit$S` and the GMM weighting matrix as `fit$W`, matching Stata's `e(S)` and `e(W)`. This makes the help file's weighting-matrix reuse workflow direct. A robust 2SLS fit of the same equation computes the very moment covariance the two-step estimator uses in its second step, so passing that `S` back through `smatrix` reproduces the GMM fit exactly:
+Every fit stores the estimated moment-condition covariance as `fit$S`, and every fit with a defined weighting matrix — all but LIML and k-class, exactly as in Stata — stores it as `fit$W`, matching `e(S)` and `e(W)`. This makes the help file's weighting-matrix reuse workflow direct. A robust 2SLS fit of the same equation computes the very moment covariance the two-step estimator uses in its second step, so passing that `S` back through `smatrix` reproduces the GMM fit exactly:
 
 ```{r gril-reuse}
 fit_g_2sls <- ivreg2(gril_formula, data = griliches, vcov = "robust")

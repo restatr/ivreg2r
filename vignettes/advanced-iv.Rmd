@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-This vignette covers features of `ivreg2r` beyond the basic two-stage least squares workflow of `vignette("introduction")`: alternative estimators, the instrument-validity tests, weak-instrument-robust inference, two-way clustering, and the reduced form. It is organized around the example groups that Stata's `ivreg2` help file uses for the same material — a Mroz labor-supply equation that carries most of the testing arc, the Griliches wage equation for the orthogonality, weak-instrument, and redundancy material, and Klein's consumption function that separates the estimators — and adds a two-way clustered IV example on a cigarette-demand panel.
+This vignette covers features of `ivreg2r` beyond the basic two-stage least squares workflow of `vignette("introduction")`: alternative estimators, the instrument-validity tests, weak-instrument-robust inference, two-way clustering, and the reduced form. It is organized around the canonical example groups — a Mroz labor-supply equation that carries most of the help file's testing arc, the Griliches wage equation for the help file's orthogonality example and for Baum, Schaffer & Stillman's (2007) weak-instrument and redundancy illustrations, and Klein's consumption function that separates the estimators — and adds a two-way clustered IV example on a cigarette-demand panel.
 
 The topics are:
 
@@ -495,7 +495,7 @@ modelsummary(klein_models, output = "markdown",
 
 ### Exponentiated coefficients
 
-For log-linear models, `exponentiate = TRUE` reports multiplicative effects (`exp(beta)`). `modelsummary` transforms the standard errors to the exponentiated scale by the delta method, so the displayed standard error is `exp(beta) * se(beta)` and the table is internally consistent on the multiplicative scale:
+For log-linear models, `exponentiate = TRUE` reports multiplicative effects (`exp(beta)`). `modelsummary` transforms the standard errors to the exponentiated scale by the delta method, so the displayed standard error is `exp(beta) * se(beta)` and the table is internally consistent on the multiplicative scale. This transformation is `modelsummary`'s own: the package's `tidy(fit, exponentiate = TRUE)` follows the broom convention of exponentiating estimates and confidence bounds while leaving `std.error` on the log scale.
 
 ```{r ms-exponentiate, eval = requireNamespace("modelsummary", quietly = TRUE)}
 modelsummary(fit_2sls, output = "markdown", exponentiate = TRUE)
