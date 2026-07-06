@@ -16,54 +16,38 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-This vignette covers advanced features of `ivreg2r` beyond the basic 2SLS
-workflow introduced in `vignette("introduction")`. Topics include:
+This vignette covers features of `ivreg2r` beyond the basic two-stage least squares workflow of `vignette("introduction")`: alternative estimators, the instrument-validity tests, weak-instrument-robust inference, two-way clustering, and the reduced form. It is organized around the two example groups that Stata's `ivreg2` help file uses for the same material — a Mroz labor-supply equation that carries the testing arc, and Klein's consumption function that separates the estimators — and adds a two-way clustered IV example on a cigarette-demand panel.
 
-- LIML, Fuller, and k-class estimation
-- Instrument validity tests (orthogonality C-statistic)
-- Weak-instrument-robust inference (Stock-Wright S statistic)
-- Two-way clustering
-- Reduced-form regression
-- Weight types (overview)
-- Degrees-of-freedom adjustments
-- Factor variables
+The topics are:
 
-For HAC/AC standard errors, GMM, CUE, Kiefer, Driscoll-Kraay, partialling,
-and user-supplied matrices, see `vignette("time-series-gmm")`.
+- LIML, Fuller, and k-class estimation, including the canonical Klein consumption function
+- Instrument-validity tests: overidentification, the orthogonality C-statistic, endogeneity, and redundancy
+- Weak-instrument-robust inference (the Anderson-Rubin and Stock-Wright statistics)
+- Two-way clustering, including with instrumental variables
+- Reduced-form regression and degrees-of-freedom adjustments
 
-We use three datasets: the Mroz (1987) female labor supply data, the
-Griliches (1976) young men's wage data, and the NLS Young Women panel
-(`nlswork`, the extract distributed with Stata's `[XT]` manual).
+For HAC and AC standard errors, the `l()`/`d()` time-series operators, GMM and the continuously-updated estimator, the panel variance estimators (Kiefer, Driscoll-Kraay, and cluster-plus-kernel), partialling out regressors, and user-supplied weighting matrices, see `vignette("time-series-gmm")`. The four weight types are documented in `vignette("introduction")` and in `?ivreg2`.
+
+Five bundled datasets appear below: the Mroz (1987) female labor-supply data (`mroz`), Klein's (1950) Model I macroeconomic series (`klein`), the Griliches (1976) young-men's wage data (`griliches`), the NLS young-women panel (`nlswork`, distributed with Stata's `[XT]` manual), and the Baltagi cigarette-demand panel (`cigar`).
 
 ```{r setup}
 library(ivreg2r)
 data(mroz)
+data(klein)
 data(griliches)
 data(nlswork)
 ```
 
-## The Mroz dataset
+## The Mroz baseline
 
-The Mroz (1987) dataset contains 753 married white women from the 1975 Panel
-Study of Income Dynamics (PSID). Of these, 428 were working (`inlf == 1`) and
-have observed wages. This is a classic IV application: years of education
-(`educ`) is potentially endogenous in a wage equation due to ability bias.
-Following the illustrative specification used throughout Stata's `ivreg2`
-help file and in Baum, Schaffer & Stillman (2007, pp. 471--472), the excluded
-instruments are `age` and the numbers of children at home --- under 6
-(`kidslt6`) and 6--18 (`kidsge6`). These exclusion restrictions are
-illustrative and contestable (children plausibly affect wage offers through
-labor-supply channels); the help file uses the specification precisely
-because it makes the instrument-testing machinery interesting.
+The Mroz (1987) dataset contains `r nrow(mroz)` married women from the 1975 Panel Study of Income Dynamics, of whom `r sum(mroz$inlf == 1)` were working (`inlf == 1`) and have observed wages. Years of education (`educ`) is potentially endogenous in a wage equation because of ability bias. Following the illustrative specification used throughout Stata's `ivreg2` help file and in Baum, Schaffer & Stillman (2007, pp. 471--472), the excluded instruments are `age` and the numbers of children at home under 6 (`kidslt6`) and 6--18 (`kidsge6`). These exclusion restrictions are illustrative and contestable — children plausibly affect wage offers through labor-supply channels — and the help file adopts them precisely because they make the instrument-testing machinery interesting.
 
 ```{r mroz-subset}
 mroz_work <- subset(mroz, inlf == 1)
 nrow(mroz_work)
 ```
 
-Our baseline specification regresses log wages on experience and its square
-(exogenous), with education instrumented by `age`, `kidslt6` (children under
-6), and `kidsge6` (children 6-18):
+The baseline regresses log wages on experience and its square, with education instrumented by the three excluded instruments. Three excluded instruments for one endogenous regressor leave two overidentifying restrictions, which is what makes the model useful for comparing estimators and testing instruments:
 
 ```{r mroz-baseline}
 fit_2sls <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
@@ -71,24 +55,11 @@ fit_2sls <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
 summary(fit_2sls)
 ```
 
-This overidentified model (3 excluded instruments for 1 endogenous regressor,
-hence 2 overidentifying restrictions) provides a foundation for comparing
-estimators and exploring instrument diagnostics.
-
-## LIML and Fuller estimation
+## LIML, Fuller, and k-class estimation
 
 ### LIML
 
-Limited Information Maximum Likelihood (LIML) is an alternative to 2SLS that
-is more robust to weak instruments. Unlike 2SLS, LIML is approximately
-median-unbiased and its Wald test suffers less size distortion when instruments
-are weak (Stock & Yogo, 2005). However, LIML has no finite moments of any
-order, regardless of the degree of overidentification (Mariano & Sawa, 1972),
-so individual LIML estimates can be extreme in small samples; Fuller's
-modification (below) restores finite moments. (It is 2SLS whose moments
-depend on the degree of overidentification: the 2SLS estimator has moments
-up to the number of overidentifying restrictions; Baum, Schaffer & Stillman,
-2007, p. 490, fn. 19.) Use `method = "liml"`:
+Limited-information maximum likelihood (LIML) is an alternative to 2SLS that behaves better under weak instruments: it is approximately median-unbiased and its Wald test suffers less size distortion (Stock & Yogo, 2005). LIML has no finite moments of any order, whatever the degree of overidentification (Mariano & Sawa, 1972), so individual LIML estimates can be extreme in small samples; Fuller's modification, introduced below, restores finite moments. Request it with `method = "liml"`:
 
 ```{r liml}
 fit_liml <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
@@ -96,24 +67,11 @@ fit_liml <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
 summary(fit_liml)
 ```
 
-The output reports `lambda`, the LIML eigenvalue. When `lambda` is close to 1,
-LIML and 2SLS give similar results (2SLS is the special case `k = 1`). A
-`lambda` far above 1 is evidence *against the overidentifying restrictions*,
-not of weak instruments: `N * log(lambda)` is the Anderson-Rubin (1950)
-overidentification LR statistic (see the Anderson-Rubin LIML
-overidentification section below), so judge "how far above 1" by the reported
-AR statistic and its p-value rather than by eye --- under weak but valid
-instruments `lambda` stays near 1. Weak identification is diagnosed by the
-Cragg-Donald and Kleibergen-Paap statistics, not by `lambda`.
+The output reports `lambda`, the LIML eigenvalue. When `lambda` is close to 1, LIML and 2SLS give similar results, since 2SLS is the k-class member with `k = 1`. A `lambda` far above 1 is evidence against the overidentifying restrictions, not of weak instruments: `N * log(lambda)` is the Anderson-Rubin (1950) overidentification LR statistic reported in the Anderson-Rubin section below, so judge how far above 1 is far by that statistic rather than by eye. Under weak but valid instruments `lambda` stays near 1, and weak identification is diagnosed by the Cragg-Donald and Kleibergen-Paap statistics instead. Here `lambda` is `r round(fit_liml$lambda, 4)`, so LIML barely moves the education coefficient away from 2SLS.
 
 ### Fuller modification
 
-Fuller's (1977) modified LIML uses `k = lambda - alpha / (N - L)` where `L`
-is the number of instruments (including exogenous regressors) and `alpha` is
-the Fuller parameter. Unlike LIML, Fuller's estimator has finite moments.
-The standard choice is `fuller = 1`, suggested as a good choice by Fuller
-(1977) and Davidson & MacKinnon (1993, pp. 649--650), as cited by Baum,
-Schaffer & Stillman (2007, p. 479):
+Fuller's (1977) modified LIML uses `k = lambda - alpha / (N - L)`, where `L` is the number of instruments including the exogenous regressors and `alpha` is the Fuller parameter. Unlike LIML, the Fuller estimator has finite moments. The standard choice `fuller = 1` is recommended by Fuller (1977) and by Davidson & MacKinnon (1993, pp. 649--650), as cited in Baum, Schaffer & Stillman (2007, p. 479):
 
 ```{r fuller}
 fit_fuller1 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
@@ -123,14 +81,7 @@ c(k = fit_fuller1$kclass_value, educ = unname(coef(fit_fuller1)["educ"]))
 
 ### k-class estimation
 
-The k-class family nests OLS (`k = 0`), 2SLS (`k = 1`), and LIML
-(`k = lambda`) as special cases. The `kclass` parameter accepts an arbitrary
-`k`, but the documented non-trivial choice is Nagar's (1959) bias-adjusted
-estimator with `k = 1 + (L - K) / N`, where `L - K` is the number of
-overidentifying restrictions. Rather than hand-counting L and K, derive them
-from the fitted baseline model --- `rankzz` is the rank of the full
-instrument matrix (constant + 2 exogenous + 3 excluded = 6) and `rank` is the
-number of estimated coefficients (constant + 2 exogenous + 1 endogenous = 4):
+The k-class family nests OLS (`k = 0`), 2SLS (`k = 1`), and LIML (`k = lambda`). The `kclass` argument accepts an arbitrary `k`; the documented non-trivial choice is Nagar's (1959) bias-adjusted estimator with `k = 1 + (L - K) / N`, where `L - K` is the number of overidentifying restrictions. Rather than hand-counting `L` and `K`, derive them from the fitted baseline — `rankzz` is the rank of the full instrument matrix and `rank` is the number of estimated coefficients:
 
 ```{r kclass}
 N <- nobs(fit_2sls)
@@ -142,117 +93,80 @@ fit_nagar <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
 c(L = L, K = K, k = k_nagar, educ = unname(coef(fit_nagar)["educ"]))
 ```
 
-Research suggests that both Fuller's and Nagar's estimators have better
-finite-sample performance than 2SLS in the presence of weak instruments,
-although neither estimator is robust to violations of the i.i.d. assumption
-(Baum, Schaffer & Stillman, 2007, pp. 478--479).
-
-### When to use LIML
-
-LIML is worth considering when the weak-identification diagnostics look
-marginal: it has lower Stock-Yogo thresholds than 2SLS, meaning it tolerates
-weaker instruments before inference becomes unreliable. Two qualifications
-temper this into a recommendation rather than a rule. First, the Stock-Yogo
-critical values are tabulated for the Cragg-Donald statistic under i.i.d.
-errors; under a robust VCE they can be applied to the Kleibergen-Paap rk Wald
-F only "with caution", or replaced by the Staiger-Stock F >= 10 rule of thumb
-(Baum, Schaffer & Stillman, 2007, p. 490). Second, the ranking of LIML over
-2SLS under weak instruments is itself established within the i.i.d.
-Stock-Yogo framework (Baum, Schaffer & Stillman, 2007, pp. 489--490).
-Switching estimators *because* a pretest flagged weakness also has the usual
-pre-testing consequences for subsequent inference. When exactly identified
-(one excluded instrument per endogenous variable), LIML and 2SLS are
-numerically identical --- LIML's advantages only appear in the
-overidentified case.
+Both the Fuller and Nagar estimators tend to have better finite-sample behavior than 2SLS under weak instruments, though neither is robust to violations of the i.i.d. assumption (Baum, Schaffer & Stillman, 2007, pp. 478--479).
 
 ### COVIV
 
-When using LIML or k-class with robust or cluster-robust standard errors, the
-default sandwich bread uses the k-class projection matrix. The COVIV option
-(`coviv = TRUE`) computes the covariance matrix using the 2SLS projection
-(`k = 1`) rather than the LIML/k-class projection. Under iid errors, LIML with
-COVIV is equivalent to CUE (see Estimator Equivalences below). With robust or
-cluster-robust VCE, COVIV changes the bread matrix but uses the same LIML
-residuals for the meat:
+With LIML or k-class under robust or cluster-robust standard errors, the sandwich bread uses the k-class projection matrix by default. Setting `coviv = TRUE` computes the covariance from the 2SLS projection (`k = 1`) instead, keeping the LIML residuals in the meat. Under i.i.d. errors, LIML with COVIV coincides with the continuously-updated estimator — the demonstration appears in the Klein suite below:
 
 ```{r coviv}
 fit_coviv <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     data = mroz_work, method = "liml", vcov = "robust",
                     small = TRUE, coviv = TRUE)
-tidy(fit_coviv)[tidy(fit_coviv)$term == "educ", ]
+subset(tidy(fit_coviv), term == "educ", c(term, estimate, std.error))
 ```
 
-### Comparing estimators
+### Choosing among the estimators
 
-Use `tidy()` to build a comparison table across estimators:
+The case for LIML and its relatives is a many-instruments argument. Two-stage least squares is biased toward OLS, and that bias grows with the number of overidentifying restrictions relative to the strength of the instruments; LIML removes its leading term, which is why LIML tolerates weaker instruments before its Wald test becomes unreliable (Stock & Yogo, 2005). When the model is just-identified the argument is moot: with one excluded instrument per endogenous regressor, LIML, Fuller, and 2SLS coincide numerically, and the advantage is entirely a feature of overidentified models. Under genuinely weak instruments LIML's lack of finite moments cuts the other way, since individual estimates can be far from the truth even while the estimator stays median-unbiased, and this is the motivation for Fuller's finite-moment modification. The ranking of LIML over 2SLS is itself established within the i.i.d. Stock-Yogo framework (Baum, Schaffer & Stillman, 2007, pp. 489--490), and switching estimator because a pretest flagged weak instruments carries the usual consequences of pre-testing for the inference that follows.
 
-```{r compare-estimators}
-models <- list(
-  "2SLS"      = fit_2sls,
-  "LIML"      = fit_liml,
-  "Fuller(1)" = fit_fuller1,
-  "Nagar"     = fit_nagar
-)
-comparison <- do.call(rbind, lapply(names(models), function(nm) {
-  tbl <- tidy(models[[nm]])
-  tbl$model <- nm
-  tbl
-}))
-# Show education coefficient across estimators
-comparison[comparison$term == "educ", c("model", "estimate", "std.error")]
+On the Mroz baseline these distinctions barely register, because `lambda` is essentially 1 and all four estimators return nearly the same education coefficient. To see the estimators genuinely diverge we need a small, heavily overidentified problem, which is exactly what the help file's Klein example provides.
+
+### The Klein consumption function
+
+Klein's (1950) Model I consumption function regresses consumption on lagged profits and treats current profits and the total wage bill as endogenous, with six excluded instruments: government spending, indirect taxes plus net exports, a linear trend, the government wage bill, lagged capital, and lagged total income. This is the canonical LIML example from Stata's `ivreg2` help file. Two of the terms are lags built on the fly with the `l()` time-series operator against the year variable `yr`; the operator is documented in `vignette("time-series-gmm")`.
+
+```{r klein-formula}
+klein_form <- consump ~ l(profits, 1) | profits + wagetot |
+  govt + taxnetx + year + wagegovt + capital1 + l(totinc, 1)
+fit_k_liml <- ivreg2(klein_form, data = klein, tvar = "yr", method = "liml")
+summary(fit_k_liml)
 ```
 
-With strong instruments (as in this specification), all estimators produce
-similar point estimates. Differences become more pronounced with weaker
-instruments.
+With two endogenous regressors and six excluded instruments the model has four overidentifying restrictions on only `r nobs(fit_k_liml)` observations, and here `lambda` is `r round(fit_k_liml$lambda, 4)`, well above the near-1 value on Mroz. That is the regime in which the choice of estimator matters. Fitting 2SLS, LIML, Fuller(1), and Nagar's k-class on the same equation shows the two endogenous coefficients moving with the estimator:
 
-### Estimator equivalences
+```{r klein-suite}
+fit_k_2sls   <- ivreg2(klein_form, data = klein, tvar = "yr")
+fit_k_fuller <- ivreg2(klein_form, data = klein, tvar = "yr",
+                       method = "liml", fuller = 1)
+# Nagar's k = 1 + (L - K)/N = 1 + 4/21, which the help file rounds to 1.19
+fit_k_nagar  <- ivreg2(klein_form, data = klein, tvar = "yr",
+                       method = "kclass", kclass = 1.19)
+klein_models <- list("2SLS" = fit_k_2sls, LIML = fit_k_liml,
+                     "Fuller(1)" = fit_k_fuller, Nagar = fit_k_nagar)
+round(sapply(klein_models, \(m) coef(m)[c("profits", "wagetot")]), 4)
+```
 
-Several estimators coincide under specific conditions:
+The four columns differ in the third decimal place — a spread that is invisible on the strongly identified Mroz equation but real here, and the reason the help file uses Klein to introduce these estimators.
 
-- **LIML + COVIV = CUE under conditional-homoskedasticity weighting**: when
-  CUE uses the conditional-homoskedasticity (iid) weighting --- i.e.,
-  `method = "cue"` with `vcov = "iid"` --- LIML and CUE produce
-  mathematically identical coefficient estimates, and adding `coviv = TRUE`
-  aligns the standard errors and test statistics as well. Because CUE is
-  computed by numerical optimization, the agreement in practice is up to
-  optimizer tolerance, not machine precision. CUE generalizes LIML to the
-  non-iid case.
-- **Driscoll-Kraay = cluster(time) + kernel**: DK VCE is equivalent
-  to clustering on the time variable with a kernel (Bartlett by default) at
-  the specified bandwidth. See `vignette("time-series-gmm")` for details.
-- **Kiefer = truncated kernel**: Kiefer VCE is equivalent to AC VCE with a
-  truncated kernel at bandwidth T − 1, which weights every lag available
-  within a panel of length T. See `vignette("time-series-gmm")`.
-- **LIML = 2SLS when exactly identified**: with one excluded instrument per
-  endogenous variable, LIML reduces to 2SLS. LIML's advantages only appear
-  in the overidentified case.
+### LIML with COVIV equals CUE
 
-## Instrument validity tests
+The Klein example also demonstrates an equivalence. Under conditional-homoskedasticity (i.i.d.) weighting, LIML with COVIV and the continuously-updated estimator (CUE) are mathematically the same estimator, so they should return the same coefficients. CUE reaches its answer by numerical optimization, so the two agree up to optimizer tolerance rather than exactly:
 
-### Overidentification recap
+```{r klein-coviv-cue}
+fit_k_coviv <- ivreg2(klein_form, data = klein, tvar = "yr",
+                      method = "liml", coviv = TRUE)
+fit_k_cue   <- ivreg2(klein_form, data = klein, tvar = "yr", method = "cue")
+max(abs(coef(fit_k_coviv) - coef(fit_k_cue)))
+```
 
-With three excluded instruments and one endogenous regressor, the baseline
-model has two overidentifying restrictions. The Sargan (1958) test is a joint
-test of those restrictions --- a rejection signals that *some* instrument
-fails the orthogonality conditions, but cannot attribute the failure to a
-specific instrument:
+On this tiny (N = `r nobs(fit_k_cue)`) problem the cross-platform agreement is on the order of 1e-5, the level at which the package's own tests pin the Klein CUE fit; the residual gap is the optimizer's endpoint, not a difference in the estimators. CUE generalizes LIML with COVIV to the non-i.i.d. case, where a closed-form eigenvalue solution no longer exists.
+
+## Instrument-validity tests
+
+The tests below follow the escalating order of the Mroz group in Stata's `ivreg2` help file: a joint overidentification test, then a test of a subset of instruments, then a test of a single regressor's endogeneity, then the empty-endogenous form for an included regressor, and finally the LIML overidentification statistics.
+
+### Overidentification
+
+With three excluded instruments and one endogenous regressor, the baseline has two overidentifying restrictions. The Sargan (1958) test is a joint test of those restrictions: a rejection signals that some instrument violates the orthogonality conditions but cannot attribute the failure to a specific instrument.
 
 ```{r sargan}
 glance(fit_2sls)[, c("overid_stat", "overid_p")]
 ```
 
-### Orthogonality test (C-statistic)
+### Orthogonality (the C-statistic)
 
-The `orthog` argument tests whether a *subset* of instruments is exogenous,
-conditional on the remaining instruments being valid. This implements the
-difference-in-Sargan C-statistic (Hayashi, 2000).
-
-The `ivreg2` help file demonstrates the test on the Griliches (1976) wage
-equation, challenging the exogeneity of the two excluded instruments `age`
-and `mrt` (marital status) while maintaining `med` (mother's education) and
-`kww` (a test score). This replicates the help-file example at lines
-1242--1243 (`orthog(age mrt)` with two-step GMM):
+The `orthog` argument tests whether a *subset* of instruments is exogenous, conditional on the rest being valid — the difference-in-Sargan C-statistic (Hayashi, 2000). Stata's help file demonstrates it on the Griliches (1976) wage equation, challenging the exogeneity of `age` and `mrt` (marital status) while maintaining `med` (mother's education) and `kww` (a test score), estimated by two-step GMM:
 
 ```{r orthog}
 fit_orthog <- ivreg2(
@@ -260,29 +174,31 @@ fit_orthog <- ivreg2(
     med + kww + age + mrt,
   data = griliches, method = "gmm2s", orthog = c("age", "mrt")
 )
-summary(fit_orthog)
+glance(fit_orthog)[, c("orthog_stat", "orthog_p")]
 ```
 
-The null hypothesis is that `age` and `mrt` satisfy the exclusion
-restrictions, *given that the remaining instruments are valid*. Here the
-C-statistic rejects emphatically: the data are inconsistent with treating
-`age` and `mrt` as valid exclusions in this equation. (The same pair
-reappears below as Baum, Schaffer & Stillman's weak-instruments
-illustration.) The equation must remain identified after dropping the
-challenged instruments, and with robust or cluster-robust standard errors
-the test is computed as a difference in Hansen J statistics rather than
-Sargan statistics.
+The null is that `age` and `mrt` satisfy the exclusion restrictions given that the remaining instruments do. The C-statistic rejects emphatically, so the data are inconsistent with treating `age` and `mrt` as valid exclusions in this equation. The same pair reappears below as Baum, Schaffer & Stillman's weak-instruments illustration. The equation must remain identified after the challenged instruments are dropped, and under robust or cluster-robust standard errors the test is a difference in Hansen J statistics rather than in Sargan statistics.
+
+### Endogeneity of a regressor
+
+The `endog` argument tests whether a nominated endogenous regressor is in fact exogenous, comparing the model that instruments it against the model that treats it as exogenous. On the baseline this reproduces Stata's `endog(educ)` example:
+
+```{r endog}
+fit_endog <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                    data = mroz_work, endog = "educ")
+glance(fit_endog)[, c("endogeneity_stat", "endogeneity_p")]
+```
+
+With a single endogenous regressor this coincides numerically with the endogeneity test that `ivreg2()` already reports for the baseline, so `endog` earns its keep only with two or more endogenous regressors, where it can test a subset:
+
+```{r endog-identity}
+c(automatic = glance(fit_2sls)$endogeneity_stat,
+  endog_arg = glance(fit_endog)$endogeneity_stat)
+```
 
 ### Testing an included regressor: the empty-endogenous form
 
-The C-statistic can also challenge an *included* regressor's exogeneity.
-Write the model with **no** endogenous regressors — the empty-endogenous
-form `y ~ exog | 0 | instruments`, Stata's `(=z1 z2)` — so the equation is
-estimated by OLS while the excluded instruments contribute surplus
-orthogonality conditions, and then test the regressor with `orthog`. This
-replicates the help-file C-test of `educ` in the Mroz labor-supply
-equation (`ivreg2 lwage exper expersq educ (=age kidslt6 kidsge6),
-orthog(educ)`):
+The C-statistic can also challenge an *included* regressor's exogeneity. Write the model with no endogenous regressors — the empty-endogenous form `y ~ exog | 0 | instruments`, Stata's `(= z1 z2)` — so the equation is estimated by OLS while the excluded instruments supply surplus orthogonality conditions, then test the regressor with `orthog`. This is the help file's C-test of `educ` in the Mroz equation:
 
 ```{r hols-orthog}
 fit_hols <- ivreg2(
@@ -292,30 +208,11 @@ fit_hols <- ivreg2(
 summary(fit_hols)
 ```
 
-Estimation is exactly OLS — the instruments play no role in the
-coefficients — but the Sargan statistic now tests all surplus conditions,
-and the C-statistic isolates `educ`: it compares this model against one
-where `educ` is treated as endogenous (instrumented by `age`, `kidslt6`,
-and `kidsge6`). A small C-statistic means the data do not reject treating
-`educ` as exogenous, *conditional on the three excluded instruments being
-valid*. The same form with `method = "gmm2s"` **and** `vcov = "robust"`
-gives Cragg's (1983) heteroskedastic OLS (HOLS) estimator, which exploits
-the surplus orthogonality conditions for efficiency under
-heteroskedasticity. (With the default iid VCE the two-step weighting
-matrix is proportional to `(Z'Z)^{-1}` and the estimates are identical to
-OLS — Stata's bare `gmm2s` likewise reports "estimates efficient for
-homoskedasticity only". Cluster or HAC VCEs generalize the efficiency
-gain to those error structures.)
+Estimation is exactly OLS — the instruments play no role in the coefficients — but the Sargan statistic now tests all surplus conditions, and the C-statistic isolates `educ` by comparing this model against one in which `educ` is instrumented by `age`, `kidslt6`, and `kidsge6`. A small C-statistic means the data do not reject treating `educ` as exogenous, conditional on the three excluded instruments being valid. The same form with `method = "gmm2s"` and `vcov = "robust"` gives Cragg's (1983) heteroskedastic OLS (HOLS) estimator, which exploits the surplus orthogonality conditions for efficiency under heteroskedasticity. Under the default i.i.d. weighting the two-step weighting matrix is proportional to `(Z'Z)^{-1}`, so the estimates are identical to OLS, and Stata's bare `gmm2s` likewise reports estimates efficient for homoskedasticity only; a cluster or HAC weighting generalizes the efficiency gain to those error structures.
 
 ### Anderson-Rubin LIML overidentification
 
-When using LIML with iid errors, two additional overidentification statistics
-are reported. The Anderson-Rubin (1950) LR statistic is `N * log(lambda)` and
-its linearized form is `N * (lambda - 1)`, where `lambda` is the LIML
-eigenvalue. Both are chi-squared with `L - K` degrees of freedom under the null
-that the overidentifying restrictions hold. When `lambda` is close to 1, all
-three overidentification tests (Sargan, AR LR, AR linearized) give similar
-results:
+Under LIML with i.i.d. errors the summary reports two further overidentification statistics. The Anderson-Rubin (1950) LR statistic is `N * log(lambda)`, and its linearized form is `N * (lambda - 1)`; both are chi-squared with `L - K` degrees of freedom under the null that the overidentifying restrictions hold. When `lambda` is close to 1 the three overidentification tests — Sargan, AR LR, and AR linearized — agree closely:
 
 ```{r ar-overid}
 glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
@@ -324,19 +221,9 @@ glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
 
 ## Weak-instrument-robust inference
 
-### Stock-Wright S statistic
+### The Stock-Wright S statistic
 
-The Stock-Wright (2000) S statistic is a weak-instrument-robust test of the
-joint null hypothesis that the coefficients on the endogenous regressors are
-zero and that the overidentifying restrictions hold. It tests the *same* null
-as the Anderson-Rubin statistic reported in the same summary block, and the
-two have the same distribution under that null (chi-squared with L1 degrees
-of freedom): the Anderson-Rubin statistic is the Wald form of the test and
-the S statistic is the LM / GMM-distance form (Baum, Schaffer & Stillman,
-2007, pp. 491--492). Unlike Wald tests on 2SLS coefficients, both have
-correct size even when instruments are weak. The S statistic is given by the
-value of the CUE objective function (with exogenous regressors partialled
-out), and is automatically computed for all IV models:
+The Stock-Wright (2000) S statistic is a weak-instrument-robust test of the joint null that the coefficients on the endogenous regressors are zero and the overidentifying restrictions hold. The Anderson-Rubin statistic tests the same null and has the same chi-squared distribution, with `L1` degrees of freedom, under it: Anderson-Rubin is the Wald form of the test and S is the LM / GMM-distance form (Baum, Schaffer & Stillman, 2007, pp. 491--492). Unlike Wald tests on 2SLS coefficients, both keep correct size even when instruments are weak. The S statistic is the value of the CUE objective with the exogenous regressors partialled out, and it is computed for every IV model:
 
 ```{r stock-wright}
 glance(fit_2sls)[, c("stock_wright_stat", "stock_wright_p")]
@@ -344,47 +231,68 @@ glance(fit_2sls)[, c("stock_wright_stat", "stock_wright_p")]
 
 ### When instruments are genuinely weak
 
-Baum, Schaffer & Stillman (2007, pp. 492--493) illustrate the weak-instrument
-problem with the Griliches (1976) wage equation, where `iq` (a measure of
-ability) is instrumented by `age` and `mrt` (marital status). Their
-specification includes year dummies and uses a heteroskedasticity-robust VCE
---- replicated faithfully here (the printed values match the published
-output to all digits):
+Baum, Schaffer & Stillman (2007, pp. 492--493) illustrate the weak-instrument problem on the Griliches equation, instrumenting `iq` (a measure of ability) with `age` and `mrt` alone, under year dummies and a heteroskedasticity-robust variance:
 
 ```{r weak-instruments}
-fit_weak <- ivreg2(
-  lw ~ s + expr + tenure + rns + smsa + factor(year) | iq | age + mrt,
-  data = griliches, vcov = "robust"
-)
+weak_form <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq | age + mrt
+fit_weak <- ivreg2(weak_form, data = griliches, vcov = "robust")
 summary(fit_weak)
 ```
 
-Because the VCE is robust, the relevant weak-identification statistic is the
-Kleibergen-Paap rk Wald F
-(`r round(fit_weak$diagnostics$weak_id_robust$stat, 2)`), far below the
-Stock-Yogo 10% maximal-size critical value of
-`r fit_weak$diagnostics$weak_id_sy$critical_value[fit_weak$diagnostics$weak_id_sy$threshold == "10%"]`
---- bearing in mind BSS's own caveat that the Stock-Yogo values are
-tabulated for the i.i.d. case and apply to the rk statistic only "with
-caution" (Baum, Schaffer & Stillman, 2007, p. 490). With instruments this
-weak, the Stock-Wright S statistic and the Anderson-Rubin test provide
-size-correct inference even when 2SLS Wald tests do not. (BSS additionally
-test whether `mrt` is a *redundant* instrument on this specification ---
-the redundancy demonstration lives in `vignette("time-series-gmm")`.)
+Because the variance is robust, the relevant weak-identification statistic is the Kleibergen-Paap rk Wald F (`r round(fit_weak$diagnostics$weak_id_robust$stat, 2)`), far below the Stock-Yogo 10% maximal-size critical value of `r fit_weak$diagnostics$weak_id_sy$critical_value[fit_weak$diagnostics$weak_id_sy$threshold == "10%"]`. The Stock-Yogo critical values are tabulated for the Cragg-Donald statistic under i.i.d. errors, so under a robust variance they apply to the rk statistic only with caution, or give way to the Staiger-Stock rule of thumb that the first-stage F should exceed 10 (Baum, Schaffer & Stillman, 2007, p. 490). With instruments this weak, the Stock-Wright S and Anderson-Rubin tests provide size-correct inference where 2SLS Wald tests do not. These robust tests keep correct size but lose power as instruments weaken (Baum, Schaffer & Stillman, 2007, p. 491), and because the null is joint, a rejection can reflect either nonzero coefficients on the endogenous regressors or failure of the overidentifying restrictions — the test cannot say which.
 
-Two caveats on the robust tests themselves: they retain correct size but
-lose power as instruments weaken (Baum, Schaffer & Stillman, 2007, p. 491),
-and because the null is joint, a rejection can reflect either nonzero
-coefficients on the endogenous regressors or failure of the overidentifying
-restrictions --- the test cannot say which.
+### Redundant instruments
+
+Redundancy is a separate question from validity: it asks whether an instrument adds any identifying information once the others are present. An instrument is redundant when dropping it costs no asymptotic efficiency, and on a weak equation it is worth knowing whether the few available instruments are all pulling their weight. Baum, Schaffer & Stillman (2007, p. 492) test `mrt` for redundancy in exactly this weak specification with `redundant`:
+
+```{r redundant}
+fit_redund <- ivreg2(weak_form, data = griliches, vcov = "robust",
+                     redundant = "mrt")
+glance(fit_redund)[, c("redundancy_stat", "redundancy_p")]
+```
+
+The LM statistic is essentially zero (p = `r round(glance(fit_redund)$redundancy_p, 2)`), the published result: `mrt` provides no useful information for identifying the coefficient on `iq`, so identification here rests on `age` alone. Redundancy is about efficiency rather than validity, and it is a conditional concept — an instrument redundant given one set of instruments may cease to be so given another.
+
+### Building the S statistic by hand with `b0`
+
+The `b0` argument evaluates the CUE objective at a fixed parameter vector rather than optimizing it, and doing so reconstructs the Stock-Wright S statistic directly. The help file's construction sets the endogenous coefficient (`educ`) to zero and the exogenous coefficients to their OLS values; fixing the exogenous coefficients at OLS is equivalent to partialling them out, so the objective value at that point is the S statistic for the joint null:
+
+```{r b0}
+ols_fit <- lm(lwage ~ exper + expersq, data = mroz_work)
+b0 <- c(educ = 0, coef(ols_fit))
+fit_b0 <- ivreg2(
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+  data = mroz_work, vcov = "robust", b0 = b0
+)
+fit_b0$diagnostics$overid$stat  # the objective value, Stata's e(j)
+```
+
+The identity is easy to confirm against the S statistic that the ordinary robust fit reports automatically:
+
+```{r b0-identity}
+fit_reg <- ivreg2(
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+  data = mroz_work, vcov = "robust"
+)
+stopifnot(isTRUE(all.equal(
+  fit_b0$diagnostics$overid$stat,
+  fit_reg$diagnostics$stock_wright$stat
+)))
+c(b0_objective   = fit_b0$diagnostics$overid$stat,
+  stock_wright_S = fit_reg$diagnostics$stock_wright$stat)
+```
+
+One caution: the p-value stored beside the raw objective in `fit_b0$diagnostics$overid$p` is calibrated against `L - K` overidentification degrees of freedom, which is the wrong reference distribution for this use. Display the raw objective, as Stata's `di e(j)` does, and take the S-statistic p-value (`r round(fit_reg$diagnostics$stock_wright$p, 4)` here, on `r length(fit_reg$instruments)` degrees of freedom) from the regular fit.
+
+### What the package does and does not offer
+
+The Anderson-Rubin and Stock-Wright statistics test one particular null — that the endogenous coefficients are zero and the instruments valid. `ivreg2r` reports these joint tests, but it does not test non-zero nulls by re-optimizing the objective at a candidate value (the `b0` mechanism evaluates the objective at a point but is not wired into a search), and it does not invert the Anderson-Rubin test into a confidence region. A reader whose Wald confidence interval is untrustworthy under weak instruments therefore has a size-correct test of the zero null but not, from this package, a ready weak-instrument-robust confidence set. Constructing one means inverting a weak-robust test — the Anderson-Rubin statistic, Kleibergen's LM statistic, or the conditional likelihood-ratio test of Moreira (2003), whose properties are analyzed in Andrews, Moreira & Stock (2006). Stata's `weakiv` command (Finlay, Magnusson & Schaffer) builds these confidence sets for linear IV models with any number of endogenous regressors, and in R the `ivmodel` package computes Anderson-Rubin and conditional-likelihood-ratio confidence intervals for the single-endogenous-regressor case; either accepts the kind of specification used here.
 
 ## Two-way clustering
 
-### The nlswork dataset
+### The nlswork panel
 
-The NLS Young Women panel is the extract distributed with Stata's `[XT]`
-manual (`webuse nlswork`): person-year observations on women 14--24 years
-old in 1968, interviewed annually from 1968 to 1988.
+The NLS young-women panel is Stata's `[XT]`-manual extract (`webuse nlswork`): person-year observations on women who were 14--24 in 1968 and were interviewed annually through 1988. Panel data of this shape can be correlated within a person over time and within a year across persons, and two-way clustering accounts for both.
 
 ```{r nlswork-overview}
 nrow(nlswork)
@@ -392,17 +300,9 @@ length(unique(nlswork$idcode))  # persons
 length(unique(nlswork$year))    # interview years
 ```
 
-Panel data like this can exhibit correlation within individuals over time
-*and* within years across individuals. Two-way clustering accounts for both.
+### One-way versus two-way clustering
 
-### One-way vs. two-way clustering
-
-Compare one-way clustering (by person) with two-way clustering (by person and
-interview year). This is the help file's own clustering example at line 1618
-(one-way, `cluster(idcode)`) paired with its two-way variant at line 1628
-(`cluster(idcode year)`). Fitting on the full `nlswork` data frame
-automatically restricts to the complete cases needed by the formula, so no
-manual subsetting is required:
+Compare one-way clustering by person with two-way clustering by person and interview year, the help file's own paired example. Fitting on the full data frame restricts to the complete cases the formula needs, so no manual subsetting is required:
 
 ```{r twoway}
 fit_1way <- ivreg2(
@@ -416,9 +316,7 @@ fit_2way <- ivreg2(
 )
 ```
 
-Of the `r format(nrow(nlswork), big.mark = ",")` person-year rows,
-`r format(nobs(fit_1way), big.mark = ",")` have complete data on the
-variables in the formula and enter both fits. Compare the standard errors:
+Of the `r format(nrow(nlswork), big.mark = ",")` person-year rows, `r format(nobs(fit_1way), big.mark = ",")` have complete data and enter both fits. Compare the standard errors:
 
 ```{r twoway-compare}
 se_comparison <- data.frame(
@@ -430,28 +328,15 @@ se_comparison$ratio <- se_comparison$se_2way / se_comparison$se_1way
 se_comparison
 ```
 
-Two-way clustering uses the Cameron, Gelbach & Miller (2011) formula:
-`V_twoway = V_cluster1 + V_cluster2 - V_intersection`. The CGM two-way
-cluster-robust VCE requires *both* cluster dimensions to grow to infinity for
-consistency, so the effective number of clusters governing that asymptotic
-argument is the smaller of the two, `min(M1, M2)`. Here there are
-`r format(fit_2way$n_clusters1, big.mark = ",")` person clusters and only
-`r fit_2way$n_clusters2` interview-year clusters, so `min(M1, M2)` is
-`r fit_2way$n_clusters`: it is the year dimension, not the much larger
-person dimension, that limits how far the two-way asymptotics can be trusted
-here.
+Two-way clustering uses the Cameron, Gelbach & Miller (2011) decomposition `V_twoway = V_cluster1 + V_cluster2 - V_intersection`. This estimator needs both cluster dimensions to grow for consistency, so the effective number of clusters governing the asymptotics is the smaller of the two, `min(M1, M2)`. Here there are `r format(fit_2way$n_clusters1, big.mark = ",")` person clusters and only `r fit_2way$n_clusters2` interview-year clusters, so `min(M1, M2)` is `r fit_2way$n_clusters`: the year dimension, not the much larger person dimension, limits how far the two-way asymptotics can be trusted.
 
-**Note:** Two-way clustering is only useful when the two cluster variables
-define distinct, *crossed* (non-nested) categories --- as here, where every
-person appears in several years and every year contains many persons. The
-panel-by-time pairing is in fact the typical two-way application. If instead
-one category is nested within the other (e.g., counties within states), the
-two-way VCE reduces to the single-cluster VCE on the outer category, so
-two-way clustering provides no additional robustness there.
+Two-way clustering helps only when the two variables define distinct, crossed categories, as here, where every person appears in several years and every year holds many persons. That panel-by-time pairing is the typical two-way application. When one category is nested within the other — counties within states, say — the two-way variance reduces to the single-cluster variance on the outer category, and the second dimension adds nothing.
 
 ### Two-way clustering with instrumental variables
 
-The help file's two-way example is estimated by ordinary least squares, but two-way clustering composes with every estimator in `ivreg2r`, so this subsection pairs it with 2SLS on a classic panel application. The Baltagi cigarette-demand data (`data(cigar)`) form an annual panel of 46 U.S. states over 1963--1992, assembled by Baltagi and Levin (1992) and revisited by Baltagi, Griffin and Xiong (2000). The specification regresses log per-capita cigarette sales on the log real price of cigarettes, with log real per-capita disposable income entering as an exogenous control. Price is plausibly endogenous, because state-level demand shocks feed back into prices, so it is instrumented by the minimum real price in adjoining states --- a spatial cost-shifter in the Baltagi--Levin tradition --- together with the one-year lag of the state's own real price. Clustering on both state and year allows arbitrary within-state serial correlation and arbitrary within-year correlation across states. The `l(lrprice, 1)` term uses the panel lag operator, which requires declaring the panel structure through `tvar` and `ivar`, as in the time-series vignette.
+The help file's two-way example is estimated by ordinary least squares, but two-way clustering composes with every estimator, so we pair it with 2SLS on a panel demand equation. The Baltagi cigarette-demand data (`data(cigar)`) are an annual panel of 46 U.S. states over 1963--1992, assembled by Baltagi and Levin (1992) and revisited by Baltagi, Griffin and Xiong (2000).
+
+The specification regresses log per-capita cigarette sales on the log real price of cigarettes, with log real per-capita disposable income as an exogenous control. Price is plausibly endogenous, because state demand shocks feed back into prices, so it is instrumented by the minimum real price in adjoining states — a spatial cost-shifter in the Baltagi-Levin tradition — together with the one-year lag of the state's own real price. Clustering on both state and year allows arbitrary within-state serial correlation and arbitrary within-year correlation across states.
 
 ```{r two-way-iv}
 data(cigar)
@@ -470,18 +355,15 @@ fit_iv_2way <- ivreg2(
 summary(fit_iv_2way)
 ```
 
-The summary reports both cluster dimensions --- 46 states and 29 years, the panel's first year lost to the one-period lag --- and, as in the one-way case, the effective cluster count governing the two-way asymptotics is the smaller dimension, here the 29 years. The automatically reported diagnostics carry through unchanged: the Kleibergen--Paap underidentification and weak-identification statistics and the Hansen J test of the single overidentifying restriction are all computed from the two-way cluster-robust covariance matrix. This is a methods illustration rather than a substantive demand study, and the reported price elasticity should be read in that light.
+The `l(lrprice, 1)` term uses the panel lag operator, which needs the panel structure declared through `tvar` and `ivar`, and which is documented in `vignette("time-series-gmm")`. The summary reports both cluster dimensions — `r fit_iv_2way$n_clusters1` states and `r fit_iv_2way$n_clusters2` years, the first year lost to the lag — and the effective cluster count governing the asymptotics is again the smaller dimension, the `r fit_iv_2way$n_clusters` years. The automatic diagnostics carry through the two-way variance unchanged: the Kleibergen-Paap underidentification and weak-identification statistics and the Hansen J of the single overidentifying restriction are all computed from the two-way cluster-robust covariance. This is a methods illustration rather than a substantive demand study, and the price elasticity should be read in that light.
 
 ## Reduced-form regression
 
-The reduced form regresses the outcome directly on the full instrument set
-(exogenous regressors plus excluded instruments), bypassing the first stage.
+The reduced form regresses the outcome directly on the full instrument set — exogenous regressors plus excluded instruments — bypassing the first stage.
 
 ### Single-equation reduced form
 
-Use `reduced_form = "rf"` to store the y-equation reduced form alongside the
-structural estimates. With `vcov = "robust"`, this replicates the help-file
-example at line 1385 (`robust ffirst saverf` on the Mroz baseline):
+Use `reduced_form = "rf"` to store the outcome-equation reduced form alongside the structural estimates:
 
 ```{r rf}
 fit_rf <- ivreg2(
@@ -492,17 +374,15 @@ fit_rf <- ivreg2(
 # Reduced-form coefficients
 fit_rf$reduced_form$coefficients
 
-# The RF F-statistic for excluded instruments IS the Anderson-Rubin F ---
-# the AR test is precisely this reduced-form F-test, which is why it
-# remains valid under weak instruments.
+# The RF F-statistic for the excluded instruments IS the Anderson-Rubin F:
+# the AR test is precisely this reduced-form F-test, which is why it stays
+# valid under weak instruments.
 fit_rf$reduced_form$f_stat
 ```
 
 ### System reduced form
 
-Use `reduced_form = "system"` to estimate the full system --- one equation for
-each endogenous variable plus the outcome --- with a cross-equation
-variance-covariance matrix:
+Use `reduced_form = "system"` to estimate the full system — one equation for each endogenous variable plus the outcome — with a cross-equation covariance matrix:
 
 ```{r rf-system}
 fit_system <- ivreg2(
@@ -517,62 +397,14 @@ fit_system$reduced_form$depvar
 dim(fit_system$reduced_form$vcov)
 ```
 
-## Weight types
-
-`ivreg2r` supports four weight types, matching Stata's `[aw=]`, `[fw=]`,
-`[pw=]`, and `[iw=]` syntax. No worked weighted example exists in the
-`ivreg2` help file or in the Baum-Schaffer-Stillman papers, so this section
-documents semantics rather than fitting models; a worked sampling-weight
-(pweight) example on the Card NLS data lives in `vignette("introduction")`.
-
-- **Analytic weights** (`weight_type = "aweight"`, the default) are
-  inverse-variance weights: observation i is treated as having error
-  variance proportional to 1/w_i, the textbook case being data that arrive
-  as group means computed from different numbers of underlying observations.
-  Normalized internally to sum to N, so their scale is irrelevant.
-- **Frequency weights** (`"fweight"`) must be positive integers: each row
-  stands for `w` identical observations, and the effective sample size
-  becomes `N = sum(weights)`, which enters the N-based residual and
-  small-sample degrees-of-freedom calculations (cluster-based inference
-  still uses M − 1 degrees of freedom, where M is the number of clusters).
-  Fitting on deduplicated data with fweights is identical to fitting on the
-  fully expanded data.
-- **Probability weights** (`"pweight"`) are sampling/survey weights
-  (inverse selection probabilities). They force a robust VCE regardless of
-  the `vcov` argument, because the weights describe the sampling design
-  rather than the error variance. See the worked example in
-  `vignette("introduction")`.
-- **Importance weights** (`"iweight"`) have, in Stata's own description, no
-  formal statistical definition --- each command defines how it treats them.
-  In `ivreg2r` (as in `ivreg2`) they are not normalized, N becomes
-  `sum(weights)` as a floating-point number (internal calculations use the
-  float; the reported `nobs` and residual df are floored to integers), and
-  they are restricted to the classical (iid) VCE --- no robust, cluster,
-  kernel, or GMM combinations.
-
 ## Degrees-of-freedom adjustments
 
-When fixed effects or other controls have been partialled out before
-estimation, use `dofminus` and `sdofminus` to adjust the degrees of freedom
-without re-estimating:
+When fixed effects or other controls have been partialled out before estimation, `dofminus` and `sdofminus` adjust the degrees of freedom without re-estimating:
 
-- `dofminus`: subtracted from N in large-sample variance formulas, so
-  sigma^2 = RSS / (N - dofminus). The `ivreg2.ado` source describes it as
-  the "large-sample adjustment (e.g., #fixed effects)"; it is how
-  `xtivreg2, fe` reports correct statistics after within-demeaning consumes
-  one degree of freedom per panel unit.
-- `sdofminus`: subtracted from the residual degrees of freedom alongside K,
-  entering the small-sample corrections --- per the same source comment,
-  the "small-sample adjustment (e.g., #partialled-out regressors)", which
-  is what Stata's `partial()` sets internally.
+- `dofminus` is subtracted from `N` in the large-sample variance formulas, so `sigma^2 = RSS / (N - dofminus)`. It is the large-sample adjustment (for example, the number of fixed effects), and it is how `xtivreg2, fe` reports correct statistics after within-demeaning consumes one degree of freedom per panel unit.
+- `sdofminus` is subtracted from the residual degrees of freedom alongside `K` in the small-sample corrections. It is the small-sample adjustment (for example, the number of partialled-out regressors), and it is what Stata's `partial()` sets internally.
 
-Neither option appears in the help file's examples, so we demonstrate
-`sdofminus` with a self-verifying Frisch-Waugh-Lovell identity on the
-canonical Griliches specification: residualize every variable on the year
-dummies (7 columns including the intercept), refit without an intercept, and
-tell `ivreg2()` that 7 degrees of freedom were consumed. The shared
-coefficients, standard errors, and sigma must --- and do --- match the full
-regression to machine precision:
+Neither option appears in the help file's examples, so we demonstrate `sdofminus` with a self-verifying Frisch-Waugh-Lovell identity on the Griliches specification. Residualize every variable on the year dummies (7 columns including the intercept), refit without an intercept, and tell `ivreg2()` that 7 degrees of freedom were consumed. The shared coefficients, standard errors, and sigma then match the full regression to floating-point precision:
 
 ```{r sdofminus-fwl}
 fit_full <- ivreg2(
@@ -600,89 +432,32 @@ max(abs(sqrt(diag(vcov(fit_full)))[shared] - sqrt(diag(vcov(fit_fwl)))[shared]))
 c(sigma_full = fit_full$sigma, sigma_fwl = fit_fwl$sigma)
 ```
 
-Without `sdofminus = 7`, the FWL coefficients would still match but the
-standard errors and sigma would not: the refit would not know that 7
-parameters were already spent on the year dummies. The built-in
-`partial = "factor(year)"` argument performs exactly this
-residualize-and-adjust sequence in one step (see
-`vignette("time-series-gmm")` for the partialling workflow).
+Without `sdofminus = 7` the coefficients would still match but the standard errors and sigma would not, because the refit would not know that 7 parameters were already spent on the year dummies. The built-in `partial = "factor(year)"` argument performs exactly this residualize-and-adjust sequence in one step; see `vignette("time-series-gmm")` for the partialling workflow.
 
-## Factor variables
+## Estimator equivalences
 
-`ivreg2r` handles factor (categorical) variables automatically, expanding
-them into dummy variables using R's standard contrast coding. The
-weak-instruments fit above already used one: `factor(year)` in the Griliches
-specification plays the role of Stata's `xi i.year` / `_I*` year dummies in
-the corresponding help-file and BSS examples. With treatment contrasts (the
-default), one dummy per non-reference level appears in the output:
+Two equivalences involving LIML are worth stating here; the authoritative table of variance-estimator equivalences (Driscoll-Kraay, Kiefer, cluster-robust) lives in `vignette("time-series-gmm")`.
 
-```{r factors}
-coef(fit_weak)[grep("factor\\(year\\)", names(coef(fit_weak)))]
-```
-
-Prediction with `newdata` works correctly with factor variables --- the model
-remembers the levels from estimation and applies the same contrasts, so
-`newdata` only needs the regressor values (including a year observed in the
-estimation sample):
-
-```{r factor-predict}
-new_obs <- data.frame(s = 12, expr = 5, tenure = 2, rns = 0, smsa = 1,
-                      iq = 100, year = 67)
-predict(fit_weak, newdata = new_obs)
-```
-
-## Model comparison workflow
-
-A common workflow is to compare OLS, 2SLS, LIML, and Fuller(1) estimates for
-the same specification. The `tidy()` and `glance()` methods make this easy:
-
-```{r model-comparison}
-models <- list(
-  OLS       = ivreg2(lwage ~ exper + expersq + educ, data = mroz_work),
-  `2SLS`    = fit_2sls,
-  LIML      = fit_liml,
-  `Fuller(1)` = fit_fuller1
-)
-
-# Coefficient comparison for education
-coef_table <- do.call(rbind, lapply(names(models), function(nm) {
-  tbl <- tidy(models[[nm]])
-  tbl$model <- nm
-  tbl
-}))
-coef_table[coef_table$term == "educ",
-           c("model", "estimate", "std.error", "p.value")]
-```
-
-```{r model-diagnostics}
-# Model-level diagnostics comparison
-diag_table <- do.call(rbind, lapply(names(models), function(nm) {
-  gl <- glance(models[[nm]])
-  gl$model <- nm
-  gl
-}))
-diag_table[, c("model", "method", "r.squared", "sigma", "nobs")]
-```
+- **LIML with COVIV = CUE** under conditional-homoskedasticity weighting: demonstrated on the Klein data above, with agreement up to optimizer tolerance.
+- **LIML = 2SLS when exactly identified**: with one excluded instrument per endogenous regressor, LIML reduces to 2SLS, and the advantages of LIML appear only in the overidentified case.
 
 ## Publication tables with modelsummary
 
-The [`modelsummary`](https://modelsummary.com/) package produces
-publication-quality regression tables from any model with `tidy()` and
-`glance()` methods. `ivreg2r` objects work out of the box.
+The [`modelsummary`](https://modelsummary.com/) package produces publication-quality regression tables from any model with `tidy()` and `glance()` methods, and it is where the estimator-comparison workflow belongs. `ivreg2r` objects work with it directly.
 
 ```{r modelsummary-setup, eval = requireNamespace("modelsummary", quietly = TRUE)}
 library(modelsummary)
 ```
 
-### Basic table
+### A single model
 
 ```{r ms-basic, eval = requireNamespace("modelsummary", quietly = TRUE)}
 modelsummary(fit_2sls, output = "markdown")
 ```
 
-### Side-by-side comparison
+### Comparing estimators side by side
 
-Compare OLS, 2SLS, and LIML in a single table:
+Compare OLS, 2SLS, and LIML on the Mroz baseline in one table:
 
 ```{r ms-compare, eval = requireNamespace("modelsummary", quietly = TRUE)}
 models <- list(
@@ -696,11 +471,7 @@ modelsummary(models, output = "markdown",
 
 ### Exponentiated coefficients
 
-For log-linear models, `exponentiate = TRUE` reports multiplicative effects
-(`exp(beta)`). `modelsummary` transforms the standard errors to the
-exponentiated scale by the delta method (the displayed SE is
-`exp(beta) * se(beta)`), so the table below is internally consistent on the
-multiplicative scale:
+For log-linear models, `exponentiate = TRUE` reports multiplicative effects (`exp(beta)`). `modelsummary` transforms the standard errors to the exponentiated scale by the delta method, so the displayed standard error is `exp(beta) * se(beta)` and the table is internally consistent on the multiplicative scale:
 
 ```{r ms-exponentiate, eval = requireNamespace("modelsummary", quietly = TRUE)}
 modelsummary(fit_2sls, output = "markdown", exponentiate = TRUE)
@@ -708,7 +479,7 @@ modelsummary(fit_2sls, output = "markdown", exponentiate = TRUE)
 
 ### Customizing output
 
-Rename coefficients and select specific goodness-of-fit statistics:
+Rename coefficients and select goodness-of-fit statistics:
 
 ```{r ms-custom, eval = requireNamespace("modelsummary", quietly = TRUE)}
 modelsummary(
@@ -720,62 +491,33 @@ modelsummary(
 )
 ```
 
-`modelsummary` supports many output formats including LaTeX, HTML, Word, and
-gt tables. See `?modelsummary::modelsummary` for the full list.
+`modelsummary` supports LaTeX, HTML, Word, and gt output; see `?modelsummary::modelsummary` for the full list.
 
 ## Stata migration
 
-For a Stata-to-R translation table covering the most common options (basic
-IV, robust/cluster, LIML/k-class, GMM, HAC, and more), see the Stata
-migration section in `vignette("introduction")`; for the full argument list,
-see `?ivreg2`.
+For a Stata-to-R translation table covering the most common options, see the migration section in `vignette("introduction")`; for the full argument list, see `?ivreg2`. Factor variables are handled through R's formula interface: `factor(year)` in the Griliches specifications above plays the role of Stata's `xi i.year` dummies, expanding to one dummy per non-reference level under treatment contrasts.
 
 ## References
 
-- Anderson, T.W. and Rubin, H. (1949). "Estimation of the Parameters of a
-  Single Equation in a Complete System of Stochastic Equations." *Annals of
-  Mathematical Statistics*, 20(1), 46--63.
-- Anderson, T.W. and Rubin, H. (1950). "The Asymptotic Properties of
-  Estimates of the Parameters of a Single Equation in a Complete System of
-  Stochastic Equations." *Annals of Mathematical Statistics*, 21(4),
-  570--582.
-- Baltagi, B.H. and Levin, D. (1992). "Cigarette Taxation: Raising Revenues
-  and Reducing Consumption." *Structural Change and Economic Dynamics*,
-  3(2), 321--335.
-- Baltagi, B.H., Griffin, J.M., and Xiong, W. (2000). "To Pool or Not to
-  Pool: Homogeneous Versus Heterogeneous Estimators Applied to Cigarette
-  Demand." *Review of Economics and Statistics*, 82(1), 117--126.
-- Baum, C.F., Schaffer, M.E., and Stillman, S. (2007). "Enhanced Routines for
-  Instrumental Variables/Generalized Method of Moments Estimation and
-  Testing." *Stata Journal*, 7(4), 465--506.
-- Cameron, A.C., Gelbach, J.B., and Miller, D.L. (2011). "Robust Inference
-  with Multiway Clustering." *Journal of Business & Economic Statistics*,
-  29(2), 238--249.
-- Davidson, R. and MacKinnon, J.G. (1993). *Estimation and Inference in
-  Econometrics*. Oxford University Press.
-- Fuller, W.A. (1977). "Some Properties of a Modification of the Limited
-  Information Estimator." *Econometrica*, 45(4), 939--953.
-- Griliches, Z. (1976). "Wages of Very Young Men." *Journal of Political
-  Economy*, 84(4), S69--S85.
-- Hansen, L.P., Heaton, J., and Yaron, A. (1996). "Finite-Sample Properties
-  of Some Alternative GMM Estimators." *Journal of Business & Economic
-  Statistics*, 14(3), 262--280.
+- Anderson, T.W. and Rubin, H. (1949). "Estimation of the Parameters of a Single Equation in a Complete System of Stochastic Equations." *Annals of Mathematical Statistics*, 20(1), 46--63.
+- Anderson, T.W. and Rubin, H. (1950). "The Asymptotic Properties of Estimates of the Parameters of a Single Equation in a Complete System of Stochastic Equations." *Annals of Mathematical Statistics*, 21(4), 570--582.
+- Andrews, D.W.K., Moreira, M.J., and Stock, J.H. (2006). "Optimal Two-Sided Invariant Similar Tests for Instrumental Variables Regression." *Econometrica*, 74(3), 715--752.
+- Baltagi, B.H. and Levin, D. (1992). "Cigarette Taxation: Raising Revenues and Reducing Consumption." *Structural Change and Economic Dynamics*, 3(2), 321--335.
+- Baltagi, B.H., Griffin, J.M., and Xiong, W. (2000). "To Pool or Not to Pool: Homogeneous Versus Heterogeneous Estimators Applied to Cigarette Demand." *Review of Economics and Statistics*, 82(1), 117--126.
+- Baum, C.F., Schaffer, M.E., and Stillman, S. (2007). "Enhanced Routines for Instrumental Variables/Generalized Method of Moments Estimation and Testing." *Stata Journal*, 7(4), 465--506.
+- Cameron, A.C., Gelbach, J.B., and Miller, D.L. (2011). "Robust Inference with Multiway Clustering." *Journal of Business & Economic Statistics*, 29(2), 238--249.
+- Cragg, J.G. (1983). "More Efficient Estimation in the Presence of Heteroscedasticity of Unknown Form." *Econometrica*, 51(3), 751--763.
+- Davidson, R. and MacKinnon, J.G. (1993). *Estimation and Inference in Econometrics*. Oxford University Press.
+- Fuller, W.A. (1977). "Some Properties of a Modification of the Limited Information Estimator." *Econometrica*, 45(4), 939--953.
+- Griliches, Z. (1976). "Wages of Very Young Men." *Journal of Political Economy*, 84(4, Part 2), S69--S85.
 - Hayashi, F. (2000). *Econometrics*. Princeton University Press.
-- Mariano, R.S. and Sawa, T. (1972). "The Exact Finite-Sample Distribution of
-  the Limited-Information Maximum Likelihood Estimator in the Case of Two
-  Included Endogenous Variables." *Journal of the American Statistical
-  Association*, 67(337), 159--163.
-- Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married
-  Women's Hours of Work to Economic and Statistical Assumptions."
-  *Econometrica*, 55(4), 765--799.
-- Nagar, A.L. (1959). "The Bias and Moment Matrix of the General k-Class
-  Estimators of the Parameters in Simultaneous Equations." *Econometrica*,
-  27(4), 575--595.
-- Sargan, J.D. (1958). "The Estimation of Economic Relationships Using
-  Instrumental Variables." *Econometrica*, 26(3), 393--415.
-- Stock, J.H. and Wright, J.H. (2000). "GMM with Weak Identification."
-  *Econometrica*, 68(5), 1055--1096.
-- Stock, J.H. and Yogo, M. (2005). "Testing for Weak Instruments in Linear IV
-  Regression." In D.W.K. Andrews and J.H. Stock (Eds.), *Identification and
-  Inference for Econometric Models: Essays in Honor of Thomas Rothenberg*.
-  Cambridge University Press.
+- Klein, L.R. (1950). *Economic Fluctuations in the United States, 1921--1941*. Cowles Commission Monograph No. 11. Wiley.
+- Mariano, R.S. and Sawa, T. (1972). "The Exact Finite-Sample Distribution of the Limited-Information Maximum Likelihood Estimator in the Case of Two Included Endogenous Variables." *Journal of the American Statistical Association*, 67(337), 159--163.
+- Moreira, M.J. (2003). "A Conditional Likelihood Ratio Test for Structural Models." *Econometrica*, 71(4), 1027--1048.
+- Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married Women's Hours of Work to Economic and Statistical Assumptions." *Econometrica*, 55(4), 765--799.
+- Nagar, A.L. (1959). "The Bias and Moment Matrix of the General k-Class Estimators of the Parameters in Simultaneous Equations." *Econometrica*, 27(4), 575--595.
+- Sargan, J.D. (1958). "The Estimation of Economic Relationships Using Instrumental Variables." *Econometrica*, 26(3), 393--415.
+- Stock, J.H. and Wright, J.H. (2000). "GMM with Weak Identification." *Econometrica*, 68(5), 1055--1096.
+- Stock, J.H. and Yogo, M. (2005). "Testing for Weak Instruments in Linear IV Regression." In D.W.K. Andrews and J.H. Stock (Eds.), *Identification and Inference for Econometric Models: Essays in Honor of Thomas Rothenberg*. Cambridge University Press.
+</content>
+</invoke>
