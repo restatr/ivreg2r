@@ -19,20 +19,13 @@ data(klein, package = "ivreg2r")
 sw_cue_fit_iid <- ivreg2(sw_formula, data = stockwatson, method = "cue")
 sw_cue_fit_robust <- ivreg2(sw_formula, data = stockwatson, method = "cue", vcov = "robust")
 
-# CUE involves nonlinear optimization, which adds a layer of numerical noise
-# beyond direct estimation (2SLS/LIML). For small-magnitude coefficients, even
-# tiny absolute differences (2e-8) can breach relative tolerances. We use
-# slightly wider tolerances for CUE coefficients/SEs while keeping stats/pvals
-# at the standard level. These values predate the M-17 re-base (they were
-# calibrated on the retired card cells) and are frozen mid-grind; they get
-# recalibrated at the end-of-grind tolerance re-audit.
-cue_tol <- list(
-  coef = 5e-6,           # coefficients (optimization noise)
-  se   = 5e-6,           # standard errors
-  vcov = 5e-6,           # VCV elements
-  stat = stata_tol$stat, # test statistics — same as standard
-  pval = stata_tol$pval  # p-values — same as standard
-)
+# CUE cells use the STANDARD tolerances since the end-of-grind re-audit
+# (2026-07-06): the 5e-6 exception this file carried was calibrated on the
+# retired card cells, and on the re-based cells the audit-measured worst CUE
+# gap is 7.6e-7 coef / 2.0e-7 se / 4.1e-7 vcov against the 1e-6 standard.
+# A future breach is investigate-first per the CLAUDE.md escalation rule --
+# do not reintroduce a wider tolerance without a root cause. (The klein
+# N=21 vcov cell below keeps its own documented 1e-4, the H74 ruling.)
 
 # ============================================================================
 # 1. Full-cell Stata parity (coef + vcov + diagnostics)
@@ -81,13 +74,10 @@ for (cell in cue_full_cells) {
     skip_if(!file.exists(fixture_path(coef_file)), "CUE fixture not found")
 
     fit <- do.call(ivreg2, cell$fit_args)
-    expect_coef_fixture(fit, coef_file,
-                        tol_coef = cue_tol$coef, tol_se = cue_tol$se)
-    expect_vcov_fixture(fit, paste0(cell$prefix, "_vcov_", cell$suffix, ".csv"),
-                        tol = cue_tol$vcov)
+    expect_coef_fixture(fit, coef_file)
+    expect_vcov_fixture(fit, paste0(cell$prefix, "_vcov_", cell$suffix, ".csv"))
     expect_diagnostics_fixture(
-      fit, paste0(cell$prefix, "_diagnostics_", cell$suffix, ".csv"),
-      tol_coef = cue_tol$coef
+      fit, paste0(cell$prefix, "_diagnostics_", cell$suffix, ".csv")
     )
     # For CUE the overid statistic is always the Hansen J (covers the abdata
     # cluster cell; asserted unconditionally since it holds for every cell).

@@ -43,20 +43,28 @@ muffle_rank_warnings <- function(expr) {
   )
 }
 
+# Worst observed values below are from the end-of-grind tolerance re-audit
+# (2026-07-06, 2022 comparisons across 36 configs on the re-based fixtures).
 stata_tol <- list(
-  coef = 1e-6,   # coefficients       (2SLS observed: ~5e-8, LIML: ~4e-6)
-  se   = 1e-6,   # standard errors    (2SLS observed: ~5e-9, LIML+cl: ~2e-6)
-  vcov = 1e-6,   # VCV matrix elements (2SLS observed: ~9e-9, LIML+cl: ~4e-6)
-  stat = 1e-4,   # test statistics (F, chi-sq, LM, J) — observed worst: ~6e-6
-  pval = 1e-4    # p-values (absolute) — observed worst: ~6e-6
+  coef = 1e-6,   # coefficients        (worst observed: 7.6e-7, a CUE cell)
+  se   = 1e-6,   # standard errors     (worst observed: 2.0e-7, a CUE cell)
+  vcov = 1e-6,   # VCV matrix elements (worst observed: 4.1e-7, a CUE cell)
+  stat = 1e-4,   # test statistics (F, chi-sq, LM, J) — worst observed: 8.0e-7
+  pval = 1e-4    # p-values (absolute) — worst observed: 2.9e-6
 )
 
-# Known exceptions: some test files use wider tolerances for specific configs.
-# These are documented here for auditability:
+# The per-file exception tolerances (cue 5e-6, center 2e-5, dofminus 1e-5)
+# were retired at the end-of-grind re-audit (2026-07-06): every binding case
+# lived on fixture cells deleted in the Tranche 3 re-base (the card CUE and
+# CUE+center cells, the M=2 card cluster dofminus cells, the card-era
+# LIML+cluster cells). Two documented per-site overrides remain, each with
+# its rationale at the call site:
 #
-#   test-cue.R:     coef/se/vcov = 5e-6  (CUE optimizer noise)
-#   test-center.R:  coef/se/vcov = 2e-5  (CUE + centered moments)
-#   test-dofminus.R: se/vcov = 1e-5      (M=2 cluster on Card data)
-#   test-user-matrices.R: vcov = 1e-5    (Hessian condition number)
+#   test-cue.R / test-ts-operators.R: klein CUE coef/vcov = 1e-4
+#     (H74 ruling: klein N=21 CUE optimizer noise)
+#   test-user-matrices.R: wmatrix-vs-standard GMM fit comparison, vcov = 1e-5
+#     (R-internal fit-vs-fit identity, not Stata parity)
 #
 # Run `Rscript pkg/tests/audit-tolerances.R` to measure actual discrepancies.
+# Escalation rule: a breach of the standard tolerances is investigate-first;
+# never widen a tolerance without a root cause.
