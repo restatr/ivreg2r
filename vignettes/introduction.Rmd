@@ -103,7 +103,7 @@ The fit above reports a **Cragg-Donald Wald F** of `r round(cd_f, 2)`. This stat
 
 Here the Cragg-Donald F of `r round(cd_f, 2)` falls short of the 10% maximal-size critical value of `r sy10` but clears the 15% value of `r sy15` --- a genuinely borderline case. A 5% Wald test on `educ` could reject as often as 15% of the time under the null, so the conventional t-statistic should be read with some suspicion. This is exactly the situation the weak-instrument-robust Anderson-Rubin test (below) is designed for.
 
-Two caveats apply. The Stock-Yogo critical values are tabulated for the Cragg-Donald statistic under i.i.d. errors, so under a robust, cluster, or HAC VCE the reported statistic is instead the Kleibergen-Paap rk Wald F, and Baum, Schaffer & Stillman (2007, p. 490) recommend applying the i.i.d. values to it only with caution or falling back on the Staiger & Stock (1997) rule that F should exceed 10 --- a legitimate co-equal fallback in that setting, not a dominated heuristic. See `?ivreg2` and `vignette("advanced-iv")` for the fuller discussion.
+One caution: the Stock-Yogo critical values are tabulated for the Cragg-Donald statistic under i.i.d. errors. Under a robust, cluster, or HAC VCE the reported statistic is instead the Kleibergen-Paap rk Wald F, and Baum, Schaffer & Stillman (2007, p. 490) recommend applying the i.i.d. values to it only with caution, or falling back on the Staiger & Stock (1997) rule that F should exceed 10. See `?ivreg2` and `vignette("advanced-iv")` for the fuller discussion.
 
 ### Underidentification
 
@@ -127,7 +127,7 @@ summary(fit_overid)
 
 The Sargan (1958) test (for iid models) or Hansen (1982) J test (for robust/cluster models) tests the null hypothesis that all instruments are valid. Here the Sargan statistic is `r round(fit_overid$diagnostics$overid$stat, 2)` (p = `r round(fit_overid$diagnostics$overid$p, 4)`), so the single overidentifying restriction is not rejected. A rejection would have indicated that the instruments are not satisfying the required orthogonality conditions --- either because an instrument is not truly exogenous, or because it is incorrectly excluded from the regression. The test is a joint test of instrument validity *and* correct model specification (Baum, Schaffer & Stillman, 2003, pp. 16--17).
 
-Two caveats apply. The test exists only when the model is overidentified; with exact identification there are no testable restrictions. And it has low power when instruments are weak, and no power at all against violations that leave every instrument consistent for the same wrong parameter value, so a failure to reject does not by itself establish validity (see `?ivreg2` for the fuller treatment).
+The test exists only when the model is overidentified; with exact identification there are no testable restrictions. It has low power when instruments are weak, and no power at all against violations that leave every instrument consistent for the same wrong parameter value, so a failure to reject does not by itself establish validity (see `?ivreg2` for the fuller treatment).
 
 To test a *subset* of instruments while maintaining the rest, use the `orthog` argument --- see `vignette("advanced-iv")` for details.
 
@@ -135,7 +135,7 @@ To test a *subset* of instruments while maintaining the rest, use the `orthog` a
 
 The endogeneity test (also called the C-statistic or difference-in-Sargan test) asks whether the regressors treated as endogenous are actually endogenous. The null hypothesis is that they are exogenous. For the just-identified fit above, the statistic is `r round(fit_iv$diagnostics$endogeneity$stat, 2)` (p = `r round(fit_iv$diagnostics$endogeneity$p, 4)`): we cannot reject that `educ` is exogenous. In that case OLS may be preferred because it is more efficient --- this fit is a live example of the trade-off, since the IV point estimate is similar to OLS but far less precise.
 
-Three caveats apply. The test maintains instrument validity under both hypotheses, so it is uninformative about endogeneity if the instruments are themselves invalid, and --- like the overidentification test --- it loses power when instruments are weak. And using its result to choose between OLS and IV is a pre-test whose selection step can badly distort the size of subsequent inference (Guggenberger, 2010); see `?ivreg2` and Hayashi (2000, pp. 218--222, 233--234) for the underlying theory.
+The test maintains instrument validity under both hypotheses, so it is uninformative about endogeneity if the instruments are themselves invalid, and it shares the low power under weak instruments noted above. Using its result to choose between OLS and IV is a pre-test whose selection step can badly distort the size of subsequent inference (Guggenberger, 2010); see `?ivreg2` and Hayashi (2000, pp. 218--222, 233--234) for the underlying theory.
 
 Stata's `ivreg2` computes this test only when `endog()` is requested, whereas `ivreg2r` reports it automatically for all endogenous regressors; use the `endog` argument to test a specific subset (e.g., `endog = "educ"`).
 
@@ -203,9 +203,9 @@ se_cluster_grade <- sqrt(vcov(fit_cluster)["grade", "grade"])
 se_iid_grade <- sqrt(vcov(fit_iid)["grade", "grade"])
 ```
 
-Supplying `clusters` selects the cluster-robust VCE automatically, without setting `vcov`. Fitting on the full `r format(nobs(fit_cluster), big.mark = ",")` observations, the cluster-robust standard error on `grade` is `r formatC(se_cluster_grade, format = "f", digits = 4)`, versus `r formatC(se_iid_grade, format = "f", digits = 4)` under the classical (i.i.d.) VCE fit on the same data --- clustering roughly doubles the SE here because wages are serially correlated within person across the panel's multiple survey years, a dependence that classical and heteroskedasticity-robust SEs both ignore.
+Supplying `clusters` selects the cluster-robust VCE automatically, without setting `vcov`. Fitting on the full `r format(nobs(fit_cluster), big.mark = ",")` observations, the cluster-robust standard error on `grade` is `r formatC(se_cluster_grade, format = "f", digits = 4)`, versus `r formatC(se_iid_grade, format = "f", digits = 4)` under the classical (i.i.d.) VCE fit on the same data. Clustering roughly doubles the standard error here because wages are serially correlated within person across the panel's multiple survey years, a dependence that classical and heteroskedasticity-robust standard errors both ignore.
 
-Cluster-robust inference is asymptotic in the number of clusters rather than observations, so with only a handful of clusters the standard errors can be biased downward even when N is large and `small = TRUE` only partially compensates; here the `r format(fit_cluster$n_clusters, big.mark = ",")` clusters, one per individual, put us well inside the asymptotic regime, but researchers clustering on a dozen states or regions should consider wild-cluster bootstrap or other few-cluster methods.
+Cluster-robust inference is asymptotic in the number of clusters rather than observations: with only a handful of clusters the standard errors can be biased downward even when N is large, and `small = TRUE` only partially compensates. Here the `r format(fit_cluster$n_clusters, big.mark = ",")` clusters, one per individual, put us well inside the asymptotic regime. Researchers clustering on a dozen states or regions should consider wild-cluster bootstrap or other few-cluster methods.
 
 When `small = TRUE` is added, `ivreg2r` applies the standard cluster finite-sample correction factor, `(N-1)/(N-K) * M/(M-1)`, where M is the number of clusters, and reports t- and F-statistics instead of z- and chi-squared statistics.
 
@@ -228,7 +228,7 @@ For HAC, AC, Kiefer, and Driscoll-Kraay VCE options, see `vignette("time-series-
 
 ## Weighted estimation
 
-`ivreg2r` supports Stata's four weight types through `weight_type`: sampling weights (`"pweight"`), analytic weights (`"aweight"`, the default), frequency weights (`"fweight"`), and importance weights (`"iweight"`). Three admit a worked example below. The aweight and fweight demonstrations are self-verifying --- each of those types is defined by an identity the fit must reproduce --- while the pweight example uses the genuine survey weight the data ship with.
+`ivreg2r` supports Stata's four weight types through `weight_type`: sampling weights (`"pweight"`), analytic weights (`"aweight"`, the default), frequency weights (`"fweight"`), and importance weights (`"iweight"`). Three have worked examples below. The aweight and fweight demonstrations are self-verifying --- each of those types is defined by an identity the fit must reproduce --- while the pweight example uses the genuine survey weight the data ship with.
 
 ### Sampling weights (pweight)
 

@@ -31,7 +31,7 @@ data(wagepan)
 
 ## HAC and AC standard errors
 
-The `phillips` dataset contains `r nrow(phillips)` annual U.S. observations (`r min(phillips$year)`--`r max(phillips$year)`) on inflation and unemployment. A simple expectations-augmented Phillips curve regresses the change in inflation on the unemployment rate. We pass the data frame as-is: `ivreg2()` drops incomplete cases per specification, exactly as Stata does, so each fit uses the largest estimation sample its own variables allow. Running `na.omit()` on the whole data frame first would also drop rows whose only missing values are in *unused* lag columns, silently changing the estimation sample.
+The `phillips` dataset contains `r nrow(phillips)` annual U.S. observations (`r min(phillips$year)`--`r max(phillips$year)`) on inflation and unemployment. A simple expectations-augmented Phillips curve regresses the change in inflation on the unemployment rate. We pass the data frame as-is: `ivreg2()` drops incomplete cases per specification, exactly as Stata does, so each fit uses the largest estimation sample its own variables allow. The dataset ships several pre-built lag columns that most fits below do not use, so running `na.omit()` on the whole data frame first would drop rows whose only missing values are in those unused columns, silently changing the estimation sample.
 
 Kernel-based inference is requested with `kernel`, `bw` (bandwidth), and `tvar` (the time variable). The type of variance estimator follows the `vcov` setting. With `vcov = "iid"` a kernel gives autocorrelation-consistent (AC) standard errors, which assume homoskedasticity but allow serial correlation. With `vcov = "robust"` the same kernel gives HAC standard errors, which allow both. This matches Stata's `ivreg2`, where `bw`/`kernel` alone produces AC and combining `robust` with a bandwidth produces HAC. The explicit values `vcov = "AC"` and `vcov = "HAC"` request the same two estimators by name, which is how the AC fit below is written. The following three fits use the same Phillips curve and differ only in the variance estimator:
 
@@ -138,7 +138,7 @@ fit_kiefer <- ivreg2(n ~ w + k, data = abdata, kiefer = TRUE,
 summary(fit_kiefer)
 ```
 
-The equivalence is exact. Modern Stata, like this package, rejects any bandwidth that does not fall strictly below the timespan, so the maximum usable lag is $T - 1 = `r length(unique(abdata$year)) - 1`$; the truncated kernel at that maximum bandwidth weights the same within-panel lags Kiefer does:
+The equivalence is exact. With $T$ time periods, both Stata and this package reject any bandwidth of $T$ or more, so the maximum usable bandwidth is $T - 1 = `r length(unique(abdata$year)) - 1`$ here; the truncated kernel at that maximum weights the same within-panel lags Kiefer does:
 
 ```{r kiefer-equiv}
 bw_max <- length(unique(abdata$year)) - 1
@@ -288,7 +288,7 @@ stopifnot(
 c(max_coef_diff = max(abs(coef(refit) - coef(fit_g_gmm))))
 ```
 
-Supplying `wmatrix` instead sets the *first-step* weighting matrix rather than fixing the second-step `S`, so the two-step estimator still recomputes `S` from the first-step residuals and the result need not match; `smatrix` is the argument for the reuse workflow, and for two-step GMM and CUE fits `fit$W` is the inverse of the defining `fit$S`.
+Supplying `wmatrix` instead sets the *first-step* weighting matrix rather than fixing the second-step `S`, so the two-step estimator still recomputes `S` from the first-step residuals and the result need not match. For the reuse workflow, `smatrix` is the argument to use. For two-step GMM and CUE fits, `fit$W` is simply the inverse of the defining `fit$S`.
 
 ### Centering the moment conditions
 
@@ -386,16 +386,16 @@ The overidentification test is still reported; only the identification block is 
 
 ## Estimator equivalences
 
-Several estimators coincide under specific conditions, which is useful for verification. The Driscoll-Kraay, Kiefer, and cluster-robust equivalences are demonstrated in code above.
+Several estimators coincide under specific conditions, which is useful for verification.
 
-| Equivalence | Conditions |
-|-------------|------------|
-| LIML + COVIV = CUE | Conditional-homoskedasticity (i.i.d.) weighting; agreement up to optimizer tolerance |
-| Driscoll-Kraay = cluster(time) + kernel | Same kernel and bandwidth |
-| Kiefer = truncated kernel | Panel data, AC, `bw = T - 1` (all within-panel lags weighted one) |
-| Cluster-robust = truncated kernel, robust | Panel data, `bw = T - 1`, `vcov = "robust"` |
-| LIML = 2SLS | Exactly identified |
-| GMM2S = 2SLS | Exactly identified |
+| Equivalence | Conditions | Where shown |
+|-------------|------------|-------------|
+| Driscoll-Kraay = cluster(time) + kernel | Same kernel and bandwidth | In code above (grunfeld) |
+| Kiefer = truncated kernel | Panel data, AC, `bw = T - 1` (all within-panel lags weighted one) | In code above (abdata) |
+| Cluster-robust = truncated kernel, robust | Panel data, `bw = T - 1`, `vcov = "robust"` | In code above (abdata) |
+| LIML + COVIV = CUE (COVIV: `coviv = TRUE`, the 2SLS-bread covariance for LIML) | Conditional-homoskedasticity (i.i.d.) weighting; agreement up to optimizer tolerance | Demonstrated in `vignette("advanced-iv")` |
+| LIML = 2SLS | Exactly identified | Stated in `vignette("advanced-iv")` |
+| GMM2S = 2SLS | Exactly identified | Stated in the GMM section above |
 
 ## References
 

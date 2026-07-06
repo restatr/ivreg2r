@@ -157,7 +157,7 @@ On this tiny (N = `r nobs(fit_k_cue)`) problem the cross-platform agreement is o
 
 ## Instrument-validity tests
 
-The tests below follow the escalating order of the help file's testing examples: a joint overidentification test, then a test of a subset of instruments (the help file's Griliches example), then a test of a single regressor's endogeneity, then the empty-endogenous form for an included regressor, and finally the LIML overidentification statistics.
+The tests below follow the escalating order of the help file's testing examples: a joint overidentification test, then a test of a subset of instruments (the help file's Griliches example), then a test of a single regressor's endogeneity, then the empty-endogenous form for an included regressor, and finally the LIML overidentification statistics. Every automatic test lives in `fit$diagnostics`, a named list whose elements `glance()` exposes as columns; the chunks below use whichever access route reads better.
 
 ### Overidentification
 
@@ -211,7 +211,7 @@ fit_hols <- ivreg2(
 summary(fit_hols)
 ```
 
-Estimation is exactly OLS — the instruments play no role in the coefficients — but the Sargan statistic now tests all surplus conditions, and the C-statistic isolates `educ` by comparing this model against one in which `educ` is instrumented by `age`, `kidslt6`, and `kidsge6`. A small C-statistic means the data do not reject treating `educ` as exogenous, conditional on the three excluded instruments being valid. The same form with `method = "gmm2s"` and `vcov = "robust"` gives Cragg's (1983) heteroskedastic OLS (HOLS) estimator, which exploits the surplus orthogonality conditions for efficiency under heteroskedasticity. Under the default i.i.d. weighting the two-step weighting matrix is proportional to `(Z'Z)^{-1}`, so the estimates are identical to OLS, and Stata's bare `gmm2s` likewise reports estimates efficient for homoskedasticity only; a cluster or HAC weighting generalizes the efficiency gain to those error structures.
+Estimation is exactly OLS — the instruments play no role in the coefficients — but the Sargan statistic now tests all surplus conditions, and the C-statistic isolates `educ` by comparing this model against one in which `educ` is instrumented by `age`, `kidslt6`, and `kidsge6`. A small C-statistic means the data do not reject treating `educ` as exogenous, conditional on the three excluded instruments being valid. The same form with `method = "gmm2s"` and `vcov = "robust"` gives Cragg's (1983) heteroskedastic OLS (HOLS) estimator, which exploits the surplus orthogonality conditions for efficiency under heteroskedasticity. Under the default i.i.d. weighting there is no efficiency gain to exploit: the two-step weighting matrix is proportional to `(Z'Z)^{-1}` and the estimates are identical to OLS, in Stata just as here. A cluster or HAC weighting generalizes the efficiency gain to those error structures.
 
 ### Anderson-Rubin LIML overidentification
 
@@ -226,7 +226,7 @@ glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
 
 ### The Stock-Wright S statistic
 
-The Stock-Wright (2000) S statistic is a weak-instrument-robust test of the joint null that the coefficients on the endogenous regressors are zero and the overidentifying restrictions hold. The Anderson-Rubin statistic tests the same null and has the same chi-squared distribution, with `L1` degrees of freedom, under it: Anderson-Rubin is the Wald form of the test and S is the LM / GMM-distance form (Baum, Schaffer & Stillman, 2007, pp. 491--492). Unlike Wald tests on 2SLS coefficients, both keep correct size even when instruments are weak. The S statistic is the value of the CUE objective with the exogenous regressors partialled out, and it is computed for every IV model:
+The Stock-Wright (2000) S statistic is a weak-instrument-robust test of the joint null that the coefficients on the endogenous regressors are zero and the overidentifying restrictions hold. The Anderson-Rubin statistic tests the same null, and under it both are chi-squared with `L1` degrees of freedom, where `L1` is the number of excluded instruments: Anderson-Rubin is the Wald form of the test and S is the LM / GMM-distance form (Baum, Schaffer & Stillman, 2007, pp. 491--492). Unlike Wald tests on 2SLS coefficients, both keep correct size even when instruments are weak. The S statistic is the value of the CUE objective with the exogenous regressors partialled out, and it is computed for every IV model:
 
 ```{r stock-wright}
 glance(fit_2sls)[, c("stock_wright_stat", "stock_wright_p")]
@@ -287,7 +287,7 @@ c(b0_objective   = fit_b0$diagnostics$overid$stat,
   stock_wright_S = fit_reg$diagnostics$stock_wright$stat)
 ```
 
-One caution: the p-value stored beside the raw objective in `fit_b0$diagnostics$overid$p` is calibrated against `L - K` overidentification degrees of freedom, which is the wrong reference distribution for this use. Display the raw objective, as Stata's `di e(j)` does, and take the S-statistic p-value (`r round(fit_reg$diagnostics$stock_wright$p, 4)` here, on `r length(fit_reg$instruments)` degrees of freedom) from the regular fit.
+One caution: the p-value stored beside the raw objective in `fit_b0$diagnostics$overid$p` is calibrated against `L - K` overidentification degrees of freedom, which is the wrong reference distribution for this use. Display the raw objective, as Stata's `di e(j)` does, and take the S-statistic p-value (`r round(fit_reg$diagnostics$stock_wright$p, 4)` here, on L1 = `r length(fit_reg$instruments)` degrees of freedom) from the regular fit.
 
 ### What the package does and does not offer
 
@@ -373,19 +373,21 @@ Use `reduced_form = "rf"` to store the outcome-equation reduced form alongside t
 ```{r rf}
 # Same robust fit as fit_reg above, re-estimated with the reduced form stored
 fit_rf <- update(fit_reg, reduced_form = "rf")
-
-# Reduced-form coefficients
 fit_rf$reduced_form$coefficients
+```
 
-# The RF F-statistic for the excluded instruments IS the Anderson-Rubin F:
-# the AR test is precisely this reduced-form F-test, which is why it stays
-# valid under weak instruments.
-fit_rf$reduced_form$f_stat
+The stored reduced form is not just bookkeeping: its F-statistic on the excluded instruments *is* the Anderson-Rubin F. The AR test is precisely this reduced-form F-test, which is why it stays valid under weak instruments, and the identity holds exactly:
+
+```{r rf-ar-identity}
+stopifnot(isTRUE(all.equal(fit_rf$reduced_form$f_stat,
+                           fit_rf$diagnostics$anderson_rubin$f_stat)))
+c(rf_F = fit_rf$reduced_form$f_stat,
+  ar_F = fit_rf$diagnostics$anderson_rubin$f_stat)
 ```
 
 ### System reduced form
 
-Use `reduced_form = "system"` to estimate the full system — one equation for each endogenous variable plus the outcome — with a cross-equation covariance matrix:
+Use `reduced_form = "system"` to estimate the full system — one equation for each endogenous variable plus the outcome — with a cross-equation covariance matrix. The cross-equation covariance is what joint hypotheses spanning the first-stage and outcome reduced forms require, and storing the system reproduces Stata's undocumented `savesfirst` behavior:
 
 ```{r rf-system}
 fit_system <- ivreg2(
@@ -460,15 +462,10 @@ modelsummary(fit_2sls, output = "markdown")
 
 ### Comparing estimators side by side
 
-Compare OLS, 2SLS, and LIML on the Mroz baseline in one table:
+The natural side-by-side comparison is the Klein suite, where the estimator choice visibly matters --- reusing the `klein_models` list built above:
 
 ```{r ms-compare, eval = requireNamespace("modelsummary", quietly = TRUE)}
-models <- list(
-  "OLS"  = ivreg2(lwage ~ exper + expersq + educ, data = mroz_work),
-  "2SLS" = fit_2sls,
-  "LIML" = fit_liml
-)
-modelsummary(models, output = "markdown",
+modelsummary(klein_models, output = "markdown",
              gof_map = c("nobs", "r.squared", "adj.r.squared", "sigma"))
 ```
 
