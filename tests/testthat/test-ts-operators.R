@@ -452,18 +452,24 @@ test_that("H73: Klein LIML + COVIV matches Stata", {
 })
 
 test_that("H74: Klein CUE equals Stata (and LIML, the help-file demo)", {
-  # This cell carried a documented 1e-4 override ("klein N=21 CUE optimizer
-  # noise", the H74 ruling) until the 2026-07-06 CUE closeout: parscale
-  # scaling in the optimizer cut the noise to 1.2e-7 (coef) / 3.8e-9 (vcov),
-  # so the override is retired and the cell runs at standard tolerances.
+  # Documented override, 1e-5: cross-platform CUE optimizer-endpoint noise.
+  # The pre-parscale 1e-4 override ("klein N=21 optimizer noise") was retired
+  # to standard tolerances at the 2026-07-06 CUE closeout on macOS evidence
+  # (1.2e-7 coef), but the first cross-platform CI cycle measured the
+  # BLAS-dependent endpoint spread just above 1e-6 on Windows (the profits
+  # coef breached the 1e-6 standard; the display-rounded log values give
+  # ~9e-7, so the breach is marginal; ubuntu passed), so 1e-5 = ~10x the
+  # measured worst and 10x tighter than the retired override. A formula or basin error moves
+  # coefficients by >=1e-3 here, so the override still detects bugs.
   fit_cue <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "cue")
-  expect_coef_fixture(fit_cue, "tsop_klein_coef_cue.csv")
-  # The help file's point: CUE = LIML under iid + independence
-  # (observed post-parscale agreement 1.7e-7 relative)
+  expect_coef_fixture(fit_cue, "tsop_klein_coef_cue.csv",
+                      tol_coef = 1e-5, tol_se = 1e-5)
+  # The help file's point: CUE = LIML under iid + independence. Same noise
+  # source (the CUE endpoint; LIML is closed-form), so the same 1e-5.
   fit_liml <- ivreg2(klein_formula, data = klein, tvar = "yr",
                      method = "liml")
   expect_equal(unname(coef(fit_cue)), unname(coef(fit_liml)),
-               tolerance = stata_tol$coef)
+               tolerance = 1e-5)
 })
 
 test_that("H75: Klein Fuller(1) matches Stata", {

@@ -60,12 +60,16 @@ stata_tol <- list(
 # were retired at the end-of-grind re-audit (2026-07-06): every binding case
 # lived on fixture cells deleted in the Tranche 3 re-base (the card CUE and
 # CUE+center cells, the M=2 card cluster dofminus cells, the card-era
-# LIML+cluster cells). The klein CUE 1e-4 override (H74 "N=21 optimizer
-# noise" ruling) was retired at the same day's CUE closeout — parscale
-# scaling root-cause fixed the noise (observed 1.2e-7 coef / 3.8e-9 vcov).
-# One documented per-site override remains, with its rationale at the call
-# site:
+# LIML+cluster cells). Two documented per-site overrides remain, with their
+# rationale at the call sites:
 #
+#   test-ts-operators.R / test-cue.R: klein CUE coef/se/vcov + CUE=LIML
+#     identity = 1e-5 (cross-platform CUE optimizer-endpoint noise on the
+#     N=21 klein model; the pre-parscale 1e-4 override was retired to
+#     standard at the 2026-07-06 CUE closeout on macOS evidence of 1.2e-7,
+#     then the first cross-platform CI cycle breached 1e-6 marginally on
+#     Windows — 1e-5 is ~10x the measured worst and 10x tighter than the
+#     old 1e-4)
 #   test-user-matrices.R: wmatrix-vs-standard GMM fit comparison, vcov = 1e-5
 #     (R-internal fit-vs-fit identity, not Stata parity)
 #

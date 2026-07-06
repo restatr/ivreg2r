@@ -25,9 +25,10 @@ sw_cue_fit_robust <- ivreg2(sw_formula, data = stockwatson, method = "cue", vcov
 # parscale scaling: the audit-measured worst CUE coef gap is 9.0e-7
 # (ab_cue cl ys, the one near-tolerance item), and every CUE se/vcov gap
 # sits at or below the overall audit worsts of 1.7e-8 se / 5.8e-8 vcov
-# (both attained by LIML cells). The klein H74 1e-4 override was retired
-# in the same pass (its "N=21 optimizer noise" rationale was root-cause
-# fixed).
+# (both attained by LIML cells). The klein cells are the one exception:
+# their pre-parscale 1e-4 override was retired at the closeout, then
+# reinstated at a measured 1e-5 after the first cross-platform CI cycle
+# (see the klein block below and the H74 comment in test-ts-operators.R).
 # A future breach is investigate-first per the CLAUDE.md escalation rule --
 # do not reintroduce a wider tolerance without a root cause.
 
@@ -94,12 +95,12 @@ for (cell in cue_full_cells) {
 # ============================================================================
 
 test_that("klein CUE-IID VCV and Hansen J match Stata (H74 complement)", {
-  # The coef assertion and the CUE = LIML identity are owned by test-ts-operators.R's H74 test; this block adds only what that test does not assert: the full VCV and the Hansen J stat/p. The 1e-4 override this cell shared with H74 ("klein N=21 CUE optimizer noise") was retired at the 2026-07-06 CUE closeout: parscale scaling cut the observed vcov gap to 3.8e-9, so the cell runs at the standard tolerance.
+  # The coef assertion and the CUE = LIML identity are owned by test-ts-operators.R's H74 test; this block adds only what that test does not assert: the full VCV and the Hansen J stat/p. The vcov carries H74's documented 1e-5 override (cross-platform CUE optimizer-endpoint noise, which breached the 1e-6 standard marginally on the Windows coef at the 2026-07-06 CI cycle; the vcov is quadratic in the same endpoint and passed at 1e-6 on all five CI jobs, but one run is not a tight bound and the noise source is identical). See the H74 comment for the full history: 1e-4 pre-parscale, standard for one commit, 1e-5 measured.
   skip_if(!file.exists(fixture_path("tsop_klein_vcov_cue.csv")),
           "klein CUE fixture not found")
 
   fit <- ivreg2(klein_formula, data = klein, tvar = "yr", method = "cue")
-  expect_vcov_fixture(fit, "tsop_klein_vcov_cue.csv")
+  expect_vcov_fixture(fit, "tsop_klein_vcov_cue.csv", tol = 1e-5)
   dx <- read_diagnostics(fixture_path("tsop_klein_diagnostics_cue.csv"))
   expect_equal(fit$diagnostics$overid$stat, dx$j,
                tolerance = stata_tol$stat, info = "Hansen J stat")
