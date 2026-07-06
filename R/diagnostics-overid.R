@@ -161,6 +161,47 @@
 
 
 # --------------------------------------------------------------------------
+# .cluster_rank_bound
+# --------------------------------------------------------------------------
+#' Structural rank bound of the moment-covariance meat
+#'
+#' A one-way cluster-robust meat is a sum of M rank-one outer products (one
+#' per cluster), so its rank is at most M regardless of floating-point
+#' behavior; centering subtracts the overall mean score, which makes the M
+#' cluster sums add to exactly zero, dropping the bound to M - 1. When the
+#' bound is below L the meat is singular by construction, and consumers that
+#' must invert it (the GMM weighting matrix, Hansen J, Stock-Wright S) can
+#' refuse deterministically.
+#'
+#' This structural gate exists because the numeric detectors (chol failure,
+#' qr rank, eigenvalue thresholds) proved BLAS-dependent on the
+#' rank-deficit-1 case: at the 2026-07-06 CI cycle the Griliches
+#' cluster(year) + partial cells (H28/H29, M = 7 clusters vs L = 8 moments)
+#' were detected on macOS (lambda_min/lambda_max ~ 2e-18, far below any
+#' threshold) but missed on ubuntu/Windows, whose BLAS leaves a larger
+#' rounding residue in the deficit eigenvalue. No threshold can decide an
+#' exact-rank question robustly; the cluster-count bound can.
+#'
+#' All other VCE shapes (kernel-smoothed, two-way cluster, HC, SW, iid)
+#' return Inf: no comparably simple bound holds there, and the numeric
+#' checks remain the detectors.
+#'
+#' @param cluster_vec Length-N cluster vector (one-way), list of 2 vectors
+#'   (two-way), or NULL.
+#' @param kernel Kernel name, or NULL.
+#' @param center Logical: are the moment conditions centered?
+#' @return Numeric rank bound (M or M - 1), or `Inf` when no structural
+#'   bound applies.
+#' @keywords internal
+.cluster_rank_bound <- function(cluster_vec, kernel, center = FALSE) {
+  if (is.null(cluster_vec) || !is.null(kernel) || is.list(cluster_vec)) {
+    return(Inf)
+  }
+  length(unique(cluster_vec)) - as.integer(isTRUE(center))
+}
+
+
+# --------------------------------------------------------------------------
 # .sargan_test
 # --------------------------------------------------------------------------
 #' Sargan overidentification test (IID path)
@@ -213,11 +254,21 @@
 #' @param Omega L x L symmetric score covariance matrix.
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @param N Number of observations.
+#' @param rank_bound Structural rank bound of Omega from
+#'   [.cluster_rank_bound()], or `Inf` (default) when none applies. When
+#'   below L, Omega is singular by construction and J is `NA` without
+#'   consulting the platform-dependent numeric checks.
 #' @return Scalar J statistic, or `NA_real_` if Omega is rank-deficient
 #'   or the GMM Hessian is singular.
 #' @keywords internal
-.compute_j_with_omega <- function(Z, X, y, Omega, weights, N) {
+.compute_j_with_omega <- function(Z, X, y, Omega, weights, N,
+                                  rank_bound = Inf) {
   L <- ncol(Z)
+
+  # Structural gate first (platform-stable; see .cluster_rank_bound)
+  if (rank_bound < L) {
+    return(NA_real_)
+  }
 
   # Numerical rank check on Omega (Stata: invsym's rank determination, which
   # drives the "covariance matrix of moment conditions not of full rank"
@@ -313,7 +364,9 @@
                            kernel = kernel, bw = bw, time_index = time_index,
                            center = center, psd = psd,
                            sw = sw, ivar_vec = ivar_vec)
-  J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
+  J <- .compute_j_with_omega(Z, X, y, Omega, weights, N,
+                             rank_bound = .cluster_rank_bound(cluster_vec,
+                                                              kernel, center))
 
   if (is.na(J)) {
     warning("Hansen J statistic not computed; ",
@@ -389,6 +442,7 @@
   }
 
   # 4. Compute omega (VCE-dependent, matching Stata m_omega)
+  rank_bound <- Inf
   if (vcov_type %in% c("iid", "AC")) {
     # Homoskedastic / AC: omega = sigma^2_0 * Z'WZ / N
     # (Stata livreg2.do lines 194-235)
@@ -416,12 +470,21 @@
                              time_index = time_index,
                              center = center, psd = psd,
                              sw = sw, ivar_vec = ivar_vec)
+    # Structural singularity gate (platform-stable; see .cluster_rank_bound).
+    # Applies only to this branch: the iid/AC Omegas above are not cluster
+    # meats, so the cluster-count bound does not describe them.
+    rank_bound <- .cluster_rank_bound(cluster_vec, kernel, center)
   }
 
   # 5. S = N * gbar' * Omega^{-1} * gbar
-  R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
+  structurally_singular <- rank_bound < ncol(Z)
+  R_chol <- if (structurally_singular) {
+    NULL
+  } else {
+    tryCatch(chol(Omega), error = function(e) NULL)
+  }
   if (is.null(R_chol)) {
-    if (qr(Omega)$rank < ncol(Z)) {
+    if (structurally_singular || qr(Omega)$rank < ncol(Z)) {
       warning("Stock-Wright: Omega is rank-deficient; S statistic not computed.",
               call. = FALSE)
       return(list(stat = NA_real_, p = NA_real_, df = as.integer(L1)))

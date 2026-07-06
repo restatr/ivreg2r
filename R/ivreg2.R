@@ -1141,6 +1141,10 @@
   }
 
   # --- Estimation dispatch ---
+  # Structural rank bound of the Omega the GMM fitters must invert
+  # (see .cluster_rank_bound). Only meaningful for our own moment-covariance
+  # closure: user-supplied smatrix paths pass Inf and keep the numeric checks.
+  omega_rank_bound <- .cluster_rank_bound(cluster_vec, kernel, center)
   if (use_smatrix && !use_wmatrix) {
     omega_fn <- function(resid) smatrix
     fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
@@ -1155,7 +1159,9 @@
       omega_fn <- function(resid) omega_fn_base(wstep_resid)
     }
     fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
-                      sdofminus = sdofminus, omega_fn = omega_fn)
+                      sdofminus = sdofminus, omega_fn = omega_fn,
+                      omega_rank_bound = if (use_smatrix) Inf
+                                         else omega_rank_bound)
 
   } else if (use_wmatrix) {
     if (use_smatrix) {
@@ -1169,11 +1175,13 @@
   } else if (method == "cue") {
     fit <- .fit_cue(parsed, small = small, dofminus = dofminus,
                     sdofminus = sdofminus, omega_fn = omega_fn, b0 = b0,
-                    iid = gmm_is_iid)
+                    iid = gmm_is_iid,
+                    omega_rank_bound = omega_rank_bound)
 
   } else if (method == "gmm2s") {
     fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
-                      sdofminus = sdofminus, omega_fn = omega_fn)
+                      sdofminus = sdofminus, omega_fn = omega_fn,
+                      omega_rank_bound = omega_rank_bound)
 
   } else if (method %in% c("liml", "kclass")) {
     fit <- .fit_kclass(parsed, method = method, kclass = kclass, fuller = fuller,

@@ -4,7 +4,14 @@
 \alias{.fit_gmm2s}
 \title{Fit two-step efficient GMM}
 \usage{
-.fit_gmm2s(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L, omega_fn)
+.fit_gmm2s(
+  parsed,
+  small = FALSE,
+  dofminus = 0L,
+  sdofminus = 0L,
+  omega_fn,
+  omega_rank_bound = Inf
+)
 }
 \arguments{
 \item{parsed}{A \code{parsed_formula} object from \code{.parse_formula()}.}

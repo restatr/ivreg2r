@@ -11,7 +11,8 @@
   sdofminus = 0L,
   omega_fn,
   b0 = NULL,
-  iid = TRUE
+  iid = TRUE,
+  omega_rank_bound = Inf
 )
 }
 \arguments{

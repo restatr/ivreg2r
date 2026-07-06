@@ -29,7 +29,7 @@
 #'   `j_stat`, `j_df`, `j_p`, `omega`, `method`.
 #' @keywords internal
 .fit_gmm2s <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L,
-                       omega_fn) {
+                       omega_fn, omega_rank_bound = Inf) {
   y <- parsed$y
   X <- parsed$X
   Z <- parsed$Z
@@ -48,6 +48,14 @@
   Omega <- omega_fn(fit_1$residuals)
 
   # --- Step 3: rank-check Omega ---
+  # Structural gate first: a one-way cluster meat with fewer clusters than
+  # moments is singular by construction, and the numeric detectors below
+  # proved BLAS-dependent on the rank-deficit-1 case (H29, detected on macOS
+  # but not ubuntu at the 2026-07-06 CI cycle; see .cluster_rank_bound).
+  if (omega_rank_bound < L) {
+    stop("estimated covariance matrix of moment conditions not of full rank;\n",
+         "optimal GMM weighting matrix not unique.", call. = FALSE)
+  }
   R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
   if (is.null(R_chol)) {
     if (qr(Omega)$rank < L) {
@@ -438,7 +446,8 @@
 #'   `convergence` (integer) and `cue_message` (string). `method = "cue"`.
 #' @keywords internal
 .fit_cue <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L,
-                     omega_fn, b0 = NULL, iid = TRUE) {
+                     omega_fn, b0 = NULL, iid = TRUE,
+                     omega_rank_bound = Inf) {
   y <- parsed$y
   X <- parsed$X
   Z <- parsed$Z
@@ -462,7 +471,8 @@
                             sdofminus = sdofminus)
     } else {
       fit_init <- .fit_gmm2s(parsed, small = FALSE, dofminus = dofminus,
-                             sdofminus = sdofminus, omega_fn = omega_fn)
+                             sdofminus = sdofminus, omega_fn = omega_fn,
+                             omega_rank_bound = omega_rank_bound)
     }
     beta_init <- unname(fit_init$coefficients)
 
@@ -564,6 +574,13 @@
   Omega <- omega_fn(resid)
 
   # --- Step 5: Omega rank check (Stata line 5972-5979) ---
+  # Structural gate first, as in .fit_gmm2s step 3 (see .cluster_rank_bound).
+  # For non-iid CUE the GMM2S init above already errors on this condition;
+  # this belt covers the b0 path, which skips the init's Omega inversion.
+  if (omega_rank_bound < L) {
+    stop("estimated covariance matrix of moment conditions not of full rank;\n",
+         "optimal GMM weighting matrix not unique.", call. = FALSE)
+  }
   R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
   if (is.null(R_chol)) {
     if (qr(Omega)$rank < L) {

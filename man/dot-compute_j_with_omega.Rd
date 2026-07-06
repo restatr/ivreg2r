@@ -4,7 +4,7 @@
 \alias{.compute_j_with_omega}
 \title{Compute J statistic given a pre-computed Omega matrix}
 \usage{
-.compute_j_with_omega(Z, X, y, Omega, weights, N)
+.compute_j_with_omega(Z, X, y, Omega, weights, N, rank_bound = Inf)
 }
 \arguments{
 \item{Z}{N x L instrument matrix.}
@@ -18,6 +18,11 @@
 \item{weights}{Normalized weights (sum to N), or NULL.}
 
 \item{N}{Number of observations.}
+
+\item{rank_bound}{Structural rank bound of Omega from
+\code{\link[=.cluster_rank_bound]{.cluster_rank_bound()}}, or \code{Inf} (default) when none applies. When
+below L, Omega is singular by construction and J is \code{NA} without
+consulting the platform-dependent numeric checks.}
 }
 \value{
 Scalar J statistic, or \code{NA_real_} if Omega is rank-deficient

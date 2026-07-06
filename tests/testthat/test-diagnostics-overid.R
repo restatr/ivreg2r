@@ -381,3 +381,83 @@ test_that("small does not change overid statistic (sim_multi_endo)", {
                  data = sim_multi, vcov = "robust", small = TRUE)
   expect_equal(fit3$diagnostics$overid$stat, fit4$diagnostics$overid$stat)
 })
+
+# ============================================================================
+# Structural rank bound: one-way cluster meat with M < L (platform-stable)
+# ============================================================================
+#
+# Added at the 2026-07-06 H28/H29 investigation. The numeric singularity
+# detectors (chol failure, qr rank, eigenvalue thresholds) proved
+# BLAS-dependent on the rank-deficit-1 cluster meat: the griliches
+# cluster(year) + partial cells were detected on macOS
+# (lambda_min/lambda_max ~ 2e-18) but missed on ubuntu/Windows.
+# .cluster_rank_bound() gates the Omega-inverting consumers structurally:
+# a one-way cluster meat is a sum of M rank-one outer products, so M < L
+# (M - 1 < L when centered) is singular by construction on every platform.
+# These synthetic tests pin the gate deterministically; the canonical
+# griliches behavior is pinned by H27/H28/H29 in test-helpfile-examples.R.
+
+test_that(".cluster_rank_bound: M one-way, M - 1 centered, Inf otherwise", {
+  cv <- rep(1:3, each = 10L)
+  expect_identical(.cluster_rank_bound(cv, kernel = NULL), 3L)
+  expect_identical(.cluster_rank_bound(cv, kernel = NULL, center = TRUE), 2L)
+  expect_identical(.cluster_rank_bound(NULL, kernel = NULL), Inf)
+  expect_identical(.cluster_rank_bound(cv, kernel = "bartlett"), Inf)
+  expect_identical(.cluster_rank_bound(list(cv, cv), kernel = NULL), Inf)
+})
+
+# Deterministic synthetic data: M = 3 clusters vs L = 4 moment conditions
+# (intercept + three excluded instruments).
+set.seed(42)
+rank_gate_n <- 60L
+rank_gate_df <- data.frame(
+  z1 = rnorm(rank_gate_n), z2 = rnorm(rank_gate_n), z3 = rnorm(rank_gate_n),
+  g = rep(1:3, each = 20L)
+)
+rank_gate_df$x <- rank_gate_df$z1 + rank_gate_df$z2 + rnorm(rank_gate_n)
+rank_gate_df$y <- rank_gate_df$x + rnorm(rank_gate_n)
+
+test_that("GMM2S with M < L clusters errors deterministically", {
+  expect_error(
+    ivreg2(y ~ 1 | x | z1 + z2 + z3, data = rank_gate_df, clusters = ~g,
+           method = "gmm2s"),
+    "not of full rank"
+  )
+})
+
+test_that("2SLS diagnostics with M < L clusters: J, AR, Stock-Wright all NA with warnings", {
+  expect_warning(
+    expect_warning(
+      expect_warning(
+        fit <- ivreg2(y ~ 1 | x | z1 + z2 + z3, data = rank_gate_df,
+                      clusters = ~g),
+        "Hansen J statistic not computed"
+      ),
+      "Anderson-Rubin: RVR matrix is singular"
+    ),
+    "Stock-Wright.*rank-deficient"
+  )
+  expect_true(is.na(fit$diagnostics$overid$stat))
+  expect_identical(fit$diagnostics$overid$df, 2L)
+})
+
+test_that("center drops the bound to M - 1: M = L fits uncentered, errors centered", {
+  # M = 4 clusters vs L = 4 moments: the uncentered meat is full rank
+  # (bound M = L does not bind); centering makes the four cluster sums add
+  # to zero, so the centered meat has rank <= 3 by construction.
+  set.seed(43)
+  d4 <- data.frame(
+    z1 = rnorm(rank_gate_n), z2 = rnorm(rank_gate_n), z3 = rnorm(rank_gate_n),
+    g = rep(1:4, each = 15L)
+  )
+  d4$x <- d4$z1 + d4$z2 + rnorm(rank_gate_n)
+  d4$y <- d4$x + rnorm(rank_gate_n)
+  fit_ok <- ivreg2(y ~ 1 | x | z1 + z2 + z3, data = d4, clusters = ~g,
+                   method = "gmm2s")
+  expect_s3_class(fit_ok, "ivreg2")
+  expect_error(
+    ivreg2(y ~ 1 | x | z1 + z2 + z3, data = d4, clusters = ~g,
+           method = "gmm2s", center = TRUE),
+    "not of full rank"
+  )
+})
