@@ -242,6 +242,7 @@ data(griliches)
 data(phillips)
 data(stockwatson)
 data(cigar)
+data(mroz)
 
 # Fit the stored lwage, not log(wage): card.dta stores lwage as float32, and
 # every Stata fixture was generated from that stored variable. Recomputing
@@ -251,8 +252,14 @@ data(cigar)
 # coef gap is 5.5e-6 with log(wage) vs 1.6e-11 with lwage on the identical
 # fit). The audit must measure implementation parity on the same data both
 # sides saw, exactly as the test files do.
-f_justid <- lwage ~ exper + expersq + black + south | educ | nearc4
 f_overid <- lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2
+
+# mroz justid/overid fixture family (M-10 re-base): the disclosed D5a
+# single-instrument restriction (help.txt H31/H41). Mirrors the
+# mroz_justid_formula / mroz_overid_formula pair in test-ivreg2-2sls.R (and
+# test-vcov-robust.R / test-broom-methods.R / test-liml.R) -- keep in sync.
+mroz_justid_f <- lwage ~ exper + expersq | educ | age
+mroz_overid_f <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
 
 # klein/abdata LIML fixture family (M-15 re-base): klein carries the native K1=2 multi-endogenous + panel-lag LIML/Fuller cells; abdata carries the K1=3 multi-endogenous cluster cell. See helper-fixtures.R's card_wt/fwt comment for the same "keep in sync" precedent on the awt formula below.
 klein$awt <- klein$yr %% 5 + 1
@@ -267,27 +274,21 @@ stockwatson$swwt <- stockwatson$date %% 4 + 1
 
 cat("Running model configurations...\n\n")
 
-# --- 2SLS just-identified ---
+# --- 2SLS just-identified (M-10 re-base: mroz justid D5a cell) ---
 .audit_model("2sls_justid_iid",
-  ivreg2(f_justid, data = card),
-  "card_just_id")
-.audit_model("2sls_justid_hc1",
-  ivreg2(f_justid, data = card, vcov = "robust"),
-  "card_just_id", "hc1")
-.audit_model("2sls_justid_hc1_small",
-  ivreg2(f_justid, data = card, vcov = "robust", small = TRUE),
-  "card_just_id", "hc1_small")
+  ivreg2(mroz_justid_f, data = mroz),
+  "mroz_justid", "iid")
+.audit_model("2sls_justid_robust",
+  ivreg2(mroz_justid_f, data = mroz, vcov = "robust"),
+  "mroz_justid", "robust")
 
-# --- 2SLS overidentified ---
+# --- 2SLS overidentified (M-10 re-base: hf H31/H41 cells) ---
 .audit_model("2sls_overid_iid",
-  ivreg2(f_overid, data = card),
-  "card_overid")
-.audit_model("2sls_overid_hc1",
-  ivreg2(f_overid, data = card, vcov = "robust"),
-  "card_overid", "hc1")
-.audit_model("2sls_overid_hc1_small",
-  ivreg2(f_overid, data = card, vcov = "robust", small = TRUE),
-  "card_overid", "hc1_small")
+  ivreg2(mroz_overid_f, data = mroz),
+  "hf_mroz", "H31")
+.audit_model("2sls_overid_robust",
+  ivreg2(mroz_overid_f, data = mroz, vcov = "robust"),
+  "hf_mroz", "H41")
 
 # --- LIML (klein/abdata, M-15 re-base) ---
 .audit_model("liml_klein_iid",

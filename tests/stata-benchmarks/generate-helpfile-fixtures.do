@@ -15,6 +15,12 @@
   generate-hols-fixtures.do. See the coverage ledger at the top of
   test-helpfile-examples.R for the full H01-H105 accounting.
 
+  M-10 absorbed section (2026-07-06, planning/22-spec-matrix.md): the mroz
+  region also carries the mroz_justid cells, a D5a just-identified 2SLS
+  baseline (educ = age) that replaces the retired card_just_id family from
+  generate-fixtures.do -- see the section banner in the Mroz region below
+  for the full rationale.
+
   Data sources: local cache in ../validation/data/ (built by
   validation/validate-helpfile.qmd); falls back to the BC.edu / webuse
   sources cited in the help file if the cache is absent.
@@ -384,6 +390,49 @@ quietly {
 }
 ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6) if mroz_iv_sample, robust b0(b0)
 save_ivreg2_results, prefix(hf_mroz) suffix(H68) outdir(`outdir')
+
+
+/*===========================================================================
+  M-10 absorbed section (planning/22-spec-matrix.md M-10): the
+  just-identified 2SLS baseline. D5a WITH DISCLOSURE -- H31 (help.txt:1274)
+  restricted to a single excluded instrument (educ = age); the instrument
+  choice is arbitrary, not economically motivated (same restriction as the
+  M-25 first-stage justid cells). These cells replace the retired
+  card_just_id family: the just-identified surface (sargan = 0 / df = 0
+  sentinel, just-identified AR anchor for M-21's rf transitivity,
+  just-identified KP/CD stats, just-identified robust vcov) needs a Stata
+  anchor, and no help-file command is just-identified. Small variants are
+  NOT generated -- retired by invariance (in the retired card fixtures only
+  rmse/sigmasq, an exact N/(N-K) factor, and F_stat floating-point noise
+  moved under small; R pins small behavior with fixture-free exact
+  identities plus direct-equality asserts). The overidentified baselines
+  are the existing H31/H41 cells above; the factor-variable baseline is
+  hf_gril H03.
+===========================================================================*/
+
+capture use "../validation/data/mroz.dta", clear
+if _rc {
+    use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+}
+
+// Both cells carry endog(educ) so e(estat) is populated for the endogeneity-test consumers (endog() is diagnostics-only and does not change estimation; verified byte-identical coef/vcov in the retired M-16/M-18 endog cells) and ffirst so e(arf)/e(archi2)/e(sstat) are posted for the Anderson-Rubin and Stock-Wright consumers (ivreg2 posts the weak-instrument-robust block only under first/ffirst/savefirst; the retired card cells passed `first`).
+ivreg2 lwage exper expersq (educ=age), ffirst endog(educ)
+save_ivreg2_results, prefix(mroz_justid) suffix(iid) outdir(`outdir')
+
+ivreg2 lwage exper expersq (educ=age), robust ffirst endog(educ)
+save_ivreg2_results, prefix(mroz_justid) suffix(robust) outdir(`outdir')
+
+// --- H36 (help.txt:1305): savefirst on the H31 base. Previously skipped in the hf suite as a post-estimation equivalence demo, generated here because savefirst posts the weak-instrument-robust block, making this the overidentified x IID Anderson-Rubin / Stock-Wright anchor (H31 without ffirst posts neither; H41/H54 carry only the robust variants). Diagnostics only: coef/vcov are erased below -- savefirst is Stata bookkeeping and estimation is identical to H31's, so those files would be byte-identical to hf_mroz's H31 files. ---
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6), savefirst
+save_ivreg2_results, prefix(hf_mroz) suffix(H36) outdir(`outdir')
+erase "`outdir'/hf_mroz_coef_H36.csv"
+erase "`outdir'/hf_mroz_vcov_H36.csv"
+
+// D5a option-variation: H33's endog(educ) on the H41 robust base, giving the overidentified x robust endogeneity anchor (H33 itself is iid; no help-file command runs endog under robust). Diagnostics only: the coef/vcov files are erased below because endog() does not change estimation -- they would be byte-identical to hf_mroz's H41 files -- and test-diagnostics-endogeneity.R pins that invariance with a fixture-free assert.
+ivreg2 lwage exper expersq (educ=age kidslt6 kidsge6), robust endog(educ)
+save_ivreg2_results, prefix(mroz_endog) suffix(robust) outdir(`outdir')
+erase "`outdir'/mroz_endog_coef_robust.csv"
+erase "`outdir'/mroz_endog_vcov_robust.csv"
 
 
 /*===========================================================================

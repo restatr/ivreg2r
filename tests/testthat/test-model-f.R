@@ -6,11 +6,6 @@
 # Structural tests (OLS cross-check, edge cases) + Stata fixture tests.
 
 # --- Load datasets ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
-
 sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
@@ -22,6 +17,7 @@ if (file.exists(sim_noconst_path)) {
 }
 
 data(abdata, package = "ivreg2r")
+data(mroz, package = "ivreg2r")
 
 
 # ============================================================================
@@ -72,9 +68,7 @@ test_that("model_f is populated for OLS models", {
 })
 
 test_that("model_f is populated for IV models", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
   expect_true(is.numeric(fit$model_f))
   expect_false(is.na(fit$model_f))
 })
@@ -120,47 +114,66 @@ check_model_f <- function(fit, fixture_path, label) {
 
 
 # ============================================================================
-# card_just_id: lwage ~ exper+expersq+black+south | educ | nearc4
+# mroz_justid: lwage ~ exper+expersq | educ | age (D5a disclosed
+# single-instrument restriction; family M-10 re-base, replacing card_just_id)
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "iid",    suffix = "iid"),
+  list(vcov = "robust", suffix = "robust")
 )) {
   fixture_file <- fixture_path(
-    paste0("card_just_id_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("mroz_justid_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("card_just_id", vce_combo$suffix)
+  label <- paste("mroz_justid", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq | educ | age,
+                  data = mroz, vcov = vce_combo$vcov)
+    fit_small <- ivreg2(lwage ~ exper + expersq | educ | age,
+                         data = mroz, vcov = vce_combo$vcov, small = TRUE)
     check_model_f(fit, fixture_file, label)
+    check_model_f(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("model F direct equality: small vs non-small", label), {
+      expect_equal(fit_small$model_f, fit$model_f)
+      expect_equal(fit_small$model_f_p, fit$model_f_p)
+      expect_identical(fit_small$model_f_df1, fit$model_f_df1)
+      expect_identical(fit_small$model_f_df2, fit$model_f_df2)
+    })
   }
 }
 
 
 # ============================================================================
-# card_overid: lwage ~ exper+expersq+black+south | educ | nearc2+nearc4
+# mroz overid: lwage ~ exper+expersq | educ | age+kidslt6+kidsge6 (the
+# H31/H41 help-file model, help.txt:1274 / help.txt:1325; family M-10
+# re-base, replacing card_overid)
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "iid",    suffix = "H31"),
+  list(vcov = "robust", suffix = "H41")
 )) {
   fixture_file <- fixture_path(
-    paste0("card_overid_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("hf_mroz_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("card_overid", vce_combo$suffix)
+  label <- paste("mroz_overid", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                  data = mroz, vcov = vce_combo$vcov)
+    fit_small <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                         data = mroz, vcov = vce_combo$vcov, small = TRUE)
     check_model_f(fit, fixture_file, label)
+    check_model_f(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("model F direct equality: small vs non-small", label), {
+      expect_equal(fit_small$model_f, fit$model_f)
+      expect_equal(fit_small$model_f_p, fit$model_f_p)
+      expect_identical(fit_small$model_f_df1, fit$model_f_df1)
+      expect_identical(fit_small$model_f_df2, fit$model_f_df2)
+    })
   }
 }
 

@@ -25,6 +25,16 @@
   FIXTURE 9 (sim_cluster_dofminus) re-imports it (M-29); only the direct
   estimation cells moved.
 
+  M-10 re-base (2026-07-06): the card_just_id and card_overid baseline cells
+  (formerly FIXTURE 1 and FIXTURE 2) were retired -- the card 2SLS baseline
+  family is absorbed into the helpfile suite (planning/22-spec-matrix.md row
+  M-10). 2SLS baseline Stata parity now lives in the hf suite (hf_mroz H31/
+  H41, hf_gril H03, generate-helpfile-fixtures.do) plus the new mroz_justid
+  D5a cells added there. The small variants were retired by invariance: only
+  rmse/sigmasq (an exact N/(N-K) factor) and F_stat floating-point noise
+  differed under small in the retired fixtures, with every other diagnostic
+  byte-identical (verified 2026-07-06).
+
   Usage (CWD must be the package root, i.e. pkg/):
     cd /path/to/ivreg2r/pkg
     do tests/stata-benchmarks/generate-fixtures.do
@@ -338,62 +348,6 @@ program define run_all_vce_combos
         save_ivreg2_results, prefix(`prefix') suffix(cl_small) outdir(`outdir')
     }
 end
-
-
-/*===========================================================================
-  FIXTURE 1: card_just_id
-  Dataset: Card (1995) — returns to education
-  Model: lwage ~ exper expersq black south | educ | nearc4
-  Purpose: Simplest real-data IV; exact identification (L1 = K1 = 1)
-===========================================================================*/
-display _newline(2) "=== FIXTURE 1: card_just_id ==="
-
-// Reload Card data (pre-loaded before program definitions)
-use "`outdir'/_card_temp.dta", clear
-
-// Set model components via globals
-global ivreg2_depvar "lwage"
-global ivreg2_exog "exper expersq black south"
-global ivreg2_endo "educ"
-global ivreg2_iv "nearc4"
-
-run_all_vce_combos, ///
-    prefix(card_just_id) ///
-    outdir(`outdir') ///
-    endogopt(educ)
-
-// e(first) exports are orphans since the M-25 re-base (M-25 owns
-// first-stage fixtures; the M-10 re-base owns the structural fix) --
-// erase them so a full re-run cannot recreate untracked orphans.
-foreach s in iid iid_small hc1 hc1_small {
-    erase "`outdir'/card_just_id_firststage_`s'.csv"
-}
-
-
-/*===========================================================================
-  FIXTURE 2: card_overid
-  Dataset: Card (1995)
-  Model: lwage ~ exper expersq black south | educ | nearc2 nearc4
-  Purpose: Overidentified (L1=2, K1=1); tests Sargan/Hansen J
-===========================================================================*/
-display _newline(2) "=== FIXTURE 2: card_overid ==="
-
-// Reload Card data
-use "`outdir'/_card_temp.dta", clear
-global ivreg2_depvar "lwage"
-global ivreg2_exog "exper expersq black south"
-global ivreg2_endo "educ"
-global ivreg2_iv "nearc2 nearc4"
-
-run_all_vce_combos, ///
-    prefix(card_overid) ///
-    outdir(`outdir') ///
-    endogopt(educ)
-
-// same M-25 orphan erase as card_just_id above
-foreach s in iid iid_small hc1 hc1_small {
-    erase "`outdir'/card_overid_firststage_`s'.csv"
-}
 
 
 /*===========================================================================

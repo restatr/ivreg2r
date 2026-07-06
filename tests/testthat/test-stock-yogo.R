@@ -1,15 +1,14 @@
 # ============================================================================
 # Tests: Stock-Yogo Critical Values (Ticket D3)
-# ============================================================================
 #
-# Unit tests for .stock_yogo_lookup() and integration tests verifying
-# diagnostics$weak_id_sy is populated correctly by ivreg2().
+# M-10 re-base (2026-07-06): these are fixture-free Stock-Yogo table lookups
+# with published critical values; models and expected values are unchanged.
+# card stays bundled per D4, loaded via data() instead of the retired
+# card_data.csv export.
+# ============================================================================
 
 # --- Load datasets ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+data(card, package = "ivreg2r")
 
 sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
@@ -102,8 +101,6 @@ test_that("K1=1, L1=3: bias tables start having values", {
 # ============================================================================
 
 test_that("card_just_id: weak_id_sy has IV size rows, first cv = 16.38", {
-  skip_if(!file.exists(card_path), "card data not found")
-
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card)
   sy <- fit$diagnostics$weak_id_sy
@@ -115,8 +112,6 @@ test_that("card_just_id: weak_id_sy has IV size rows, first cv = 16.38", {
 })
 
 test_that("card_overid: weak_id_sy contains ivsize10 = 19.93", {
-  skip_if(!file.exists(card_path), "card data not found")
-
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card)
   sy <- fit$diagnostics$weak_id_sy
@@ -151,8 +146,6 @@ test_that("OLS model: weak_id_sy is NULL", {
 })
 
 test_that("weak_id_sy is VCE-invariant (same tables for iid vs robust)", {
-  skip_if(!file.exists(card_path), "card data not found")
-
   fit_iid <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                     data = card)
   fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
@@ -308,8 +301,6 @@ test_that("Fuller with any positive value dispatches to Fuller tables", {
 # ============================================================================
 
 test_that("ivreg2 method='liml' stores LIML size tables", {
-  skip_if(!file.exists(card_path), "card data not found")
-
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, method = "liml")
   sy <- fit$diagnostics$weak_id_sy
@@ -321,8 +312,6 @@ test_that("ivreg2 method='liml' stores LIML size tables", {
 })
 
 test_that("ivreg2 fuller=1 stores Fuller bias tables", {
-  skip_if(!file.exists(card_path), "card data not found")
-
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, fuller = 1)
   sy <- fit$diagnostics$weak_id_sy
@@ -358,16 +347,12 @@ test_that("K1=3 returns NULL for non-IV-bias tables", {
 })
 
 test_that("ivreg2 kclass=0.5 has NULL Stock-Yogo", {
-  skip_if(!file.exists(card_path), "card data not found")
-
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, kclass = 0.5)
   expect_null(fit$diagnostics$weak_id_sy)
 })
 
 test_that("2SLS Stock-Yogo unchanged after H4", {
-  skip_if(!file.exists(card_path), "card data not found")
-
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card)
   sy <- fit$diagnostics$weak_id_sy

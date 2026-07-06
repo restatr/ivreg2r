@@ -1,85 +1,64 @@
 # ============================================================================
 # Tests: Robust sandwich VCV (Ticket C1)
-# ============================================================================
+#
+# M-10 re-base (2026-07-06): the card_just_id/card_overid robust fixture cells
+# are re-based onto the mroz justid D5a cell (mroz_justid_formula) and the
+# hf H41 overid cell (help.txt:1325); the retired *_small fixture cells have
+# no direct replacement fixture — their heir is the "robust+small VCV equals
+# robust VCV scaled by N/(N-K)" identity test below, extended to cover both
+# the justid and overid models.
 #
 # Fixture naming convention: Stata fixtures named "hc1" were generated with
 # ivreg2's `, robust` option (no finite-sample correction). Fixtures named
 # "hc1_small" were generated with `, robust small` (with N/(N-K) correction).
 
-# --- Helper: load Card data and fixtures ---
-card_path <- fixture_path("card_data.csv")
+data(mroz, package = "ivreg2r")
 
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+mroz_justid_formula <- lwage ~ exper + expersq | educ | age
+mroz_overid_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
 
 # ============================================================================
-# card_just_id: robust matches Stata `, robust` (no correction)
+# mroz_justid: robust matches Stata `, robust` (no correction)
 # ============================================================================
 
-test_that("2SLS robust VCV matches Stata card_just_id robust fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- fixture_path("card_just_id_vcov_hc1.csv")
-  skip_if(!file.exists(vcov_path), "VCV fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "robust")
-  expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
+test_that("2SLS robust VCV matches Stata mroz_justid robust fixture", {
+  fit <- ivreg2(mroz_justid_formula, data = mroz, vcov = "robust")
+  expect_coef_fixture(fit, "mroz_justid_coef_robust.csv")
+  expect_vcov_fixture(fit, "mroz_justid_vcov_robust.csv")
 })
 
 # ============================================================================
-# card_just_id: robust + small matches Stata `, robust small`
+# hf overid (H41): robust matches Stata `, robust`
 # ============================================================================
 
-test_that("2SLS robust+small VCV matches Stata card_just_id robust small fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- fixture_path("card_just_id_vcov_hc1_small.csv")
-  skip_if(!file.exists(vcov_path), "VCV fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "robust", small = TRUE)
-  expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
-})
-
-# ============================================================================
-# card_overid: robust matches Stata `, robust`
-# ============================================================================
-
-test_that("2SLS robust VCV matches Stata card_overid robust fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- fixture_path("card_overid_vcov_hc1.csv")
-  skip_if(!file.exists(vcov_path), "VCV fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "robust")
-  expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
-})
-
-# ============================================================================
-# card_overid: robust + small matches Stata `, robust small`
-# ============================================================================
-
-test_that("2SLS robust+small VCV matches Stata card_overid robust small fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  vcov_path <- fixture_path("card_overid_vcov_hc1_small.csv")
-  skip_if(!file.exists(vcov_path), "VCV fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "robust", small = TRUE)
-  expect_vcov_equal(fit$vcov, read_vcov_fixture(vcov_path))
+test_that("2SLS robust VCV matches Stata hf_mroz H41 robust fixture", {
+  fit <- ivreg2(mroz_overid_formula, data = mroz, vcov = "robust")
+  expect_vcov_fixture(fit, "hf_mroz_vcov_H41.csv")
 })
 
 # ============================================================================
 # small=TRUE VCV = small=FALSE VCV * N/(N-K) (the correction is the difference)
+#
+# This identity is the fixture-free retirement of the card_just_id/
+# card_overid *_small VCV fixture cells (2026-07-06 byte-diff: robust VCVs
+# under `small` scale by exactly N/(N-K)); it is checked on both the justid
+# and overid models so both retired cells have an identity heir.
 # ============================================================================
 
-test_that("robust+small VCV equals robust VCV scaled by N/(N-K)", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
+test_that("robust+small VCV equals robust VCV scaled by N/(N-K): justid", {
+  fit_base <- ivreg2(mroz_justid_formula, data = mroz, vcov = "robust")
+  fit_small <- ivreg2(mroz_justid_formula, data = mroz, vcov = "robust",
+                      small = TRUE)
+  N <- fit_base$nobs
+  K <- length(coef(fit_base))
+  expect_equal(fit_small$vcov, fit_base$vcov * (N / (N - K)),
+               tolerance = .Machine$double.eps^0.5)
+})
 
-  fit_base <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                     data = card, vcov = "robust")
-  fit_small <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                      data = card, vcov = "robust", small = TRUE)
+test_that("robust+small VCV equals robust VCV scaled by N/(N-K): overid", {
+  fit_base <- ivreg2(mroz_overid_formula, data = mroz, vcov = "robust")
+  fit_small <- ivreg2(mroz_overid_formula, data = mroz, vcov = "robust",
+                      small = TRUE)
   N <- fit_base$nobs
   K <- length(coef(fit_base))
   expect_equal(fit_small$vcov, fit_base$vcov * (N / (N - K)),
@@ -91,14 +70,10 @@ test_that("robust+small VCV equals robust VCV scaled by N/(N-K)", {
 # ============================================================================
 
 test_that("coefficients are identical for iid, robust, robust+small", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit_iid <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                     data = card, vcov = "iid")
-  fit_robust <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                       data = card, vcov = "robust")
-  fit_robust_small <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                             data = card, vcov = "robust", small = TRUE)
+  fit_iid <- ivreg2(mroz_justid_formula, data = mroz, vcov = "iid")
+  fit_robust <- ivreg2(mroz_justid_formula, data = mroz, vcov = "robust")
+  fit_robust_small <- ivreg2(mroz_justid_formula, data = mroz,
+                             vcov = "robust", small = TRUE)
   expect_equal(coef(fit_robust), coef(fit_iid),
                tolerance = .Machine$double.eps^0.5)
   expect_equal(coef(fit_robust_small), coef(fit_iid),
@@ -166,10 +141,7 @@ test_that("vcov = 'HC1' produces informative error", {
 # ============================================================================
 
 test_that("robust VCV is symmetric", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "robust")
+  fit <- ivreg2(mroz_justid_formula, data = mroz, vcov = "robust")
   expect_equal(fit$vcov, t(fit$vcov), tolerance = .Machine$double.eps^0.5)
 })
 

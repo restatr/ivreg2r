@@ -6,17 +6,13 @@
 # Verifies against Stata ivreg2 fixtures.
 
 # --- Load datasets ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
-
 sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
 }
 
 data(abdata, package = "ivreg2r")
+data(mroz, package = "ivreg2r")
 
 
 # ============================================================================
@@ -29,9 +25,7 @@ test_that("anderson_rubin is NULL for OLS models", {
 })
 
 test_that("anderson_rubin has all expected fields", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
   ar <- fit$diagnostics$anderson_rubin
   expect_type(ar, "list")
   expect_named(ar, c("f_stat", "f_p", "f_df1", "f_df2",
@@ -40,11 +34,8 @@ test_that("anderson_rubin has all expected fields", {
 })
 
 test_that("small=TRUE and small=FALSE produce identical AR stats (IID)", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, small = FALSE)
-  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, small = TRUE)
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, small = FALSE)
+  fit2 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, small = TRUE)
   ar1 <- fit1$diagnostics$anderson_rubin
   ar2 <- fit2$diagnostics$anderson_rubin
   expect_equal(ar1$f_stat, ar2$f_stat)
@@ -54,11 +45,10 @@ test_that("small=TRUE and small=FALSE produce identical AR stats (IID)", {
 })
 
 test_that("small=TRUE and small=FALSE produce identical AR stats (HC1)", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust", small = FALSE)
-  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust", small = TRUE)
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz,
+                 vcov = "robust", small = FALSE)
+  fit2 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz,
+                 vcov = "robust", small = TRUE)
   ar1 <- fit1$diagnostics$anderson_rubin
   ar2 <- fit2$diagnostics$anderson_rubin
   expect_equal(ar1$f_stat, ar2$f_stat)
@@ -69,11 +59,8 @@ test_that("small=TRUE and small=FALSE produce identical AR stats (HC1)", {
 # doesn't apply to the AR meat). This test guards against someone accidentally
 # introducing a correction inside the AR function.
 test_that("HC0 and HC1 produce identical AR stats", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust")
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust")
+  fit0 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
   ar0 <- fit0$diagnostics$anderson_rubin
   ar1 <- fit1$diagnostics$anderson_rubin
   expect_equal(ar0$f_stat, ar1$f_stat)
@@ -126,49 +113,79 @@ check_anderson_rubin <- function(fit, fixture_path, label) {
 
 
 # ============================================================================
-# card_just_id: lwage ~ exper+expersq+black+south | educ | nearc4
+# mroz_justid: lwage ~ exper+expersq | educ | age (D5a disclosed
+# single-instrument restriction; family M-10 re-base, replacing card_just_id)
 # K1=1, L1=1, just-identified
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "iid",    suffix = "iid"),
+  list(vcov = "robust", suffix = "robust")
 )) {
   fixture_file <- fixture_path(
-    paste0("card_just_id_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("mroz_justid_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("card_just_id", vce_combo$suffix)
+  label <- paste("mroz_justid", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq | educ | age,
+                  data = mroz, vcov = vce_combo$vcov)
+    fit_small <- ivreg2(lwage ~ exper + expersq | educ | age,
+                         data = mroz, vcov = vce_combo$vcov, small = TRUE)
     check_anderson_rubin(fit, fixture_file, label)
+    check_anderson_rubin(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("Anderson-Rubin direct equality: small vs non-small", label), {
+      ar <- fit$diagnostics$anderson_rubin
+      ar_small <- fit_small$diagnostics$anderson_rubin
+      expect_equal(ar_small$f_stat, ar$f_stat)
+      expect_equal(ar_small$f_p, ar$f_p)
+      expect_equal(ar_small$chi2_stat, ar$chi2_stat)
+      expect_equal(ar_small$chi2_p, ar$chi2_p)
+      expect_identical(ar_small$f_df1, ar$f_df1)
+      expect_identical(ar_small$f_df2, ar$f_df2)
+      expect_identical(ar_small$chi2_df, ar$chi2_df)
+    })
   }
 }
 
 
 # ============================================================================
-# card_overid: lwage ~ exper+expersq+black+south | educ | nearc2+nearc4
-# K1=1, L1=2, overidentified
+# mroz overid: lwage ~ exper+expersq | educ | age+kidslt6+kidsge6. iid
+# anchor = H36 (help.txt:1305, same fit as H31 but with arf/arfp populated,
+# unlike H31); robust anchor = H41 (help.txt:1325). Family M-10 re-base,
+# replacing card_overid.
+# K1=1, L1=3, overidentified
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "iid",    suffix = "H36"),
+  list(vcov = "robust", suffix = "H41")
 )) {
   fixture_file <- fixture_path(
-    paste0("card_overid_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("hf_mroz_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("card_overid", vce_combo$suffix)
+  label <- paste("mroz_overid", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                  data = mroz, vcov = vce_combo$vcov)
+    fit_small <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                         data = mroz, vcov = vce_combo$vcov, small = TRUE)
     check_anderson_rubin(fit, fixture_file, label)
+    check_anderson_rubin(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("Anderson-Rubin direct equality: small vs non-small", label), {
+      ar <- fit$diagnostics$anderson_rubin
+      ar_small <- fit_small$diagnostics$anderson_rubin
+      expect_equal(ar_small$f_stat, ar$f_stat)
+      expect_equal(ar_small$f_p, ar$f_p)
+      expect_equal(ar_small$chi2_stat, ar$chi2_stat)
+      expect_equal(ar_small$chi2_p, ar$chi2_p)
+      expect_identical(ar_small$f_df1, ar$f_df1)
+      expect_identical(ar_small$f_df2, ar$f_df2)
+      expect_identical(ar_small$chi2_df, ar$chi2_df)
+    })
   }
 }
 

@@ -7,6 +7,9 @@
 # fixtures (sstat, sstatp, sstatdf columns).
 
 # --- Load datasets ---
+# card_data.csv is retained here ONLY for the dofminus block below (family
+# M-29, not yet re-based); the card_just_id/card_overid diagnostics blocks
+# that used to read it were retired to mroz at family M-10 (2026-07-06).
 card_path <- fixture_path("card_data.csv")
 if (file.exists(card_path)) {
   card <- read.csv(card_path)
@@ -23,6 +26,7 @@ if (file.exists(sim_cluster_path)) {
 }
 
 data(abdata, package = "ivreg2r")
+data(mroz, package = "ivreg2r")
 
 
 # ============================================================================
@@ -35,33 +39,26 @@ test_that("stock_wright is NULL for OLS models", {
 })
 
 test_that("stock_wright has all expected fields", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
   sw <- fit$diagnostics$stock_wright
   expect_type(sw, "list")
   expect_named(sw, c("stat", "p", "df"), ignore.order = TRUE)
 })
 
 test_that("stock_wright df = L1 (number of excluded instruments)", {
-  skip_if(!file.exists(card_path), "card data not found")
   # Just identified: L1 = 1
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card)
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
   expect_identical(fit1$diagnostics$stock_wright$df, 1L)
 
-  # Overidentified: L1 = 2
-  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                 data = card)
-  expect_identical(fit2$diagnostics$stock_wright$df, 2L)
+  # Overidentified: L1 = 3
+  fit2 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                 data = mroz)
+  expect_identical(fit2$diagnostics$stock_wright$df, 3L)
 })
 
 test_that("small=TRUE and small=FALSE produce identical S stats (IID)", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, small = FALSE)
-  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, small = TRUE)
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, small = FALSE)
+  fit2 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, small = TRUE)
   expect_equal(fit1$diagnostics$stock_wright$stat,
                fit2$diagnostics$stock_wright$stat)
   expect_equal(fit1$diagnostics$stock_wright$p,
@@ -70,11 +67,8 @@ test_that("small=TRUE and small=FALSE produce identical S stats (IID)", {
 
 # S stat differs between IID and HC because the omega formula changes
 test_that("IID and HC1 produce different S stats", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit_iid <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                    data = card, vcov = "iid")
-  fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                    data = card, vcov = "robust")
+  fit_iid <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "iid")
+  fit_hc1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
   # These should differ (different omega formulas)
   expect_false(isTRUE(all.equal(
     fit_iid$diagnostics$stock_wright$stat,
@@ -85,11 +79,8 @@ test_that("IID and HC1 produce different S stats", {
 # HC0 and HC1 should produce identical S stats (no small-sample correction
 # in the omega — both use Z' diag(e^2) Z / (N - dofminus))
 test_that("HC0 and HC1 produce identical S stats", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust")
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust")
+  fit0 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
   expect_equal(fit0$diagnostics$stock_wright$stat,
                fit1$diagnostics$stock_wright$stat)
   expect_equal(fit0$diagnostics$stock_wright$p,
@@ -97,9 +88,7 @@ test_that("HC0 and HC1 produce identical S stats", {
 })
 
 test_that("stock_wright appears in glance()", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
   g <- glance(fit)
   expect_true("stock_wright_stat" %in% names(g))
   expect_true("stock_wright_p" %in% names(g))
@@ -150,49 +139,73 @@ check_stock_wright <- function(fit, fixture_path, label) {
 
 
 # ============================================================================
-# card_just_id: lwage ~ exper+expersq+black+south | educ | nearc4
+# mroz_justid: lwage ~ exper+expersq | educ | age (D5a disclosed
+# single-instrument restriction; family M-10 re-base, replacing card_just_id)
 # K1=1, L1=1, just-identified
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "iid",    suffix = "iid"),
+  list(vcov = "robust", suffix = "robust")
 )) {
   fixture_file <- fixture_path(
-    paste0("card_just_id_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("mroz_justid_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("card_just_id", vce_combo$suffix)
+  label <- paste("mroz_justid", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq | educ | age,
+                  data = mroz, vcov = vce_combo$vcov)
+    fit_small <- ivreg2(lwage ~ exper + expersq | educ | age,
+                         data = mroz, vcov = vce_combo$vcov, small = TRUE)
     check_stock_wright(fit, fixture_file, label)
+    check_stock_wright(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("Stock-Wright direct equality: small vs non-small", label), {
+      expect_equal(fit_small$diagnostics$stock_wright$stat,
+                   fit$diagnostics$stock_wright$stat)
+      expect_equal(fit_small$diagnostics$stock_wright$p,
+                   fit$diagnostics$stock_wright$p)
+      expect_identical(fit_small$diagnostics$stock_wright$df,
+                        fit$diagnostics$stock_wright$df)
+    })
   }
 }
 
 
 # ============================================================================
-# card_overid: lwage ~ exper+expersq+black+south | educ | nearc2+nearc4
-# K1=1, L1=2, overidentified
+# mroz overid: lwage ~ exper+expersq | educ | age+kidslt6+kidsge6.
+# iid anchor = H36 (help.txt:1305, same fit as H31 but with sstat populated,
+# unlike H31); robust anchor = H41 (help.txt:1325). Family M-10 re-base,
+# replacing card_overid.
+# K1=1, L1=3, overidentified
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "iid",    suffix = "H36"),
+  list(vcov = "robust", suffix = "H41")
 )) {
   fixture_file <- fixture_path(
-    paste0("card_overid_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("hf_mroz_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("card_overid", vce_combo$suffix)
+  label <- paste("mroz_overid", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                  data = mroz, vcov = vce_combo$vcov)
+    fit_small <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                         data = mroz, vcov = vce_combo$vcov, small = TRUE)
     check_stock_wright(fit, fixture_file, label)
+    check_stock_wright(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("Stock-Wright direct equality: small vs non-small", label), {
+      expect_equal(fit_small$diagnostics$stock_wright$stat,
+                   fit$diagnostics$stock_wright$stat)
+      expect_equal(fit_small$diagnostics$stock_wright$p,
+                   fit$diagnostics$stock_wright$p)
+      expect_identical(fit_small$diagnostics$stock_wright$df,
+                        fit$diagnostics$stock_wright$df)
+    })
   }
 }
 

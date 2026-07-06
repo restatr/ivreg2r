@@ -6,12 +6,8 @@
 # Verifies against Stata ivreg2 fixtures.
 
 # --- Load datasets ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
-
 data(abdata, package = "ivreg2r")
+data(mroz, package = "ivreg2r")
 
 # Shared fits (M-17 hoisting precedent, see test-vcov-cluster.R): the ab_cl
 # cluster fit is reused across the three tests below instead of being refit.
@@ -22,16 +18,16 @@ fit_ab_cl_small <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
 
 
 # ============================================================================
-# Sargan test: IID, card_overid
+# Sargan test: IID, mroz overid (H31 help.txt:1274; family M-10 re-base,
+# replacing card_overid)
 # ============================================================================
 
-test_that("Sargan stat matches Stata card_overid iid fixture", {
-  skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- fixture_path("card_overid_diagnostics_iid.csv")
+test_that("Sargan stat matches Stata mroz overid H31 fixture", {
+  diag_path <- fixture_path("hf_mroz_diagnostics_H31.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz)
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$test_name, "Sargan")
@@ -44,16 +40,18 @@ test_that("Sargan stat matches Stata card_overid iid fixture", {
 
 
 # ============================================================================
-# Sargan test: IID small — same stat as non-small
+# Sargan test: IID small — same stat as non-small, checked against the same
+# H31 fixture (the small-variant retirement, 2026-07-06, established that
+# Sargan is byte-identical under `small`, so no dedicated small fixture
+# exists)
 # ============================================================================
 
-test_that("Sargan stat matches Stata card_overid iid_small fixture", {
-  skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- fixture_path("card_overid_diagnostics_iid_small.csv")
+test_that("Sargan stat matches Stata mroz overid H31 fixture (small)", {
+  diag_path <- fixture_path("hf_mroz_diagnostics_H31.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, small = TRUE)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, small = TRUE)
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, fixture$sargan,
@@ -63,27 +61,25 @@ test_that("Sargan stat matches Stata card_overid iid_small fixture", {
 })
 
 test_that("small does not change Sargan statistic", {
-  skip_if(!file.exists(card_path), "card data not found")
-
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                 data = card, small = FALSE)
-  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                 data = card, small = TRUE)
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                 data = mroz, small = FALSE)
+  fit2 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                 data = mroz, small = TRUE)
   expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
 })
 
 
 # ============================================================================
-# Hansen J test: HC, card_overid
+# Hansen J test: HC, mroz overid (H41 help.txt:1325; family M-10 re-base,
+# replacing card_overid)
 # ============================================================================
 
-test_that("Hansen J stat matches Stata card_overid hc1 fixture", {
-  skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- fixture_path("card_overid_diagnostics_hc1.csv")
+test_that("Hansen J stat matches Stata mroz overid H41 fixture", {
+  diag_path <- fixture_path("hf_mroz_diagnostics_H41.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "robust")
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$test_name, "Hansen J")
@@ -94,13 +90,12 @@ test_that("Hansen J stat matches Stata card_overid hc1 fixture", {
   expect_identical(fit$diagnostics$overid$df, as.integer(fixture$jdf))
 })
 
-test_that("Hansen J stat matches Stata card_overid hc1_small fixture", {
-  skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- fixture_path("card_overid_diagnostics_hc1_small.csv")
+test_that("Hansen J stat matches Stata mroz overid H41 fixture (small)", {
+  diag_path <- fixture_path("hf_mroz_diagnostics_H41.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card, vcov = "robust", small = TRUE)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, vcov = "robust", small = TRUE)
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, fixture$j,
@@ -110,12 +105,10 @@ test_that("Hansen J stat matches Stata card_overid hc1_small fixture", {
 })
 
 test_that("small does not change Hansen J statistic (HC)", {
-  skip_if(!file.exists(card_path), "card data not found")
-
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                 data = card, vcov = "robust", small = FALSE)
-  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                 data = card, vcov = "robust", small = TRUE)
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                 data = mroz, vcov = "robust", small = FALSE)
+  fit2 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                 data = mroz, vcov = "robust", small = TRUE)
   expect_equal(fit1$diagnostics$overid$stat, fit2$diagnostics$overid$stat)
 })
 
@@ -165,12 +158,10 @@ test_that("small does not change Hansen J statistic (cluster)", {
 # ============================================================================
 
 test_that("exactly identified IID model has stat=0, df=0, p=NA", {
-  skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- fixture_path("card_just_id_diagnostics_iid.csv")
+  diag_path <- fixture_path("mroz_justid_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, 0)
@@ -180,12 +171,10 @@ test_that("exactly identified IID model has stat=0, df=0, p=NA", {
 })
 
 test_that("exactly identified HC model has stat=0, df=0, p=NA", {
-  skip_if(!file.exists(card_path), "card data not found")
-  diag_path <- fixture_path("card_just_id_diagnostics_hc1.csv")
+  diag_path <- fixture_path("mroz_justid_diagnostics_robust.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "robust")
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$overid$stat, 0)
@@ -210,12 +199,10 @@ test_that("OLS model has NULL diagnostics", {
 # ============================================================================
 
 test_that("HC0 and HC1 produce identical Hansen J statistic", {
-  skip_if(!file.exists(card_path), "card data not found")
-
-  fit_hc0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "robust")
-  fit_hc1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                     data = card, vcov = "robust")
+  fit_hc0 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                     data = mroz, vcov = "robust")
+  fit_hc1 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                     data = mroz, vcov = "robust")
   expect_equal(fit_hc0$diagnostics$overid$stat,
                fit_hc1$diagnostics$overid$stat)
 })

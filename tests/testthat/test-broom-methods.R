@@ -1,12 +1,15 @@
 # ============================================================================
 # Tests: broom methods — tidy(), glance(), augment() for ivreg2 objects (G2)
+#
+# M-10 re-base (2026-07-06): card fits are re-based onto the bundled mroz
+# justid D5a cell (mroz_justid_formula) and the hf H31 overid cell
+# (help.txt:1274), retiring the card_just_id fixtures.
 # ============================================================================
 
-# --- Helper: load Card data ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+data(mroz, package = "ivreg2r")
+
+mroz_justid_formula <- lwage ~ exper + expersq | educ | age
+mroz_overid_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
 
 
 # ============================================================================
@@ -63,13 +66,10 @@ test_that("tidy conf.level = 0.99 produces wider CIs than 0.95", {
 # tidy() — IV
 # ============================================================================
 
-test_that("tidy IV estimates/SEs match Stata fixtures (card_just_id iid)", {
-  skip_if_not(file.exists(card_path), "Card data not available")
-  coef_path <- fixture_path("card_just_id_coef_iid.csv")
-  skip_if_not(file.exists(coef_path), "Stata fixture not available")
+test_that("tidy IV estimates/SEs match Stata fixtures (mroz_justid iid)", {
+  coef_path <- fixture_path("mroz_justid_coef_iid.csv")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
   stata <- read.csv(coef_path, stringsAsFactors = FALSE)
   td <- tidy(fit, conf.int = FALSE)
 
@@ -168,9 +168,7 @@ test_that("glance OLS r.squared, sigma, nobs match lm", {
 # ============================================================================
 
 test_that("glance IV just-identified iid: weak_id_stat present, overid NA", {
-  skip_if_not(file.exists(card_path), "Card data not available")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
   gl <- glance(fit)
   expect_false(is.na(gl$weak_id_stat))
   # Just-identified: overid should be NA
@@ -181,23 +179,18 @@ test_that("glance IV just-identified iid: weak_id_stat present, overid NA", {
 })
 
 test_that("glance IV just-identified iid: weak_id_stat matches Stata CD F", {
-  skip_if_not(file.exists(card_path), "Card data not available")
-  diag_path <- fixture_path("card_just_id_diagnostics_iid.csv")
-  skip_if_not(file.exists(diag_path), "Stata fixture not available")
+  diag_path <- fixture_path("mroz_justid_diagnostics_iid.csv")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
   stata <- read.csv(diag_path, stringsAsFactors = FALSE)
   gl <- glance(fit)
   expect_equal(gl$weak_id_stat, stata$cdf, tolerance = stata_tol$stat)
 })
 
 test_that("glance IV overidentified HC1: overid and robust stats present", {
-  skip_if_not(file.exists(card_path), "Card data not available")
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
-    data = card, vcov = "robust"
-  )
+  # Overid (H31/H41 arc): sargan/df > 0 here, unlike the justid model above,
+  # so overid_stat is meaningfully non-NA.
+  fit <- ivreg2(mroz_overid_formula, data = mroz, vcov = "robust")
   gl <- glance(fit)
   expect_false(is.na(gl$overid_stat))
   expect_false(is.na(gl$overid_p))
@@ -292,9 +285,7 @@ test_that("augment with no data and na.exclude: nrow = nobs (no NAs)", {
 # ============================================================================
 
 test_that("augment IV returns expected columns", {
-  skip_if_not(file.exists(card_path), "Card data not available")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
   aug <- augment(fit)
   expect_s3_class(aug, "tbl_df")
   expect_true(".fitted" %in% names(aug))
@@ -423,9 +414,7 @@ test_that("modelsummary works with a named list of models", {
 
 test_that("modelsummary works with IV model", {
   skip_if_not_installed("modelsummary")
-  skip_if_not(file.exists(card_path), "Card data not available")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, vcov = "robust")
+  fit <- ivreg2(mroz_justid_formula, data = mroz, vcov = "robust")
   out <- modelsummary::modelsummary(fit, output = "data.frame")
   expect_s3_class(out, "data.frame")
   expect_true(nrow(out) > 0L)

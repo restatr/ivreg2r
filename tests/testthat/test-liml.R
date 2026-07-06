@@ -345,17 +345,18 @@ test_that("glance includes Fuller columns", {
 
 
 # ============================================================================
-# 6. Existing functionality unchanged (fixture: card_overid_*)
+# 6. Existing functionality unchanged (fixture: hf_mroz H31, M-10 re-base)
+# 2SLS-unchanged guard now anchored on the hf H31 overid fixture
+# (help.txt:1274) instead of the retired card_overid cells.
 # ============================================================================
 
 test_that("2SLS results unchanged after LIML addition", {
-  skip_if(!file.exists(fixture_path("card_overid_coef_iid.csv")),
-          "card_overid fixture not found")
+  data(mroz, package = "ivreg2r")
+  mroz_overid_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                data = card)
-  expect_coef_fixture(fit, "card_overid_coef_iid.csv")
-  expect_vcov_fixture(fit, "card_overid_vcov_iid.csv")
+  fit <- ivreg2(mroz_overid_formula, data = mroz)
+  expect_coef_fixture(fit, "hf_mroz_coef_H31.csv")
+  expect_vcov_fixture(fit, "hf_mroz_vcov_H31.csv")
 })
 
 test_that("OLS results unchanged after LIML addition", {

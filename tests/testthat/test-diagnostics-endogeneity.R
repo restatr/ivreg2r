@@ -7,11 +7,6 @@
 # Verifies against Stata ivreg2 fixtures (e(estat), e(estatp), e(estatdf)).
 
 # --- Load datasets ---
-card_path <- fixture_path("card_data.csv")
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
-
 sim_multi_path <- fixture_path("sim_multi_endo_data.csv")
 if (file.exists(sim_multi_path)) {
   sim_multi <- read.csv(sim_multi_path)
@@ -23,6 +18,7 @@ if (file.exists(sim_nc_path)) {
 }
 
 data(abdata, package = "ivreg2r")
+data(mroz, package = "ivreg2r")
 
 
 # ============================================================================
@@ -35,9 +31,7 @@ test_that("endogeneity is NULL for OLS models", {
 })
 
 test_that("endogeneity has all expected fields", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
   endog <- fit$diagnostics$endogeneity
   expect_type(endog, "list")
   expect_named(endog, c("stat", "p", "df", "test_name", "tested_vars"),
@@ -47,11 +41,8 @@ test_that("endogeneity has all expected fields", {
 })
 
 test_that("small=TRUE and small=FALSE produce identical endogeneity stats (IID)", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, small = FALSE)
-  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, small = TRUE)
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, small = FALSE)
+  fit2 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, small = TRUE)
   expect_equal(fit1$diagnostics$endogeneity$stat,
                fit2$diagnostics$endogeneity$stat)
   expect_equal(fit1$diagnostics$endogeneity$p,
@@ -59,11 +50,10 @@ test_that("small=TRUE and small=FALSE produce identical endogeneity stats (IID)"
 })
 
 test_that("small=TRUE and small=FALSE produce identical endogeneity stats (HC1)", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust", small = FALSE)
-  fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust", small = TRUE)
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz,
+                 vcov = "robust", small = FALSE)
+  fit2 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz,
+                 vcov = "robust", small = TRUE)
   expect_equal(fit1$diagnostics$endogeneity$stat,
                fit2$diagnostics$endogeneity$stat)
   expect_equal(fit1$diagnostics$endogeneity$p,
@@ -71,30 +61,24 @@ test_that("small=TRUE and small=FALSE produce identical endogeneity stats (HC1)"
 })
 
 test_that("HC0 and HC1 produce identical endogeneity stat", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit0 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust")
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                 data = card, vcov = "robust")
+  fit0 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
+  fit1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
   expect_equal(fit0$diagnostics$endogeneity$stat,
                fit1$diagnostics$endogeneity$stat)
 })
 
 test_that("invalid endog variable name produces error", {
-  skip_if(!file.exists(card_path), "card data not found")
   expect_error(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, endog = "not_a_var"),
+    ivreg2(lwage ~ exper + expersq | educ | age,
+           data = mroz, endog = "not_a_var"),
     "not in the endogenous list"
   )
 })
 
 test_that("endog = endo_names equals default endog = NULL", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit_default <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                        data = card)
-  fit_explicit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                         data = card, endog = "educ")
+  fit_default <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
+  fit_explicit <- ivreg2(lwage ~ exper + expersq | educ | age,
+                         data = mroz, endog = "educ")
   expect_equal(fit_default$diagnostics$endogeneity$stat,
                fit_explicit$diagnostics$endogeneity$stat)
   expect_equal(fit_default$diagnostics$endogeneity$p,
@@ -102,27 +86,40 @@ test_that("endog = endo_names equals default endog = NULL", {
 })
 
 test_that("endog must be character or NULL", {
-  skip_if(!file.exists(card_path), "card data not found")
   expect_error(
-    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-           data = card, endog = 1),
+    ivreg2(lwage ~ exper + expersq | educ | age,
+           data = mroz, endog = 1),
     "character vector or NULL"
   )
 })
 
 test_that("duplicate endog entries are deduplicated with warning", {
-  skip_if(!file.exists(card_path), "card data not found")
-  fit_single <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                       data = card, endog = "educ")
+  fit_single <- ivreg2(lwage ~ exper + expersq | educ | age,
+                       data = mroz, endog = "educ")
   expect_warning(
-    fit_dup <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                      data = card, endog = c("educ", "educ")),
+    fit_dup <- ivreg2(lwage ~ exper + expersq | educ | age,
+                      data = mroz, endog = c("educ", "educ")),
     "duplicate entries"
   )
   expect_equal(fit_dup$diagnostics$endogeneity$stat,
                fit_single$diagnostics$endogeneity$stat)
   expect_equal(fit_dup$diagnostics$endogeneity$df,
                fit_single$diagnostics$endogeneity$df)
+})
+
+# ============================================================================
+# Estimation invariance: endog() is diagnostics-only (M-10 anchor for
+# mroz_endog_diagnostics_robust.csv, whose overid + robust fit is generated
+# with `endog(educ)` but whose coef/vcov are identical to the plain H41 fit)
+# ============================================================================
+
+test_that("endog = 'educ' does not change coef/vcov of the overid robust fit", {
+  fit_plain <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                      data = mroz, vcov = "robust")
+  fit_endog <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                      data = mroz, vcov = "robust", endog = "educ")
+  expect_identical(coef(fit_plain), coef(fit_endog))
+  expect_identical(vcov(fit_plain), vcov(fit_endog))
 })
 
 
@@ -154,49 +151,73 @@ check_endogeneity <- function(fit, fixture_path, label) {
 
 
 # ============================================================================
-# card_just_id: lwage ~ exper+expersq+black+south | educ | nearc4
+# mroz_justid: lwage ~ exper+expersq | educ | age (D5a disclosed
+# single-instrument restriction; family M-10 re-base, replacing card_just_id)
 # K1=1, L1=1, just-identified
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "iid",    suffix = "iid"),
+  list(vcov = "robust", suffix = "robust")
 )) {
   fixture_file <- fixture_path(
-    paste0("card_just_id_diagnostics_", vce_combo$suffix, ".csv")
+    paste0("mroz_justid_diagnostics_", vce_combo$suffix, ".csv")
   )
-  label <- paste("card_just_id", vce_combo$suffix)
+  label <- paste("mroz_justid", vce_combo$suffix)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq | educ | age,
+                  data = mroz, vcov = vce_combo$vcov, endog = "educ")
+    fit_small <- ivreg2(lwage ~ exper + expersq | educ | age,
+                         data = mroz, vcov = vce_combo$vcov, small = TRUE,
+                         endog = "educ")
     check_endogeneity(fit, fixture_file, label)
+    check_endogeneity(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("Endogeneity direct equality: small vs non-small", label), {
+      expect_equal(fit_small$diagnostics$endogeneity$stat,
+                   fit$diagnostics$endogeneity$stat)
+      expect_equal(fit_small$diagnostics$endogeneity$p,
+                   fit$diagnostics$endogeneity$p)
+      expect_identical(fit_small$diagnostics$endogeneity$df,
+                        fit$diagnostics$endogeneity$df)
+    })
   }
 }
 
 
 # ============================================================================
-# card_overid: lwage ~ exper+expersq+black+south | educ | nearc2+nearc4
-# K1=1, L1=2, overidentified
+# mroz overid: lwage ~ exper+expersq | educ | age+kidslt6+kidsge6. iid
+# anchor = H33 (help.txt:1283, H31's fit + endog(educ)); robust anchor =
+# mroz_endog_diagnostics_robust.csv (H41's fit + endog(educ)). Family M-10
+# re-base, replacing card_overid.
+# K1=1, L1=3, overidentified
 # ============================================================================
 
 for (vce_combo in list(
-  list(vcov = "iid",  small = FALSE, suffix = "iid"),
-  list(vcov = "iid",  small = TRUE,  suffix = "iid_small"),
-  list(vcov = "robust",  small = FALSE, suffix = "hc1"),
-  list(vcov = "robust",  small = TRUE,  suffix = "hc1_small")
+  list(vcov = "iid",    fixture = "hf_mroz_diagnostics_H33.csv"),
+  list(vcov = "robust", fixture = "mroz_endog_diagnostics_robust.csv")
 )) {
-  fixture_file <- fixture_path(
-    paste0("card_overid_diagnostics_", vce_combo$suffix, ".csv")
-  )
-  label <- paste("card_overid", vce_combo$suffix)
+  fixture_file <- fixture_path(vce_combo$fixture)
+  label <- paste("mroz_overid", vce_combo$vcov)
 
-  if (file.exists(card_path) && file.exists(fixture_file)) {
-    fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                  data = card, vcov = vce_combo$vcov, small = vce_combo$small)
+  if (file.exists(fixture_file)) {
+    fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                  data = mroz, vcov = vce_combo$vcov, endog = "educ")
+    fit_small <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                         data = mroz, vcov = vce_combo$vcov, small = TRUE,
+                         endog = "educ")
     check_endogeneity(fit, fixture_file, label)
+    check_endogeneity(fit_small, fixture_file, paste(label, "small"))
+
+    test_that(paste("Endogeneity direct equality: small vs non-small", label), {
+      expect_equal(fit_small$diagnostics$endogeneity$stat,
+                   fit$diagnostics$endogeneity$stat)
+      expect_equal(fit_small$diagnostics$endogeneity$p,
+                   fit$diagnostics$endogeneity$p)
+      expect_identical(fit_small$diagnostics$endogeneity$df,
+                        fit$diagnostics$endogeneity$df)
+    })
   }
 }
 

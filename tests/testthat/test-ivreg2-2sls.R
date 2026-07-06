@@ -1,75 +1,32 @@
 # ============================================================================
 # Tests: ivreg2() 2SLS estimation (Ticket B1)
+#
+# M-10 re-base (2026-07-06): baselines re-based onto the mroz justid D5a cells
+# (mroz_justid_formula, disclosed single-instrument restriction, help.txt
+# H31/H41 arc) plus the hf H31/H41 overid fixtures; the card_just_id baseline
+# fixtures were retired the same day.
 # ============================================================================
 
-# --- Helper: load Card data and fixtures ---
-card_path <- fixture_path("card_data.csv")
-coef_path <- fixture_path("card_just_id_coef_iid.csv")
-vcov_path <- fixture_path("card_just_id_vcov_iid.csv")
+data(mroz, package = "ivreg2r")
 
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+mroz_justid_formula <- lwage ~ exper + expersq | educ | age
 
 # ============================================================================
-# Coefficients match Stata card_just_id fixture (iid, small=FALSE)
+# Coefficients match Stata mroz_justid fixture (iid, small=FALSE)
 # ============================================================================
 
-test_that("2SLS coefficients match Stata card_just_id fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(coef_path), "Coefficient fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
-  fixture <- read.csv(coef_path)
-
-  for (i in seq_len(nrow(fixture))) {
-    term <- fixture$term[i]
-    r_name <- if (term == "_cons") "(Intercept)" else term
-    expect_true(r_name %in% names(coef(fit)),
-                info = paste("Missing coefficient:", r_name))
-    expect_equal(
-      unname(coef(fit)[r_name]), fixture$estimate[i],
-      tolerance = stata_tol$coef,
-      info = paste("Coefficient mismatch:", r_name)
-    )
-  }
+test_that("2SLS coefficients match Stata mroz_justid fixture", {
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
+  expect_coef_fixture(fit, "mroz_justid_coef_iid.csv")
 })
 
 # ============================================================================
 # VCV matches Stata fixture (iid, small=FALSE)
 # ============================================================================
 
-test_that("2SLS vcov matches Stata card_just_id fixture", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-  skip_if(!file.exists(vcov_path), "VCV fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
-  fixture <- read.csv(vcov_path)
-
-  # Map Stata names to R names
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  # Extract fixture VCV matrix
-  vcov_cols <- grep("^vcov_", names(fixture), value = TRUE)
-  V_stata <- as.matrix(fixture[, vcov_cols])
-  rownames(V_stata) <- r_names
-  col_stata <- sub("^vcov_", "", vcov_cols)
-  colnames(V_stata) <- ifelse(col_stata == "_cons", "(Intercept)", col_stata)
-
-  # Compare each element in shared order
-  shared <- intersect(r_names, rownames(fit$vcov))
-  for (rn in shared) {
-    for (cn in shared) {
-      expect_equal(
-        fit$vcov[rn, cn], V_stata[rn, cn],
-        tolerance = stata_tol$vcov,
-        info = paste("VCV mismatch:", rn, cn)
-      )
-    }
-  }
+test_that("2SLS vcov matches Stata mroz_justid fixture", {
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
+  expect_vcov_fixture(fit, "mroz_justid_vcov_iid.csv")
 })
 
 # ============================================================================
@@ -77,24 +34,21 @@ test_that("2SLS vcov matches Stata card_just_id fixture", {
 # ============================================================================
 
 test_that("2SLS object has correct structure", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
 
   # Coefficients
-  expect_length(coef(fit), 6L)
+  expect_length(coef(fit), 4L)
   expect_named(coef(fit),
-               c("(Intercept)", "exper", "expersq", "black", "south", "educ"),
+               c("(Intercept)", "exper", "expersq", "educ"),
                ignore.order = TRUE)
 
   # Residuals and fitted values
-  expect_length(fit$residuals, 3010L)
-  expect_length(fit$fitted.values, 3010L)
+  expect_length(fit$residuals, 428L)
+  expect_length(fit$fitted.values, 428L)
 
   # Rank and nobs
-  expect_identical(fit$rank, 6L)
-  expect_identical(fit$nobs, 3010L)
+  expect_identical(fit$rank, 4L)
+  expect_identical(fit$nobs, 428L)
 
   # RSS is positive
   expect_gt(fit$rss, 0)
@@ -108,10 +62,7 @@ test_that("2SLS object has correct structure", {
 # ============================================================================
 
 test_that("fitted + residuals == y (original X used)", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, y = TRUE)
+  fit <- ivreg2(mroz_justid_formula, data = mroz, y = TRUE)
   expect_equal(fit$fitted.values + fit$residuals, fit$y,
                tolerance = .Machine$double.eps^0.5)
 })
@@ -121,14 +72,12 @@ test_that("fitted + residuals == y (original X used)", {
 # ============================================================================
 
 test_that("2SLS coefficients match ivreg::ivreg()", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   skip_if_not_installed("ivreg")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
   iv_fit <- ivreg::ivreg(
-    lwage ~ educ + exper + expersq + black + south | nearc4 + exper + expersq + black + south,
-    data = card
+    lwage ~ educ + exper + expersq | age + exper + expersq,
+    data = mroz
   )
 
   # Match coefficients in shared order
@@ -138,14 +87,12 @@ test_that("2SLS coefficients match ivreg::ivreg()", {
 })
 
 test_that("2SLS residuals match ivreg::ivreg()", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
   skip_if_not_installed("ivreg")
 
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
   iv_fit <- ivreg::ivreg(
-    lwage ~ educ + exper + expersq + black + south | nearc4 + exper + expersq + black + south,
-    data = card
+    lwage ~ educ + exper + expersq | age + exper + expersq,
+    data = mroz
   )
   expect_equal(unname(fit$residuals), unname(residuals(iv_fit)),
                tolerance = .Machine$double.eps^0.5)
@@ -156,10 +103,7 @@ test_that("2SLS residuals match ivreg::ivreg()", {
 # ============================================================================
 
 test_that("print method shows 2SLS Estimation for IV model", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
   expect_output(print(fit), "2SLS Estimation")
 })
 
@@ -168,12 +112,9 @@ test_that("print method shows 2SLS Estimation for IV model", {
 # ============================================================================
 
 test_that("endogenous and instruments are populated for IV", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card)
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
   expect_identical(fit$endogenous, "educ")
-  expect_identical(fit$instruments, "nearc4")
+  expect_identical(fit$instruments, "age")
 })
 
 # ============================================================================
@@ -181,31 +122,22 @@ test_that("endogenous and instruments are populated for IV", {
 # ============================================================================
 
 test_that("x=TRUE stores both X and Z for IV", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, x = TRUE)
+  fit <- ivreg2(mroz_justid_formula, data = mroz, x = TRUE)
   expect_false(is.null(fit$x))
   expect_true(is.matrix(fit$x$X))
   expect_true(is.matrix(fit$x$Z))
-  expect_equal(ncol(fit$x$X), 6L)  # intercept + exper + expersq + black + south + educ
-  expect_equal(ncol(fit$x$Z), 6L)  # intercept + exper + expersq + black + south + nearc4
+  expect_equal(ncol(fit$x$X), 4L)  # intercept + exper + expersq + educ
+  expect_equal(ncol(fit$x$Z), 4L)  # intercept + exper + expersq + age
 })
 
 test_that("y=TRUE stores response for IV", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, y = TRUE)
+  fit <- ivreg2(mroz_justid_formula, data = mroz, y = TRUE)
   expect_false(is.null(fit$y))
-  expect_length(fit$y, 3010L)
+  expect_length(fit$y, 428L)
 })
 
 test_that("model=TRUE stores model frame for IV", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                data = card, model = TRUE)
+  fit <- ivreg2(mroz_justid_formula, data = mroz, model = TRUE)
   expect_false(is.null(fit$model))
   expect_s3_class(fit$model, "data.frame")
 })
@@ -222,10 +154,6 @@ test_that("OLS estimation still works after 2SLS implementation", {
   expect_identical(fit$endogenous, character(0))
   expect_identical(fit$instruments, character(0))
 })
-
-# ============================================================================
-# small=TRUE changes sigma denominator
-# ============================================================================
 
 # ============================================================================
 # Rank-deficient X_hat errors
@@ -253,15 +181,16 @@ test_that("rank-deficient X_hat raises informative error", {
 
 # ============================================================================
 # small=TRUE changes sigma denominator
+#
+# This exact identity is the fixture-free retirement of the card_just_id
+# *_small cells (2026-07-06 byte-diff: under `small`, only rmse/sigmasq move,
+# by exactly the N/(N-K) factor on sigma-squared), so no small-sample fixture
+# is needed to pin this behavior.
 # ============================================================================
 
 test_that("2SLS small=TRUE uses N-K denominator", {
-  skip_if(!file.exists(card_path), "Card dataset not found")
-
-  fit_small <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                      data = card, small = TRUE)
-  fit_large <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
-                      data = card, small = FALSE)
+  fit_small <- ivreg2(mroz_justid_formula, data = mroz, small = TRUE)
+  fit_large <- ivreg2(mroz_justid_formula, data = mroz, small = FALSE)
 
   N <- fit_large$nobs
   K <- length(coef(fit_large))
