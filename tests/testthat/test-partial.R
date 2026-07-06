@@ -1,709 +1,303 @@
 # ============================================================================
-# Tests: Partial Option (FWL Projection) — Ticket O1
+# Tests: Partial Option (FWL Projection) — Ticket O1 (M-24 fixture re-base)
+#
+# The M-24 re-base moves the partial()/FWL Stata-parity cells off the Card
+# fixtures onto the griliches76 H28-minus-cluster base (help.txt:1253):
+# `ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age), partial(_I*)`, with
+# cluster(year) dropped. Stata documents partial() with worked examples only
+# in the cluster context (H27-H29), so every Stata-parity cell below is a
+# D5a option-variation on that base (planning/22-spec-matrix.md).
+#
+# NOT duplicated here: cluster(year) x partial(_I*) parity is hf-owned
+# (hf griliches H28, with the M = 7 clusters vs L = 8 instruments
+# rank-deficiency warning as the documented lesson); the H29
+# gmm2s+cluster+partial command is a documented help-file bug, also hf-owned
+# (Stata rejects it with r(506)). card_partial_all was deleted -- partial(_all)
+# Stata parity is owned by M-04's mroz cells, which stay in this file. The
+# card cluster(smsa66) cells were deleted outright (the binary M=2 cluster
+# anti-pattern on the spec-matrix delete table).
+#
+# Invariance retirement (byte-identity verified in the retired card fixtures,
+# 2026-07-06): nopartialsmall under plain IID leaves e(b) and e(V)
+# byte-identical to the basic cell, so the nosmall cell exports diagnostics
+# only and the coef/vcov identity is pinned fixture-free. The nosmall x small
+# cell is retired compositionally: under IID small the basic and nosmall fits
+# share coefficients, rss, and (X'X)^-1, so their VCVs differ by exactly the
+# ratio df_r(nosmall)/df_r(basic); pinned as a fixture-free
+# correction-factor identity (M-14 precedent).
 # ============================================================================
 
-# --- Helpers ---
-card_path <- fixture_path("card_data.csv")
+data(griliches, package = "ivreg2r")
+data(card, package = "ivreg2r")
+data(mroz, package = "ivreg2r")
 
-if (file.exists(card_path)) {
-  card <- read.csv(card_path)
-}
+# Base model for the griliches partial() arc: help-file H28 (help.txt:1253)
+# minus cluster(year). The shared gril_formula in helper-fixtures.R is the
+# H06 model WITH mrt; this family's base model drops mrt, hence the local
+# formula object here.
+gril_partial_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
+  iq | med + kww + age
 
-mroz_path <- fixture_path("mroz_data.csv")
-if (file.exists(mroz_path)) {
-  mroz_fix <- read.csv(mroz_path)
-}
+# One-part (OLS) variant of the same base model, used by the OLS x partial
+# cell (no endogenous regressor, no excluded instruments).
+gril_partial_ols_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year)
 
-# Helper: compare coefficients and SEs against fixture
-check_coef_fixture <- function(fit, fixture_path, tol = stata_tol) {
-  fixture <- read.csv(fixture_path)
-  stata_names <- fixture$term
-  r_names <- ifelse(stata_names == "_cons", "(Intercept)", stata_names)
-
-  for (i in seq_len(nrow(fixture))) {
-    expect_equal(
-      unname(coef(fit)[r_names[i]]), fixture$estimate[i],
-      tolerance = tol$coef,
-      info = paste("Coef mismatch:", r_names[i])
-    )
-    expect_equal(
-      unname(sqrt(diag(vcov(fit)))[r_names[i]]), fixture$std_error[i],
-      tolerance = tol$se,
-      info = paste("SE mismatch:", r_names[i])
-    )
-  }
-}
-
-# Helper: compare VCV against fixture
-check_vcov_fixture <- function(fit, vcov_path, coef_path, tol = stata_tol) {
-  V_stata <- read_vcov_fixture(vcov_path)
-  stata_terms <- read.csv(coef_path)$term
-  r_names <- ifelse(stata_terms == "_cons", "(Intercept)", stata_terms)
-  r_order <- match(names(coef(fit)), r_names)
-  V_stata <- V_stata[r_order, r_order]
-
-  for (i in seq_len(nrow(V_stata))) {
-    for (j in seq_len(ncol(V_stata))) {
-      expect_equal(
-        unname(vcov(fit)[i, j]), unname(V_stata[i, j]),
-        tolerance = tol$vcov,
-        info = paste0("VCV[", i, ",", j, "] mismatch")
-      )
-    }
-  }
-}
-
-# Helper: compare diagnostics against fixture
-#
-# Presence is gated on the FIXTURE side only: a non-empty fixture value means
-# Stata posted the statistic, so the R object must exist — a NULL diagnostic
-# is a failure, not a skip. Legitimate absences (OLS underid, iid KP F) are
-# encoded as empty fixture fields.
-check_diag_fixture <- function(fit, fixture_path, tol = stata_tol) {
-  fixture <- read.csv(fixture_path)
-  diag <- fit$diagnostics
-
-  # Overid. Stata posts e(sargan) = 0 with df = 0 when there is no
-  # overidentification to test (R posts no overid object) — a real test
-  # requires fixture df > 0.
-  if (!is.na(fixture$overid_stat) && fixture$overid_stat != "" &&
-      !is.na(fixture$overid_df) && as.integer(fixture$overid_df) > 0L) {
-    overid_val <- as.numeric(fixture$overid_stat)
-    if (!is.na(overid_val)) {
-      expect_false(is.null(diag$overid), info = "overid posted")
-      expect_equal(diag$overid$stat, overid_val,
-                   tolerance = tol$stat, info = "overid stat")
-      expect_equal(diag$overid$p, as.numeric(fixture$overid_p),
-                   tolerance = tol$pval, info = "overid p")
-    }
-  }
-
-  # Underid
-  if (!is.na(fixture$underid_stat) && fixture$underid_stat != "") {
-    underid_val <- as.numeric(fixture$underid_stat)
-    if (!is.na(underid_val)) {
-      expect_false(is.null(diag$underid), info = "underid posted")
-      expect_equal(diag$underid$stat, underid_val,
-                   tolerance = tol$stat, info = "underid stat")
-      expect_equal(diag$underid$p, as.numeric(fixture$underid_p),
-                   tolerance = tol$pval, info = "underid p")
-    }
-  }
-
-  # Weak ID (Cragg-Donald)
-  if (!is.na(fixture$weak_id_cd_f) && fixture$weak_id_cd_f != "") {
-    cd_val <- as.numeric(fixture$weak_id_cd_f)
-    if (!is.na(cd_val)) {
-      expect_false(is.null(diag$weak_id), info = "weak_id posted")
-      expect_equal(diag$weak_id$stat, cd_val,
-                   tolerance = tol$stat, info = "CD F")
-    }
-  }
-
-  # Weak ID (Kleibergen-Paap rk Wald F)
-  if (!is.na(fixture$weak_id_kp_f) && fixture$weak_id_kp_f != "") {
-    kp_val <- as.numeric(fixture$weak_id_kp_f)
-    if (!is.na(kp_val)) {
-      expect_false(is.null(diag$weak_id_robust), info = "weak_id_robust posted")
-      expect_equal(diag$weak_id_robust$stat, kp_val,
-                   tolerance = tol$stat, info = "KP rk Wald F")
-    }
-  }
-
-  # Model F
-  if (!is.na(fixture$model_f) && fixture$model_f != "") {
-    mf_val <- as.numeric(fixture$model_f)
-    if (!is.na(mf_val)) {
-      expect_false(is.null(fit$model_f), info = "model F posted")
-      expect_equal(fit$model_f, mf_val,
-                   tolerance = tol$stat, info = "model F")
-    }
-  }
-
-  # Model F df
-  if (!is.na(fixture$model_f_df1) && fixture$model_f_df1 != "") {
-    expect_equal(fit$model_f_df1, as.integer(fixture$model_f_df1),
+# Compare partial bookkeeping (sdofminus, partial_ct, partialcons, K, and,
+# where posted, the model F degrees of freedom) against a diagnostics
+# fixture -- the M-24 addition to the shared diagnostics schema.
+expect_partial_bookkeeping <- function(fit, diag_file) {
+  dx <- read_diagnostics(fixture_path(diag_file))
+  expect_equal(fit$sdofminus, as.integer(dx$sdofminus), info = "sdofminus")
+  expect_equal(fit$partial_ct, as.integer(dx$partial_ct), info = "partial_ct")
+  expect_equal(as.integer(fit$partialcons), as.integer(dx$partialcons),
+               info = "partialcons")
+  expect_equal(length(coef(fit)), as.integer(dx$K), info = "K")
+  if (!is.na(dx$model_f_df1)) {
+    expect_equal(fit$model_f_df1, as.integer(dx$model_f_df1),
                  info = "model F df1")
-    expect_equal(fit$model_f_df2, as.integer(fixture$model_f_df2),
+    expect_equal(fit$model_f_df2, as.integer(dx$model_f_df2),
                  info = "model F df2")
   }
-
-  # Sigma
-  if (!is.na(fixture$sigma) && fixture$sigma != "") {
-    expect_equal(fit$sigma, as.numeric(fixture$sigma),
-                 tolerance = tol$coef, info = "sigma")
-  }
-
-  # RSS
-  if (!is.na(fixture$rss) && fixture$rss != "") {
-    expect_equal(fit$rss, as.numeric(fixture$rss),
-                 tolerance = tol$coef, info = "rss")
-  }
-
-  # N, K, sdofminus, partial_ct, partialcons
-  expect_equal(fit$nobs, as.integer(fixture$N), info = "N")
-  expect_equal(length(coef(fit)), as.integer(fixture$K), info = "K")
-  expect_equal(fit$sdofminus, as.integer(fixture$sdofminus), info = "sdofminus")
-  expect_equal(fit$partial_ct, as.integer(fixture$partial_ct), info = "partial_ct")
-  expect_equal(as.integer(fit$partialcons), as.integer(fixture$partialcons),
-               info = "partialcons")
 }
 
+# Shared fits (M-17 hoisting precedent): the plain iid fit and the
+# partial(_cons) fit are each reused by several sections below (Stata-parity,
+# invariance, metadata, FWL invariance).
+fit_basic       <- ivreg2(gril_partial_formula, data = griliches,
+                           partial = "factor(year)")
+fit_basic_small <- ivreg2(gril_partial_formula, data = griliches,
+                           partial = "factor(year)", small = TRUE)
+fit_cons        <- ivreg2(gril_partial_formula, data = griliches,
+                           partial = "_cons")
 
-# ===========================================================================
-# 1. Basic partial: partial(black south smsa) — IV, IID
-# ===========================================================================
-test_that("partial(black south smsa) matches Stata — IID", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"))
 
-  # Coefficients and SEs
-  check_coef_fixture(fit,
-    fixture_path("card_partial_basic_coef_iid.csv"))
+# ============================================================================
+# Stata-parity cells (9 D5a option-variations on the H28-minus-cluster base)
+# ============================================================================
 
-  # VCV
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_basic_vcov_iid.csv"),
-    fixture_path("card_partial_basic_coef_iid.csv"))
+test_that("partial(factor(year)) matches Stata -- griliches H28 minus cluster, IID", {
+  expect_coef_fixture(fit_basic, "gril_partial_coef_iid.csv")
+  expect_vcov_fixture(fit_basic, "gril_partial_vcov_iid.csv")
+  expect_diagnostics_fixture(fit_basic, "gril_partial_diagnostics_iid.csv")
+  expect_partial_bookkeeping(fit_basic, "gril_partial_diagnostics_iid.csv")
 
-  # Diagnostics
-  check_diag_fixture(fit,
-    fixture_path("card_partial_basic_diagnostics_iid.csv"))
+  expect_equal(fit_basic$partial_names, "factor(year)")
+  expect_true(fit_basic$partialcons)
+  expect_false("(Intercept)" %in% names(coef(fit_basic)))
+  expect_setequal(names(coef(fit_basic)),
+                  c("iq", "s", "expr", "tenure", "rns", "smsa"))
+})
 
-  # Metadata
-  expect_equal(fit$partial_ct, 4L)
-  expect_true(fit$partialcons)
-  expect_equal(sort(fit$partial_names), sort(c("black", "south", "smsa")))
-  expect_equal(fit$sdofminus, 4L)
+test_that("partial(factor(year)) matches Stata -- griliches H28 minus cluster, IID small", {
+  expect_coef_fixture(fit_basic_small, "gril_partial_coef_iid_small.csv")
+  expect_vcov_fixture(fit_basic_small, "gril_partial_vcov_iid_small.csv")
+  expect_diagnostics_fixture(fit_basic_small,
+                              "gril_partial_diagnostics_iid_small.csv")
+  expect_partial_bookkeeping(fit_basic_small,
+                              "gril_partial_diagnostics_iid_small.csv")
+})
 
-  # Only non-partialled coefficients reported
-  expect_equal(length(coef(fit)), 3L)
-  expect_true(all(c("educ", "exper", "expersq") %in% names(coef(fit))))
-  expect_false("(Intercept)" %in% names(coef(fit)))
-  expect_false("black" %in% names(coef(fit)))
+test_that("partial(factor(year)) matches Stata -- griliches H28 minus cluster, robust", {
+  fit <- ivreg2(gril_partial_formula, data = griliches,
+                partial = "factor(year)", vcov = "robust")
+  expect_coef_fixture(fit, "gril_partial_coef_robust.csv")
+  expect_vcov_fixture(fit, "gril_partial_vcov_robust.csv")
+  expect_diagnostics_fixture(fit, "gril_partial_diagnostics_robust.csv")
+  expect_partial_bookkeeping(fit, "gril_partial_diagnostics_robust.csv")
+})
+
+test_that("partial(factor(year)) matches Stata -- griliches H28 minus cluster, robust small", {
+  fit <- ivreg2(gril_partial_formula, data = griliches,
+                partial = "factor(year)", vcov = "robust", small = TRUE)
+  expect_coef_fixture(fit, "gril_partial_coef_robust_small.csv")
+  expect_vcov_fixture(fit, "gril_partial_vcov_robust_small.csv")
+  expect_diagnostics_fixture(fit, "gril_partial_diagnostics_robust_small.csv")
+  expect_partial_bookkeeping(fit, "gril_partial_diagnostics_robust_small.csv")
+})
+
+test_that("partial(factor(year)) matches Stata -- griliches H28 minus cluster, aweight", {
+  fit <- ivreg2(gril_partial_formula, data = griliches_awt, weights = awt,
+                partial = "factor(year)")
+  expect_coef_fixture(fit, "gril_partial_aw_coef_iid.csv")
+  expect_vcov_fixture(fit, "gril_partial_aw_vcov_iid.csv")
+  expect_diagnostics_fixture(fit, "gril_partial_aw_diagnostics_iid.csv")
+  expect_partial_bookkeeping(fit, "gril_partial_aw_diagnostics_iid.csv")
+})
+
+test_that("partial(factor(year)) matches Stata -- griliches H28 minus cluster, LIML", {
+  fit <- ivreg2(gril_partial_formula, data = griliches,
+                partial = "factor(year)", method = "liml")
+  expect_coef_fixture(fit, "gril_partial_liml_coef_iid.csv")
+  expect_vcov_fixture(fit, "gril_partial_liml_vcov_iid.csv")
+  expect_diagnostics_fixture(fit, "gril_partial_liml_diagnostics_iid.csv")
+  expect_partial_bookkeeping(fit, "gril_partial_liml_diagnostics_iid.csv")
+})
+
+test_that("partial(factor(year)) matches Stata -- griliches H28 minus cluster, GMM2S robust", {
+  # Feasible with robust (contrast H29's cluster infeasibility, r(506),
+  # owned by the hf suite: #clusters < #moments there, not here).
+  fit <- ivreg2(gril_partial_formula, data = griliches,
+                partial = "factor(year)", method = "gmm2s", vcov = "robust")
+  expect_coef_fixture(fit, "gril_partial_gmm2s_coef_robust.csv")
+  expect_vcov_fixture(fit, "gril_partial_gmm2s_vcov_robust.csv")
+  expect_diagnostics_fixture(fit, "gril_partial_gmm2s_diagnostics_robust.csv")
+  expect_partial_bookkeeping(fit, "gril_partial_gmm2s_diagnostics_robust.csv")
+})
+
+test_that("partial(_cons) matches Stata -- griliches H28 minus cluster, IID", {
+  expect_coef_fixture(fit_cons, "gril_partial_cons_coef_iid.csv")
+  expect_vcov_fixture(fit_cons, "gril_partial_cons_vcov_iid.csv")
+  expect_diagnostics_fixture(fit_cons, "gril_partial_cons_diagnostics_iid.csv")
+  expect_partial_bookkeeping(fit_cons, "gril_partial_cons_diagnostics_iid.csv")
+
+  # partial(_cons) only demeans -- the year dummies stay as regressors.
+  expect_equal(fit_cons$partial_ct, 1L)
+  expect_true(fit_cons$partialcons)
+  expect_equal(fit_cons$partial_names, character(0L))
+  expect_equal(length(coef(fit_cons)), 12L)
+  expect_false("(Intercept)" %in% names(coef(fit_cons)))
+})
+
+test_that("OLS + partial(factor(year)) matches Stata -- griliches H28 minus cluster", {
+  fit <- ivreg2(gril_partial_ols_formula, data = griliches,
+                partial = "factor(year)")
+  expect_coef_fixture(fit, "gril_partial_ols_coef_iid.csv")
+  expect_vcov_fixture(fit, "gril_partial_ols_vcov_iid.csv")
+
+  # No endogenous part, so no id tests are posted; the fixture's overid
+  # fields reflect Stata's degenerate 0/0 sargan display for a model with no
+  # excluded instruments, which R's OLS path does not populate. Model F and
+  # sigma are real quantities here and are checked directly, plus bookkeeping.
+  dx <- read_diagnostics(fixture_path("gril_partial_ols_diagnostics_iid.csv"))
+  expect_equal(fit$model_f, dx$model_f, tolerance = stata_tol$stat)
+  expect_equal(fit$sigma, dx$sigma, tolerance = stata_tol$coef)
+  expect_partial_bookkeeping(fit, "gril_partial_ols_diagnostics_iid.csv")
 })
 
 
-# ===========================================================================
-# 1b. Basic partial — IID small
-# ===========================================================================
-test_that("partial(black south smsa) matches Stata — IID small", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"),
-                small = TRUE)
+# ============================================================================
+# Invariance retirement: nopartialsmall (fixture-free identities)
+# ============================================================================
 
-  check_coef_fixture(fit,
-    fixture_path("card_partial_basic_coef_iid_small.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_basic_diagnostics_iid_small.csv"))
+fit_nosmall       <- ivreg2(gril_partial_formula, data = griliches,
+                             partial = "factor(year)", nopartialsmall = TRUE)
+fit_nosmall_small <- ivreg2(gril_partial_formula, data = griliches,
+                             partial = "factor(year)", nopartialsmall = TRUE,
+                             small = TRUE)
+
+test_that("nopartialsmall leaves coefficients and VCV byte-identical to the basic fit", {
+  # Stata evidence: byte-identical e(b)/e(V) in the retired card fixtures
+  # (2026-07-06); nopartialsmall only suppresses the sdofminus increment, so
+  # it moves df-dependent diagnostics (CD F, model F, R-sq) but not the point
+  # estimates or their IID VCV.
+  expect_equal(coef(fit_nosmall), coef(fit_basic), tolerance = 0)
+  expect_equal(vcov(fit_nosmall), vcov(fit_basic), tolerance = 0)
+
+  expect_diagnostics_fixture(fit_nosmall, "gril_partial_nosmall_diagnostics_iid.csv")
+  expect_partial_bookkeeping(fit_nosmall, "gril_partial_nosmall_diagnostics_iid.csv")
+})
+
+test_that("nosmall x small compositional identity: VCVs differ by exactly the df ratio", {
+  # Under IID small, fit_basic_small and fit_nosmall_small share coefficients,
+  # rss, and bread; only df_r differs (sdofminus is zeroed by nopartialsmall),
+  # so the VCVs differ by exactly the df ratio (M-14 correction-factor-identity
+  # precedent). This is the fixture-free retirement of the old
+  # card_partial_nosmall small cell.
+  expect_equal(coef(fit_nosmall_small), coef(fit_basic_small), tolerance = 0)
+
+  K <- length(coef(fit_basic_small))
+  df_basic   <- nobs(fit_basic_small) - K - fit_basic_small$sdofminus
+  df_nosmall <- nobs(fit_nosmall_small) - K
+  expect_equal(vcov(fit_nosmall_small) * df_nosmall,
+               vcov(fit_basic_small) * df_basic,
+               tolerance = 1e-12)
 })
 
 
-# ===========================================================================
-# 2. partial(_cons) — demean only
-# ===========================================================================
-test_that("partial(_cons) matches Stata — IID", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "_cons")
+# ============================================================================
+# M-04 mroz sections: partial(_all) id tests, F5 regression (kept, reworked)
+# ============================================================================
 
-  check_coef_fixture(fit,
-    fixture_path("card_partial_cons_coef_iid.csv"))
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_cons_vcov_iid.csv"),
-    fixture_path("card_partial_cons_coef_iid.csv"))
-
-  diag_fix <- read.csv(
-    fixture_path("card_partial_cons_diagnostics_iid.csv"))
-  expect_equal(fit$partial_ct, as.integer(diag_fix$partial_ct))
-  expect_true(fit$partialcons)
-
-  # 6 coefficients reported (all exog + endo, no intercept)
-  expect_equal(length(coef(fit)), 6L)
-  expect_false("(Intercept)" %in% names(coef(fit)))
+test_that("partial(_all) id tests match Stata -- mroz, IID", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, partial = "_all")
+  expect_coef_fixture(fit, "mroz_partial_all_coef_iid.csv")
+  expect_diagnostics_fixture(fit, "mroz_partial_all_diagnostics_iid.csv")
+  expect_partial_bookkeeping(fit, "mroz_partial_all_diagnostics_iid.csv")
 })
 
-# ===========================================================================
-# 2b. (Intercept) accepted as synonym for _cons
-# ===========================================================================
-test_that("partial accepts both '_cons' and '(Intercept)'", {
-  skip_if_not(file.exists(card_path))
-  fit1 <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "_cons")
-  fit2 <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "(Intercept)")
-  expect_equal(coef(fit1), coef(fit2))
-  expect_equal(vcov(fit1), vcov(fit2))
+test_that("partial(_all) id tests match Stata -- mroz, robust (KP rk)", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, partial = "_all", vcov = "robust")
+  expect_coef_fixture(fit, "mroz_partial_all_coef_robust.csv")
+  expect_diagnostics_fixture(fit, "mroz_partial_all_diagnostics_robust.csv")
+  expect_partial_bookkeeping(fit, "mroz_partial_all_diagnostics_robust.csv")
+})
+
+test_that("noconstant with no exogenous regressors id tests match Stata -- mroz, IID", {
+  fit <- ivreg2(lwage ~ 0 | educ | age + kidslt6 + kidsge6, data = mroz)
+  expect_coef_fixture(fit, "mroz_nocons_coef_iid.csv")
+  expect_diagnostics_fixture(fit, "mroz_nocons_diagnostics_iid.csv")
+  expect_partial_bookkeeping(fit, "mroz_nocons_diagnostics_iid.csv")
+})
+
+test_that("weighted partial(_all) id tests match Stata -- mroz, IID", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, weights = hours + 1, partial = "_all")
+  expect_coef_fixture(fit, "mroz_partial_all_w_coef_iid.csv")
+  expect_diagnostics_fixture(fit, "mroz_partial_all_w_diagnostics_iid.csv")
+  expect_partial_bookkeeping(fit, "mroz_partial_all_w_diagnostics_iid.csv")
+})
+
+test_that("weighted partial(_all) id tests match Stata -- mroz, robust (KP rk)", {
+  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                data = mroz, weights = hours + 1, partial = "_all",
+                vcov = "robust")
+  expect_coef_fixture(fit, "mroz_partial_all_w_coef_robust.csv")
+  expect_diagnostics_fixture(fit, "mroz_partial_all_w_diagnostics_robust.csv")
+  expect_partial_bookkeeping(fit, "mroz_partial_all_w_diagnostics_robust.csv")
 })
 
 
-# ===========================================================================
-# 3. partial(_all) — partial all exogenous
-# ===========================================================================
-test_that("partial(_all) matches Stata — IID", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa |
-      educ | nearc2 + nearc4,
-    data = card, partial = "_all")
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_all_coef_iid.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_all_diagnostics_iid.csv"))
-
-  # Only endogenous variable(s) remain
-  expect_equal(length(coef(fit)), 1L)
-  expect_equal(names(coef(fit)), "educ")
-})
+# ============================================================================
+# partial(_all) vs partial(_cons) id-test invariance (fixture-free, griliches)
+# ============================================================================
 
 test_that("partial(_all) id tests equal partial(_cons) id tests (FWL invariance)", {
-  skip_if_not(file.exists(card_path))
-  fit_all <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa |
-      educ | nearc2 + nearc4,
-    data = card, partial = "_all")
-  fit_cons <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa |
-      educ | nearc2 + nearc4,
-    data = card, partial = "_cons")
+  fit_all <- ivreg2(gril_partial_formula, data = griliches, partial = "_all")
 
-  expect_equal(fit_all$diagnostics$underid$stat,
-               fit_cons$diagnostics$underid$stat)
-  expect_equal(fit_all$diagnostics$weak_id$stat,
-               fit_cons$diagnostics$weak_id$stat)
+  expect_equal(fit_all$diagnostics$underid$stat, fit_cons$diagnostics$underid$stat)
+  expect_equal(fit_all$diagnostics$weak_id$stat, fit_cons$diagnostics$weak_id$stat)
 })
 
 
-# ===========================================================================
-# 3b. F5 regression: id tests with an empty exogenous block
-#     (partial(_all) with K1 > 0, and noconstant with K2 = 0)
-# ===========================================================================
-test_that("partial(_all) id tests match Stata — mroz, IID", {
-  skip_if_not(file.exists(mroz_path))
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-                data = mroz_fix, partial = "_all")
+# ============================================================================
+# '_cons' / '(Intercept)' synonym test (griliches)
+# ============================================================================
 
-  check_coef_fixture(fit,
-    fixture_path("mroz_partial_all_coef_iid.csv"))
-  check_diag_fixture(fit,
-    fixture_path("mroz_partial_all_diagnostics_iid.csv"))
-})
-
-test_that("partial(_all) id tests match Stata — mroz, robust (KP rk)", {
-  skip_if_not(file.exists(mroz_path))
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-                data = mroz_fix, partial = "_all", vcov = "robust")
-
-  check_coef_fixture(fit,
-    fixture_path("mroz_partial_all_coef_robust.csv"))
-  check_diag_fixture(fit,
-    fixture_path("mroz_partial_all_diagnostics_robust.csv"))
-})
-
-test_that("noconstant with no exogenous regressors id tests match Stata — mroz, IID", {
-  skip_if_not(file.exists(mroz_path))
-  fit <- ivreg2(lwage ~ 0 | educ | age + kidslt6 + kidsge6, data = mroz_fix)
-
-  check_coef_fixture(fit,
-    fixture_path("mroz_nocons_coef_iid.csv"))
-  check_diag_fixture(fit,
-    fixture_path("mroz_nocons_diagnostics_iid.csv"))
-})
-
-test_that("weighted partial(_all) id tests match Stata — mroz, IID", {
-  skip_if_not(file.exists(mroz_path))
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-                data = mroz_fix, weights = hours + 1, partial = "_all")
-
-  check_coef_fixture(fit,
-    fixture_path("mroz_partial_all_w_coef_iid.csv"))
-  check_diag_fixture(fit,
-    fixture_path("mroz_partial_all_w_diagnostics_iid.csv"))
-})
-
-test_that("weighted partial(_all) id tests match Stata — mroz, robust (KP rk)", {
-  skip_if_not(file.exists(mroz_path))
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-                data = mroz_fix, weights = hours + 1, partial = "_all",
-                vcov = "robust")
-
-  check_coef_fixture(fit,
-    fixture_path("mroz_partial_all_w_coef_robust.csv"))
-  check_diag_fixture(fit,
-    fixture_path("mroz_partial_all_w_diagnostics_robust.csv"))
+test_that("partial accepts both '_cons' and '(Intercept)'", {
+  fit2 <- ivreg2(gril_partial_formula, data = griliches, partial = "(Intercept)")
+  expect_equal(coef(fit_cons), coef(fit2))
+  expect_equal(vcov(fit_cons), vcov(fit2))
 })
 
 
-# ===========================================================================
-# 4. Weighted partial
-# ===========================================================================
-test_that("weighted partial matches Stata — IID", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, weights = weight,
-                partial = c("black", "south", "smsa"))
+# ============================================================================
+# FWL coefficient invariance (pure R tests, griliches)
+# ============================================================================
 
-  check_coef_fixture(fit,
-    fixture_path("card_partial_weighted_coef_iid.csv"))
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_weighted_vcov_iid.csv"),
-    fixture_path("card_partial_weighted_coef_iid.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_weighted_diagnostics_iid.csv"))
-})
-
-
-# ===========================================================================
-# 5. nopartialsmall
-# ===========================================================================
-test_that("nopartialsmall suppresses sdofminus increment — IID", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"),
-                nopartialsmall = TRUE)
-
-  expect_equal(fit$sdofminus, 0L)
-  expect_equal(fit$partial_ct, 4L)  # count unchanged; only sdofminus suppressed
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_nosmall_coef_iid.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_nosmall_diagnostics_iid.csv"))
-})
-
-test_that("nopartialsmall matches Stata — IID small", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"),
-                nopartialsmall = TRUE, small = TRUE)
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_nosmall_coef_iid_small.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_nosmall_diagnostics_iid_small.csv"))
-})
-
-
-# ===========================================================================
-# 6. OLS with partial
-# ===========================================================================
-test_that("OLS partial matches Stata — IID", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa,
-                data = card, partial = c("black", "south"))
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_ols_coef_iid.csv"))
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_ols_vcov_iid.csv"),
-    fixture_path("card_partial_ols_coef_iid.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_ols_diagnostics_iid.csv"))
-})
-
-
-# ===========================================================================
-# 7. LIML + partial
-# ===========================================================================
-test_that("LIML + partial matches Stata — IID", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"),
-                method = "liml")
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_liml_coef_iid.csv"))
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_liml_vcov_iid.csv"),
-    fixture_path("card_partial_liml_coef_iid.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_liml_diagnostics_iid.csv"))
-})
-
-
-# ===========================================================================
-# 8. GMM2S + partial
-# ===========================================================================
-test_that("GMM2S + partial matches Stata — robust", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"),
-                method = "gmm2s", vcov = "robust")
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_gmm2s_coef_robust.csv"))
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_gmm2s_vcov_robust.csv"),
-    fixture_path("card_partial_gmm2s_coef_robust.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_gmm2s_diagnostics_robust.csv"))
-})
-
-
-# ===========================================================================
-# 9. Robust + partial
-# ===========================================================================
-test_that("robust partial matches Stata — HC0", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"),
-                vcov = "robust")
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_robust_coef_hc0.csv"))
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_robust_vcov_hc0.csv"),
-    fixture_path("card_partial_robust_coef_hc0.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_robust_diagnostics_hc0.csv"))
-})
-
-test_that("robust small partial matches Stata — HC1 small", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"),
-                vcov = "robust", small = TRUE)
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_robust_coef_hc1_small.csv"))
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_robust_vcov_hc1_small.csv"),
-    fixture_path("card_partial_robust_coef_hc1_small.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_robust_diagnostics_hc1_small.csv"))
-})
-
-
-# ===========================================================================
-# 10. Cluster + partial
-# ===========================================================================
-test_that("cluster partial matches Stata — CL", {
-  skip_if_not(file.exists(card_path))
-  fit <- muffle_rank_warnings(ivreg2(
-    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = c("black", "south", "smsa"),
-    clusters = ~smsa66))
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_cluster_coef_cl.csv"))
-  check_vcov_fixture(fit,
-    fixture_path("card_partial_cluster_vcov_cl.csv"),
-    fixture_path("card_partial_cluster_coef_cl.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_cluster_diagnostics_cl.csv"))
-})
-
-test_that("cluster small partial matches Stata — CL small", {
-  skip_if_not(file.exists(card_path))
-  fit <- muffle_rank_warnings(ivreg2(
-    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = c("black", "south", "smsa"),
-    clusters = ~smsa66, small = TRUE))
-
-  check_coef_fixture(fit,
-    fixture_path("card_partial_cluster_coef_cl_small.csv"))
-  check_diag_fixture(fit,
-    fixture_path("card_partial_cluster_diagnostics_cl_small.csv"))
-})
-
-
-# ===========================================================================
-# Predict restrictions
-# ===========================================================================
-test_that("predict() returns fitted values with message for partial models", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"))
-  expect_message(predict(fit), "non-partialled regressors")
-})
-
-test_that("predict(newdata) errors for partial models", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"))
-  expect_error(predict(fit, newdata = card[1:5, ]),
-               "Cannot predict on new data after partialling")
-})
-
-
-# ===========================================================================
-# Metadata tests
-# ===========================================================================
-test_that("partial_ct and partial_names are correct", {
-  skip_if_not(file.exists(card_path))
-
-  # partial(black south smsa) → partial_ct = 4 (3 vars + cons)
-  fit1 <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                   educ | nearc2 + nearc4,
-                 data = card, partial = c("black", "south", "smsa"))
-  expect_equal(fit1$partial_ct, 4L)
-  expect_true(fit1$partialcons)
-  expect_equal(sort(fit1$partial_names), sort(c("black", "south", "smsa")))
-
-  # partial(_cons) → partial_ct = 1
-  fit2 <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "_cons")
-  expect_equal(fit2$partial_ct, 1L)
-  expect_true(fit2$partialcons)
-  expect_equal(fit2$partial_names, character(0L))
-
-  # partial(_all) → partial_ct = 6 (5 exog vars + cons)
-  fit3 <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa |
-      educ | nearc2 + nearc4,
-    data = card, partial = "_all")
-  expect_equal(fit3$partial_ct, 6L)
-  expect_true(fit3$partialcons)
-})
-
-test_that("no partial → partial_ct = 0", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4, data = card)
-  expect_equal(fit$partial_ct, 0L)
-  expect_false(fit$partialcons)
-  expect_equal(fit$partial_names, character(0L))
-})
-
-
-# ===========================================================================
-# Error tests
-# ===========================================================================
-test_that("partial with invalid variable names errors", {
-  skip_if_not(file.exists(card_path))
-  expect_error(
-    ivreg2(lwage ~ exper + expersq + black + south + smsa |
-             educ | nearc2 + nearc4,
-           data = card, partial = c("black", "nonexistent")),
-    "not in the exogenous regressor list"
-  )
-})
-
-test_that("partial _cons with noconstant model errors", {
-  skip_if_not(file.exists(card_path))
-  expect_error(
-    ivreg2(lwage ~ 0 + exper + expersq + black + south + smsa |
-             educ | nearc2 + nearc4,
-           data = card, partial = "_cons"),
-    "without an intercept"
-  )
-})
-
-test_that("partial must be character or NULL", {
-  skip_if_not(file.exists(card_path))
-  expect_error(
-    ivreg2(lwage ~ exper + expersq + black + south + smsa |
-             educ | nearc2 + nearc4,
-           data = card, partial = 42),
-    "character vector or NULL"
-  )
-})
-
-test_that("nopartialsmall must be logical", {
-  skip_if_not(file.exists(card_path))
-  expect_error(
-    ivreg2(lwage ~ exper + expersq + black + south + smsa |
-             educ | nearc2 + nearc4,
-           data = card, partial = c("black"), nopartialsmall = "yes"),
-    "TRUE or FALSE"
-  )
-})
-
-test_that("partial cannot include endogenous variables", {
-  skip_if_not(file.exists(card_path))
-  expect_error(
-    ivreg2(lwage ~ exper + expersq + black + south + smsa |
-             educ | nearc2 + nearc4,
-           data = card, partial = c("educ")),
-    "not in the exogenous regressor list"
-  )
-})
-
-
-# ===========================================================================
-# Summary footer
-# ===========================================================================
-test_that("summary prints partial footer", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"))
-  out <- capture.output(print(summary(fit)))
-  expect_true(any(grepl("Partialled out", out)))
-  expect_true(any(grepl("_cons", out)))
-  expect_true(any(grepl("partial-model", out)))
-})
-
-
-# ===========================================================================
-# Broom methods with partial
-# ===========================================================================
-test_that("glance includes partial_ct", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"))
-  gl <- glance(fit)
-  expect_equal(gl$partial_ct, 4L)
-})
-
-test_that("tidy works with partial model", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"))
-  td <- tidy(fit)
-  expect_equal(nrow(td), 3L)
-  expect_true(all(c("educ", "exper", "expersq") %in% td$term))
-})
-
-
-# ===========================================================================
-# FWL coefficient invariance (pure R test)
-# ===========================================================================
 test_that("FWL theorem: partial coefficients match full model coefficients", {
-  skip_if_not(file.exists(card_path))
-  # Run full model
-  fit_full <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                       educ | nearc2 + nearc4, data = card)
-  # Run partial model
-  fit_partial <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                          educ | nearc2 + nearc4, data = card,
-                        partial = c("black", "south", "smsa"))
-  # Coefficients on non-partialled variables should be identical
-  shared <- intersect(names(coef(fit_full)), names(coef(fit_partial)))
+  fit_full <- ivreg2(gril_partial_formula, data = griliches)
+  shared <- intersect(names(coef(fit_full)), names(coef(fit_basic)))
   for (nm in shared) {
-    expect_equal(unname(coef(fit_partial)[nm]), unname(coef(fit_full)[nm]),
+    expect_equal(unname(coef(fit_basic)[nm]), unname(coef(fit_full)[nm]),
                  tolerance = 1e-10,
                  info = paste("FWL invariance:", nm))
   }
 })
 
 test_that("FWL theorem: partial(_cons) coefficients match full model", {
-  skip_if_not(file.exists(card_path))
-  fit_full <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                       educ | nearc2 + nearc4, data = card)
-  fit_cons <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, partial = "_cons")
+  fit_full <- ivreg2(gril_partial_formula, data = griliches)
   shared <- intersect(names(coef(fit_full)), names(coef(fit_cons)))
   for (nm in shared) {
     expect_equal(unname(coef(fit_cons)[nm]), unname(coef(fit_full)[nm]),
@@ -713,14 +307,128 @@ test_that("FWL theorem: partial(_cons) coefficients match full model", {
 })
 
 
-# ===========================================================================
-# Interaction with sdofminus parameter
-# ===========================================================================
-# ===========================================================================
-# CUE + partial: warning and non-invariance
-# ===========================================================================
+# ============================================================================
+# Metadata tests (griliches)
+# ============================================================================
+
+test_that("partial_ct and partial_names are correct", {
+  # partial(rns smsa) -> partial_ct = 3 (2 vars + cons)
+  fit1 <- ivreg2(gril_partial_formula, data = griliches,
+                 partial = c("rns", "smsa"))
+  expect_equal(fit1$partial_ct, 3L)
+  expect_true(fit1$partialcons)
+  expect_equal(sort(fit1$partial_names), sort(c("rns", "smsa")))
+
+  # partial(_cons) -> partial_ct = 1
+  expect_equal(fit_cons$partial_ct, 1L)
+  expect_true(fit_cons$partialcons)
+  expect_equal(fit_cons$partial_names, character(0L))
+
+  # partial(factor(year)) -> partial_ct = 7 (6 dummies + cons)
+  expect_equal(fit_basic$partial_ct, 7L)
+  expect_true(fit_basic$partialcons)
+  expect_equal(fit_basic$partial_names, "factor(year)")
+})
+
+test_that("no partial -> partial_ct = 0", {
+  fit <- ivreg2(gril_partial_formula, data = griliches)
+  expect_equal(fit$partial_ct, 0L)
+  expect_false(fit$partialcons)
+  expect_equal(fit$partial_names, character(0L))
+})
+
+
+# ============================================================================
+# Error tests (griliches; iq is the endogenous-variable case)
+# ============================================================================
+
+test_that("partial with invalid variable names errors", {
+  expect_error(
+    ivreg2(gril_partial_formula, data = griliches,
+           partial = c("s", "nonexistent")),
+    "not in the exogenous regressor list"
+  )
+})
+
+test_that("partial _cons with noconstant model errors", {
+  expect_error(
+    ivreg2(lw ~ 0 + s + expr + tenure + rns + smsa + factor(year) |
+             iq | med + kww + age,
+           data = griliches, partial = "_cons"),
+    "without an intercept"
+  )
+})
+
+test_that("partial must be character or NULL", {
+  expect_error(
+    ivreg2(gril_partial_formula, data = griliches, partial = 42),
+    "character vector or NULL"
+  )
+})
+
+test_that("nopartialsmall must be logical", {
+  expect_error(
+    ivreg2(gril_partial_formula, data = griliches, partial = c("s"),
+           nopartialsmall = "yes"),
+    "TRUE or FALSE"
+  )
+})
+
+test_that("partial cannot include endogenous variables", {
+  expect_error(
+    ivreg2(gril_partial_formula, data = griliches, partial = c("iq")),
+    "not in the exogenous regressor list"
+  )
+})
+
+
+# ============================================================================
+# Predict restrictions (griliches)
+# ============================================================================
+
+test_that("predict() returns fitted values with message for partial models", {
+  expect_message(predict(fit_basic), "non-partialled regressors")
+})
+
+test_that("predict(newdata) errors for partial models", {
+  expect_error(predict(fit_basic, newdata = griliches[1:5, ]),
+               "Cannot predict on new data after partialling")
+})
+
+
+# ============================================================================
+# Summary footer (griliches)
+# ============================================================================
+
+test_that("summary prints partial footer", {
+  out <- capture.output(print(summary(fit_basic)))
+  expect_true(any(grepl("Partialled out", out)))
+  expect_true(any(grepl("_cons", out)))
+  expect_true(any(grepl("partial-model", out)))
+})
+
+
+# ============================================================================
+# Broom methods with partial (griliches)
+# ============================================================================
+
+test_that("glance includes partial_ct", {
+  gl <- glance(fit_basic)
+  expect_equal(gl$partial_ct, 7L)
+})
+
+test_that("tidy works with partial model", {
+  td <- tidy(fit_basic)
+  expect_equal(nrow(td), 6L)
+  expect_true(all(c("iq", "s", "expr") %in% td$term))
+})
+
+
+# ============================================================================
+# CUE + partial: warning and non-invariance (kept on card, bundled data)
+# ============================================================================
+
 test_that("CUE + partial emits FWL non-invariance warning", {
-  skip_if_not(file.exists(card_path))
   expect_warning(
     ivreg2(lwage ~ exper + expersq + black + south + smsa |
              educ | nearc2 + nearc4,
@@ -730,7 +438,6 @@ test_that("CUE + partial emits FWL non-invariance warning", {
 })
 
 test_that("CUE + partial is NOT FWL-invariant with robust VCE", {
-  skip_if_not(file.exists(card_path))
   # Under IID, CUE = LIML which IS FWL-invariant.
   # Non-invariance requires a heteroskedasticity-robust S matrix.
   fit_full <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
@@ -752,9 +459,7 @@ test_that("CUE + partial is NOT FWL-invariant with robust VCE", {
               info = "CUE + partial should NOT be FWL-invariant with robust VCE")
 })
 
-
 test_that("CUE b0 + partial works (b0 validated after partialling)", {
-  skip_if_not(file.exists(card_path))
   # Regression test: b0 must be validated AFTER partialling removes columns.
   # Before the fix, b0 was validated against pre-partial K, causing a
   # dimension mismatch when partial removes exogenous regressors.
@@ -776,12 +481,14 @@ test_that("CUE b0 + partial works (b0 validated after partialling)", {
   }
 })
 
+
+# ============================================================================
+# Interaction with sdofminus parameter (griliches)
+# ============================================================================
+
 test_that("partial + sdofminus stack correctly", {
-  skip_if_not(file.exists(card_path))
-  fit <- ivreg2(lwage ~ exper + expersq + black + south + smsa |
-                  educ | nearc2 + nearc4,
-                data = card, partial = c("black", "south", "smsa"),
-                sdofminus = 2L)
-  # sdofminus = 2 (user) + 4 (partial_ct) = 6
-  expect_equal(fit$sdofminus, 6L)
+  fit <- ivreg2(gril_partial_formula, data = griliches,
+                partial = "factor(year)", sdofminus = 2L)
+  # sdofminus = 2 (user) + 7 (partial_ct) = 9
+  expect_equal(fit$sdofminus, 9L)
 })

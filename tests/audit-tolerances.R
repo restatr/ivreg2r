@@ -428,6 +428,21 @@ phil_f <- cinf ~ 1 | unem | l(unem, 1:3)
          kernel = "bartlett", bw = 3, center = TRUE),
   "phil_center", "hac_bw3")
 
+# --- Partial / FWL (M-24 re-base): D5a option-variations on the griliches H28-minus-cluster base (help.txt:1253). This model drops mrt from gril_f per the H27/H28 arc; cluster x partial parity is hf-owned (H28) and not audited here.
+gril_partial_f <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq |
+  med + kww + age
+.audit_model("partial_gril_iid",
+  ivreg2(gril_partial_f, data = griliches, partial = "factor(year)"),
+  "gril_partial", "iid")
+.audit_model("partial_gril_robust_small",
+  ivreg2(gril_partial_f, data = griliches, partial = "factor(year)",
+         vcov = "robust", small = TRUE),
+  "gril_partial", "robust_small")
+.audit_model("partial_gril_gmm2s",
+  ivreg2(gril_partial_f, data = griliches, partial = "factor(year)",
+         method = "gmm2s", vcov = "robust"),
+  "gril_partial_gmm2s", "robust")
+
 # =====================================================================
 #  SUMMARY
 # =====================================================================
