@@ -693,15 +693,17 @@ test_that("H22: Griliches CUE robust converges to Stata's basin (flat-objective 
   # unscaled BFGS stalled at its iteration cap at J = 67.5, and that stall
   # was recorded as an "intentional divergence" (planning/06 delta 20). With
   # per-coordinate scaling, BFGS genuinely converges (code 0) into the same
-  # basin as Stata: J = 40.0753 here vs 40.0753 at Stata's fixture point
-  # (relative objective agreement ~9e-8), with the valley rising in every
-  # probed direction beyond. The basin is extremely flat, so coefficient
-  # agreement with the fixture is limited to flat-basin resolution
-  # (observed max 0.74% relative; a ~9e-8 relative change in J moves
-  # coefficients by ~0.3%). This is therefore deliberately NOT a 1e-6
-  # parity cell: the bands below assert BASIN MEMBERSHIP -- the old
-  # stall point and the economically sensible GMM2S-like basin (iq about
-  # -0.0014, R^2 = 0.37) sit orders of magnitude outside them.
+  # basin as Stata (a 600-random-direction probe at relative radii 1e-3 to
+  # 1e-1 found zero descent directions at the optimum; the old point had 55
+  # of 200 -- it was not a critical point at all). The basin is extremely
+  # flat, so coefficient agreement with the fixture is limited to flat-basin
+  # resolution (observed max 0.74% relative; a ~9e-8 relative change in J
+  # moves coefficients by ~0.3%) -- but J itself varies across the basin at
+  # only that ~1e-7 relative scale, so J IS a full parity quantity here
+  # even though the coefficients are not. The bands below assert BASIN
+  # MEMBERSHIP for the coordinates: the old stall point and the
+  # economically sensible GMM2S-like basin (iq about -0.0014, R^2 = 0.37)
+  # sit far outside them.
   skip_if(!have_hf_gril, "helpfile fixtures not found")
   fx <- read.csv(hf_path("gril", "coef", "H22"), stringsAsFactors = FALSE)
   fx$term_r <- translate_stata_xi_names(fx$term)
@@ -711,22 +713,21 @@ test_that("H22: Griliches CUE robust converges to Stata's basin (flat-objective 
   expect_no_warning(
     fit <- ivreg2(h22_formula, data = griliches, method = "cue", vcov = "robust")
   )
-  # (a) the objective value pins the basin, anchored to the fixture itself:
-  # evaluate the CUE objective at Stata's own coefficient vector (b0 skips
-  # optimization), so the target is machine-traceable to the CSV rather than
-  # a transcribed constant. Observed |J_fit - J_at_fixture| ~ 3.5e-6; the
-  # pre-parscale stall point sits 27 J-units away, so the 0.1 band has ~275x
-  # discriminating margin while any point in the flat basin passes.
-  fit_at_fx <- ivreg2(h22_formula, data = griliches, method = "cue",
-                      vcov = "robust", b0 = setNames(fx$estimate, fx$term_r))
-  expect_lt(abs(fit$diagnostics$overid$stat - fit_at_fx$diagnostics$overid$stat),
-            0.1)
+  # (a) Hansen J parity against Stata's own e(j) at standard tolerance --
+  # the exact basin identifier (observed gap 8.7e-8 relative, ~1000x margin;
+  # the pre-parscale stall point sits 27 J-units = 68% away). R's b0
+  # evaluation of the CUE objective at Stata's fixture coefficients
+  # reproduces this e(j) to ~1e-11, so the two implementations' J
+  # computations agree at the same beta (2026-07-06 second-opinion check).
+  dx <- read_diagnostics(hf_path("gril", "diagnostics", "H22"))
+  expect_equal(fit$diagnostics$overid$stat, dx$j, tolerance = stata_tol$stat)
+  expect_equal(fit$diagnostics$overid$p, dx$jp, tolerance = stata_tol$pval)
   # (b) coefficients and SEs agree with Stata at flat-basin resolution.
   # Band derivation: coordinate displacement near a quadratic minimum scales
   # as sqrt of the objective gap, so a cross-platform J agreement of ~1e-6
   # relative (vs the 9e-8 observed here) predicts ~sqrt(1e-6/9e-8) * 0.74%
-  # ~ 2.5% spread; 5% covers that while staying ~380x below the iq
-  # separation from the other basin.
+  # ~ 2.5% spread; 5% covers that while staying ~20x inside the iq
+  # separation from the other basin (|iq_other - iq_fx|/|iq_fx| ~ 99.5%).
   b_r <- coef(fit)[fx$term_r]
   se_r <- sqrt(diag(vcov(fit)))[fx$term_r]
   expect_lt(max(abs(unname(b_r) - fx$estimate) / abs(fx$estimate)), 0.05)

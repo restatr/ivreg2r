@@ -287,13 +287,17 @@ save_ivreg2_results, prefix(hf_gril) suffix(H18) outdir(`outdir')
 qui ivreg2 lw (iq=age) med kww, gmm2s smatrix(S0)
 save_ivreg2_results, prefix(hf_gril) suffix(H20) outdir(`outdir')
 
-// --- H22 (help.txt:1217): CUE, robust. Stata's optimizer converges to a
-//     KNOWN DEGENERATE BASIN on this 13-regressor model (R^2 = -54.4,
-//     J = 40.1) -- a documented CUE ratio-objective pathology, not a bug
-//     in either implementation. See planning/14-cue-optimizer-research.md
-//     and STATUS.md. Stata's answer is recorded here DELIBERATELY so the
-//     R test can assert the divergence explicitly (a staleness tripwire),
-//     not because we expect R to reproduce it. ---
+// --- H22 (help.txt:1217): CUE, robust. The CUE objective's minimum on
+//     this 13-regressor model is a KNOWN DEGENERATE BASIN (R^2 = -54,
+//     J = 40.075) -- a documented CUE ratio-objective pathology (Hausman
+//     et al. 2011), not a bug in either implementation. Stata's optimizer
+//     has always found it, and since the 2026-07-06 parscale fix R's
+//     optimizer converges to the same basin, so the old "intentional
+//     divergence" classification is retracted (planning/06 delta 20).
+//     The basin is extremely flat: coefficients identify it only to a few
+//     percent, but J varies across it by ~1e-7 relative, so e(j) from the
+//     diagnostics export below is the R test's exact basin identifier
+//     while coefficients/SEs get flat-basin bands. ---
 capture use "../validation/data/griliches76.dta", clear
 if _rc {
     use http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta, clear
@@ -301,11 +305,11 @@ if _rc {
 quietly xi i.year
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), cue robust
 save_ivreg2_results, prefix(hf_gril) suffix(H22) outdir(`outdir')
-// H22 is a divergence tripwire: the R test compares COEFFICIENTS only
-// (asserting they do NOT match). Erase the vcov/diagnostics files the
-// shared saver wrote so no orphaned fixtures ship (planning/18 rule).
+// The R test reads the coef fixture (flat-basin bands) and the diagnostics
+// fixture (J parity). The vcov fixture would have no consumer at any
+// tolerance the flat basin supports -- erase it so no orphaned fixture
+// ships (planning/18 rule).
 erase "`outdir'/hf_gril_vcov_H22.csv"
-erase "`outdir'/hf_gril_diagnostics_H22.csv"
 
 // --- H25 (help.txt:1235): GMM2S, orthog on an included regressor (s) ---
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s orthog(s)
