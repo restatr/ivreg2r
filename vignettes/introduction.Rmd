@@ -322,59 +322,76 @@ augment(fit_iv) |> head()
 
 ## Stata migration quick reference
 
+#### Estimation basics and accessors
+
 | Task | Stata | R (`ivreg2r`) |
 |------|-------|---------------|
 | Basic IV | `ivreg2 y x (endo = z)` | `ivreg2(y ~ x | endo | z, data = d)` |
 | No endogenous regressors (HOLS form) | `ivreg2 y x (=z1 z2)` | `ivreg2(y ~ x | 0 | z1 + z2, data = d)` |
 | Factor dummies | `ivreg2 y i.region ...` (or `xi`) | `ivreg2(y ~ factor(region) + ..., data = d)` |
-| Robust SEs | `ivreg2 ..., robust` | `ivreg2(..., vcov = "robust")` |
-| Robust + small | `ivreg2 ..., robust small` | `ivreg2(..., vcov = "robust", small = TRUE)` |
-| Cluster SEs | `ivreg2 ..., cluster(g)` | `ivreg2(..., clusters = ~ g)` |
-| Cluster + small | `ivreg2 ..., cluster(g) small` | `ivreg2(..., clusters = ~ g, small = TRUE)` |
-| Analytic weights | `ivreg2 ... [aw=w]` | `ivreg2(..., weights = w)` |
+| Lag / difference | `L.x` / `D.x` | `l(x, 1)` / `d(x, 1)` (requires `tvar`, plus `ivar` for panels) |
 | Coefficients | `e(b)` | `coef(fit)` |
 | VCV matrix | `e(V)` | `vcov(fit)` |
 | Residuals | `predict resid, resid` | `residuals(fit)` |
 | Fitted values | `predict yhat` | `fitted(fit)` |
+| Prediction SE | `predict s, stdp` | `predict(fit, se.fit = TRUE)` |
 | Confidence intervals | — | `confint(fit)` |
 | Tidy coef table | — | `tidy(fit)` |
 | Summary statistics | `ereturn list` | `glance(fit)` |
 | Diagnostics | Displayed after estimation | Displayed by `summary(fit)` |
+
+#### Estimators
+
+| Task | Stata | R (`ivreg2r`) |
+|------|-------|---------------|
 | LIML | `ivreg2 ..., liml` | `ivreg2(..., method = "liml")` |
 | Fuller(1) | `ivreg2 ..., fuller(1)` | `ivreg2(..., fuller = 1)` |
 | k-class | `ivreg2 ..., kclass(0.5)` | `ivreg2(..., kclass = 0.5)` |
 | COVIV | `ivreg2 ..., liml coviv` | `ivreg2(..., method = "liml", coviv = TRUE)` |
-| Two-way cluster | `ivreg2 ..., cluster(g1 g2)` | `ivreg2(..., clusters = ~ g1 + g2)` |
-| Orthogonality test | `ivreg2 ..., orthog(z1)` | `ivreg2(..., orthog = c("z1"))` |
-| Frequency weights | `ivreg2 ... [fw=w]` | `ivreg2(..., weights = w, weight_type = "fweight")` |
-| Probability weights | `ivreg2 ... [pw=w]` | `ivreg2(..., weights = w, weight_type = "pweight")` |
-| DoF adjustment | `ivreg2 ..., dofminus(5)` | `ivreg2(..., dofminus = 5)` |
-| Small-sample DoF | `ivreg2 ..., sdofminus(3)` | `ivreg2(..., sdofminus = 3)` |
-| Endogeneity test | `ivreg2 ..., endog(z1)` | `ivreg2(..., endog = c("z1"))` |
-| Save first stage | `ivreg2 ..., savefirst` | `ivreg2(..., first_stage = TRUE)`, then `first_stage(fit)` |
-| Suppress ID stats | `ivreg2 ..., noid` | `ivreg2(..., noid = TRUE)` |
-| Save reduced form | `ivreg2 ..., saverf` | `ivreg2(..., reduced_form = "rf")` (`rf` displays, `saverf` stores) |
-| Save first-stage system | `ivreg2 ..., savesfirst` | `ivreg2(..., reduced_form = "system")` (`savesfirst` is undocumented in Stata) |
 | GMM2S | `ivreg2 ..., gmm2s` | `ivreg2(..., method = "gmm2s")` |
 | CUE | `ivreg2 ..., cue` | `ivreg2(..., method = "cue")` |
 | Evaluate CUE at fixed b | `ivreg2 ..., b0(bmat)` | `ivreg2(..., b0 = c(...))` |
+| User W matrix | `ivreg2 ..., wmatrix(name)` | `ivreg2(..., wmatrix = W)` |
+| User S matrix | `ivreg2 ..., smatrix(name)` | `ivreg2(..., smatrix = S)` |
+| Moment covariance / weight matrix | `e(S)` / `e(W)` | `fit$S` / `fit$W` |
+
+#### Variance estimation and clustering
+
+| Task | Stata | R (`ivreg2r`) |
+|------|-------|---------------|
+| Robust SEs | `ivreg2 ..., robust` | `ivreg2(..., vcov = "robust")` |
+| Robust + small | `ivreg2 ..., robust small` | `ivreg2(..., vcov = "robust", small = TRUE)` |
+| Cluster SEs | `ivreg2 ..., cluster(g)` | `ivreg2(..., clusters = ~ g)` |
+| Cluster + small | `ivreg2 ..., cluster(g) small` | `ivreg2(..., clusters = ~ g, small = TRUE)` |
+| Two-way cluster | `ivreg2 ..., cluster(g1 g2)` | `ivreg2(..., clusters = ~ g1 + g2)` |
 | AC kernel | `ivreg2 ..., kernel(bar) bw(3)` | `ivreg2(..., kernel = "bartlett", bw = 3, tvar = "year")` |
 | HAC kernel | `ivreg2 ..., robust kernel(bar) bw(3)` | `ivreg2(..., vcov = "robust", kernel = "bartlett", bw = 3, tvar = "year")` |
 | Auto bandwidth | `ivreg2 ..., kernel(bar) bw(auto)` | `ivreg2(..., kernel = "bartlett", bw = "auto", tvar = "year")` |
 | Driscoll-Kraay | `ivreg2 ..., dkraay(3)` | `ivreg2(..., dkraay = 3, tvar = "year", ivar = "id")` |
 | Kiefer VCE | `ivreg2 ..., kiefer` | `ivreg2(..., kiefer = TRUE, tvar = "year", ivar = "id")` |
 | Stock-Watson VCE | `ivreg2 ..., sw` | `ivreg2(..., sw = TRUE, ivar = "id")` |
-| Lag / difference | `L.x` / `D.x` | `l(x, 1)` / `d(x, 1)` (requires `tvar`, plus `ivar` for panels) |
+| Center moments | `ivreg2 ..., center` | `ivreg2(..., center = TRUE)` |
+
+#### Weights, tests, and other options
+
+| Task | Stata | R (`ivreg2r`) |
+|------|-------|---------------|
+| Analytic weights | `ivreg2 ... [aw=w]` | `ivreg2(..., weights = w)` |
+| Frequency weights | `ivreg2 ... [fw=w]` | `ivreg2(..., weights = w, weight_type = "fweight")` |
+| Probability weights | `ivreg2 ... [pw=w]` | `ivreg2(..., weights = w, weight_type = "pweight")` |
+| Importance weights | `ivreg2 ... [iw=w]` | `ivreg2(..., weights = w, weight_type = "iweight")` |
+| Orthogonality test | `ivreg2 ..., orthog(z1)` | `ivreg2(..., orthog = c("z1"))` |
+| Endogeneity test | `ivreg2 ..., endog(z1)` | `ivreg2(..., endog = c("z1"))` |
+| Redundancy test | `ivreg2 ..., redundant(z1)` | `ivreg2(..., redundant = c("z1"))` |
+| DoF adjustment | `ivreg2 ..., dofminus(5)` | `ivreg2(..., dofminus = 5)` |
+| Small-sample DoF | `ivreg2 ..., sdofminus(3)` | `ivreg2(..., sdofminus = 3)` |
 | Partialling | `ivreg2 ..., partial(x1)` | `ivreg2(..., partial = c("x1"))` |
 | Partial constant / all | `ivreg2 ..., partial(_cons)` | `ivreg2(..., partial = "_cons")` or `"_all"` |
 | No partial DoF adjustment | `ivreg2 ..., nopartialsmall` | `ivreg2(..., nopartialsmall = TRUE)` |
-| Redundancy test | `ivreg2 ..., redundant(z1)` | `ivreg2(..., redundant = c("z1"))` |
-| User W matrix | `ivreg2 ..., wmatrix(name)` | `ivreg2(..., wmatrix = W)` |
-| User S matrix | `ivreg2 ..., smatrix(name)` | `ivreg2(..., smatrix = S)` |
-| Moment covariance / weight matrix | `e(S)` / `e(W)` | `fit$S` / `fit$W` |
-| Center moments | `ivreg2 ..., center` | `ivreg2(..., center = TRUE)` |
-| Importance weights | `ivreg2 ... [iw=w]` | `ivreg2(..., weights = w, weight_type = "iweight")` |
-| Prediction SE | `predict s, stdp` | `predict(fit, se.fit = TRUE)` |
+| Save first stage | `ivreg2 ..., savefirst` | `ivreg2(..., first_stage = TRUE)`, then `first_stage(fit)` |
+| Save reduced form | `ivreg2 ..., saverf` | `ivreg2(..., reduced_form = "rf")` (`rf` displays, `saverf` stores) |
+| Save first-stage system | `ivreg2 ..., savesfirst` | `ivreg2(..., reduced_form = "system")` (`savesfirst` is undocumented in Stata) |
+| Suppress ID stats | `ivreg2 ..., noid` | `ivreg2(..., noid = TRUE)` |
 
 See `vignette("advanced-iv")` for LIML, k-class, two-way clustering, and model comparison examples. See `vignette("time-series-gmm")` for HAC/AC, GMM, CUE, partialling, and panel VCE examples.
 

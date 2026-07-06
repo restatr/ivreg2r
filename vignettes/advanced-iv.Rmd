@@ -409,7 +409,7 @@ When fixed effects or other controls have been partialled out before estimation,
 - `dofminus` is subtracted from `N` in the large-sample variance formulas, so `sigma^2 = RSS / (N - dofminus)`. It is the large-sample adjustment (for example, the number of fixed effects), and it is how `xtivreg2, fe` reports correct statistics after within-demeaning consumes one degree of freedom per panel unit.
 - `sdofminus` is subtracted from the residual degrees of freedom alongside `K` in the small-sample corrections. It is the small-sample adjustment (for example, the number of partialled-out regressors), and it is what Stata's `partial()` sets internally.
 
-Neither option appears in the help file's examples, so we demonstrate `sdofminus` with a self-verifying Frisch-Waugh-Lovell identity on the Griliches specification. Residualize every variable on the year dummies (7 columns including the intercept), refit without an intercept, and tell `ivreg2()` that 7 degrees of freedom were consumed. The shared coefficients, standard errors, and sigma then match the full regression to floating-point precision:
+Neither option appears in the help file's examples, so both demonstrations below are self-verifying identities on the Griliches data. First `sdofminus`, via the Frisch-Waugh-Lovell theorem. Residualize every variable on the year dummies (7 columns including the intercept), refit without an intercept, and tell `ivreg2()` that 7 degrees of freedom were consumed. The shared coefficients, standard errors, and sigma then match the full regression to floating-point precision:
 
 ```{r sdofminus-fwl}
 fit_full <- ivreg2(
@@ -438,6 +438,30 @@ c(sigma_full = fit_full$sigma, sigma_fwl = fit_fwl$sigma)
 ```
 
 Without `sdofminus = 7` the coefficients would still match but the standard errors and sigma would not, because the refit would not know that 7 parameters were already spent on the year dummies. The built-in `partial = "factor(year)"` argument performs exactly this residualize-and-adjust sequence in one step; see `vignette("time-series-gmm")` for the partialling workflow.
+
+The `dofminus` twin is the fixed-effects recipe that `xtivreg2, fe` automates. Demean each variable by its group, adding back the grand mean so the intercept survives, and declare that the G − 1 absorbed group effects consumed degrees of freedom. Treating the seven Griliches survey years as the groups, the within fit reproduces the dummy-variable fit exactly --- shared coefficients, standard errors, sigma, and residual degrees of freedom:
+
+```{r dofminus-fe}
+demean_gm <- function(v, g) v - ave(v, g) + mean(v)
+gril_within <- data.frame(lapply(
+  griliches[c("lw", "s", "expr", "tenure")],
+  demean_gm, g = griliches$year
+))
+G <- length(unique(griliches$year))
+
+fit_lsdv <- ivreg2(lw ~ s + expr + tenure + factor(year),
+                   data = griliches, small = TRUE)
+fit_fe <- ivreg2(lw ~ s + expr + tenure, data = gril_within,
+                 small = TRUE, dofminus = G - 1)
+
+slopes <- c("s", "expr", "tenure")
+max(abs(coef(fit_lsdv)[slopes] - coef(fit_fe)[slopes]))
+max(abs(sqrt(diag(vcov(fit_lsdv)))[slopes] - sqrt(diag(vcov(fit_fe)))[slopes]))
+c(sigma_lsdv = fit_lsdv$sigma, sigma_fe = fit_fe$sigma,
+  df_lsdv = fit_lsdv$df.residual, df_fe = fit_fe$df.residual)
+```
+
+For a migrating `xtivreg2, fe` user the practical rule is: pass the number of absorbed effects beyond the constant, and use the identity above as the check that you passed the right one.
 
 ## Estimator equivalences
 
