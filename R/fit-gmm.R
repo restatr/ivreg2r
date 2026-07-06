@@ -48,10 +48,9 @@
   Omega <- omega_fn(fit_1$residuals)
 
   # --- Step 3: rank-check Omega ---
-  # Structural gate first: a one-way cluster meat with fewer clusters than
-  # moments is singular by construction, and the numeric detectors below
-  # proved BLAS-dependent on the rank-deficit-1 case (H29, detected on macOS
-  # but not ubuntu at the 2026-07-06 CI cycle; see .cluster_rank_bound).
+  # Structural gate first (platform-stable; rationale and Stata anchors in
+  # .cluster_rank_bound). Stata's efficient-GMM path exits r(506) here
+  # (s_egmm, ivreg2.ado:5436-5440).
   if (omega_rank_bound < L) {
     stop("estimated covariance matrix of moment conditions not of full rank;\n",
          "optimal GMM weighting matrix not unique.", call. = FALSE)
@@ -261,7 +260,8 @@
 #'   "gmmw"`.
 #' @keywords internal
 .fit_gmm_wmatrix <- function(parsed, small = FALSE, dofminus = 0L,
-                              sdofminus = 0L, W, omega_fn) {
+                              sdofminus = 0L, W, omega_fn,
+                              omega_rank_bound = Inf) {
   y <- parsed$y
   X <- parsed$X
   Z <- parsed$Z
@@ -324,7 +324,11 @@
 
   # --- Step 5: J statistic via efficient 2-step re-estimation ---
   if (overid_df > 0L) {
-    j_stat <- .compute_j_with_omega(Z, X, y, Omega, w, N)
+    # rank_bound: with user W the estimation itself needs no Omega inverse,
+    # but the J does — Stata sets j to missing when rankS < iv1_ct
+    # (ivreg2.ado:1793-1808; rationale in .cluster_rank_bound).
+    j_stat <- .compute_j_with_omega(Z, X, y, Omega, w, N,
+                                    rank_bound = omega_rank_bound)
     if (is.na(j_stat)) {
       j_p <- NA_real_
     } else {
@@ -574,9 +578,10 @@
   Omega <- omega_fn(resid)
 
   # --- Step 5: Omega rank check (Stata line 5972-5979) ---
-  # Structural gate first, as in .fit_gmm2s step 3 (see .cluster_rank_bound).
-  # For non-iid CUE the GMM2S init above already errors on this condition;
-  # this belt covers the b0 path, which skips the init's Omega inversion.
+  # Structural gate first, as in .fit_gmm2s step 3 (rationale in
+  # .cluster_rank_bound). For non-iid CUE the GMM2S init above already
+  # errors on this condition; this belt covers the b0 path, which skips the
+  # init's Omega inversion.
   if (omega_rank_bound < L) {
     stop("estimated covariance matrix of moment conditions not of full rank;\n",
          "optimal GMM weighting matrix not unique.", call. = FALSE)

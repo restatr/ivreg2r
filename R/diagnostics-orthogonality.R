@@ -85,11 +85,17 @@
                                   sw = sw, ivar_vec = ivar_vec)
   }
 
+  # Structural rank bound of the cluster meat (also bounds every submatrix).
+  # Stata sets cstat to missing when rankS < iv1_ct (ivreg2.ado:1793-1808);
+  # the structural gate reproduces that suppression platform-stably.
+  cl_rank_bound <- .cluster_rank_bound(cluster_vec, kernel, center, weights)
+
   # --- J_full: the full model's own J (Stata: cstat = j - cj, ado:1547). Recompute via the fixed-Omega minimization only when the caller did not supply the model's reported statistic (see @param j_full). ---
   J_full <- if (!is.null(j_full) && is.finite(j_full)) {
     j_full
   } else {
-    .compute_j_with_omega(Z, X, y, Omega_full, weights, N)
+    .compute_j_with_omega(Z, X, y, Omega_full, weights, N,
+                          rank_bound = cl_rank_bound)
   }
   if (is.na(J_full)) {
     return(list(stat = NA_real_, p = NA_real_, df = as.integer(q),
@@ -101,7 +107,8 @@
   Omega_sub <- Omega_full[keep_idx, keep_idx, drop = FALSE]
 
   # --- J_r: J statistic of restricted model (using full model's S) ---
-  J_r <- .compute_j_with_omega(Z_r, X, y, Omega_sub, weights, N)
+  J_r <- .compute_j_with_omega(Z_r, X, y, Omega_sub, weights, N,
+                               rank_bound = cl_rank_bound)
   if (is.na(J_r)) {
     return(list(stat = NA_real_, p = NA_real_, df = as.integer(q),
                 test_name = "C (orthog)",

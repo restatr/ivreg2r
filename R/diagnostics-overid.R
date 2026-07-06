@@ -167,37 +167,57 @@
 #'
 #' A one-way cluster-robust meat is a sum of M rank-one outer products (one
 #' per cluster), so its rank is at most M regardless of floating-point
-#' behavior; centering subtracts the overall mean score, which makes the M
-#' cluster sums add to exactly zero, dropping the bound to M - 1. When the
+#' behavior. For UNWEIGHTED models, centering subtracts the plain mean score,
+#' which makes the M cluster sums add to exactly zero and drops the bound to
+#' M - 1. For weighted models the M - 1 refinement does NOT hold:
+#' `.cl_scores()` centers by subtracting a weighted mean, so the cluster sums
+#' need not add to zero and the exact-arithmetic rank stays M (verified
+#' empirically per weight type at the 2026-07-06 review: unweighted centered
+#' sums are zero to 1e-16 and the meat has rank M - 1; aweight/fweight/
+#' pweight centered sums are O(1) and the meat has full rank M). When the
 #' bound is below L the meat is singular by construction, and consumers that
-#' must invert it (the GMM weighting matrix, Hansen J, Stock-Wright S) can
-#' refuse deterministically.
+#' must invert it can refuse deterministically.
 #'
-#' This structural gate exists because the numeric detectors (chol failure,
-#' qr rank, eigenvalue thresholds) proved BLAS-dependent on the
-#' rank-deficit-1 case: at the 2026-07-06 CI cycle the Griliches
-#' cluster(year) + partial cells (H28/H29, M = 7 clusters vs L = 8 moments)
-#' were detected on macOS (lambda_min/lambda_max ~ 2e-18, far below any
-#' threshold) but missed on ubuntu/Windows, whose BLAS leaves a larger
-#' rounding residue in the deficit eigenvalue. No threshold can decide an
-#' exact-rank question robustly; the cluster-count bound can.
+#' Stata anchor: Stata detects this singularity NUMERICALLY (rankS from
+#' invsym's rank determination) but then applies an explicit suppression
+#' POLICY — with a robust/cluster/kernel VCE and rankS < iv1_ct it sets j,
+#' cstat, and estat to missing (ivreg2.ado:1793-1808), and the efficient
+#' 2-step GMM path exits with r(506) "matrix not positive definite"
+#' (s_egmm, ivreg2.ado:5436-5440). This helper reproduces those outcomes
+#' through the structural bound instead of numerics because the numeric
+#' detectors proved BLAS-dependent on the rank-deficit-1 case: at the
+#' 2026-07-06 CI cycle the Griliches cluster(year) + partial cells (H28/H29,
+#' M = 7 clusters vs L = 8 moments) were detected on macOS
+#' (lambda_min/lambda_max ~ 2e-18) but missed on ubuntu/Windows, whose BLAS
+#' leaves a larger rounding residue in the deficit eigenvalue. Stata runs on
+#' a single Mata implementation and does not face this cross-platform
+#' problem; the structural gate is our platform-stable mechanism for the
+#' same outcomes. The Anderson-Rubin statistic is deliberately NOT gated:
+#' Stata computes it even when rankS < L (verified live 2026-07-06 — H28
+#' with `first` reports arf = 98.6498, matching ours, while j is missing).
 #'
-#' All other VCE shapes (kernel-smoothed, two-way cluster, HC, SW, iid)
-#' return Inf: no comparably simple bound holds there, and the numeric
-#' checks remain the detectors.
+#' Known scope limit: two-way cluster and cluster-kernel (DK/Thompson) meats
+#' can also be structurally rank-deficient, but no comparably simple bound
+#' holds (the CGM meat is a sum AND difference of cluster meats), so those
+#' shapes return Inf and the numeric checks remain their detectors. Extend
+#' here if a fixture ever exercises that regime.
 #'
 #' @param cluster_vec Length-N cluster vector (one-way), list of 2 vectors
 #'   (two-way), or NULL.
 #' @param kernel Kernel name, or NULL.
 #' @param center Logical: are the moment conditions centered?
-#' @return Numeric rank bound (M or M - 1), or `Inf` when no structural
-#'   bound applies.
+#' @param weights Normalized weight vector, or NULL. The M - 1 centered
+#'   refinement applies only when NULL.
+#' @return Numeric rank bound (M, or M - 1 for unweighted centered), or
+#'   `Inf` when no structural bound applies.
 #' @keywords internal
-.cluster_rank_bound <- function(cluster_vec, kernel, center = FALSE) {
+.cluster_rank_bound <- function(cluster_vec, kernel, center = FALSE,
+                                weights = NULL) {
   if (is.null(cluster_vec) || !is.null(kernel) || is.list(cluster_vec)) {
     return(Inf)
   }
-  length(unique(cluster_vec)) - as.integer(isTRUE(center))
+  M <- length(unique(cluster_vec))
+  M - as.integer(isTRUE(center) && is.null(weights))
 }
 
 
@@ -366,7 +386,8 @@
                            sw = sw, ivar_vec = ivar_vec)
   J <- .compute_j_with_omega(Z, X, y, Omega, weights, N,
                              rank_bound = .cluster_rank_bound(cluster_vec,
-                                                              kernel, center))
+                                                              kernel, center,
+                                                              weights))
 
   if (is.na(J)) {
     warning("Hansen J statistic not computed; ",
@@ -470,21 +491,20 @@
                              time_index = time_index,
                              center = center, psd = psd,
                              sw = sw, ivar_vec = ivar_vec)
-    # Structural singularity gate (platform-stable; see .cluster_rank_bound).
-    # Applies only to this branch: the iid/AC Omegas above are not cluster
-    # meats, so the cluster-count bound does not describe them.
-    rank_bound <- .cluster_rank_bound(cluster_vec, kernel, center)
+    # Structural gate applies only to this branch: the iid/AC Omegas above
+    # are not cluster meats (see .cluster_rank_bound).
+    rank_bound <- .cluster_rank_bound(cluster_vec, kernel, center, weights)
   }
 
   # 5. S = N * gbar' * Omega^{-1} * gbar
-  structurally_singular <- rank_bound < ncol(Z)
-  R_chol <- if (structurally_singular) {
-    NULL
-  } else {
-    tryCatch(chol(Omega), error = function(e) NULL)
+  if (rank_bound < ncol(Z)) {
+    warning("Stock-Wright: Omega is rank-deficient; S statistic not computed.",
+            call. = FALSE)
+    return(list(stat = NA_real_, p = NA_real_, df = as.integer(L1)))
   }
+  R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
   if (is.null(R_chol)) {
-    if (structurally_singular || qr(Omega)$rank < ncol(Z)) {
+    if (qr(Omega)$rank < ncol(Z)) {
       warning("Stock-Wright: Omega is rank-deficient; S statistic not computed.",
               call. = FALSE)
       return(list(stat = NA_real_, p = NA_real_, df = as.integer(L1)))

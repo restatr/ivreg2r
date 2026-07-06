@@ -110,8 +110,17 @@
                                sw = sw, ivar_vec = ivar_vec)
   }
 
+  # Structural rank bound of the restricted-model cluster meat (also bounds
+  # its submatrix below). Uses this function's own `center` argument, which
+  # the caller sets per Stata's uncentered recursive endog call (see the
+  # ?ivreg2 center note). Stata sets estat to missing when rankS < iv1_ct
+  # (ivreg2.ado:1793-1808); the structural gate reproduces that suppression
+  # platform-stably.
+  cl_rank_bound <- .cluster_rank_bound(cluster_vec, kernel, center, weights)
+
   # --- J_r: J statistic of restricted model ---
-  J_r <- .compute_j_with_omega(Z_r, X, y, Omega_r, weights, N)
+  J_r <- .compute_j_with_omega(Z_r, X, y, Omega_r, weights, N,
+                               rank_bound = cl_rank_bound)
   if (is.na(J_r)) {
     return(list(stat = NA_real_, p = NA_real_, df = as.integer(q),
                 test_name = "Endogeneity",
@@ -124,7 +133,8 @@
   Omega_sub <- Omega_r[z_cols, z_cols, drop = FALSE]
 
   # --- J_f: re-estimate full model with restricted S ---
-  J_f <- .compute_j_with_omega(Z, X, y, Omega_sub, weights, N)
+  J_f <- .compute_j_with_omega(Z, X, y, Omega_sub, weights, N,
+                               rank_bound = cl_rank_bound)
   if (is.na(J_f)) {
     return(list(stat = NA_real_, p = NA_real_, df = as.integer(q),
                 test_name = "Endogeneity",

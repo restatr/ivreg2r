@@ -391,73 +391,116 @@ test_that("small does not change overid statistic (sim_multi_endo)", {
 # BLAS-dependent on the rank-deficit-1 cluster meat: the griliches
 # cluster(year) + partial cells were detected on macOS
 # (lambda_min/lambda_max ~ 2e-18) but missed on ubuntu/Windows.
-# .cluster_rank_bound() gates the Omega-inverting consumers structurally:
+# .cluster_rank_bound() gates the Omega-inverting consumers structurally --
 # a one-way cluster meat is a sum of M rank-one outer products, so M < L
-# (M - 1 < L when centered) is singular by construction on every platform.
-# These synthetic tests pin the gate deterministically; the canonical
-# griliches behavior is pinned by H27/H28/H29 in test-helpfile-examples.R.
+# (M - 1 < L when centered AND unweighted) is singular by construction on
+# every platform, reproducing Stata's own suppression policy (j/cstat/estat
+# set missing when rankS < iv1_ct, ivreg2.ado:1793-1808; the efficient-GMM
+# error, ado:5436-5440) without its numeric rank detection. The
+# Anderson-Rubin statistic is deliberately ungated: Stata computes it even
+# when rankS < L (verified live against StataNow, H28 with `first`:
+# arf = 98.6498 matching ours, j missing). These synthetic tests pin the
+# gates deterministically; the canonical griliches behavior is pinned by
+# H27/H28/H29 in test-helpfile-examples.R. The excluded-instrument count is
+# kept at L1 = 2 < M so the AR Wald block stays comfortably full-rank --
+# with L1 close to M its RVR is numerically marginal, which is the same
+# platform-dependence this block exists to avoid.
 
-test_that(".cluster_rank_bound: M one-way, M - 1 centered, Inf otherwise", {
+test_that(".cluster_rank_bound: M one-way, M - 1 unweighted centered, Inf otherwise", {
   cv <- rep(1:3, each = 10L)
+  w <- rep(c(0.5, 1.5), 15L)
   expect_identical(.cluster_rank_bound(cv, kernel = NULL), 3L)
   expect_identical(.cluster_rank_bound(cv, kernel = NULL, center = TRUE), 2L)
+  # Weighted centering subtracts a weighted mean, so the cluster sums do not
+  # add to zero and the M - 1 refinement must NOT apply (empirically
+  # verified per weight type; see the helper's doc).
+  expect_identical(
+    .cluster_rank_bound(cv, kernel = NULL, center = TRUE, weights = w), 3L
+  )
   expect_identical(.cluster_rank_bound(NULL, kernel = NULL), Inf)
   expect_identical(.cluster_rank_bound(cv, kernel = "bartlett"), Inf)
   expect_identical(.cluster_rank_bound(list(cv, cv), kernel = NULL), Inf)
 })
 
-# Deterministic synthetic data: M = 3 clusters vs L = 4 moment conditions
-# (intercept + three excluded instruments).
-set.seed(42)
-rank_gate_n <- 60L
-rank_gate_df <- data.frame(
-  z1 = rnorm(rank_gate_n), z2 = rnorm(rank_gate_n), z3 = rnorm(rank_gate_n),
-  g = rep(1:3, each = 20L)
-)
-rank_gate_df$x <- rank_gate_df$z1 + rank_gate_df$z2 + rnorm(rank_gate_n)
-rank_gate_df$y <- rank_gate_df$x + rnorm(rank_gate_n)
-
 test_that("GMM2S with M < L clusters errors deterministically", {
+  # M = 3 clusters vs L = 5 moments (intercept + 2 exog + 2 excluded).
+  set.seed(42)
+  n <- 60L
+  d <- data.frame(w1 = rnorm(n), w2 = rnorm(n), z1 = rnorm(n),
+                  z2 = rnorm(n), g = rep(1:3, each = 20L))
+  d$x <- d$z1 + d$z2 + rnorm(n)
+  d$y <- d$x + d$w1 + rnorm(n)
   expect_error(
-    ivreg2(y ~ 1 | x | z1 + z2 + z3, data = rank_gate_df, clusters = ~g,
+    ivreg2(y ~ w1 + w2 | x | z1 + z2, data = d, clusters = ~g,
            method = "gmm2s"),
     "not of full rank"
   )
 })
 
-test_that("2SLS diagnostics with M < L clusters: J, AR, Stock-Wright all NA with warnings", {
+test_that("2SLS diagnostics with M < L clusters: J and Stock-Wright NA with warnings, AR computed", {
+  set.seed(42)
+  n <- 60L
+  d <- data.frame(w1 = rnorm(n), w2 = rnorm(n), z1 = rnorm(n),
+                  z2 = rnorm(n), g = rep(1:3, each = 20L))
+  d$x <- d$z1 + d$z2 + rnorm(n)
+  d$y <- d$x + d$w1 + rnorm(n)
   expect_warning(
     expect_warning(
-      expect_warning(
-        fit <- ivreg2(y ~ 1 | x | z1 + z2 + z3, data = rank_gate_df,
-                      clusters = ~g),
-        "Hansen J statistic not computed"
-      ),
-      "Anderson-Rubin: RVR matrix is singular"
+      fit <- ivreg2(y ~ w1 + w2 | x | z1 + z2, data = d, clusters = ~g),
+      "Hansen J statistic not computed"
     ),
     "Stock-Wright.*rank-deficient"
   )
   expect_true(is.na(fit$diagnostics$overid$stat))
-  expect_identical(fit$diagnostics$overid$df, 2L)
+  expect_identical(fit$diagnostics$overid$df, 1L)
+  # AR is deliberately ungated (Stata computes it when rankS < L): with
+  # L1 = 2 < M = 3 the RVR block is structurally full rank and AR reports
+  # a finite value on every platform.
+  expect_true(is.finite(fit$diagnostics$anderson_rubin$f_stat))
 })
 
-test_that("center drops the bound to M - 1: M = L fits uncentered, errors centered", {
-  # M = 4 clusters vs L = 4 moments: the uncentered meat is full rank
-  # (bound M = L does not bind); centering makes the four cluster sums add
-  # to zero, so the centered meat has rank <= 3 by construction.
-  set.seed(43)
-  d4 <- data.frame(
-    z1 = rnorm(rank_gate_n), z2 = rnorm(rank_gate_n), z3 = rnorm(rank_gate_n),
-    g = rep(1:4, each = 15L)
+test_that("endog()/orthog() C-stats are suppressed under M < L clusters (ado:1793-1808)", {
+  set.seed(42)
+  n <- 60L
+  d <- data.frame(w1 = rnorm(n), w2 = rnorm(n), z1 = rnorm(n),
+                  z2 = rnorm(n), g = rep(1:3, each = 20L))
+  d$x <- d$z1 + d$z2 + rnorm(n)
+  d$y <- d$x + d$w1 + rnorm(n)
+  expect_warning(
+    expect_warning(
+      fit <- ivreg2(y ~ w1 + w2 | x | z1 + z2, data = d, clusters = ~g,
+                    endog = "x", orthog = "z1"),
+      "Hansen J statistic not computed"
+    ),
+    "Stock-Wright.*rank-deficient"
   )
-  d4$x <- d4$z1 + d4$z2 + rnorm(rank_gate_n)
-  d4$y <- d4$x + rnorm(rank_gate_n)
-  fit_ok <- ivreg2(y ~ 1 | x | z1 + z2 + z3, data = d4, clusters = ~g,
+  expect_true(is.na(fit$diagnostics$endogeneity$stat))
+  expect_true(is.na(fit$diagnostics$orthog$stat))
+})
+
+test_that("center drops the bound to M - 1 only for unweighted models", {
+  # M = 5 clusters vs L = 5 moments: the uncentered meat is full rank,
+  # unweighted centering forces rank 4 < 5 (the five centered cluster sums
+  # add to zero), and weighted centering keeps rank 5 (no false refusal).
+  set.seed(43)
+  n <- 60L
+  d5 <- data.frame(w1 = rnorm(n), w2 = rnorm(n), z1 = rnorm(n),
+                   z2 = rnorm(n), g = rep(1:5, each = 12L),
+                   wt = rep(c(0.5, 1.5), 30L))
+  d5$x <- d5$z1 + d5$z2 + rnorm(n)
+  d5$y <- d5$x + d5$w1 + rnorm(n)
+  fit_ok <- ivreg2(y ~ w1 + w2 | x | z1 + z2, data = d5, clusters = ~g,
                    method = "gmm2s")
   expect_s3_class(fit_ok, "ivreg2")
   expect_error(
-    ivreg2(y ~ 1 | x | z1 + z2 + z3, data = d4, clusters = ~g,
+    ivreg2(y ~ w1 + w2 | x | z1 + z2, data = d5, clusters = ~g,
            method = "gmm2s", center = TRUE),
     "not of full rank"
   )
+  # Weighted + centered: the M - 1 refinement must not fire (the weighted
+  # centered meat has full rank M = L; the 2026-07-06 review caught the
+  # unconditional M - 1 as a false-positive refusal).
+  fit_w <- ivreg2(y ~ w1 + w2 | x | z1 + z2, data = d5, clusters = ~g,
+                  method = "gmm2s", center = TRUE, weights = wt)
+  expect_s3_class(fit_w, "ivreg2")
 })

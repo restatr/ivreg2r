@@ -10,7 +10,8 @@
   dofminus = 0L,
   sdofminus = 0L,
   W,
-  omega_fn
+  omega_fn,
+  omega_rank_bound = Inf
 )
 }
 \arguments{

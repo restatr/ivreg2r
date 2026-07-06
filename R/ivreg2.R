@@ -1138,13 +1138,14 @@
                           vcov_type = gmm_vcov_type, ZwZ = gmm_ZwZ,
                           sw = gmm_sw, ivar_vec = gmm_ivar_vec)
     }
+    # Structural rank bound of the Omega the GMM fitters must invert; only
+    # meaningful for this closure (user-supplied smatrix paths pass Inf and
+    # keep the numeric checks). See .cluster_rank_bound.
+    omega_rank_bound <- .cluster_rank_bound(cluster_vec, kernel, center,
+                                            parsed$weights)
   }
 
   # --- Estimation dispatch ---
-  # Structural rank bound of the Omega the GMM fitters must invert
-  # (see .cluster_rank_bound). Only meaningful for our own moment-covariance
-  # closure: user-supplied smatrix paths pass Inf and keep the numeric checks.
-  omega_rank_bound <- .cluster_rank_bound(cluster_vec, kernel, center)
   if (use_smatrix && !use_wmatrix) {
     omega_fn <- function(resid) smatrix
     fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
@@ -1154,22 +1155,24 @@
     wstep_resid <- .wmatrix_first_step_resid(parsed, wmatrix)
     if (use_smatrix) {
       omega_fn <- function(resid) smatrix
+      omega_rank_bound <- Inf
     } else {
       omega_fn_base <- omega_fn
       omega_fn <- function(resid) omega_fn_base(wstep_resid)
     }
     fit <- .fit_gmm2s(parsed, small = small, dofminus = dofminus,
                       sdofminus = sdofminus, omega_fn = omega_fn,
-                      omega_rank_bound = if (use_smatrix) Inf
-                                         else omega_rank_bound)
+                      omega_rank_bound = omega_rank_bound)
 
   } else if (use_wmatrix) {
     if (use_smatrix) {
       omega_fn <- function(resid) smatrix
+      omega_rank_bound <- Inf
     }
     fit <- .fit_gmm_wmatrix(parsed, small = small, dofminus = dofminus,
                              sdofminus = sdofminus,
-                             W = wmatrix, omega_fn = omega_fn)
+                             W = wmatrix, omega_fn = omega_fn,
+                             omega_rank_bound = omega_rank_bound)
     method <- "gmmw"
 
   } else if (method == "cue") {
