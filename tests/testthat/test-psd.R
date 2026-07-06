@@ -240,7 +240,6 @@ test_that("psd works with OLS model", {
 # wagepan panel) produces an indefinite S, so the correction actually fires.
 
 data(wagepan)
-wp_psd <- wagepan
 
 # Capture-all-warnings fitter. The binding DK config legitimately warns from
 # several distinct sites (one psd correction per corrected matrix, plus the
@@ -258,7 +257,7 @@ fit_capturing_warnings <- function(expr) {
 dk_binding_fit <- function(psd = NULL, small = FALSE) {
   fit_capturing_warnings(ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
-    data = wp_psd, dkraay = 2, kernel = "truncated",
+    data = wagepan, dkraay = 2, kernel = "truncated",
     tvar = "year", ivar = "nr", psd = psd, small = small
   ))
 }
@@ -285,7 +284,6 @@ vcov_from_stored_s <- function(fit, small_factor = 1) {
 }
 
 test_that("binding case: psd correction fires at the S level", {
-
   res_null <- dk_binding_fit(psd = NULL)
   res_psd0 <- dk_binding_fit(psd = "psd0")
   res_psda <- dk_binding_fit(psd = "psda")
@@ -312,7 +310,6 @@ test_that("binding case: psd correction fires at the S level", {
 })
 
 test_that("binding case: correction site is S, not the final VCV", {
-
   res_null <- dk_binding_fit(psd = NULL)
   res_psd0 <- dk_binding_fit(psd = "psd0")
 
@@ -323,7 +320,6 @@ test_that("binding case: correction site is S, not the final VCV", {
 })
 
 test_that("plain-path VCV equals the sandwich rebuilt from fit$S", {
-
   # Binding DK case (cluster family, small = FALSE: factor 1)
   res_psd0 <- dk_binding_fit(psd = "psd0")
   v_rebuilt <- vcov_from_stored_s(res_psd0$fit)
@@ -346,7 +342,6 @@ test_that("plain-path VCV equals the sandwich rebuilt from fit$S", {
 })
 
 test_that("non-binding robust path: psd inert; VCV-from-S identity holds", {
-
   fit_null <- ivreg2(lwage ~ exper + expersq | educ | nearc4 + nearc2,
                      data = card, vcov = "robust")
   fit_psd <- ivreg2(lwage ~ exper + expersq | educ | nearc4 + nearc2,
@@ -361,10 +356,9 @@ test_that("non-binding robust path: psd inert; VCV-from-S identity holds", {
 })
 
 test_that("Stock-Watson path: psd routes through the L x L SW omega", {
-
   fit_sw <- muffle_rank_warnings(
     ivreg2(lwage ~ exper + expersq + married + union | hours | educ + black,
-           data = wp_psd, sw = TRUE, ivar = "nr", psd = "psd0")
+           data = wagepan, sw = TRUE, ivar = "nr", psd = "psd0")
   )
   # SW omega is per-observation scale; same uniform identity applies
   v_rebuilt <- vcov_from_stored_s(fit_sw)
@@ -372,7 +366,6 @@ test_that("Stock-Watson path: psd routes through the L x L SW omega", {
 })
 
 test_that("KP identification stats are never psd-corrected (ranktest parity)", {
-
   # Stata's ranktest does not receive the psd option (ivreg2.ado:1639-1650),
   # so underid/weak-id statistics must be identical across psd settings even
   # when the VCV correction binds.
@@ -391,7 +384,6 @@ test_that("KP identification stats are never psd-corrected (ranktest parity)", {
 })
 
 test_that("iid VCV is never psd-corrected (Stata m_omega parity)", {
-
   fit_null <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                      data = card, vcov = "iid")
   fit_psd <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
@@ -496,14 +488,14 @@ test_that("binding DK + truncated psd0 + small matches Stata", {
 test_that("Stock-Watson + psda matches Stata", {
   fit <- ivreg2(lwage ~ exper + expersq + married + union | hours |
                   educ + black,
-                data = wp_psd, sw = TRUE, ivar = "nr", psd = "psda")
+                data = wagepan, sw = TRUE, ivar = "nr", psd = "psda")
   check_psd_fixture(fit, "sw_psda")
 })
 
 test_that("two-way cluster + psd0 matches Stata", {
   fit <- ivreg2(lwage ~ exper + expersq + married + union | hours |
                   educ + black,
-                data = wp_psd, clusters = ~nr + year, psd = "psd0")
+                data = wagepan, clusters = ~nr + year, psd = "psd0")
   check_psd_fixture(fit, "twoway_psd0")
 })
 

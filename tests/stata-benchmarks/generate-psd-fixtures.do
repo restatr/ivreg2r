@@ -12,7 +12,7 @@
   Each block also logs the minimum eigenvalue of e(S) ("MINEIG <label>:")
   so binding status is documented in the .log.
 
-  Data: wagepan loads from ../validation/data/wagepan.dta, the cached file of record from which pkg/data-raw/wagepan.R builds the bundled data(wagepan) bit-identically, so Stata and the R tests still compute on identical inputs, now at full precision (wp_ck_data.csv was a truncated 8-digit export and was retired 2026-07-06; the wp_psd fixtures were regenerated from the full-precision cache at that retirement). phillips still imports from phillips_data.csv, which carries constructed lag columns and is owned by the M-27/M-43 families. No bcuse: the loads below sit after this file's program define blocks, and bcuse calls clear all.
+  Data: wagepan loads cache-first from ../validation/data/wagepan.dta, the file of record from which pkg/data-raw/wagepan.R builds the bundled data(wagepan) bit-identically, so Stata and the R tests still compute on identical inputs, now at full precision (wp_ck_data.csv was a truncated 8-digit export and was retired 2026-07-06; the wp_psd fixtures were verified byte-identical under the full-precision load at that retirement). The load is hoisted above the program define blocks so its bcuse fallback (which calls clear all) is safe. phillips still imports from phillips_data.csv, which carries constructed lag columns and is owned by the M-27/M-43 families.
 
   Output directory: tests/stata-benchmarks/fixtures/ (relative to pkg/)
 
@@ -27,6 +27,20 @@ set sortseed 12345  // pin sort-tie order: Stata sorts place ties in random orde
 version 14
 
 local outdir "tests/stata-benchmarks/fixtures"
+
+/*---------------------------------------------------------------------------
+  Load wagepan: cache-first from the source of record that also feeds the bundled data(wagepan), with a bcuse fallback — hoisted above the program define blocks so the bcuse fallback (which calls clear all) is safe. Guarded per the generate-fixtures.do card pattern: bc.edu rate limiting can return rc 0 with empty memory.
+---------------------------------------------------------------------------*/
+capture use "../validation/data/wagepan.dta", clear
+if _rc {
+    capture bcuse wagepan, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load wagepan (no local cache, bcuse failed)."
+    exit 601
+}
+save "`outdir'/_wp_psd_temp.dta", replace
 
 /*---------------------------------------------------------------------------
   Helper program: extract ivreg2 results and save to CSV
@@ -192,14 +206,6 @@ end
   Overid model: lwage exper expersq married union (hours = educ black)
   Panel: nr (individual), year (time)
 ===========================================================================*/
-capture use "../validation/data/wagepan.dta", clear
-if _rc | _N == 0 {
-    display as error "Cannot load ../validation/data/wagepan.dta (the cached source of record)."
-    display as error "Regenerate the cache by running the data-export chunk of validation/validate-helpfile.qmd (or: bcuse wagepan, then save ../validation/data/wagepan.dta)."
-    exit 601
-}
-save "`outdir'/_wp_psd_temp.dta", replace
-
 // --- Baseline (no psd): document binding via min eigenvalue of e(S) ---
 use "`outdir'/_wp_psd_temp.dta", clear
 tsset nr year

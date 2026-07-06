@@ -24,9 +24,17 @@ local outdir "tests/stata-benchmarks/fixtures"
 capture mkdir "`outdir'"
 
 /*---------------------------------------------------------------------------
-  Load wagepan data (bcuse calls clear all — must come before program define)
+  Load wagepan: cache-first from the source of record that also feeds the bundled data(wagepan), with a bcuse fallback (bcuse calls clear all — must come before program define). Guarded per the generate-fixtures.do card pattern: bc.edu rate limiting can return rc 0 with empty memory.
 ---------------------------------------------------------------------------*/
-bcuse wagepan, clear
+capture use "../validation/data/wagepan.dta", clear
+if _rc {
+    capture bcuse wagepan, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load wagepan (no local cache, bcuse failed)."
+    exit 601
+}
 save "`outdir'/_wp_temp.dta", replace
 
 /*---------------------------------------------------------------------------

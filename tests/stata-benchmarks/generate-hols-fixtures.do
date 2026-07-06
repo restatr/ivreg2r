@@ -188,7 +188,11 @@ end
 ===========================================================================*/
 capture use "../validation/data/mroz.dta", clear
 if _rc | _N == 0 {
-    display as error "Cannot load ../validation/data/mroz.dta (the cached source of record)."
+    capture use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load mroz (no local cache, bc.edu fetch failed)."
     display as error "Regenerate the cache by running the data-export chunk of validation/validate-helpfile.qmd (or: bcuse mroz, then save ../validation/data/mroz.dta)."
     exit 601
 }

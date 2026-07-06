@@ -4,7 +4,6 @@
 
 # --- Data loading ---
 data(wagepan)
-wp_sw <- wagepan
 
 # Helper: check SW fixture against fitted model
 check_sw_fixture <- function(fit, prefix) {
@@ -128,25 +127,25 @@ check_sw_fixture <- function(fit, prefix) {
 
 test_that("sw must be logical", {
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw, sw = "yes", ivar = "nr"),
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan, sw = "yes", ivar = "nr"),
     "must be TRUE or FALSE"
   )
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw, sw = NA, ivar = "nr"),
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan, sw = NA, ivar = "nr"),
     "must be TRUE or FALSE"
   )
 })
 
 test_that("sw requires ivar", {
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw, sw = TRUE),
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan, sw = TRUE),
     "requires panel data"
   )
 })
 
 test_that("sw blocks clustering", {
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan,
            sw = TRUE, ivar = "nr", clusters = ~nr),
     "not supported with clustering"
   )
@@ -154,16 +153,16 @@ test_that("sw blocks clustering", {
 
 test_that("sw blocks kernel", {
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan,
            sw = TRUE, ivar = "nr", kernel = "bartlett", bw = 3, tvar = "year"),
     "not supported with kernel"
   )
 })
 
 test_that("sw blocks fweight", {
-  wp_sw$fw <- 1L
+  wagepan$fw <- 1L
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw, weights = fw,
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan, weights = fw,
            sw = TRUE, ivar = "nr", weight_type = "fweight"),
     "fweights not supported"
   )
@@ -171,7 +170,7 @@ test_that("sw blocks fweight", {
 
 test_that("sw blocks iweight", {
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw, weights = hours,
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan, weights = hours,
            sw = TRUE, ivar = "nr", weight_type = "iweight"),
     "iweights not supported"
   )
@@ -179,7 +178,7 @@ test_that("sw blocks iweight", {
 
 test_that("sw blocks kiefer", {
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan,
            sw = TRUE, ivar = "nr", kiefer = TRUE, tvar = "year"),
     "not supported with kernel|not supported with Kiefer"
   )
@@ -187,14 +186,14 @@ test_that("sw blocks kiefer", {
 
 test_that("sw blocks dkraay", {
   expect_error(
-    ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan,
            sw = TRUE, ivar = "nr", dkraay = 3, tvar = "year"),
     "not supported with kernel|not supported with Driscoll-Kraay"
   )
 })
 
 test_that("sw forces robust VCE", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
                 sw = TRUE, ivar = "nr")
   expect_equal(fit$vcov_type, "robust")
 })
@@ -204,68 +203,68 @@ test_that("sw forces robust VCE", {
 # ============================================================================
 
 test_that("SW just-identified matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
                 sw = TRUE, ivar = "nr")
   check_sw_fixture(fit, "wp_sw_justid")
 })
 
 test_that("SW just-identified + small matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
                 sw = TRUE, ivar = "nr", small = TRUE)
   check_sw_fixture(fit, "wp_sw_justid_small")
 })
 
 test_that("SW overidentified matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr")
   check_sw_fixture(fit, "wp_sw_overid")
 })
 
 test_that("SW overidentified + small matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr", small = TRUE)
   check_sw_fixture(fit, "wp_sw_overid_small")
 })
 
 test_that("SW + aweight matches Stata", {
-  wp_sw$aw <- wp_sw$hours + 10
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  wagepan$aw <- wagepan$hours + 10
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 weights = aw, sw = TRUE, ivar = "nr")
   check_sw_fixture(fit, "wp_sw_aweight")
 })
 
 test_that("SW + LIML matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr", method = "liml")
   check_sw_fixture(fit, "wp_sw_liml")
 })
 
 test_that("SW + dofminus matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr", dofminus = 1L)
   check_sw_fixture(fit, "wp_sw_dofminus")
 })
 
 test_that("SW + endogeneity test matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr", endog = "hours")
   check_sw_fixture(fit, "wp_sw_endog")
 })
 
 test_that("SW + center matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr", center = TRUE)
   check_sw_fixture(fit, "wp_sw_center")
 })
 
 test_that("SW + gmm2s matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr", method = "gmm2s")
   check_sw_fixture(fit, "wp_sw_gmm2s")
 })
 
 test_that("SW + cue matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr", method = "cue")
   check_sw_fixture(fit, "wp_sw_cue")
 })
@@ -275,7 +274,7 @@ test_that("SW + cue matches Stata", {
 # ============================================================================
 
 test_that("SW + center + system RF produces symmetric system VCV", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                 sw = TRUE, ivar = "nr", center = TRUE,
                 reduced_form = "system")
   rf <- fit$reduced_form
@@ -289,10 +288,10 @@ test_that("SW + center + system RF produces symmetric system VCV", {
 })
 
 test_that("SW + center + system RF matches non-center up to centering effect", {
-  fit_c <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit_c <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                   sw = TRUE, ivar = "nr", center = TRUE,
                   reduced_form = "system")
-  fit_nc <- ivreg2(lwage ~ exper | hours | educ + married, data = wp_sw,
+  fit_nc <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
                    sw = TRUE, ivar = "nr", center = FALSE,
                    reduced_form = "system")
   # Both should produce valid system VCVs with same dimensions
@@ -306,13 +305,13 @@ test_that("SW + center + system RF matches non-center up to centering effect", {
 # ============================================================================
 
 test_that("sw is stored on the return object", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
                 sw = TRUE, ivar = "nr")
   expect_true(fit$sw)
 })
 
 test_that("glance includes sw column", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
                 sw = TRUE, ivar = "nr")
   g <- glance(fit)
   expect_true("sw" %in% names(g))
@@ -320,7 +319,7 @@ test_that("glance includes sw column", {
 })
 
 test_that("summary shows SW VCV description", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wp_sw,
+  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
                 sw = TRUE, ivar = "nr")
   out <- capture.output(summary(fit))
   expect_true(any(grepl("Stock-Watson", out)))
