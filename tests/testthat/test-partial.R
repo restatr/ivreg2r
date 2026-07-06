@@ -52,6 +52,11 @@ expect_partial_bookkeeping <- function(fit, diag_file) {
   expect_equal(as.integer(fit$partialcons), as.integer(dx$partialcons),
                info = "partialcons")
   expect_equal(length(coef(fit)), as.integer(dx$K), info = "K")
+  # Stata posts e(df_r) only under small, so the fixture column is populated
+  # only in the _small cells; R stores df.residual for every fit.
+  if (!is.na(dx$df_r)) {
+    expect_identical(fit$df.residual, as.integer(dx$df_r))
+  }
   if (!is.na(dx$model_f_df1)) {
     expect_equal(fit$model_f_df1, as.integer(dx$model_f_df1),
                  info = "model F df1")
@@ -60,15 +65,16 @@ expect_partial_bookkeeping <- function(fit, diag_file) {
   }
 }
 
-# Shared fits (M-17 hoisting precedent): the plain iid fit and the
-# partial(_cons) fit are each reused by several sections below (Stata-parity,
-# invariance, metadata, FWL invariance).
+# Shared fits (M-17 hoisting precedent): the plain iid fit, the
+# partial(_cons) fit, and the unpartialled full-model fit are each reused by
+# several sections below (Stata-parity, invariance, metadata, FWL invariance).
 fit_basic       <- ivreg2(gril_partial_formula, data = griliches,
                            partial = "factor(year)")
 fit_basic_small <- ivreg2(gril_partial_formula, data = griliches,
                            partial = "factor(year)", small = TRUE)
 fit_cons        <- ivreg2(gril_partial_formula, data = griliches,
                            partial = "_cons")
+fit_full        <- ivreg2(gril_partial_formula, data = griliches)
 
 
 # ============================================================================
@@ -164,13 +170,11 @@ test_that("OLS + partial(factor(year)) matches Stata -- griliches H28 minus clus
   expect_coef_fixture(fit, "gril_partial_ols_coef_iid.csv")
   expect_vcov_fixture(fit, "gril_partial_ols_vcov_iid.csv")
 
-  # No endogenous part, so no id tests are posted; the fixture's overid
-  # fields reflect Stata's degenerate 0/0 sargan display for a model with no
-  # excluded instruments, which R's OLS path does not populate. Model F and
-  # sigma are real quantities here and are checked directly, plus bookkeeping.
-  dx <- read_diagnostics(fixture_path("gril_partial_ols_diagnostics_iid.csv"))
-  expect_equal(fit$model_f, dx$model_f, tolerance = stata_tol$stat)
-  expect_equal(fit$sigma, dx$sigma, tolerance = stata_tol$coef)
+  # No endogenous part, so no id tests are posted and the fixture's id-test
+  # fields are empty; the fixture's overid fields carry Stata's degenerate
+  # 0/0 sargan sentinel, which the shared helper's df > 0 guard skips. Model
+  # F, sigma, rss, r2, and N are real quantities and are asserted.
+  expect_diagnostics_fixture(fit, "gril_partial_ols_diagnostics_iid.csv")
   expect_partial_bookkeeping(fit, "gril_partial_ols_diagnostics_iid.csv")
 })
 
@@ -287,7 +291,6 @@ test_that("partial accepts both '_cons' and '(Intercept)'", {
 # ============================================================================
 
 test_that("FWL theorem: partial coefficients match full model coefficients", {
-  fit_full <- ivreg2(gril_partial_formula, data = griliches)
   shared <- intersect(names(coef(fit_full)), names(coef(fit_basic)))
   for (nm in shared) {
     expect_equal(unname(coef(fit_basic)[nm]), unname(coef(fit_full)[nm]),
@@ -297,7 +300,6 @@ test_that("FWL theorem: partial coefficients match full model coefficients", {
 })
 
 test_that("FWL theorem: partial(_cons) coefficients match full model", {
-  fit_full <- ivreg2(gril_partial_formula, data = griliches)
   shared <- intersect(names(coef(fit_full)), names(coef(fit_cons)))
   for (nm in shared) {
     expect_equal(unname(coef(fit_cons)[nm]), unname(coef(fit_full)[nm]),
@@ -311,30 +313,20 @@ test_that("FWL theorem: partial(_cons) coefficients match full model", {
 # Metadata tests (griliches)
 # ============================================================================
 
-test_that("partial_ct and partial_names are correct", {
-  # partial(rns smsa) -> partial_ct = 3 (2 vars + cons)
+test_that("partial_ct and partial_names are correct for a variable subset", {
+  # partial(rns smsa) -> partial_ct = 3 (2 vars + cons). The fit_basic and
+  # fit_cons bookkeeping is already asserted in their Stata-parity cells.
   fit1 <- ivreg2(gril_partial_formula, data = griliches,
                  partial = c("rns", "smsa"))
   expect_equal(fit1$partial_ct, 3L)
   expect_true(fit1$partialcons)
   expect_equal(sort(fit1$partial_names), sort(c("rns", "smsa")))
-
-  # partial(_cons) -> partial_ct = 1
-  expect_equal(fit_cons$partial_ct, 1L)
-  expect_true(fit_cons$partialcons)
-  expect_equal(fit_cons$partial_names, character(0L))
-
-  # partial(factor(year)) -> partial_ct = 7 (6 dummies + cons)
-  expect_equal(fit_basic$partial_ct, 7L)
-  expect_true(fit_basic$partialcons)
-  expect_equal(fit_basic$partial_names, "factor(year)")
 })
 
 test_that("no partial -> partial_ct = 0", {
-  fit <- ivreg2(gril_partial_formula, data = griliches)
-  expect_equal(fit$partial_ct, 0L)
-  expect_false(fit$partialcons)
-  expect_equal(fit$partial_names, character(0L))
+  expect_equal(fit_full$partial_ct, 0L)
+  expect_false(fit_full$partialcons)
+  expect_equal(fit_full$partial_names, character(0L))
 })
 
 

@@ -249,7 +249,8 @@ expect_diagnostics_fixture <- function(fit, diag_file,
   dx <- read_diagnostics(fixture_path(diag_file))
   d <- fit$diagnostics
 
-  if (!is.na(dx$overid_stat)) {
+  # The df > 0 condition (restored at the M-24 review from the retired test-partial.R check_diag_fixture) skips Stata's degenerate sargan = 0 / df = 0 sentinel for models with no overidentification to test (no-instrument OLS, just-identified), where R posts no overid object at all.
+  if (!is.na(dx$overid_stat) && as.integer(dx$overid_df) > 0L) {
     expect_equal(d$overid$stat, dx$overid_stat,
                  tolerance = tol_stat, info = "overid stat")
     expect_equal(d$overid$p, dx$overid_p,

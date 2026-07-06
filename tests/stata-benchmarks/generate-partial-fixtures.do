@@ -174,7 +174,7 @@ program define save_ivreg2_results
         gen int L = `L'
 
         // Partial bookkeeping (this family's raison d'etre).
-        // These four columns are the M-24 additions to the shared schema; test-partial.R's bookkeeping assertions consume them.
+        // These four columns are the M-24 additions to the shared schema; test-partial.R's bookkeeping assertions consume them. Stata posts e(df_r) only under the small option, so df_r is blank in the non-small cells and the R assertion is conditional on it.
         gen int df_r = e(df_r)
         gen int sdofminus = e(sdofminus)
         gen int partial_ct = e(partial_ct)
