@@ -31,6 +31,100 @@ data(grunfeld, package = "ivreg2r")
 
 
 # ============================================================================
+# Shared helpers
+# ============================================================================
+
+# Shared small-invariance assertion block (facts 1-4/6 in the header): coef
+# identity, the exact VCV factor, the exact sigma identity, and the
+# small-invariant diagnostics equalities, applied to a (non-small, small)
+# fit pair. vcv_factor differs by VCE class (iid/robust vs cluster), so the
+# caller passes it.
+expect_small_invariance <- function(fit, fit_small, vcv_factor) {
+  N <- nobs(fit)
+  K <- length(coef(fit))
+  dm <- fit$dofminus
+  sdm <- fit$sdofminus
+
+  expect_identical(coef(fit_small), coef(fit))
+
+  expect_equal(fit_small$vcov, fit$vcov * vcv_factor, tolerance = 1e-12)
+
+  expect_equal(fit_small$sigma^2 * (N - K - dm - sdm),
+               fit$sigma^2 * (N - dm),
+               tolerance = 1e-12)
+
+  d <- fit$diagnostics
+  ds <- fit_small$diagnostics
+
+  expect_equal(ds$overid$stat, d$overid$stat)
+  expect_equal(ds$overid$p, d$overid$p)
+  expect_identical(ds$overid$df, d$overid$df)
+
+  expect_equal(ds$underid$stat, d$underid$stat)
+  expect_equal(ds$underid$p, d$underid$p)
+
+  expect_equal(ds$weak_id$stat, d$weak_id$stat)
+
+  # Guard on the non-small fit only: if the small path ever dropped the
+  # robust weak-ID object while the non-small fit still has it, that is a
+  # regression this assert must catch, not skip.
+  if (!is.null(d$weak_id_robust)) {
+    expect_false(is.null(ds$weak_id_robust))
+    expect_equal(ds$weak_id_robust$stat, d$weak_id_robust$stat)
+  }
+
+  expect_equal(ds$anderson_rubin$f_stat, d$anderson_rubin$f_stat)
+  expect_equal(ds$anderson_rubin$f_p, d$anderson_rubin$f_p)
+  expect_equal(ds$anderson_rubin$chi2_stat, d$anderson_rubin$chi2_stat)
+  expect_equal(ds$anderson_rubin$chi2_p, d$anderson_rubin$chi2_p)
+
+  expect_equal(ds$endogeneity$stat, d$endogeneity$stat)
+  expect_equal(ds$endogeneity$p, d$endogeneity$p)
+
+  expect_equal(fit_small$model_f, fit$model_f)
+}
+
+# First-stage x dofminus threading anchor: rmse (via the N-L-dofminus-sdofminus
+# denominator) and the SW/AP chi2/F scalings are not carried by any M-25 cell
+# (none of those fixtures set dofminus), so these three cells -- mroz iid,
+# mroz robust, ab cluster -- own that intersection, restored at the c1a2419
+# review. Asserts each fixture's per-endogenous-regressor row against the
+# matching `fit$first_stage[[endo]]` slot (ap_chi2/ap_f are asserted only if
+# the fit actually stores them, since the K1 = 1 shortcut and K1 > 1 paths
+# both populate them today, but a future estimator might not).
+expect_firststage_dofminus_fixture <- function(fit, fs_file) {
+  fx <- read_firststage(fixture_path(fs_file))
+  endo_cols <- setdiff(names(fx), "statistic")
+
+  for (endo in endo_cols) {
+    fs <- fit$first_stage[[endo]]
+
+    expect_equal(fs$rmse, get_fs_value(fx, "rmse", endo),
+                 tolerance = stata_tol$coef, info = paste("FS rmse", endo))
+    expect_equal(fs$shea_partial_r2, get_fs_value(fx, "sheapr2", endo),
+                 tolerance = stata_tol$stat, info = paste("FS shea pr2", endo))
+    expect_equal(fs$partial_r2, get_fs_value(fx, "pr2", endo),
+                 tolerance = stata_tol$stat, info = paste("FS pr2", endo))
+    expect_equal(fs$f_stat, get_fs_value(fx, "F", endo),
+                 tolerance = stata_tol$stat, info = paste("FS F", endo))
+    expect_equal(fs$sw_chi2, get_fs_value(fx, "SWchi2", endo),
+                 tolerance = stata_tol$stat, info = paste("FS SW chi2", endo))
+    expect_equal(fs$sw_f, get_fs_value(fx, "SWF", endo),
+                 tolerance = stata_tol$stat, info = paste("FS SW F", endo))
+
+    if (!is.null(fs$ap_chi2)) {
+      expect_equal(fs$ap_chi2, get_fs_value(fx, "APchi2", endo),
+                   tolerance = stata_tol$stat, info = paste("FS AP chi2", endo))
+    }
+    if (!is.null(fs$ap_f)) {
+      expect_equal(fs$ap_f, get_fs_value(fx, "APF", endo),
+                   tolerance = stata_tol$stat, info = paste("FS AP F", endo))
+    }
+  }
+}
+
+
+# ============================================================================
 # Block A: mroz iid cell (Stata parity)
 # ============================================================================
 
@@ -75,6 +169,12 @@ test_that("mroz iid dofminus diagnostics match Stata", {
   expect_equal(fit_iid$model_f_p, fx$F_p, tolerance = stata_tol$pval)
 })
 
+test_that("mroz iid dofminus first-stage matches Stata", {
+  fs_path <- fixture_path("mroz_dofminus_firststage_iid.csv")
+  skip_if(!file.exists(fs_path), "fixture not found")
+  expect_firststage_dofminus_fixture(fit_iid, "mroz_dofminus_firststage_iid.csv")
+})
+
 
 # ============================================================================
 # Block B: mroz iid small variant (fixture-free identities)
@@ -84,46 +184,14 @@ fit_iid_small <- ivreg2(mroz_overid_formula, data = mroz,
                          dofminus = 1L, sdofminus = 1L, endog = "educ",
                          vcov = "iid", small = TRUE)
 
-test_that("mroz iid small: coefficients and VCV invariant identities (facts 1, 3, 4)", {
+test_that("mroz iid small: coef, VCV, and diagnostics invariant to small (facts 1-4)", {
   N <- nobs(fit_iid)
   K <- length(coef(fit_iid))
-  dm <- 1L
-  sdm <- 1L
+  dm <- fit_iid$dofminus
+  sdm <- fit_iid$sdofminus
+  vcv_factor <- (N - dm) / (N - K - dm - sdm)
 
-  expect_identical(coef(fit_iid_small), coef(fit_iid))
-
-  expect_equal(fit_iid_small$vcov,
-               fit_iid$vcov * (N - dm) / (N - K - dm - sdm),
-               tolerance = 1e-12)
-
-  expect_equal(fit_iid_small$sigma^2 * (N - K - dm - sdm),
-               fit_iid$sigma^2 * (N - dm),
-               tolerance = 1e-12)
-})
-
-test_that("mroz iid small: diagnostics invariant to small (fact 2)", {
-  d <- fit_iid$diagnostics
-  ds <- fit_iid_small$diagnostics
-
-  expect_equal(ds$overid$stat, d$overid$stat)
-  expect_equal(ds$overid$p, d$overid$p)
-  expect_identical(ds$overid$df, d$overid$df)
-
-  expect_equal(ds$underid$stat, d$underid$stat)
-  expect_equal(ds$underid$p, d$underid$p)
-
-  expect_equal(ds$weak_id$stat, d$weak_id$stat)
-
-  expect_equal(ds$anderson_rubin$f_stat, d$anderson_rubin$f_stat)
-  expect_equal(ds$anderson_rubin$f_p, d$anderson_rubin$f_p)
-  expect_identical(ds$anderson_rubin$f_df1, d$anderson_rubin$f_df1)
-  expect_equal(ds$anderson_rubin$chi2_stat, d$anderson_rubin$chi2_stat)
-  expect_equal(ds$anderson_rubin$chi2_p, d$anderson_rubin$chi2_p)
-
-  expect_equal(ds$endogeneity$stat, d$endogeneity$stat)
-  expect_equal(ds$endogeneity$p, d$endogeneity$p)
-
-  expect_equal(fit_iid_small$model_f, fit_iid$model_f)
+  expect_small_invariance(fit_iid, fit_iid_small, vcv_factor)
 })
 
 
@@ -175,48 +243,22 @@ test_that("mroz robust dofminus diagnostics match Stata", {
   expect_equal(fit_rob$model_f_p, fx$F_p, tolerance = stata_tol$pval)
 })
 
-test_that("mroz robust small: coefficients and VCV invariant identities (facts 1, 3, 4)", {
+test_that("mroz robust dofminus first-stage matches Stata", {
+  fs_path <- fixture_path("mroz_dofminus_firststage_robust.csv")
+  skip_if(!file.exists(fs_path), "fixture not found")
+  expect_firststage_dofminus_fixture(fit_rob, "mroz_dofminus_firststage_robust.csv")
+})
+
+test_that("mroz robust small: coef, VCV, and diagnostics invariant to small (facts 1-4)", {
   # Same shared VCV factor as the iid case (fact 4): the factor does not
   # depend on the vcov type, only on N, K, dofminus, sdofminus.
   N <- nobs(fit_rob)
   K <- length(coef(fit_rob))
-  dm <- 1L
-  sdm <- 1L
+  dm <- fit_rob$dofminus
+  sdm <- fit_rob$sdofminus
+  vcv_factor <- (N - dm) / (N - K - dm - sdm)
 
-  expect_identical(coef(fit_rob_small), coef(fit_rob))
-
-  expect_equal(fit_rob_small$vcov,
-               fit_rob$vcov * (N - dm) / (N - K - dm - sdm),
-               tolerance = 1e-12)
-
-  expect_equal(fit_rob_small$sigma^2 * (N - K - dm - sdm),
-               fit_rob$sigma^2 * (N - dm),
-               tolerance = 1e-12)
-})
-
-test_that("mroz robust small: diagnostics invariant to small (fact 2)", {
-  d <- fit_rob$diagnostics
-  ds <- fit_rob_small$diagnostics
-
-  expect_equal(ds$overid$stat, d$overid$stat)
-  expect_equal(ds$overid$p, d$overid$p)
-  expect_identical(ds$overid$df, d$overid$df)
-
-  expect_equal(ds$underid$stat, d$underid$stat)
-  expect_equal(ds$underid$p, d$underid$p)
-
-  expect_equal(ds$weak_id$stat, d$weak_id$stat)
-  expect_equal(ds$weak_id_robust$stat, d$weak_id_robust$stat)
-
-  expect_equal(ds$anderson_rubin$f_stat, d$anderson_rubin$f_stat)
-  expect_equal(ds$anderson_rubin$f_p, d$anderson_rubin$f_p)
-  expect_equal(ds$anderson_rubin$chi2_stat, d$anderson_rubin$chi2_stat)
-  expect_equal(ds$anderson_rubin$chi2_p, d$anderson_rubin$chi2_p)
-
-  expect_equal(ds$endogeneity$stat, d$endogeneity$stat)
-  expect_equal(ds$endogeneity$p, d$endogeneity$p)
-
-  expect_equal(fit_rob_small$model_f, fit_rob$model_f)
+  expect_small_invariance(fit_rob, fit_rob_small, vcv_factor)
 })
 
 
@@ -266,6 +308,12 @@ test_that("ab cluster dofminus diagnostics match Stata", {
   expect_identical(fit_ab$n_clusters, as.integer(fx$N_clust))
 })
 
+test_that("ab cluster dofminus first-stage matches Stata", {
+  fs_path <- fixture_path("ab_cl_dofminus_firststage_cl.csv")
+  skip_if(!file.exists(fs_path), "fixture not found")
+  expect_firststage_dofminus_fixture(fit_ab, "ab_cl_dofminus_firststage_cl.csv")
+})
+
 test_that("ab cluster dofminus df.residual follows the cluster rule (M - 1)", {
   expect_identical(fit_ab$df.residual, as.integer(fit_ab$n_clusters - 1L))
 })
@@ -279,49 +327,16 @@ fit_ab_small <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
                         clusters = ~id, endog = "w",
                         dofminus = 1L, sdofminus = 1L, small = TRUE)
 
-test_that("ab cluster small: coefficients and VCV invariant identities (facts 1, 3, 6)", {
+test_that("ab cluster small: coef, VCV, and diagnostics invariant to small (facts 1, 2, 3, 6)", {
   N <- nobs(fit_ab)
   K <- length(coef(fit_ab))
   M <- fit_ab$n_clusters
-  sdm <- 1L
-  dm <- 1L
-
-  expect_identical(coef(fit_ab_small), coef(fit_ab))
-
+  sdm <- fit_ab$sdofminus
   # dofminus does not enter the cluster small factor (measured on the
   # retired sim and card fixtures).
-  expect_equal(fit_ab_small$vcov,
-               fit_ab$vcov * (N - 1) / (N - K - sdm) * M / (M - 1),
-               tolerance = 1e-12)
+  vcv_factor <- (N - 1) / (N - K - sdm) * M / (M - 1)
 
-  expect_equal(fit_ab_small$sigma^2 * (N - K - dm - sdm),
-               fit_ab$sigma^2 * (N - dm),
-               tolerance = 1e-12)
-})
-
-test_that("ab cluster small: diagnostics invariant to small (fact 2)", {
-  d <- fit_ab$diagnostics
-  ds <- fit_ab_small$diagnostics
-
-  expect_equal(ds$overid$stat, d$overid$stat)
-  expect_equal(ds$overid$p, d$overid$p)
-  expect_identical(ds$overid$df, d$overid$df)
-
-  expect_equal(ds$underid$stat, d$underid$stat)
-  expect_equal(ds$underid$p, d$underid$p)
-
-  expect_equal(ds$weak_id$stat, d$weak_id$stat)
-  expect_equal(ds$weak_id_robust$stat, d$weak_id_robust$stat)
-
-  expect_equal(ds$anderson_rubin$f_stat, d$anderson_rubin$f_stat)
-  expect_equal(ds$anderson_rubin$f_p, d$anderson_rubin$f_p)
-  expect_equal(ds$anderson_rubin$chi2_stat, d$anderson_rubin$chi2_stat)
-  expect_equal(ds$anderson_rubin$chi2_p, d$anderson_rubin$chi2_p)
-
-  expect_equal(ds$endogeneity$stat, d$endogeneity$stat)
-  expect_equal(ds$endogeneity$p, d$endogeneity$p)
-
-  expect_equal(fit_ab_small$model_f, fit_ab$model_f)
+  expect_small_invariance(fit_ab, fit_ab_small, vcv_factor)
 })
 
 
@@ -329,16 +344,12 @@ test_that("ab cluster small: diagnostics invariant to small (fact 2)", {
 # Block F: grunfeld within/fe cell
 # ============================================================================
 
-# Mirrors the .do construction exactly: per-company demean with the grand
-# mean added back. The Stata side self-verified this cell against
-# `xtreg, fe` (slope coefs and SEs at reldif < 1e-10), so the fixture
-# anchors the documented xtdata-fe semantics of dofminus, not just recorded
-# output.
-gr <- grunfeld
-for (v in c("invest", "mvalue", "kstock")) {
-  gr[[paste0(v, "_w")]] <- gr[[v]] - ave(gr[[v]], gr$company) + mean(gr[[v]])
-}
-fit_gr <- ivreg2(invest_w ~ mvalue_w + kstock_w, data = gr,
+# grunfeld_within (helper-fixtures.R) mirrors the .do construction exactly:
+# per-company demean with the grand mean added back. The Stata side
+# self-verified this cell against `xtreg, fe` (slope coefs and SEs at
+# reldif < 1e-10), so the fixture anchors the documented xtdata-fe semantics
+# of dofminus, not just recorded output.
+fit_gr <- ivreg2(invest_w ~ mvalue_w + kstock_w, data = grunfeld_within,
                   small = TRUE, dofminus = 9L)
 
 test_that("grunfeld within/fe dofminus matches Stata (xtreg fe self-verified)", {

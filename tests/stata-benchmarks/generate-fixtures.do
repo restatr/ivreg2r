@@ -68,8 +68,9 @@ capture mkdir "`outdir'"
 // bcuse internally calls "clear all" which drops user-defined programs,
 // so we must call it before any program definitions. The local validation
 // cache is tried first (generate-helpfile-fixtures.do pattern): bc.edu
-// rate-limiting has produced silent empty loads here (observed 2026-07-06,
-// r(111) at the save below with _rc == 0 from bcuse).
+// rate-limiting has produced silent empty loads here with _rc == 0
+// (observed 2026-07-06), so every remote-fallback load in this file is
+// followed by an explicit emptiness check.
 capture use "../validation/data/card.dta", clear
 if _rc {
     capture bcuse card, clear
@@ -80,7 +81,6 @@ if r(N) == 0 | r(k) == 0 {
     display as error "Install bcuse (ssc install bcuse) and rerun."
     exit 601
 }
-save "`outdir'/_card_temp.dta", replace
 
 /*---------------------------------------------------------------------------
   Helper program: full-precision data export. The default `export delimited`
@@ -112,7 +112,12 @@ export_full_precision using "`outdir'/card_data.csv"
 ---------------------------------------------------------------------------*/
 capture use "../validation/data/abdata.dta", clear
 if _rc {
-    use http://fmwww.bc.edu/ec-p/data/macro/abdata.dta, clear
+    capture use http://fmwww.bc.edu/ec-p/data/macro/abdata.dta, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load abdata (no local cache, bc.edu fetch failed)."
+    exit 601
 }
 quietly tsset id year
 save "`outdir'/_ab_temp.dta", replace
@@ -125,13 +130,23 @@ save "`outdir'/_ab_temp.dta", replace
 ---------------------------------------------------------------------------*/
 capture use "../validation/data/mroz.dta", clear
 if _rc {
-    use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+    capture use http://fmwww.bc.edu/ec-p/data/wooldridge/mroz.dta, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load mroz (no local cache, bc.edu fetch failed)."
+    exit 601
 }
 save "`outdir'/_mroz_temp.dta", replace
 
 capture use "../validation/data/grunfeld.dta", clear
 if _rc {
-    webuse grunfeld, clear
+    capture webuse grunfeld, clear
+}
+quietly describe
+if r(N) == 0 | r(k) == 0 {
+    display as error "Could not load grunfeld (no local cache, webuse failed)."
+    exit 601
 }
 quietly tsset
 save "`outdir'/_grun_temp.dta", replace
@@ -578,8 +593,13 @@ erase "`outdir'/ab_cl_firststage_cl_small.csv"
   (both HC0-with-dofminus and sigma^2 use N-dofminus).
   `first endog(educ)` is required so e(sstat)/e(arf)/e(archi2)/e(estat)
   post for the cross-family consumers (M-11/M-13 precedent). The e(first)
-  matrix itself is NOT shipped -- first-stage fixtures are owned by M-25 --
-  so the saver-written firststage CSVs are erased immediately below.
+  firststage CSVs ARE shipped here (unlike the plain first-stage anchors,
+  which M-25 owns): no M-25 cell carries dofminus, so the first-stage x
+  dofminus threading (rmse via N-L-dofminus-sdofminus, sigma2 via
+  N-dofminus, the SW chi2/F scalings) has its only Stata anchor in these
+  cells (restored at the c1a2419 code review, 2026-07-06 -- the initial
+  re-base erased them, silently dropping the intersection the retired
+  card cells had covered).
   Small variants retired by invariance (byte-diff evidence 2026-07-06, see
   the header note): the R tests fit both small variants against these
   fixtures and pin the exact sigma and (N-dofminus)/(N-K-dofminus-sdofminus)
@@ -591,13 +611,11 @@ use "`outdir'/_mroz_temp.dta", clear
 ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6), ///
     dofminus(1) sdofminus(1) first endog(educ)
 save_ivreg2_results, prefix(mroz_dofminus) suffix(iid) outdir(`outdir')
-erase "`outdir'/mroz_dofminus_firststage_iid.csv"
 
 use "`outdir'/_mroz_temp.dta", clear
 ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6), ///
     robust dofminus(1) sdofminus(1) first endog(educ)
 save_ivreg2_results, prefix(mroz_dofminus) suffix(robust) outdir(`outdir')
-erase "`outdir'/mroz_dofminus_firststage_robust.csv"
 
 
 /*===========================================================================
@@ -626,7 +644,6 @@ ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), ///
 save_ivreg2_results, prefix(ab_cl_dofminus) suffix(cl) outdir(`outdir')
 erase "`outdir'/ab_cl_dofminus_coef_cl.csv"
 erase "`outdir'/ab_cl_dofminus_vcov_cl.csv"
-erase "`outdir'/ab_cl_dofminus_firststage_cl.csv"
 
 
 /*===========================================================================
@@ -679,7 +696,6 @@ save_ivreg2_results, prefix(grun_fe_dofminus) suffix(small) outdir(`outdir')
   Clean up globals and done
 ===========================================================================*/
 macro drop ivreg2_depvar ivreg2_exog ivreg2_endo ivreg2_iv
-capture erase "`outdir'/_card_temp.dta"
 capture erase "`outdir'/_ab_temp.dta"
 capture erase "`outdir'/_mroz_temp.dta"
 capture erase "`outdir'/_grun_temp.dta"

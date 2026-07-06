@@ -384,9 +384,11 @@ cigar$lrpimin <- log(cigar$pimin / cigar$cpi)
 
 # --- dofminus/sdofminus (M-29 re-base): mroz iid/robust (dofminus=1,
 # sdofminus=1, endog(educ), D5a option-variation on the mroz_overid_f base
-# above) and the grunfeld within/fe cell (small, dofminus=9, self-verified
-# against `xtreg, fe`). No ab_cl config: that cell is diagnostics-only (no
-# coef/vcov fixtures), so .audit_model would find nothing to compare there.
+# above), the ab cluster cell (diagnostics-only cell -- .compare_diagnostics
+# audits j/idstat/widstat/arf/estat/sstat/F/r2 off the diagnostics CSV; there
+# are no coef/vcov fixtures by design, since that surface is pinned by the
+# invariance assert in test-dofminus.R instead), and the grunfeld within/fe
+# cell (small, dofminus=9, self-verified against `xtreg, fe`).
 .audit_model("dofminus_mroz_iid",
   ivreg2(mroz_overid_f, data = mroz, endog = "educ",
          dofminus = 1L, sdofminus = 1L),
@@ -395,7 +397,13 @@ cigar$lrpimin <- log(cigar$pimin / cigar$cpi)
   ivreg2(mroz_overid_f, data = mroz, endog = "educ", vcov = "robust",
          dofminus = 1L, sdofminus = 1L),
   "mroz_dofminus", "robust")
+.audit_model("dofminus_ab_cl",
+  ivreg2(ab_f, data = abdata, tvar = "year", ivar = "id", clusters = ~id,
+         endog = "w", dofminus = 1L, sdofminus = 1L),
+  "ab_cl_dofminus", "cl")
 
+# Standalone copy of helper-fixtures.R's grunfeld_within (this script does
+# not source testthat helpers) -- keep the two in sync.
 grunfeld_w <- grunfeld
 for (v in c("invest", "mvalue", "kstock")) {
   grunfeld_w[[paste0(v, "_w")]] <- grunfeld_w[[v]] -

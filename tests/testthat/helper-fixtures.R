@@ -354,3 +354,15 @@ cigar_real <- transform(
   lrpimin = log(pimin / cpi),
   cwt     = state %% 4 + 1
 )
+
+# Within-demeaned grunfeld for the M-29 grun_fe_dofminus cell: per-company
+# demean with the grand mean added back, mirroring the egen-double block in
+# generate-fixtures.do FIXTURE 9 exactly. audit-tolerances.R carries its own
+# standalone copy of this construction (it does not source testthat helpers)
+# -- keep the two in sync.
+grunfeld_within <- ivreg2r::grunfeld
+for (.v in c("invest", "mvalue", "kstock")) {
+  grunfeld_within[[paste0(.v, "_w")]] <- grunfeld_within[[.v]] -
+    ave(grunfeld_within[[.v]], grunfeld_within$company) + mean(grunfeld_within[[.v]])
+}
+rm(.v)
