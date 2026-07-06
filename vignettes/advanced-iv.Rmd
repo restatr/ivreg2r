@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-This vignette covers features of `ivreg2r` beyond the basic two-stage least squares workflow of `vignette("introduction")`: alternative estimators, the instrument-validity tests, weak-instrument-robust inference, two-way clustering, and the reduced form. It is organized around the two example groups that Stata's `ivreg2` help file uses for the same material — a Mroz labor-supply equation that carries the testing arc, and Klein's consumption function that separates the estimators — and adds a two-way clustered IV example on a cigarette-demand panel.
+This vignette covers features of `ivreg2r` beyond the basic two-stage least squares workflow of `vignette("introduction")`: alternative estimators, the instrument-validity tests, weak-instrument-robust inference, two-way clustering, and the reduced form. It is organized around the example groups that Stata's `ivreg2` help file uses for the same material — a Mroz labor-supply equation that carries most of the testing arc, the Griliches wage equation for the orthogonality, weak-instrument, and redundancy material, and Klein's consumption function that separates the estimators — and adds a two-way clustered IV example on a cigarette-demand panel.
 
 The topics are:
 
@@ -71,7 +71,7 @@ The output reports `lambda`, the LIML eigenvalue. When `lambda` is close to 1, L
 
 ### Fuller modification
 
-Fuller's (1977) modified LIML uses `k = lambda - alpha / (N - L)`, where `L` is the number of instruments including the exogenous regressors and `alpha` is the Fuller parameter. Unlike LIML, the Fuller estimator has finite moments. The standard choice `fuller = 1` is recommended by Fuller (1977) and by Davidson & MacKinnon (1993, pp. 649--650), as cited in Baum, Schaffer & Stillman (2007, p. 479):
+Fuller's (1977) modified LIML uses `k = lambda - alpha / (N - L)`, where `L` is the number of instruments including the exogenous regressors and `alpha` is the Fuller parameter. The standard choice `fuller = 1` is recommended by Fuller (1977) and by Davidson & MacKinnon (1993, pp. 649--650), as cited in Baum, Schaffer & Stillman (2007, p. 479):
 
 ```{r fuller}
 fit_fuller1 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
@@ -103,12 +103,15 @@ With LIML or k-class under robust or cluster-robust standard errors, the sandwic
 fit_coviv <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     data = mroz_work, method = "liml", vcov = "robust",
                     small = TRUE, coviv = TRUE)
+all.equal(coef(fit_coviv), coef(fit_liml))
 subset(tidy(fit_coviv), term == "educ", c(term, estimate, std.error))
 ```
 
+The asserted identity makes the division of labor explicit: COVIV changes only the covariance, so the coefficients are exactly the LIML coefficients, while the displayed standard error comes from the 2SLS-bread sandwich.
+
 ### Choosing among the estimators
 
-The case for LIML and its relatives is a many-instruments argument. Two-stage least squares is biased toward OLS, and that bias grows with the number of overidentifying restrictions relative to the strength of the instruments; LIML removes its leading term, which is why LIML tolerates weaker instruments before its Wald test becomes unreliable (Stock & Yogo, 2005). When the model is just-identified the argument is moot: with one excluded instrument per endogenous regressor, LIML, Fuller, and 2SLS coincide numerically, and the advantage is entirely a feature of overidentified models. Under genuinely weak instruments LIML's lack of finite moments cuts the other way, since individual estimates can be far from the truth even while the estimator stays median-unbiased, and this is the motivation for Fuller's finite-moment modification. The ranking of LIML over 2SLS is itself established within the i.i.d. Stock-Yogo framework (Baum, Schaffer & Stillman, 2007, pp. 489--490), and switching estimator because a pretest flagged weak instruments carries the usual consequences of pre-testing for the inference that follows.
+The case for LIML and its relatives is a many-instruments argument. Two-stage least squares is biased toward OLS, and that bias grows with the number of overidentifying restrictions relative to the strength of the instruments; LIML removes its leading term, which is why LIML tolerates weaker instruments before its Wald test becomes unreliable (Stock & Yogo, 2005). When the model is just-identified the argument is moot: with one excluded instrument per endogenous regressor, LIML, Fuller, and 2SLS coincide numerically, and the advantage is entirely a feature of overidentified models. Under genuinely weak instruments LIML's lack of finite moments cuts the other way, since individual estimates can be far from the truth even while the estimator stays median-unbiased. The ranking of LIML over 2SLS is itself established within the i.i.d. Stock-Yogo framework (Baum, Schaffer & Stillman, 2007, pp. 489--490), and switching estimator because a pretest flagged weak instruments carries the usual consequences of pre-testing for the inference that follows.
 
 On the Mroz baseline these distinctions barely register, because `lambda` is essentially 1 and all four estimators return nearly the same education coefficient. To see the estimators genuinely diverge we need a small, heavily overidentified problem, which is exactly what the help file's Klein example provides.
 
@@ -137,7 +140,7 @@ klein_models <- list("2SLS" = fit_k_2sls, LIML = fit_k_liml,
 round(sapply(klein_models, \(m) coef(m)[c("profits", "wagetot")]), 4)
 ```
 
-The four columns differ in the third decimal place — a spread that is invisible on the strongly identified Mroz equation but real here, and the reason the help file uses Klein to introduce these estimators.
+The estimators genuinely diverge here: the `profits` coefficient changes sign between 2SLS and LIML, and the wage-bill coefficient moves in the second decimal place — differences that are invisible on the strongly identified Mroz equation, and the reason the help file uses Klein to introduce these estimators.
 
 ### LIML with COVIV equals CUE
 
@@ -150,11 +153,11 @@ fit_k_cue   <- ivreg2(klein_form, data = klein, tvar = "yr", method = "cue")
 max(abs(coef(fit_k_coviv) - coef(fit_k_cue)))
 ```
 
-On this tiny (N = `r nobs(fit_k_cue)`) problem the cross-platform agreement is on the order of 1e-5, the level at which the package's own tests pin the Klein CUE fit; the residual gap is the optimizer's endpoint, not a difference in the estimators. CUE generalizes LIML with COVIV to the non-i.i.d. case, where a closed-form eigenvalue solution no longer exists.
+On this tiny (N = `r nobs(fit_k_cue)`) problem the cross-platform agreement is on the order of 1e-5; the residual gap is the optimizer's endpoint, not a difference in the estimators. CUE generalizes LIML with COVIV to the non-i.i.d. case, where a closed-form eigenvalue solution no longer exists.
 
 ## Instrument-validity tests
 
-The tests below follow the escalating order of the Mroz group in Stata's `ivreg2` help file: a joint overidentification test, then a test of a subset of instruments, then a test of a single regressor's endogeneity, then the empty-endogenous form for an included regressor, and finally the LIML overidentification statistics.
+The tests below follow the escalating order of the help file's testing examples: a joint overidentification test, then a test of a subset of instruments (the help file's Griliches example), then a test of a single regressor's endogeneity, then the empty-endogenous form for an included regressor, and finally the LIML overidentification statistics.
 
 ### Overidentification
 
@@ -236,10 +239,12 @@ Baum, Schaffer & Stillman (2007, pp. 492--493) illustrate the weak-instrument pr
 ```{r weak-instruments}
 weak_form <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq | age + mrt
 fit_weak <- ivreg2(weak_form, data = griliches, vcov = "robust")
+sy10 <- with(fit_weak$diagnostics$weak_id_sy,
+             critical_value[threshold == "10%"])
 summary(fit_weak)
 ```
 
-Because the variance is robust, the relevant weak-identification statistic is the Kleibergen-Paap rk Wald F (`r round(fit_weak$diagnostics$weak_id_robust$stat, 2)`), far below the Stock-Yogo 10% maximal-size critical value of `r fit_weak$diagnostics$weak_id_sy$critical_value[fit_weak$diagnostics$weak_id_sy$threshold == "10%"]`. The Stock-Yogo critical values are tabulated for the Cragg-Donald statistic under i.i.d. errors, so under a robust variance they apply to the rk statistic only with caution, or give way to the Staiger-Stock rule of thumb that the first-stage F should exceed 10 (Baum, Schaffer & Stillman, 2007, p. 490). With instruments this weak, the Stock-Wright S and Anderson-Rubin tests provide size-correct inference where 2SLS Wald tests do not. These robust tests keep correct size but lose power as instruments weaken (Baum, Schaffer & Stillman, 2007, p. 491), and because the null is joint, a rejection can reflect either nonzero coefficients on the endogenous regressors or failure of the overidentifying restrictions — the test cannot say which.
+Because the variance is robust, the relevant weak-identification statistic is the Kleibergen-Paap rk Wald F (`r round(fit_weak$diagnostics$weak_id_robust$stat, 2)`), far below the Stock-Yogo 10% maximal-size critical value of `r sy10`. The Stock-Yogo critical values are tabulated for the Cragg-Donald statistic under i.i.d. errors, so under a robust variance they apply to the rk statistic only with caution, or give way to the Staiger-Stock rule of thumb that the first-stage F should exceed 10 (Baum, Schaffer & Stillman, 2007, p. 490). With instruments this weak, the Stock-Wright S and Anderson-Rubin tests provide size-correct inference where 2SLS Wald tests do not. These robust tests keep correct size but lose power as instruments weaken (Baum, Schaffer & Stillman, 2007, p. 491), and because the null is joint, a rejection can reflect either nonzero coefficients on the endogenous regressors or failure of the overidentifying restrictions — the test cannot say which.
 
 ### Redundant instruments
 
@@ -366,10 +371,8 @@ The reduced form regresses the outcome directly on the full instrument set — e
 Use `reduced_form = "rf"` to store the outcome-equation reduced form alongside the structural estimates:
 
 ```{r rf}
-fit_rf <- ivreg2(
-  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-  data = mroz_work, reduced_form = "rf", vcov = "robust"
-)
+# Same robust fit as fit_reg above, re-estimated with the reduced form stored
+fit_rf <- update(fit_reg, reduced_form = "rf")
 
 # Reduced-form coefficients
 fit_rf$reduced_form$coefficients
@@ -439,7 +442,7 @@ Without `sdofminus = 7` the coefficients would still match but the standard erro
 Two equivalences involving LIML are worth stating here; the authoritative table of variance-estimator equivalences (Driscoll-Kraay, Kiefer, cluster-robust) lives in `vignette("time-series-gmm")`.
 
 - **LIML with COVIV = CUE** under conditional-homoskedasticity weighting: demonstrated on the Klein data above, with agreement up to optimizer tolerance.
-- **LIML = 2SLS when exactly identified**: with one excluded instrument per endogenous regressor, LIML reduces to 2SLS, and the advantages of LIML appear only in the overidentified case.
+- **LIML = 2SLS when exactly identified**, as noted in the estimator-choice discussion above.
 
 ## Publication tables with modelsummary
 

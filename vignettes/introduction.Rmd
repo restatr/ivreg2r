@@ -65,7 +65,7 @@ fit_iv <- ivreg2(f_iv, data = card)
 summary(fit_iv)
 ```
 
-All `r format(nobs(fit_iv), big.mark = ",")` observations are used, and the IV estimate of the return to schooling (`r round(coef(fit_iv)["educ"], 4)`, versus `r round(coef(fit_ols)["educ"], 4)` by OLS) matches the published replications of this specification.
+All `r format(nobs(fit_iv), big.mark = ",")` observations are used, and the IV estimate of the return to schooling (`r round(coef(fit_iv)["educ"], 4)`, versus `r round(coef(fit_ols)["educ"], 4)` by OLS) replicates the published estimates for this specification (Card, 1995, Table 2; Wooldridge, 2020, Example 15.4).
 
 The three parts of the formula are:
 
@@ -99,11 +99,11 @@ The fit above reports a **Cragg-Donald Wald F** of `r round(cd_f, 2)`. This stat
 **Stock-Yogo critical values** provide formal thresholds for the F statistic. Two types exist:
 
 - **IV size**: the critical value such that the *maximal* rejection rate of a nominal 5% Wald test on the endogenous regressors' coefficients is no more than 10%, 15%, 20%, or 25%. "Maximal" means the worst case over all possible true parameter values. For one endogenous variable and one instrument, the 10% maximal-size critical value is `r sy10`.
-- **IV relative bias**: the critical value such that the *maximum* relative bias of 2SLS (relative to OLS bias) is no more than 5%, 10%, 20%, or 30%. These are tabulated only when the number of overidentifying restrictions is at least two --- the moments of the 2SLS estimator needed to define the relative bias do not otherwise exist (Stock & Yogo, 2005; Baum, Schaffer & Stillman, 2007, p. 490). That is why neither this just-identified fit nor the overidentified fit below displays them: both have fewer than two overidentifying restrictions.
+- **IV relative bias**: the critical value such that the *maximum* relative bias of 2SLS (relative to OLS bias) is no more than 5%, 10%, 20%, or 30%. Stock and Yogo tabulate these only when the number of overidentifying restrictions is at least two: the measure relies on the finite-sample moments of the 2SLS estimator, which exist only up to the degree of overidentification (Stock & Yogo, 2005; Baum, Schaffer & Stillman, 2007, p. 490). That is why neither this just-identified fit nor the overidentified fit below displays them: both have fewer than two overidentifying restrictions.
 
 Here the Cragg-Donald F of `r round(cd_f, 2)` falls short of the 10% maximal-size critical value of `r sy10` but clears the 15% value of `r sy15` --- a genuinely borderline case. A 5% Wald test on `educ` could reject as often as 15% of the time under the null, so the conventional t-statistic should be read with some suspicion. This is exactly the situation the weak-instrument-robust Anderson-Rubin test (below) is designed for.
 
-Two caveats apply. The Stock-Yogo critical values are tabulated for the Cragg-Donald statistic under i.i.d. errors, so under a robust, cluster, or HAC VCE the reported statistic is instead the Kleibergen-Paap rk Wald F, and Baum, Schaffer & Stillman (2007, p. 490) recommend applying the i.i.d. values to it only with caution or falling back on the Staiger & Stock (1997) rule that F should exceed 10. That F > 10 rule is a legitimate co-equal fallback under non-i.i.d. errors, not a heuristic strictly dominated by the tables. See `?ivreg2` and `vignette("advanced-iv")` for the fuller discussion.
+Two caveats apply. The Stock-Yogo critical values are tabulated for the Cragg-Donald statistic under i.i.d. errors, so under a robust, cluster, or HAC VCE the reported statistic is instead the Kleibergen-Paap rk Wald F, and Baum, Schaffer & Stillman (2007, p. 490) recommend applying the i.i.d. values to it only with caution or falling back on the Staiger & Stock (1997) rule that F should exceed 10 --- a legitimate co-equal fallback in that setting, not a dominated heuristic. See `?ivreg2` and `vignette("advanced-iv")` for the fuller discussion.
 
 ### Underidentification
 
@@ -135,7 +135,7 @@ To test a *subset* of instruments while maintaining the rest, use the `orthog` a
 
 The endogeneity test (also called the C-statistic or difference-in-Sargan test) asks whether the regressors treated as endogenous are actually endogenous. The null hypothesis is that they are exogenous. For the just-identified fit above, the statistic is `r round(fit_iv$diagnostics$endogeneity$stat, 2)` (p = `r round(fit_iv$diagnostics$endogeneity$p, 4)`): we cannot reject that `educ` is exogenous. In that case OLS may be preferred because it is more efficient --- this fit is a live example of the trade-off, since the IV point estimate is similar to OLS but far less precise.
 
-Three caveats apply. The test maintains instrument validity under both hypotheses, so it is uninformative about endogeneity if the instruments are themselves invalid. It has low power when instruments are weak, the situation flagged above. And using its result to choose between OLS and IV is a pre-test whose selection step can badly distort the size of subsequent inference (Guggenberger, 2010); see `?ivreg2` and Hayashi (2000, pp. 218--222, 233--234) for the underlying theory.
+Three caveats apply. The test maintains instrument validity under both hypotheses, so it is uninformative about endogeneity if the instruments are themselves invalid, and --- like the overidentification test --- it loses power when instruments are weak. And using its result to choose between OLS and IV is a pre-test whose selection step can badly distort the size of subsequent inference (Guggenberger, 2010); see `?ivreg2` and Hayashi (2000, pp. 218--222, 233--234) for the underlying theory.
 
 Stata's `ivreg2` computes this test only when `endog()` is requested, whereas `ivreg2r` reports it automatically for all endogenous regressors; use the `endog` argument to test a specific subset (e.g., `endog = "educ"`).
 
@@ -167,7 +167,7 @@ The headline number is the partial F-statistic of the excluded instruments, the 
 tidy(fs$educ)
 ```
 
-The remaining columns are per-regressor diagnostics that become informative only with several endogenous regressors: Shea's (1997) partial R-squared adjusts for intercorrelation among the instruments, while the Sanderson-Windmeijer (2016) and Angrist-Pischke (2009) conditional F statistics assess each endogenous regressor's identification given the others. With a single endogenous regressor all three collapse to the ordinary first-stage F. See `vignette("advanced-iv")` for the multiple-endogenous case.
+The remaining columns are per-regressor diagnostics that become informative only with several endogenous regressors: Shea's (1997) partial R-squared adjusts for intercorrelation among the instruments, while the Sanderson-Windmeijer (2016) and Angrist-Pischke (2009) conditional F statistics assess each endogenous regressor's identification given the others. With a single endogenous regressor all three collapse to the ordinary first-stage F. See `?ivreg2` for their definitions and `?first_stage` for the stored per-regressor regressions.
 
 ## Robust and clustered inference
 
@@ -228,7 +228,7 @@ For HAC, AC, Kiefer, and Driscoll-Kraay VCE options, see `vignette("time-series-
 
 ## Weighted estimation
 
-`ivreg2r` supports Stata's four weight types through `weight_type`: sampling weights (`"pweight"`), analytic weights (`"aweight"`, the default), frequency weights (`"fweight"`), and importance weights (`"iweight"`). The three that admit a worked example are each self-verifying below, since each weight type is defined by an identity it must reproduce.
+`ivreg2r` supports Stata's four weight types through `weight_type`: sampling weights (`"pweight"`), analytic weights (`"aweight"`, the default), frequency weights (`"fweight"`), and importance weights (`"iweight"`). Three admit a worked example below. The aweight and fweight demonstrations are self-verifying --- each of those types is defined by an identity the fit must reproduce --- while the pweight example uses the genuine survey weight the data ship with.
 
 ### Sampling weights (pweight)
 
@@ -243,7 +243,7 @@ Because pweights describe the sampling design rather than the error variance, va
 
 ### Analytic weights (aweight)
 
-An analytic weight is inversely proportional to the variance of an observation, the classic case being grouped data in which each row is a cell mean and its weight is the number of underlying observations. The defining property is that a weighted regression on cell means reproduces the coefficients of the disaggregated regression. We can verify this directly: collapse the individual data to the eight cells of the `black`, `smsa`, `south` covariate pattern, take each cell's mean log wage and count, and fit both the micro regression and the weighted cell regression.
+An analytic weight is inversely proportional to the variance of an observation, the classic case being grouped data in which each row is a cell mean and its weight is the number of underlying observations. The defining property is that a weighted regression on cell means reproduces the coefficients of the disaggregated regression. We can verify this directly: collapse the individual data to the cells of the `black`, `smsa`, `south` covariate pattern, take each cell's mean log wage and count, and fit both the micro regression and the weighted cell regression.
 
 ```{r aweight}
 micro <- ivreg2(lwage ~ black + smsa + south, data = card)
@@ -326,6 +326,7 @@ augment(fit_iv) |> head()
 |------|-------|---------------|
 | Basic IV | `ivreg2 y x (endo = z)` | `ivreg2(y ~ x | endo | z, data = d)` |
 | No endogenous regressors (HOLS form) | `ivreg2 y x (=z1 z2)` | `ivreg2(y ~ x | 0 | z1 + z2, data = d)` |
+| Factor dummies | `ivreg2 y i.region ...` (or `xi`) | `ivreg2(y ~ factor(region) + ..., data = d)` |
 | Robust SEs | `ivreg2 ..., robust` | `ivreg2(..., vcov = "robust")` |
 | Robust + small | `ivreg2 ..., robust small` | `ivreg2(..., vcov = "robust", small = TRUE)` |
 | Cluster SEs | `ivreg2 ..., cluster(g)` | `ivreg2(..., clusters = ~ g)` |
