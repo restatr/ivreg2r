@@ -344,20 +344,10 @@ test_that("glance includes Fuller columns", {
 })
 
 
-# ============================================================================
-# 6. Existing functionality unchanged (fixture: hf_mroz H31, M-10 re-base)
-# 2SLS-unchanged guard now anchored on the hf H31 overid fixture
-# (help.txt:1274) instead of the retired card_overid cells.
-# ============================================================================
-
-test_that("2SLS results unchanged after LIML addition", {
-  data(mroz, package = "ivreg2r")
-  mroz_overid_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
-
-  fit <- ivreg2(mroz_overid_formula, data = mroz)
-  expect_coef_fixture(fit, "hf_mroz_coef_H31.csv")
-  expect_vcov_fixture(fit, "hf_mroz_vcov_H31.csv")
-})
+# The 2SLS-unchanged guard retired at the M-10 review -- after the re-base it
+# duplicated compare_hf's H31 assertions verbatim (its value had been
+# independence via the separate card fixtures); 2SLS parity is owned by the
+# hf suite and test-ivreg2-2sls.R.
 
 test_that("OLS results unchanged after LIML addition", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars)

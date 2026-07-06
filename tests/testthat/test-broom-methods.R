@@ -8,8 +8,7 @@
 
 data(mroz, package = "ivreg2r")
 
-mroz_justid_formula <- lwage ~ exper + expersq | educ | age
-mroz_overid_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
+# mroz_justid_formula and mroz_overid_formula come from helper-fixtures.R.
 
 
 # ============================================================================

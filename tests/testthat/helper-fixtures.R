@@ -327,6 +327,10 @@ klein_formula <- consump ~ l(profits, 1) | profits + wagetot |
 ab_formula <- n ~ 1 | w + k + ys |
   d(w, 1) + d(k, 1) + d(ys, 1) + d(w, 2) + d(k, 2) + d(ys, 2)
 
+# Shared mroz baseline formulas (one source of truth, M-15/M-25 promotion precedent, promoted at the M-10 review): mroz_overid_formula anchors help-file cases H31/H41 (help.txt:1274/1325); mroz_justid_formula is the disclosed D5a single-instrument restriction of H31 (educ = age) used by the M-10 and M-25 justid cells.
+mroz_justid_formula <- lwage ~ exper + expersq | educ | age
+mroz_overid_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
+
 # Shared griliches/phillips fixture formulas (one source of truth, M-15/M-25 promotion precedent): gril_formula anchors help-file case H06 (help.txt:1154), phil_formula anchors the phillips H83-H85 base.
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq |
   med + kww + age + mrt

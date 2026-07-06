@@ -9,7 +9,7 @@
 
 data(mroz, package = "ivreg2r")
 
-mroz_justid_formula <- lwage ~ exper + expersq | educ | age
+# mroz_justid_formula comes from helper-fixtures.R.
 
 # ============================================================================
 # Coefficients match Stata mroz_justid fixture (iid, small=FALSE)

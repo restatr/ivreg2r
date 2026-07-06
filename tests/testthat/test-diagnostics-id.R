@@ -22,6 +22,16 @@ fit_ab_cl <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
 fit_ab_cl_small <- ivreg2(ab_formula, data = abdata, tvar = "year", ivar = "id",
                           clusters = ~id, small = TRUE, endog = "w")
 
+# Shared mroz_justid fits (M-17 hoisting precedent): the plain iid and robust
+# fits are each reused across several tests below instead of being refit.
+fit_mroz_justid        <- ivreg2(mroz_justid_formula, data = mroz)
+fit_mroz_justid_robust <- ivreg2(mroz_justid_formula, data = mroz, vcov = "robust")
+
+# overid Anderson LM / CD F / KP rk LM / KP Wald F Stata parity is hf-owned
+# (compare_hf asserts idstat/idp/iddf/cdf/widstat for H31/H41 in
+# test-helpfile-examples.R; M-13 reuse precedent) -- the justid cells below
+# are this family's own anchors.
+
 
 # ============================================================================
 # Anderson LM — IID
@@ -31,26 +41,11 @@ test_that("Anderson LM matches Stata mroz_justid iid fixture", {
   diag_path <- fixture_path("mroz_justid_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
+  fit <- fit_mroz_justid
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$underid$test_name,
                "Anderson canon. corr. LM statistic")
-  expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
-               tolerance = stata_tol$stat)
-  expect_equal(fit$diagnostics$underid$p, fixture$idp,
-               tolerance = stata_tol$pval)
-  expect_identical(fit$diagnostics$underid$df, as.integer(fixture$iddf))
-})
-
-test_that("Anderson LM matches Stata mroz overid H31 fixture", {
-  diag_path <- fixture_path("hf_mroz_diagnostics_H31.csv")
-  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-                data = mroz)
-  fixture <- read_diagnostics(diag_path)
-
   expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
                tolerance = stata_tol$stat)
   expect_equal(fit$diagnostics$underid$p, fixture$idp,
@@ -83,23 +78,11 @@ test_that("Cragg-Donald F matches Stata mroz_justid iid fixture", {
   diag_path <- fixture_path("mroz_justid_diagnostics_iid.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
+  fit <- fit_mroz_justid
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id$test_name,
                "Cragg-Donald Wald F statistic")
-  expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
-               tolerance = stata_tol$stat)
-})
-
-test_that("Cragg-Donald F matches Stata mroz overid H31 fixture", {
-  diag_path <- fixture_path("hf_mroz_diagnostics_H31.csv")
-  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-                data = mroz)
-  fixture <- read_diagnostics(diag_path)
-
   expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
                tolerance = stata_tol$stat)
 })
@@ -126,26 +109,11 @@ test_that("KP rk LM matches Stata mroz_justid robust fixture", {
   diag_path <- fixture_path("mroz_justid_diagnostics_robust.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
+  fit <- fit_mroz_justid_robust
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$underid$test_name,
                "Kleibergen-Paap rk LM statistic")
-  expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
-               tolerance = stata_tol$stat)
-  expect_equal(fit$diagnostics$underid$p, fixture$idp,
-               tolerance = stata_tol$pval)
-  expect_identical(fit$diagnostics$underid$df, as.integer(fixture$iddf))
-})
-
-test_that("KP rk LM matches Stata mroz overid H41 fixture", {
-  diag_path <- fixture_path("hf_mroz_diagnostics_H41.csv")
-  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-                data = mroz, vcov = "robust")
-  fixture <- read_diagnostics(diag_path)
-
   expect_equal(fit$diagnostics$underid$stat, fixture$idstat,
                tolerance = stata_tol$stat)
   expect_equal(fit$diagnostics$underid$p, fixture$idp,
@@ -178,23 +146,11 @@ test_that("KP rk Wald F matches Stata mroz_justid robust fixture", {
   diag_path <- fixture_path("mroz_justid_diagnostics_robust.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
+  fit <- fit_mroz_justid_robust
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id_robust$test_name,
                "Kleibergen-Paap rk Wald F statistic")
-  expect_equal(fit$diagnostics$weak_id_robust$stat, fixture$widstat,
-               tolerance = stata_tol$stat)
-})
-
-test_that("KP rk Wald F matches Stata mroz overid H41 fixture", {
-  diag_path <- fixture_path("hf_mroz_diagnostics_H41.csv")
-  skip_if(!file.exists(diag_path), "diagnostics fixture not found")
-
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
-                data = mroz, vcov = "robust")
-  fixture <- read_diagnostics(diag_path)
-
   expect_equal(fit$diagnostics$weak_id_robust$stat, fixture$widstat,
                tolerance = stata_tol$stat)
 })
@@ -259,7 +215,7 @@ test_that("Cragg-Donald F present alongside KP stats (HC1)", {
   diag_path <- fixture_path("mroz_justid_diagnostics_robust.csv")
   skip_if(!file.exists(diag_path), "diagnostics fixture not found")
 
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
+  fit <- fit_mroz_justid_robust
   fixture <- read_diagnostics(diag_path)
 
   expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
@@ -285,8 +241,8 @@ test_that("Cragg-Donald F present alongside KP stats (cluster)", {
 # ============================================================================
 
 test_that("IID reports Anderson LM, robust reports KP rk LM", {
-  fit_iid <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
-  fit_hc1 <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz, vcov = "robust")
+  fit_iid <- fit_mroz_justid
+  fit_hc1 <- fit_mroz_justid_robust
 
   expect_equal(fit_iid$diagnostics$underid$test_name,
                "Anderson canon. corr. LM statistic")
@@ -300,7 +256,7 @@ test_that("IID reports Anderson LM, robust reports KP rk LM", {
 # ============================================================================
 
 test_that("weak_id_robust is NULL for IID models", {
-  fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
+  fit <- fit_mroz_justid
   expect_null(fit$diagnostics$weak_id_robust)
 })
 

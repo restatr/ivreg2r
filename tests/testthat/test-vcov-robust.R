@@ -14,8 +14,7 @@
 
 data(mroz, package = "ivreg2r")
 
-mroz_justid_formula <- lwage ~ exper + expersq | educ | age
-mroz_overid_formula <- lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6
+# mroz_justid_formula and mroz_overid_formula come from helper-fixtures.R.
 
 # ============================================================================
 # mroz_justid: robust matches Stata `, robust` (no correction)
@@ -27,14 +26,9 @@ test_that("2SLS robust VCV matches Stata mroz_justid robust fixture", {
   expect_vcov_fixture(fit, "mroz_justid_vcov_robust.csv")
 })
 
-# ============================================================================
-# hf overid (H41): robust matches Stata `, robust`
-# ============================================================================
-
-test_that("2SLS robust VCV matches Stata hf_mroz H41 robust fixture", {
-  fit <- ivreg2(mroz_overid_formula, data = mroz, vcov = "robust")
-  expect_vcov_fixture(fit, "hf_mroz_vcov_H41.csv")
-})
+# overid robust-VCV Stata parity is hf-owned (compare_hf, H41); the
+# fixture-free N/(N-K) identity below keeps the overid small-scaling
+# coverage.
 
 # ============================================================================
 # small=TRUE VCV = small=FALSE VCV * N/(N-K) (the correction is the difference)

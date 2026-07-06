@@ -397,7 +397,7 @@ run_all_vce_combos, ///
     outdir(`outdir') ///
     endogopt(endo1 endo2)
 
-// same M-25 orphan erase as card_just_id above
+// e(first) exports are orphans since the M-25 re-base (M-25 owns first-stage fixtures) -- erase them so a full re-run cannot recreate untracked orphans.
 foreach s in iid iid_small hc1 hc1_small {
     erase "`outdir'/sim_multi_endo_firststage_`s'.csv"
 }
@@ -438,7 +438,7 @@ run_all_vce_combos, ///
     endogopt(endo1) ///
     modelopts(noconstant)
 
-// same M-25 orphan erase as card_just_id above
+// e(first) exports are orphans since the M-25 re-base (M-25 owns first-stage fixtures) -- erase them so a full re-run cannot recreate untracked orphans.
 foreach s in iid iid_small hc1 hc1_small {
     erase "`outdir'/sim_no_constant_firststage_`s'.csv"
 }
