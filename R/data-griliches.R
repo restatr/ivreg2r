@@ -7,8 +7,9 @@
 #' Anderson--Rubin inference, Stock--Wright S statistics, and instrument
 #' redundancy.
 #'
-#' Two cross-sections are pooled (survey years 66--73 and 80). The BSS 2007
-#' examples use year dummies via \code{factor(year)}.
+#' Two cross-sections are pooled (survey years 66--73 and 80). The Baum,
+#' Schaffer & Stillman (2007) examples use year dummies via
+#' \code{factor(year)}.
 #'
 #' @format A data frame with 758 observations and 20 variables:
 #' \describe{
@@ -51,7 +52,8 @@
 #' @examples
 #' data(griliches)
 #'
-#' # BSS 2007 p.493: IV with robust SEs, weak-ID diagnostics, redundancy test
+#' # Baum, Schaffer & Stillman (2007), p. 493: IV with robust SEs, weak-ID
+#' # diagnostics, redundancy test
 #' fit <- ivreg2(lw ~ s + expr + tenure + rns + smsa + factor(year) |
 #'                 iq | age + mrt,
 #'               data = griliches, vcov = "robust",

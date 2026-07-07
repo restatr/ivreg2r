@@ -47,13 +47,15 @@ Anderson--Rubin inference, Stock--Wright S statistics, and instrument
 redundancy.
 }
 \details{
-Two cross-sections are pooled (survey years 66--73 and 80). The BSS 2007
-examples use year dummies via \code{factor(year)}.
+Two cross-sections are pooled (survey years 66--73 and 80). The Baum,
+Schaffer & Stillman (2007) examples use year dummies via
+\code{factor(year)}.
 }
 \examples{
 data(griliches)
 
-# BSS 2007 p.493: IV with robust SEs, weak-ID diagnostics, redundancy test
+# Baum, Schaffer & Stillman (2007), p. 493: IV with robust SEs, weak-ID
+# diagnostics, redundancy test
 fit <- ivreg2(lw ~ s + expr + tenure + rns + smsa + factor(year) |
                 iq | age + mrt,
               data = griliches, vcov = "robust",

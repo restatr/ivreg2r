@@ -45,19 +45,20 @@ two-step GMM, and CUE estimation. Original source: Stock and Watson (2003).
 }
 \details{
 The derived variables \code{inf}, \code{ggdp}, \code{dinf}, and the lagged
-instrument columns are pre-computed following BSS 2007 (p. 474) so that
+instrument columns are pre-computed following Baum, Schaffer & Stillman
+(2007, p. 474) so that
 users can replicate their examples directly without time-series operators.
 }
 \examples{
 data(stockwatson)
 
-# BSS 2007, p. 475: 2SLS with IID errors
+# Baum, Schaffer & Stillman (2007), p. 475: 2SLS with IID errors
 fit_iv <- ivreg2(dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1,
                  data = stockwatson)
 summary(fit_iv)
 
 \donttest{
-# BSS 2007, p. 476: two-step GMM with HAC (Bartlett, bw=5)
+# Baum, Schaffer & Stillman (2007), p. 476: two-step GMM with HAC (Bartlett, bw=5)
 fit_gmm <- ivreg2(dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1,
                   data = stockwatson, method = "gmm2s",
                   vcov = "robust", kernel = "bartlett", bw = 5,
