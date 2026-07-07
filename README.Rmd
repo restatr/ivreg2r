@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-# ivreg2r
+# ivreg2r <img src="man/figures/logo.png" align="right" height="139" alt="" />
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/restatr/ivreg2r/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/restatr/ivreg2r/actions/workflows/R-CMD-check.yaml)
@@ -89,9 +89,9 @@ All estimators and diagnostics are tested against Stata `ivreg2` benchmarks.
 ## Stata migration
 
 Common translations (see `vignette("introduction")` for the
-[full table](https://restatr.github.io/ivreg2r/articles/introduction.html#stata-migration-quick-reference)
+[full table](https://restatr.com/ivreg2r/articles/introduction.html#stata-migration-quick-reference)
 and
-[intentional differences](https://restatr.github.io/ivreg2r/articles/introduction.html#intentional-differences-from-stata)):
+[intentional differences](https://restatr.com/ivreg2r/articles/introduction.html#intentional-differences-from-stata)):
 
 | Stata | R (`ivreg2r`) |
 |-------|---------------|

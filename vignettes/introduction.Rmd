@@ -51,7 +51,7 @@ fit_factor <- ivreg2(
 all.equal(coef(fit_ols)["educ"], coef(fit_factor)["educ"])
 ```
 
-The point estimates are identical to `lm()`, and the model uses the same estimation infrastructure as the IV models below, so switching between OLS and 2SLS requires only a formula change. The default *reporting* follows Stata's conventions, however: z statistics rather than t statistics, standard errors without the finite-sample N − K correction, and Root MSE computed as sqrt(RSS/N). Setting `small = TRUE` reproduces `lm()`'s standard errors, t statistics, and sigma exactly. (For *weighted* models, coefficients and `small = TRUE` standard errors still match `lm()`, but sigma is defined differently --- see Weighted estimation below.)
+The point estimates are identical to `lm()`, and the model uses the same estimation infrastructure as the IV models below, so switching between OLS and 2SLS requires only a formula change. The default *reporting* follows Stata's conventions, however: z statistics rather than t statistics, standard errors without the finite-sample N - K correction, and Root MSE computed as sqrt(RSS/N). Setting `small = TRUE` reproduces `lm()`'s standard errors, t statistics, and sigma exactly. (For *weighted* models, coefficients and `small = TRUE` standard errors still match `lm()`, but sigma is defined differently --- see Weighted estimation below.)
 
 ## Two-stage least squares
 
@@ -107,7 +107,7 @@ One caution: the Stock-Yogo critical values are tabulated for the Cragg-Donald s
 
 ### Underidentification
 
-The fit above reports an Anderson LM statistic of `r round(fit_iv$diagnostics$underid$stat, 2)` (p = `r format.pval(fit_iv$diagnostics$underid$p, digits = 2, eps = 1e-4)`). The underidentification test asks whether the excluded instruments have *any* correlation with the endogenous regressors. Formally, the null hypothesis is that the matrix of reduced-form coefficients on the excluded instruments has rank K1 − 1, where K1 is the number of endogenous regressors --- i.e., that the equation is underidentified. With a single endogenous regressor, as here, this reduces to the intuitive statement that the instruments are irrelevant. Rejection is good news: it means the model is identified.
+The fit above reports an Anderson LM statistic of `r round(fit_iv$diagnostics$underid$stat, 2)` (p = `r format.pval(fit_iv$diagnostics$underid$p, digits = 2, eps = 1e-4)`). The underidentification test asks whether the excluded instruments have *any* correlation with the endogenous regressors. Formally, the null hypothesis is that the matrix of reduced-form coefficients on the excluded instruments has rank K1 - 1, where K1 is the number of endogenous regressors --- i.e., that the equation is underidentified. With a single endogenous regressor, as here, this reduces to the intuitive statement that the instruments are irrelevant. Rejection is good news: it means the model is identified.
 
 With *several* endogenous regressors the test covers the whole system, failing to reject if any one of them is unidentified, so the per-regressor first-stage statistics below are the finer diagnostic. Under i.i.d. errors this is the Anderson (1951) canonical-correlations LM test; under heteroskedasticity or clustering it becomes the Kleibergen-Paap (2006) rk LM statistic.
 

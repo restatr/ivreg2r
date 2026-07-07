@@ -15,9 +15,10 @@ License: GPL-3
 Copyright: Adapted from the Stata package 'ivreg2' by Christopher F
     Baum, Mark E Schaffer, and Steven Stillman, distributed under
     GPL-3.
-URL: https://github.com/restatr/ivreg2r
+URL: https://restatr.com/ivreg2r, https://github.com/restatr/ivreg2r
 BugReports: https://github.com/restatr/ivreg2r/issues
 Encoding: UTF-8
+Language: en-US
 Roxygen: list(markdown = TRUE)
 Depends:
     R (>= 4.4.0)
@@ -28,7 +29,6 @@ Imports:
     tibble
 Suggests:
     dplyr,
-    haven,
     ivreg,
     knitr,
     modelsummary,

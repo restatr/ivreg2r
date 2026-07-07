@@ -74,7 +74,7 @@ construction.
 of \code{sqrt(N / sum(w))} because \code{lm()} uses raw (unnormalized) weights.
 Coefficients are identical to \code{lm()} for OLS; SEs and the VCV matrix
 additionally match \code{lm()} when \code{small = TRUE} (the default
-\code{small = FALSE} reports Stata-convention SEs without the N − K
+\code{small = FALSE} reports Stata-convention SEs without the N - K
 finite-sample correction).}
 
 \item{subset}{Optional subset expression (evaluated in \code{data}).}

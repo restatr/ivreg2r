@@ -98,7 +98,7 @@ The instruments above were written with `l()`, one of two formula operators that
 
 Lags are computed by time *value*, not row position: `l(x, k)` at time `t` is the value of `x` at time `t - k` within the same panel unit, and if no observation exists at `t - k` — the start of a series, or a gap in the time variable — the lag is `NA` and the row leaves the estimation sample. This is why `ivreg2()` warns when the time variable has gaps: the warning is informational, not an error, and the lags remain correct at their true temporal distance. When it is more convenient to build lag columns before fitting, the gap-safe idiom is to fill the calendar with `tidyr::complete()` first, so that `dplyr::lag()` steps by one period rather than by one row:
 
-```{r ts-complete, message = FALSE}
+```{r ts-complete, message = FALSE, eval = requireNamespace("dplyr", quietly = TRUE) && requireNamespace("tidyr", quietly = TRUE)}
 library(dplyr)
 library(tidyr)
 phillips_lagged <- phillips |>
@@ -206,7 +206,6 @@ The gap warning is expected: the NLS interviews were not conducted every calenda
 For a within-transformed fixed-effects panel regression, Stock & Watson (2008) derive a bias-adjusted heteroskedasticity-robust variance that corrects the degrees-of-freedom bias of the usual cluster-robust estimator when $T$ is fixed and $N$ is large. Request it with `sw = TRUE` and an `ivar`. Because this regime is $N \to \infty$ with fixed $T$, a large-$N$, short-$T$ panel is the appropriate home; we use `wagepan` (`r length(unique(wagepan$nr))` men over `r length(unique(wagepan$year))` years):
 
 ```{r sw}
-# Upstream provenance: ivreg2.ado line 2222 labels sw "BETA VERSION"
 fit_sw <- ivreg2(lwage ~ exper + expersq + married + union,
                  data = wagepan, sw = TRUE, ivar = "nr", tvar = "year")
 summary(fit_sw)
@@ -239,13 +238,13 @@ We follow the worked example of Baum, Schaffer & Stillman (2007, p. 476): a quar
 ```{r sw-2sls}
 sw_formula <- dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1
 fit_sw_2sls <- ivreg2(sw_formula, data = stockwatson)
-tidy(fit_sw_2sls) |> filter(term == "UR")
+subset(tidy(fit_sw_2sls), term == "UR")
 ```
 
 ```{r gmm2s}
 fit_gmm <- ivreg2(sw_formula, data = stockwatson, method = "gmm2s",
                   vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date")
-ur_gmm <- tidy(fit_gmm) |> filter(term == "UR")
+ur_gmm <- subset(tidy(fit_gmm), term == "UR")
 summary(fit_gmm)
 ```
 
@@ -256,7 +255,7 @@ The continuously-updated estimator (CUE) completes the arc. CUE jointly optimize
 ```{r cue}
 fit_cue <- ivreg2(sw_formula, data = stockwatson, method = "cue",
                   vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date")
-ur_cue <- tidy(fit_cue) |> filter(term == "UR")
+ur_cue <- subset(tidy(fit_cue), term == "UR")
 summary(fit_cue)
 ```
 
@@ -273,7 +272,7 @@ gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | med + kww + age + mrt
 fit_g_gmm <- ivreg2(gril_formula, data = griliches,
                     method = "gmm2s", vcov = "robust")
-tidy(fit_g_gmm) |> filter(term == "iq")
+subset(tidy(fit_g_gmm), term == "iq")
 ```
 
 Every fit stores the estimated moment-condition covariance as `fit$S`, and every fit with a defined weighting matrix — all but LIML and k-class, exactly as in Stata — stores it as `fit$W`, matching `e(S)` and `e(W)`. This makes the help file's weighting-matrix reuse workflow direct. A robust 2SLS fit of the same equation computes the very moment covariance the two-step estimator uses in its second step, so passing that `S` back through `smatrix` reproduces the GMM fit exactly:

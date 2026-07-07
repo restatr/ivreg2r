@@ -36,3 +36,13 @@ values) and \code{se.fit} (standard errors of prediction).
 \description{
 Predict from an ivreg2 model
 }
+\examples{
+fit <- ivreg2(lwage ~ exper | educ | nearc4, data = card)
+
+# Fitted values on the estimation sample
+head(predict(fit))
+
+# Predictions with standard errors for new data
+nd <- data.frame(exper = c(5, 10), educ = c(12, 16), nearc4 = c(0, 1))
+predict(fit, newdata = nd, se.fit = TRUE)
+}

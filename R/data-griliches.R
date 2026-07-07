@@ -1,7 +1,7 @@
 #' Griliches (1976) Young Men's Wages Dataset
 #'
 #' Wages and characteristics of young men from the National Longitudinal
-#' Survey (NLS), originally analysed in Griliches (1976). This dataset is
+#' Survey (NLS), originally analyzed in Griliches (1976). This dataset is
 #' a standard IV example used in Hayashi (2000, Ch. 3) and Baum, Schaffer
 #' & Stillman (2007, pp. 492--494) to illustrate weak identification tests,
 #' Anderson--Rubin inference, Stock--Wright S statistics, and instrument

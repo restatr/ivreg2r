@@ -1968,7 +1968,7 @@
 #'   of `sqrt(N / sum(w))` because `lm()` uses raw (unnormalized) weights.
 #'   Coefficients are identical to `lm()` for OLS; SEs and the VCV matrix
 #'   additionally match `lm()` when `small = TRUE` (the default
-#'   `small = FALSE` reports Stata-convention SEs without the N − K
+#'   `small = FALSE` reports Stata-convention SEs without the N - K
 #'   finite-sample correction).
 #' @param subset Optional subset expression (evaluated in `data`).
 #' @param na.action Function for handling `NA`s (default [na.omit]).

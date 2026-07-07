@@ -439,7 +439,7 @@ c(sigma_full = fit_full$sigma, sigma_fwl = fit_fwl$sigma)
 
 Without `sdofminus = 7` the coefficients would still match but the standard errors and sigma would not, because the refit would not know that 7 parameters were already spent on the year dummies. The built-in `partial = "factor(year)"` argument performs exactly this residualize-and-adjust sequence in one step; see `vignette("time-series-gmm")` for the partialling workflow.
 
-The `dofminus` twin is the fixed-effects recipe that `xtivreg2, fe` automates. Demean each variable by its group, adding back the grand mean so the intercept survives, and declare that the G − 1 absorbed group effects consumed degrees of freedom. Treating the seven Griliches survey years as the groups, the within fit reproduces the dummy-variable fit exactly --- shared coefficients, standard errors, sigma, and residual degrees of freedom:
+The `dofminus` twin is the fixed-effects recipe that `xtivreg2, fe` automates. Demean each variable by its group, adding back the grand mean so the intercept survives, and declare that the G - 1 absorbed group effects consumed degrees of freedom. Treating the seven Griliches survey years as the groups, the within fit reproduces the dummy-variable fit exactly --- shared coefficients, standard errors, sigma, and residual degrees of freedom:
 
 ```{r dofminus-fe}
 demean_gm <- function(v, g) v - ave(v, g) + mean(v)
@@ -543,5 +543,3 @@ For a Stata-to-R translation table covering the most common options, see the mig
 - Sargan, J.D. (1958). "The Estimation of Economic Relationships Using Instrumental Variables." *Econometrica*, 26(3), 393--415.
 - Stock, J.H. and Wright, J.H. (2000). "GMM with Weak Identification." *Econometrica*, 68(5), 1055--1096.
 - Stock, J.H. and Yogo, M. (2005). "Testing for Weak Instruments in Linear IV Regression." In D.W.K. Andrews and J.H. Stock (Eds.), *Identification and Inference for Econometric Models: Essays in Honor of Thomas Rothenberg*. Cambridge University Press.
-</content>
-</invoke>

@@ -20,7 +20,7 @@ NULL
 #' @param r2u Uncentered R-squared (always `1 - rss / sum(w * y^2)`).
 #' @param r2c Centered R-squared (always `1 - rss / sum(w * (y - wmean)^2)`).
 #' @param mss Model sum of squares (`tss - rss`).
-#' @param model_f Model F-statistic (NULL until ticket F1).
+#' @param model_f Model F-statistic.
 #' @param model_f_p p-value for model F-test.
 #' @param model_f_df1 Numerator df for model F-test.
 #' @param model_f_df2 Denominator df for model F-test.
@@ -397,6 +397,15 @@ confint.ivreg2 <- function(object, parm, level = 0.95, ...) {
 #' @return When `se.fit = FALSE` (default), a numeric vector of predicted
 #'   values. When `se.fit = TRUE`, a list with components `fit` (predicted
 #'   values) and `se.fit` (standard errors of prediction).
+#' @examples
+#' fit <- ivreg2(lwage ~ exper | educ | nearc4, data = card)
+#'
+#' # Fitted values on the estimation sample
+#' head(predict(fit))
+#'
+#' # Predictions with standard errors for new data
+#' nd <- data.frame(exper = c(5, 10), educ = c(12, 16), nearc4 = c(0, 1))
+#' predict(fit, newdata = nd, se.fit = TRUE)
 #' @export
 predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
                             na.action = stats::na.pass, ...) {

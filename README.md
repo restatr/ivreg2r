@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# ivreg2r
+# ivreg2r <img src="man/figures/logo.png" align="right" height="139" alt="" />
 
 <!-- badges: start -->
 
@@ -9,7 +9,7 @@
 <!-- badges: end -->
 
 Instrumental variables and GMM estimation for R with built-in
-diagnostics, designed to reproduce Stata’s
+diagnostics, designed to reproduce Stata's
 [`ivreg2`](https://ideas.repec.org/c/boc/bocode/s425401.html) output
 (Baum, Schaffer & Stillman, 2003, 2007).
 
@@ -170,9 +170,9 @@ benchmarks.
 ## Stata migration
 
 Common translations (see `vignette("introduction")` for the [full
-table](https://restatr.github.io/ivreg2r/articles/introduction.html#stata-migration-quick-reference)
+table](https://restatr.com/ivreg2r/articles/introduction.html#stata-migration-quick-reference)
 and [intentional
-differences](https://restatr.github.io/ivreg2r/articles/introduction.html#intentional-differences-from-stata)):
+differences](https://restatr.com/ivreg2r/articles/introduction.html#intentional-differences-from-stata)):
 
 | Stata | R (`ivreg2r`) |
 |----|----|

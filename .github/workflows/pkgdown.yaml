@@ -1,0 +1,52 @@
+# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+# Builds the pkgdown site and deploys it to the gh-pages branch. Because the
+# restatr organization site (restatr.github.io) already owns the restatr.com
+# custom domain, GitHub serves this project repo at https://restatr.com/ivreg2r/
+# automatically. The project repo must NOT carry its own CNAME file, so the
+# CNAME pkgdown writes from the custom-domain URL is removed before deploy.
+on:
+  push:
+    branches: [main, master]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+name: pkgdown.yaml
+
+permissions: read-all
+
+jobs:
+  pkgdown:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::pkgdown, local::.
+          needs: website
+
+      - name: Build site
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        shell: Rscript {0}
+
+      - name: Remove project CNAME (served under the org custom domain by path)
+        run: rm -f docs/CNAME
+
+      - name: Deploy to GitHub pages 🚀
+        if: github.event_name != 'pull_request'
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        with:
+          clean: false
+          branch: gh-pages
+          folder: docs

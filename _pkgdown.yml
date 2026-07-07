@@ -1,0 +1,64 @@
+url: https://restatr.com/ivreg2r
+
+template:
+  bootstrap: 5
+
+reference:
+- title: Estimation
+  desc: Fit models, summarize them, and inspect the first stage.
+  contents:
+  - ivreg2
+  - summary.ivreg2
+  - first_stage
+- title: Methods
+  desc: S3 methods for fitted `ivreg2` objects.
+  contents:
+  - predict.ivreg2
+  - coef.ivreg2
+  - vcov.ivreg2
+  - confint.ivreg2
+  - fitted.ivreg2
+  - residuals.ivreg2
+  - nobs.ivreg2
+  - formula.ivreg2
+  - model.matrix.ivreg2
+  - terms.ivreg2
+  - update.ivreg2
+  - print.ivreg2
+  - print.summary.ivreg2
+- title: broom methods
+  desc: tidy(), glance(), and augment() for tidyverse workflows.
+  contents:
+  - tidy.ivreg2
+  - glance.ivreg2
+  - augment.ivreg2
+  - reexports
+- title: Formula operators
+  desc: Lag and difference operators for time-series and panel instruments.
+  contents:
+  - ts-operators
+- title: Datasets
+  desc: Datasets used throughout the help-file examples and vignettes.
+  contents:
+  - abdata
+  - card
+  - cigar
+  - griliches
+  - grunfeld
+  - klein
+  - mroz
+  - nlswork
+  - phillips
+  - stockwatson
+  - wagepan
+- title: Package
+  contents:
+  - ivreg2r-package
+
+articles:
+- title: Articles
+  navbar: ~
+  contents:
+  - introduction
+  - advanced-iv
+  - time-series-gmm

@@ -114,7 +114,7 @@
 
 \item{mss}{Model sum of squares (\code{tss - rss}).}
 
-\item{model_f}{Model F-statistic (NULL until ticket F1).}
+\item{model_f}{Model F-statistic.}
 
 \item{model_f_p}{p-value for model F-test.}
 
