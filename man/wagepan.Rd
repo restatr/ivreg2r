@@ -36,6 +36,8 @@ by individual and year.
 \examples{
 data(wagepan)
 # OLS with two-way clustering by person and year
+# The canonical two-way clustering example from the ivreg2 help file lives
+# in ?nlswork; this block illustrates the same VCE on a different panel.
 fit <- ivreg2(lwage ~ educ + black + hisp + exper + expersq + married + union,
               data = wagepan, clusters = ~ nr + year, small = TRUE)
 summary(fit)

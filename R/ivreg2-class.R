@@ -1,6 +1,5 @@
-#' @importFrom stats coef vcov residuals fitted nobs formula
-#'   qt qnorm pt pnorm delete.response na.pass printCoefmat
-#'   model.matrix terms update
+#' @importFrom stats coef vcov residuals fitted nobs formula qt qnorm pt pnorm
+#' @importFrom stats delete.response na.pass printCoefmat model.matrix terms update
 NULL
 
 # --------------------------------------------------------------------------

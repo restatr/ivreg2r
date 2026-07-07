@@ -1,6 +1,6 @@
 #' @importFrom Formula as.Formula
 #' @importFrom stats model.frame model.response model.matrix model.weights
-#'   terms as.formula na.omit .getXlevels
+#' @importFrom stats terms as.formula na.omit .getXlevels
 NULL
 
 # --------------------------------------------------------------------------

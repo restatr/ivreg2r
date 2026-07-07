@@ -42,7 +42,12 @@
 #' data(mroz)
 #' # Restrict to working women (observed wages)
 #' mroz_work <- subset(mroz, inlf == 1)
-#' # IV regression: instrument education with parental education
+#' # IV regression: instrument education with parental education (Example 15.5,
+#' # "Return to Education for Working Women", in Wooldridge (2020),
+#' # Introductory Econometrics).
+#' # These instruments (both parents' education) differ from the specification
+#' # in ?ivreg2, which instruments educ with fatheduc alone (just-identified)
+#' # and with age + kidslt6 + kidsge6 (overidentified).
 #' fit <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
 #'               data = mroz_work)
 #' summary(fit)

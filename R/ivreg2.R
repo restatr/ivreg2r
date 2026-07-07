@@ -1259,7 +1259,7 @@
 #' Thin wrapper that assembles the [.compute_moment_cov()] arguments from the
 #' fit/parsed/prep/opts objects (including the AC path's Z'WZ precompute).
 #' Shared by the stored `fit$S` and the psd-corrected VCV assembly in
-#' [.compute_vcov()], so the two are the same matrix by construction.
+#' `.compute_vcov()`, so the two are the same matrix by construction.
 #' psd correction happens inside [.compute_moment_cov()] when `opts$psd`
 #' is set.
 #'
@@ -1299,7 +1299,7 @@
 #' - S: user `smatrix` is echoed (never recomputed); GMM methods reuse the
 #'   defining Omega already computed by the fitter (`fit$omega`); all other
 #'   paths (OLS, 2SLS, LIML/k-class, any VCE) compute S fresh from the final
-#'   residuals via [.fresh_moment_cov()].
+#'   residuals via `.fresh_moment_cov()`.
 #' - W: NULL for LIML/k-class ("No weighting matrix defined", ivreg2.ado:1912);
 #'   user `wmatrix` is echoed (even under gmm2s, where it is the first-step
 #'   W); gmm2s/CUE/b0/smatrix-implied-GMM use `solve(S)`; 1-step OLS/2SLS use
@@ -2258,6 +2258,56 @@
 #'   via `smatrix` reproduces the corresponding efficient-GMM fit, mirroring
 #'   the `e(S)` reuse workflow in Stata's `ivreg2` help file.
 #'
+#' @section Overidentification and endogeneity tests:
+#'
+#' When the model carries more instruments than regressors, `ivreg2()`
+#' automatically reports an overidentification test: the Sargan (1958)
+#' statistic under `vcov = "iid"`, and the Hansen J statistic under robust,
+#' cluster, or HAC errors. The test evaluates the `L - K` overidentifying
+#' restrictions jointly, where `L` is the number of instruments and `K` the
+#' number of regressors. A rejection indicates that at least one instrument
+#' violates its orthogonality condition, without identifying which one. A
+#' non-rejection is necessary but not sufficient for instrument validity.
+#' The test has no power against a bias shared by every instrument, so
+#' orthogonality conditions that fail in the same direction can still appear
+#' jointly satisfied. The test is also uninformative about the `K`
+#' exactly-identifying moment conditions, whose validity must be defended on
+#' substantive grounds. An exactly identified model has no overidentifying
+#' restrictions, and therefore no overidentification test.
+#'
+#' The endogeneity test, also called the C-statistic or difference test,
+#' asks whether regressors treated as endogenous could instead be treated
+#' as exogenous. It is the overidentification statistic of the model that
+#' adds the suspect regressors to the instrument set, treating them as
+#' exogenous, minus that of the model that treats them as endogenous. Under
+#' the null of exogeneity, this difference follows a chi-square distribution
+#' with degrees of freedom equal to the number of regressors tested. Both
+#' overidentification statistics are formed from the same estimated moment
+#' covariance, which guarantees that the difference is non-negative
+#' (Hayashi 2000).
+#' `ivreg2()` computes this test automatically for every IV model, whereas
+#' Stata computes it only when the `endog()` option is given explicitly.
+#' The `endog` argument selects which endogenous regressors are tested. The
+#' statistic takes the difference-in-Sargan form under iid errors and the
+#' difference-in-Hansen-J form under robust, cluster, or HAC errors.
+#'
+#' @section LIML, Fuller, and k-class estimators:
+#'
+#' LIML, Fuller's modification, and the general k-class estimators are
+#' alternatives to 2SLS motivated by weak instruments. LIML is approximately
+#' median-unbiased, and its Stock-Yogo weak-identification thresholds are
+#' more forgiving than those for 2SLS. LIML has no finite-sample moments of
+#' any order, however. Its sampling distribution can therefore be dispersed,
+#' and individual estimates can lie far from the truth. Fuller's (1977)
+#' modification sets `k = lambda - fuller / (N - L)`, which yields an
+#' estimator with finite moments. The choice `fuller = 1` is approximately
+#' best-unbiased, and `fuller = 4` minimizes mean squared error, both within
+#' the standard weak-instrument framework. Weak-identification pretesting for
+#' LIML and Fuller uses estimator-specific critical values rather than the
+#' 2SLS values. LIML coincides with 2SLS when the model is exactly
+#' identified, because the LIML eigenvalue equals one in that case. Fuller
+#' does not, since it subtracts `fuller / (N - L)` from that eigenvalue.
+#'
 #' @examples
 #' data(mroz)
 #' mroz_work <- subset(mroz, inlf == 1)
@@ -2305,6 +2355,7 @@
 #' # --- Endogeneity test ---
 #' # Is education actually endogenous? The C-statistic tests
 #' # H0: OLS is consistent (educ is exogenous).
+#' # ivreg2 help file line 1283: the endog(educ) example on this equation.
 #' fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
 #'                       age + kidslt6 + kidsge6, data = mroz_work,
 #'                       endog = "educ")
@@ -2323,6 +2374,15 @@
 #'                    iq | med + kww + age,
 #'                  data = griliches, clusters = ~year, small = TRUE)
 #' summary(fit_cl)
+#'
+#' # --- Two-step efficient GMM ---
+#' # ivreg2 help file line 1154: efficient GMM with robust weighting.
+#' # The optimal weighting matrix uses the first-step robust moment
+#' # covariance; Hansen J replaces Sargan.
+#' fit_gmm <- ivreg2(lw ~ s + expr + tenure + rns + smsa + factor(year) |
+#'                     iq | med + kww + age + mrt,
+#'                   data = griliches, method = "gmm2s", vcov = "robust")
+#' summary(fit_gmm)
 #' }
 #'
 #' @export

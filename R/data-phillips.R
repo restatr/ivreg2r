@@ -21,7 +21,7 @@
 #' }
 #'
 #' @source
-#' Wooldridge, J.M. (2019). \emph{Introductory Econometrics: A Modern
+#' Wooldridge, J.M. (2020). \emph{Introductory Econometrics: A Modern
 #' Approach}, 7th ed. Cengage Learning.
 #'
 #' @examples
