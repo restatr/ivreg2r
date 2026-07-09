@@ -30,8 +30,11 @@ replace the Anderson and Cragg-Donald statistics when errors are not iid.}
 \item{Anderson-Rubin (AR)}{A weak-instrument-robust test of the joint
 significance of the endogenous regressors: valid regardless of
 instrument strength.}
-\item{Stock-Wright (S)}{A weak-instrument-robust LM statistic for the same
-hypothesis; equal to the Hansen J statistic under iid errors.}
+\item{Stock-Wright (S)}{A weak-instrument-robust statistic for the same
+hypothesis, the score (LM) counterpart of the Anderson-Rubin Wald test.
+It is distinct from the Hansen J overidentification statistic: S
+constrains the endogenous coefficients to zero and has degrees of
+freedom equal to the number of excluded instruments.}
 }
 }
 
