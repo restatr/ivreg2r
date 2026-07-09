@@ -264,6 +264,9 @@ overidentified model with two overidentifying restrictions:</p>
 <span><span class="co">#&gt; Wald chi2(1):  2.4 (p = 0.1266)</span></span>
 <span><span class="co">#&gt; Root MSE:       2.0145 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(3) = 7.23 (p = 0.0649)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           21.01 </span></span>
 <span><span class="co">#&gt;   Kleibergen-Paap rk Wald F:     25.63 </span></span>
@@ -279,17 +282,14 @@ overidentified model with two overidentifying restrictions:</p>
 <span><span class="co">#&gt;      20%  maximal IV relative bias   6.46 </span></span>
 <span><span class="co">#&gt;      30%  maximal IV relative bias   5.39 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(3) = 7.23 (p = 0.0649)</span></span>
+<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
+<span><span class="co">#&gt;   Chi-sq(2) = 7.53 (p = 0.0231)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
 <span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald F(3,42) = 6.92 (p = 0.0007)</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(3) = 22.75 (p = 0.0000)</span></span>
 <span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(3) = 6.88 (p = 0.0758)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
-<span><span class="co">#&gt;   Chi-sq(2) = 7.53 (p = 0.0231)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(1) = 0.57 (p = 0.4500)</span></span>
@@ -412,6 +412,9 @@ instrumented by their own first and second differences (built here with
 <span><span class="co">#&gt; Wald chi2(3):  61.1 (p &lt; 2.2e-16)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.5602 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(4) = 29.79 (p = 0.0000)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           1.64 </span></span>
 <span><span class="co">#&gt;   Kleibergen-Paap rk Wald F:     10.73 </span></span>
@@ -422,17 +425,14 @@ instrumented by their own first and second differences (built here with
 <span><span class="co">#&gt;      20%  maximal IV relative bias   5.35 </span></span>
 <span><span class="co">#&gt;      30%  maximal IV relative bias   4.40 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(4) = 29.79 (p = 0.0000)</span></span>
+<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
+<span><span class="co">#&gt;   Chi-sq(3) = 7.54 (p = 0.0565)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
 <span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald F(6,139) = 12.42 (p = 0.0000)</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(6) = 75.69 (p = 0.0000)</span></span>
 <span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(6) = 51.94 (p = 0.0000)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
-<span><span class="co">#&gt;   Chi-sq(3) = 7.54 (p = 0.0565)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(3) = 2.02 (p = 0.5690)</span></span>
@@ -803,6 +803,9 @@ First the 2SLS baseline, then two-step GMM:</p>
 <span><span class="co">#&gt; Wald chi2(1):  2.5 (p = 0.1185)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.5668 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(4) = 7.95 (p = 0.0933)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           22.58 </span></span>
 <span><span class="co">#&gt;   Kleibergen-Paap rk Wald F:     7.36 </span></span>
@@ -818,17 +821,14 @@ First the 2SLS baseline, then two-step GMM:</p>
 <span><span class="co">#&gt;      20%  maximal IV relative bias   6.71 </span></span>
 <span><span class="co">#&gt;      30%  maximal IV relative bias   5.34 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(4) = 7.95 (p = 0.0933)</span></span>
+<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
+<span><span class="co">#&gt;   Chi-sq(3) = 3.57 (p = 0.3119)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
 <span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald F(4,153) = 1.41 (p = 0.2343)</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(4) = 5.81 (p = 0.2137)</span></span>
 <span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(4) = 3.18 (p = 0.5278)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
-<span><span class="co">#&gt;   Chi-sq(3) = 3.57 (p = 0.3119)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(1) = 1.03 (p = 0.3112)</span></span>
@@ -878,6 +878,9 @@ errors. Continuing the same equation:</p>
 <span><span class="co">#&gt; Wald chi2(1):  0.6 (p = 0.4577)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.5881 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(4) = 7.95 (p = 0.0933)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           22.58 </span></span>
 <span><span class="co">#&gt;   Kleibergen-Paap rk Wald F:     7.36 </span></span>
@@ -888,17 +891,14 @@ errors. Continuing the same equation:</p>
 <span><span class="co">#&gt;      20%  maximal LIML size      3.30 </span></span>
 <span><span class="co">#&gt;      25%  maximal LIML size      2.98 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(4) = 7.95 (p = 0.0933)</span></span>
+<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
+<span><span class="co">#&gt;   Chi-sq(3) = 2.79 (p = 0.4246)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
 <span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald F(4,153) = 1.41 (p = 0.2343)</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(4) = 5.81 (p = 0.2137)</span></span>
 <span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(4) = 3.18 (p = 0.5278)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
-<span><span class="co">#&gt;   Chi-sq(3) = 2.79 (p = 0.4246)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(1) = 1.03 (p = 0.3112)</span></span>
@@ -1112,16 +1112,16 @@ correction silently:</p>
 <code class="sourceCode R"><span><span class="va">fit_psda</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">psd_formula</span>, data <span class="op">=</span> <span class="va">wagepan</span>, dkraay <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>                   kernel <span class="op">=</span> <span class="st">"truncated"</span>, tvar <span class="op">=</span> <span class="st">"year"</span>, ivar <span class="op">=</span> <span class="st">"nr"</span>,</span>
 <span>                   psd <span class="op">=</span> <span class="st">"psda"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Non-positive-semidefinite matrix: 2 negative eigenvalues corrected via</span></span>
-<span><span class="co">#&gt; psda.</span></span>
-<span><span class="co">#&gt; Warning: Non-positive-semidefinite matrix: 2 negative eigenvalues corrected via</span></span>
-<span><span class="co">#&gt; psda.</span></span>
+<span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 2 negative</span></span>
+<span><span class="co">#&gt; eigenvalues corrected via the 'psda' method.</span></span>
+<span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 2 negative</span></span>
+<span><span class="co">#&gt; eigenvalues corrected via the 'psda' method.</span></span>
 <span><span class="co">#&gt; Warning: Hansen J statistic not computed; singular moment covariance or Hessian</span></span>
 <span><span class="co">#&gt; matrix.</span></span>
-<span><span class="co">#&gt; Warning: Non-positive-semidefinite matrix: 2 negative eigenvalues corrected via</span></span>
-<span><span class="co">#&gt; psda.</span></span>
-<span><span class="co">#&gt; Warning: Non-positive-semidefinite matrix: 1 negative eigenvalue corrected via</span></span>
-<span><span class="co">#&gt; psda.</span></span>
+<span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 2 negative</span></span>
+<span><span class="co">#&gt; eigenvalues corrected via the 'psda' method.</span></span>
+<span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 1 negative</span></span>
+<span><span class="co">#&gt; eigenvalue corrected via the 'psda' method.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen</a></span><span class="op">(</span><span class="va">fit_psda</span><span class="op">$</span><span class="va">S</span>, symmetric <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">values</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 5.038001e-14</span></span></code></pre></div>
 <p>The correction is applied to <code>S</code> before the coefficient
@@ -1289,7 +1289,7 @@ Cluster by Both Firm and Time.” <em>Journal of Financial Economics</em>,
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

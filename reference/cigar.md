@@ -113,6 +113,9 @@ summary(fit)
 #> Wald chi2(2):  168.3 (p < 2.2e-16)
 #> Root MSE:       0.1856 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(1) = 901.42 (p < 2.2e-16)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           2593.62 
 #>   Stock-Yogo critical values (IV size):
@@ -121,16 +124,13 @@ summary(fit)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(1) = 901.42 (p < 2.2e-16)
+#> Overidentification test (Sargan):  excluded (exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(1,1377) = 261.83 (p < 2.2e-16)
 #>   Anderson-Rubin Wald Chi-sq(1) = 262.40 (p < 2.2e-16)
 #>   Stock-Wright LM S Chi-sq(1) = 220.48 (p < 2.2e-16)
-#> 
-#> Overidentification test (Sargan):  excluded (exactly identified)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 16.86 (p = 0.0000)

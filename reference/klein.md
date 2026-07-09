@@ -137,6 +137,9 @@ summary(fit)
 #> Wald chi2(3):  118.4 (p = 0.0000)
 #> Root MSE:       1.3953 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(5) = 12.01 (p = 0.0347)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           2.89 
 #>   Stock-Yogo critical values (LIML size):
@@ -145,21 +148,18 @@ summary(fit)
 #>      20%  maximal LIML size      2.63 
 #>      25%  maximal LIML size      2.46 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(5) = 12.01 (p = 0.0347)
-#> 
-#> Weak-instrument-robust inference:
-#>   H0: B1=0 and orthogonality conditions are valid
-#>   Anderson-Rubin Wald F(6,13) = 18.01 (p = 0.0000)
-#>   Anderson-Rubin Wald Chi-sq(6) = 174.61 (p < 2.2e-16)
-#>   Stock-Wright LM S Chi-sq(6) = 18.75 (p = 0.0046)
-#> 
 #> Overidentification test (Sargan):
 #>   Chi-sq(4) = 6.99 (p = 0.1365)
 #> 
 #> Anderson-Rubin overidentification:
 #>   LR Chi-sq(4) = 8.497 (p = 0.0750)
 #>   Linearized Chi-sq(4) = 10.474 (p = 0.0332)
+#> 
+#> Weak-instrument-robust inference:
+#>   H0: B1=0 and orthogonality conditions are valid
+#>   Anderson-Rubin Wald F(6,13) = 18.01 (p = 0.0000)
+#>   Anderson-Rubin Wald Chi-sq(6) = 174.61 (p < 2.2e-16)
+#>   Stock-Wright LM S Chi-sq(6) = 18.75 (p = 0.0046)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(2) = 8.98 (p = 0.0112)

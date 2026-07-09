@@ -1,8 +1,10 @@
 # Symmetric matrix square root via eigendecomposition
 
 Computes the symmetric square root of a PSD matrix via
-eigendecomposition. Negative eigenvalues (numerical noise) are clamped
-to zero with a warning.
+eigendecomposition. Eigenvalues that are negative only by floating-point
+round-off are clamped to zero silently; a warning is issued only when a
+negative eigenvalue is large enough to indicate a genuinely non-PSD
+input.
 
 ## Usage
 

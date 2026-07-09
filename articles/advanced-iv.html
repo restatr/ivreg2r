@@ -165,6 +165,9 @@ estimators and testing instruments:</p>
 <span><span class="co">#&gt; Wald chi2(3):  7.5 (p = 0.0001)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.6638 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Anderson canon. corr. LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(3) = 12.82 (p = 0.0051)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           4.34 </span></span>
 <span><span class="co">#&gt;   Stock-Yogo critical values (IV size):</span></span>
@@ -178,17 +181,14 @@ estimators and testing instruments:</p>
 <span><span class="co">#&gt;      20%  maximal IV relative bias   6.46 </span></span>
 <span><span class="co">#&gt;      30%  maximal IV relative bias   5.39 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Anderson canon. corr. LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(3) = 12.82 (p = 0.0051)</span></span>
+<span><span class="co">#&gt; Overidentification test (Sargan):</span></span>
+<span><span class="co">#&gt;   Chi-sq(2) = 0.70 (p = 0.7042)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
 <span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)</span></span>
 <span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Overidentification test (Sargan):</span></span>
-<span><span class="co">#&gt;   Chi-sq(2) = 0.70 (p = 0.7042)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(1) = 0.02 (p = 0.8899)</span></span>
@@ -246,6 +246,9 @@ introduced below, restores finite moments. Request it with
 <span><span class="co">#&gt; Wald chi2(3):  7.5 (p = 0.0001)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.6638 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Anderson canon. corr. LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(3) = 12.82 (p = 0.0051)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           4.34 </span></span>
 <span><span class="co">#&gt;   Stock-Yogo critical values (LIML size):</span></span>
@@ -254,21 +257,18 @@ introduced below, restores finite moments. Request it with
 <span><span class="co">#&gt;      20%  maximal LIML size      3.69 </span></span>
 <span><span class="co">#&gt;      25%  maximal LIML size      3.32 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Anderson canon. corr. LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(3) = 12.82 (p = 0.0051)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
-<span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
-<span><span class="co">#&gt;   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)</span></span>
-<span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)</span></span>
-<span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)</span></span>
-<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Overidentification test (Sargan):</span></span>
 <span><span class="co">#&gt;   Chi-sq(2) = 0.70 (p = 0.7042)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Anderson-Rubin overidentification:</span></span>
 <span><span class="co">#&gt;   LR Chi-sq(2) = 0.702 (p = 0.7040)</span></span>
 <span><span class="co">#&gt;   Linearized Chi-sq(2) = 0.703 (p = 0.7038)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
+<span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
+<span><span class="co">#&gt;   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)</span></span>
+<span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)</span></span>
+<span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(1) = 0.02 (p = 0.8899)</span></span>
@@ -431,6 +431,9 @@ the year variable <code>yr</code>; the operator is documented in
 <span><span class="co">#&gt; Wald chi2(3):  118.4 (p = 0.0000)</span></span>
 <span><span class="co">#&gt; Root MSE:       1.3953 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Anderson canon. corr. LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(5) = 12.01 (p = 0.0347)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           2.89 </span></span>
 <span><span class="co">#&gt;   Stock-Yogo critical values (LIML size):</span></span>
@@ -439,21 +442,18 @@ the year variable <code>yr</code>; the operator is documented in
 <span><span class="co">#&gt;      20%  maximal LIML size      2.63 </span></span>
 <span><span class="co">#&gt;      25%  maximal LIML size      2.46 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Anderson canon. corr. LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(5) = 12.01 (p = 0.0347)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
-<span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
-<span><span class="co">#&gt;   Anderson-Rubin Wald F(6,13) = 18.01 (p = 0.0000)</span></span>
-<span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(6) = 174.61 (p &lt; 2.2e-16)</span></span>
-<span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(6) = 18.75 (p = 0.0046)</span></span>
-<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Overidentification test (Sargan):</span></span>
 <span><span class="co">#&gt;   Chi-sq(4) = 6.99 (p = 0.1365)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Anderson-Rubin overidentification:</span></span>
 <span><span class="co">#&gt;   LR Chi-sq(4) = 8.497 (p = 0.0750)</span></span>
 <span><span class="co">#&gt;   Linearized Chi-sq(4) = 10.474 (p = 0.0332)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
+<span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
+<span><span class="co">#&gt;   Anderson-Rubin Wald F(6,13) = 18.01 (p = 0.0000)</span></span>
+<span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(6) = 174.61 (p &lt; 2.2e-16)</span></span>
+<span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(6) = 18.75 (p = 0.0046)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(2) = 8.98 (p = 0.0112)</span></span>
@@ -523,8 +523,11 @@ subset of instruments (the help file’s Griliches example), then a test
 of a single regressor’s endogeneity, then the empty-endogenous form for
 an included regressor, and finally the LIML overidentification
 statistics. Every automatic test lives in <code>fit$diagnostics</code>,
-a named list whose elements <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> exposes as columns;
-the chunks below use whichever access route reads better.</p>
+a named list; <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> additionally surfaces the headline
+tests (weak identification, underidentification, overidentification) as
+columns. The chunks below read each statistic from
+<code>fit$diagnostics</code>, dropping into <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> where
+a column is available and reads better.</p>
 <div class="section level3">
 <h3 id="overidentification">Overidentification<a class="anchor" aria-label="anchor" href="#overidentification"></a>
 </h3>
@@ -556,11 +559,9 @@ while maintaining <code>med</code> (mother’s education) and
 <span>    <span class="va">med</span> <span class="op">+</span> <span class="va">kww</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">mrt</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">griliches</span>, method <span class="op">=</span> <span class="st">"gmm2s"</span>, orthog <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"age"</span>, <span class="st">"mrt"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">fit_orthog</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"orthog_stat"</span>, <span class="st">"orthog_p"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 2</span></span></span>
-<span><span class="co">#&gt;   orthog_stat orthog_p</span></span>
-<span><span class="co">#&gt;         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>        86.6 1.55<span style="color: #949494;">e</span><span style="color: #BB0000;">-19</span></span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_orthog</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">orthog</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stat"</span>, <span class="st">"p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt;         stat            p </span></span>
+<span><span class="co">#&gt; 8.661882e+01 1.552253e-19</span></span></code></pre></div>
 <p>The null is that <code>age</code> and <code>mrt</code> satisfy the
 exclusion restrictions given that the remaining instruments do. The
 C-statistic rejects emphatically, so the data are inconsistent with
@@ -581,18 +582,16 @@ reproduces Stata’s <code>endog(educ)</code> example:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_endog</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">kidslt6</span> <span class="op">+</span> <span class="va">kidsge6</span>,</span>
 <span>                    data <span class="op">=</span> <span class="va">mroz_work</span>, endog <span class="op">=</span> <span class="st">"educ"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">fit_endog</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"endogeneity_stat"</span>, <span class="st">"endogeneity_p"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 2</span></span></span>
-<span><span class="co">#&gt;   endogeneity_stat endogeneity_p</span></span>
-<span><span class="co">#&gt;              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>           0.019<span style="text-decoration: underline;">1</span>         0.890</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_endog</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">endogeneity</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stat"</span>, <span class="st">"p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt;       stat          p </span></span>
+<span><span class="co">#&gt; 0.01914714 0.88994549</span></span></code></pre></div>
 <p>With a single endogenous regressor this coincides numerically with
 the endogeneity test that <code><a href="../reference/ivreg2.html">ivreg2()</a></code> already reports for the
 baseline, so <code>endog</code> earns its keep only with two or more
 endogenous regressors, where it can test a subset:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>automatic <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">fit_2sls</span><span class="op">)</span><span class="op">$</span><span class="va">endogeneity_stat</span>,</span>
-<span>  endog_arg <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">fit_endog</span><span class="op">)</span><span class="op">$</span><span class="va">endogeneity_stat</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>automatic <span class="op">=</span> <span class="va">fit_2sls</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">endogeneity</span><span class="op">$</span><span class="va">stat</span>,</span>
+<span>  endog_arg <span class="op">=</span> <span class="va">fit_endog</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">endogeneity</span><span class="op">$</span><span class="va">stat</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  automatic  endog_arg </span></span>
 <span><span class="co">#&gt; 0.01914714 0.01914714</span></span></code></pre></div>
 </div>
@@ -636,7 +635,6 @@ of <code>educ</code> in the Mroz equation:</p>
 <span><span class="co">#&gt; Wald chi2(3):  26.3 (p = 0.0000)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.6633 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Overidentification test (Sargan):</span></span>
 <span><span class="co">#&gt;   Chi-sq(3) = 0.72 (p = 0.8681)</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -675,12 +673,10 @@ overidentifying restrictions hold. When <code>lambda</code> is close to
 1 the three overidentification tests — Sargan, AR LR, and AR linearized
 — agree closely:</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">fit_liml</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ar_overid_lr_stat"</span>, <span class="st">"ar_overid_lr_p"</span>,</span>
-<span>                      <span class="st">"ar_overid_lin_stat"</span>, <span class="st">"ar_overid_lin_p"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 4</span></span></span>
-<span><span class="co">#&gt;   ar_overid_lr_stat ar_overid_lr_p ar_overid_lin_stat ar_overid_lin_p</span></span>
-<span><span class="co">#&gt;               <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>             0.702          0.704              0.703           0.704</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_liml</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">anderson_rubin_overid</span><span class="op">[</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lr_stat"</span>, <span class="st">"lr_p"</span>, <span class="st">"lin_stat"</span>, <span class="st">"lin_p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   lr_stat      lr_p  lin_stat     lin_p </span></span>
+<span><span class="co">#&gt; 0.7020291 0.7039735 0.7026052 0.7037708</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -701,11 +697,9 @@ size even when instruments are weak. The S statistic is the value of the
 CUE objective with the exogenous regressors partialled out, and it is
 computed for every IV model:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">fit_2sls</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stock_wright_stat"</span>, <span class="st">"stock_wright_p"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 2</span></span></span>
-<span><span class="co">#&gt;   stock_wright_stat stock_wright_p</span></span>
-<span><span class="co">#&gt;               <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>              1.85          0.603</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_2sls</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">stock_wright</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stat"</span>, <span class="st">"p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt;      stat         p </span></span>
+<span><span class="co">#&gt; 1.8537059 0.6033182</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="when-instruments-are-genuinely-weak">When instruments are genuinely weak<a class="anchor" aria-label="anchor" href="#when-instruments-are-genuinely-weak"></a>
@@ -753,6 +747,9 @@ heteroskedasticity-robust variance:</p>
 <span><span class="co">#&gt; Wald chi2(12):  4.4 (p = 0.0000)</span></span>
 <span><span class="co">#&gt; Root MSE:       1.1676 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(2) = 5.90 (p = 0.0524)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           2.72 </span></span>
 <span><span class="co">#&gt;   Kleibergen-Paap rk Wald F:     2.93 </span></span>
@@ -763,17 +760,14 @@ heteroskedasticity-robust variance:</p>
 <span><span class="co">#&gt;      20%  maximal IV size       8.75 </span></span>
 <span><span class="co">#&gt;      25%  maximal IV size       7.25 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(2) = 5.90 (p = 0.0524)</span></span>
+<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
+<span><span class="co">#&gt;   Chi-sq(1) = 1.56 (p = 0.2111)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
 <span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald F(2,744) = 46.95 (p &lt; 2.2e-16)</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(2) = 95.66 (p &lt; 2.2e-16)</span></span>
 <span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(2) = 71.33 (p = 0.0000)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
-<span><span class="co">#&gt;   Chi-sq(1) = 1.56 (p = 0.2111)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(1) = 56.06 (p = 0.0000)</span></span>
@@ -814,11 +808,9 @@ this weak specification with <code>redundant</code>:</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_redund</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">weak_form</span>, data <span class="op">=</span> <span class="va">griliches</span>, vcov <span class="op">=</span> <span class="st">"robust"</span>,</span>
 <span>                     redundant <span class="op">=</span> <span class="st">"mrt"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">fit_redund</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"redundancy_stat"</span>, <span class="st">"redundancy_p"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 2</span></span></span>
-<span><span class="co">#&gt;   redundancy_stat redundancy_p</span></span>
-<span><span class="co">#&gt;             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>         0.001<span style="text-decoration: underline;">76</span>        0.967</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_redund</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">redundancy</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stat"</span>, <span class="st">"p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt;        stat           p </span></span>
+<span><span class="co">#&gt; 0.001759138 0.966544867</span></span></code></pre></div>
 <p>The LM statistic is essentially zero (p = 0.97), the published
 result: <code>mrt</code> provides no useful information for identifying
 the coefficient on <code>iq</code>, so identification here rests on
@@ -1019,6 +1011,9 @@ across states.</p>
 <span><span class="co">#&gt; Wald chi2(2):  27.7 (p = 0.0000)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.1840 </span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
+<span><span class="co">#&gt;   Chi-sq(2) = 12.14 (p = 0.0023)</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak identification test:</span></span>
 <span><span class="co">#&gt;   Cragg-Donald Wald F:           4766.55 </span></span>
 <span><span class="co">#&gt;   Kleibergen-Paap rk Wald F:     275.63 </span></span>
@@ -1029,17 +1024,14 @@ across states.</p>
 <span><span class="co">#&gt;      20%  maximal IV size       8.75 </span></span>
 <span><span class="co">#&gt;      25%  maximal IV size       7.25 </span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Underidentification test (Kleibergen-Paap rk LM statistic):</span></span>
-<span><span class="co">#&gt;   Chi-sq(2) = 12.14 (p = 0.0023)</span></span>
+<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
+<span><span class="co">#&gt;   Chi-sq(1) = 0.94 (p = 0.3325)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Weak-instrument-robust inference:</span></span>
 <span><span class="co">#&gt;   H0: B1=0 and orthogonality conditions are valid</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald F(2,28) = 27.10 (p = 0.0000)</span></span>
 <span><span class="co">#&gt;   Anderson-Rubin Wald Chi-sq(2) = 56.26 (p = 0.0000)</span></span>
 <span><span class="co">#&gt;   Stock-Wright LM S Chi-sq(2) = 12.43 (p = 0.0020)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Overidentification test (Hansen J):</span></span>
-<span><span class="co">#&gt;   Chi-sq(1) = 0.94 (p = 0.3325)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Endogeneity test:</span></span>
 <span><span class="co">#&gt;   Chi-sq(1) = 0.09 (p = 0.7636)</span></span>
@@ -1251,9 +1243,9 @@ objects work with it directly.</p>
 </h3>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://modelsummary.com/man/modelsummary.html" class="external-link">modelsummary</a></span><span class="op">(</span><span class="va">fit_2sls</span>, output <span class="op">=</span> <span class="st">"markdown"</span><span class="op">)</span></span></code></pre></div>
-<table style="width:58%;" class="table">
+<table style="width:51%;" class="table">
 <colgroup>
-<col width="27%">
+<col width="20%">
 <col width="30%">
 </colgroup>
 <thead><tr class="header">
@@ -1311,70 +1303,6 @@ objects work with it directly.</p>
 <td>iid</td>
 </tr>
 <tr class="odd">
-<td>small</td>
-<td>FALSE</td>
-</tr>
-<tr class="even">
-<td>weight_type</td>
-<td>aweight</td>
-</tr>
-<tr class="odd">
-<td>method</td>
-<td>2sls</td>
-</tr>
-<tr class="even">
-<td>fuller_parameter</td>
-<td>0</td>
-</tr>
-<tr class="odd">
-<td>coviv</td>
-<td>FALSE</td>
-</tr>
-<tr class="even">
-<td>center</td>
-<td>FALSE</td>
-</tr>
-<tr class="odd">
-<td>kiefer</td>
-<td>FALSE</td>
-</tr>
-<tr class="even">
-<td>sw</td>
-<td>FALSE</td>
-</tr>
-<tr class="odd">
-<td>partial_ct</td>
-<td>0</td>
-</tr>
-<tr class="even">
-<td>yy</td>
-<td>829.594812951225</td>
-</tr>
-<tr class="odd">
-<td>yyc</td>
-<td>223.327451251548</td>
-</tr>
-<tr class="even">
-<td>rankxx</td>
-<td>4</td>
-</tr>
-<tr class="odd">
-<td>rankzz</td>
-<td>6</td>
-</tr>
-<tr class="even">
-<td>condxx</td>
-<td>4893604.83452088</td>
-</tr>
-<tr class="odd">
-<td>condzz</td>
-<td>8161817.43487642</td>
-</tr>
-<tr class="even">
-<td>ll</td>
-<td>-431.908900030796</td>
-</tr>
-<tr class="odd">
 <td>weak_id_stat</td>
 <td>4.3420708624285</td>
 </tr>
@@ -1393,34 +1321,6 @@ objects work with it directly.</p>
 <tr class="odd">
 <td>overid_p</td>
 <td>0.704155394854524</td>
-</tr>
-<tr class="even">
-<td>endogeneity_stat</td>
-<td>0.019147137191456</td>
-</tr>
-<tr class="odd">
-<td>endogeneity_p</td>
-<td>0.889945491642707</td>
-</tr>
-<tr class="even">
-<td>stock_wright_stat</td>
-<td>1.85370592946733</td>
-</tr>
-<tr class="odd">
-<td>stock_wright_p</td>
-<td>0.603318233159185</td>
-</tr>
-<tr class="even">
-<td>stock_wright_df</td>
-<td>3</td>
-</tr>
-<tr class="odd">
-<td>ccev_min</td>
-<td>0.0299435119318744</td>
-</tr>
-<tr class="even">
-<td>cdev_min</td>
-<td>0.0308678023395391</td>
 </tr>
 </tbody>
 </table>
@@ -1552,9 +1452,9 @@ of exponentiating estimates and confidence bounds while leaving
 <code>std.error</code> on the log scale.</p>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://modelsummary.com/man/modelsummary.html" class="external-link">modelsummary</a></span><span class="op">(</span><span class="va">fit_2sls</span>, output <span class="op">=</span> <span class="st">"markdown"</span>, exponentiate <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<table style="width:58%;" class="table">
+<table style="width:51%;" class="table">
 <colgroup>
-<col width="27%">
+<col width="20%">
 <col width="30%">
 </colgroup>
 <thead><tr class="header">
@@ -1612,70 +1512,6 @@ of exponentiating estimates and confidence bounds while leaving
 <td>iid</td>
 </tr>
 <tr class="odd">
-<td>small</td>
-<td>FALSE</td>
-</tr>
-<tr class="even">
-<td>weight_type</td>
-<td>aweight</td>
-</tr>
-<tr class="odd">
-<td>method</td>
-<td>2sls</td>
-</tr>
-<tr class="even">
-<td>fuller_parameter</td>
-<td>0</td>
-</tr>
-<tr class="odd">
-<td>coviv</td>
-<td>FALSE</td>
-</tr>
-<tr class="even">
-<td>center</td>
-<td>FALSE</td>
-</tr>
-<tr class="odd">
-<td>kiefer</td>
-<td>FALSE</td>
-</tr>
-<tr class="even">
-<td>sw</td>
-<td>FALSE</td>
-</tr>
-<tr class="odd">
-<td>partial_ct</td>
-<td>0</td>
-</tr>
-<tr class="even">
-<td>yy</td>
-<td>829.594812951225</td>
-</tr>
-<tr class="odd">
-<td>yyc</td>
-<td>223.327451251548</td>
-</tr>
-<tr class="even">
-<td>rankxx</td>
-<td>4</td>
-</tr>
-<tr class="odd">
-<td>rankzz</td>
-<td>6</td>
-</tr>
-<tr class="even">
-<td>condxx</td>
-<td>4893604.83452088</td>
-</tr>
-<tr class="odd">
-<td>condzz</td>
-<td>8161817.43487642</td>
-</tr>
-<tr class="even">
-<td>ll</td>
-<td>-431.908900030796</td>
-</tr>
-<tr class="odd">
 <td>weak_id_stat</td>
 <td>4.3420708624285</td>
 </tr>
@@ -1694,34 +1530,6 @@ of exponentiating estimates and confidence bounds while leaving
 <tr class="odd">
 <td>overid_p</td>
 <td>0.704155394854524</td>
-</tr>
-<tr class="even">
-<td>endogeneity_stat</td>
-<td>0.019147137191456</td>
-</tr>
-<tr class="odd">
-<td>endogeneity_p</td>
-<td>0.889945491642707</td>
-</tr>
-<tr class="even">
-<td>stock_wright_stat</td>
-<td>1.85370592946733</td>
-</tr>
-<tr class="odd">
-<td>stock_wright_p</td>
-<td>0.603318233159185</td>
-</tr>
-<tr class="even">
-<td>stock_wright_df</td>
-<td>3</td>
-</tr>
-<tr class="odd">
-<td>ccev_min</td>
-<td>0.0299435119318744</td>
-</tr>
-<tr class="even">
-<td>cdev_min</td>
-<td>0.0308678023395391</td>
 </tr>
 </tbody>
 </table>
@@ -1901,7 +1709,7 @@ of Thomas Rothenberg</em>. Cambridge University Press.</li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

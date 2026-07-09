@@ -137,6 +137,9 @@ summary(fit_iv)
 #> Wald chi2(1):  10.2 (p = 0.0017)
 #> Root MSE:       0.5543 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(4) = 58.66 (p = 0.0000)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           22.58 
 #>   Stock-Yogo critical values (IV size):
@@ -150,17 +153,14 @@ summary(fit_iv)
 #>      20%  maximal IV relative bias   6.71 
 #>      30%  maximal IV relative bias   5.34 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(4) = 58.66 (p = 0.0000)
+#> Overidentification test (Sargan):
+#>   Chi-sq(3) = 5.85 (p = 0.1191)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(4,153) = 3.44 (p = 0.0100)
 #>   Anderson-Rubin Wald Chi-sq(4) = 14.23 (p = 0.0066)
 #>   Stock-Wright LM S Chi-sq(4) = 13.05 (p = 0.0110)
-#> 
-#> Overidentification test (Sargan):
-#>   Chi-sq(3) = 5.85 (p = 0.1191)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.50 (p = 0.4783)
@@ -203,6 +203,9 @@ summary(fit_gmm)
 #> Wald chi2(1):  2.5 (p = 0.1185)
 #> Root MSE:       0.5668 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(4) = 7.95 (p = 0.0933)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           22.58 
 #>   Kleibergen-Paap rk Wald F:     7.36 
@@ -218,17 +221,14 @@ summary(fit_gmm)
 #>      20%  maximal IV relative bias   6.71 
 #>      30%  maximal IV relative bias   5.34 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(4) = 7.95 (p = 0.0933)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(3) = 3.57 (p = 0.3119)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(4,153) = 1.41 (p = 0.2343)
 #>   Anderson-Rubin Wald Chi-sq(4) = 5.81 (p = 0.2137)
 #>   Stock-Wright LM S Chi-sq(4) = 3.18 (p = 0.5278)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(3) = 3.57 (p = 0.3119)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 1.03 (p = 0.3112)

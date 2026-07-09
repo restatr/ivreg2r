@@ -176,6 +176,9 @@ summary(fit_iv)
 #> Wald chi2(15):  51.0 (p < 2.2e-16)
 #> Root MSE:       0.3873 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(1) = 13.27 (p = 0.0003)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           13.26 
 #>   Stock-Yogo critical values (IV size):
@@ -184,16 +187,13 @@ summary(fit_iv)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(1) = 13.27 (p = 0.0003)
+#> Overidentification test (Sargan):  excluded (exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(1,2994) = 5.42 (p = 0.0200)
 #>   Anderson-Rubin Wald Chi-sq(1) = 5.44 (p = 0.0196)
 #>   Stock-Wright LM S Chi-sq(1) = 5.43 (p = 0.0197)
-#> 
-#> Overidentification test (Sargan):  excluded (exactly identified)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 1.17 (p = 0.2786)
@@ -351,6 +351,9 @@ summary(fit_overid)
 #> Wald chi2(15):  47.1 (p < 2.2e-16)
 #> Root MSE:       0.4042 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(2) = 15.79 (p = 0.0004)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           7.89 
 #>   Stock-Yogo critical values (IV size):
@@ -359,17 +362,14 @@ summary(fit_overid)
 #>      20%  maximal IV size       8.75 
 #>      25%  maximal IV size       7.25 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(2) = 15.79 (p = 0.0004)
+#> Overidentification test (Sargan):
+#>   Chi-sq(1) = 1.25 (p = 0.2639)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(2,2993) = 5.24 (p = 0.0053)
 #>   Anderson-Rubin Wald Chi-sq(2) = 10.55 (p = 0.0051)
 #>   Stock-Wright LM S Chi-sq(2) = 10.51 (p = 0.0052)
-#> 
-#> Overidentification test (Sargan):
-#>   Chi-sq(1) = 1.25 (p = 0.2639)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 2.94 (p = 0.0864)
@@ -616,6 +616,9 @@ summary(fit_robust)
 #> F(15, 2994):     55.8 (p < 2.2e-16)
 #> Root MSE:       0.3883 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(1) = 14.03 (p = 0.0002)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           13.26 
 #>   Kleibergen-Paap rk Wald F:     14.14 
@@ -626,16 +629,13 @@ summary(fit_robust)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(1) = 14.03 (p = 0.0002)
+#> Overidentification test (Hansen J):  excluded (exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(1,2994) = 5.76 (p = 0.0164)
 #>   Anderson-Rubin Wald Chi-sq(1) = 5.80 (p = 0.0161)
 #>   Stock-Wright LM S Chi-sq(1) = 5.83 (p = 0.0157)
-#> 
-#> Overidentification test (Hansen J):  excluded (exactly identified)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 1.22 (p = 0.2696)
@@ -812,6 +812,9 @@ summary(fit_pw)
 #> Wald chi2(15):  36.1 (p < 2.2e-16)
 #> Root MSE:       0.4054 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(1) = 12.85 (p = 0.0003)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           15.85 
 #>   Kleibergen-Paap rk Wald F:     12.96 
@@ -822,16 +825,13 @@ summary(fit_pw)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(1) = 12.85 (p = 0.0003)
+#> Overidentification test (Hansen J):  excluded (exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(1,2994) = 7.59 (p = 0.0059)
 #>   Anderson-Rubin Wald Chi-sq(1) = 7.63 (p = 0.0058)
 #>   Stock-Wright LM S Chi-sq(1) = 7.82 (p = 0.0052)
-#> 
-#> Overidentification test (Hansen J):  excluded (exactly identified)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 2.43 (p = 0.1189)
@@ -989,23 +989,21 @@ used at estimation time and on the standard normal otherwise.
 ### Model summary
 
 [`glance()`](https://generics.r-lib.org/reference/glance.html) returns a
-single-row tibble with fit statistics and all diagnostic test results —
-useful for building model comparison tables:
+single-row tibble with fit statistics and the headline diagnostic tests
+(weak identification, underidentification, overidentification) — a
+compact set chosen so that model-comparison tables render sensibly. The
+remaining specification tests live in `fit$diagnostics`:
 
 ``` r
 
 glance(fit_iv)
-#> # A tibble: 1 × 58
+#> # A tibble: 1 × 15
 #>   r.squared adj.r.squared sigma statistic   p.value    df df.residual  nobs
 #>       <dbl>         <dbl> <dbl>     <dbl>     <dbl> <int>       <int> <int>
 #> 1     0.238         0.234 0.387      51.0 8.58e-136    15        2994  3010
-#> # ℹ 50 more variables: vcov_type <chr>, small <lgl>, weight_type <chr>,
-#> #   method <chr>, lambda <dbl>, kclass_value <dbl>, fuller_parameter <dbl>,
-#> #   coviv <lgl>, center <lgl>, psd <chr>, kernel <chr>, bw <dbl>, kiefer <lgl>,
-#> #   dkraay <dbl>, sw <lgl>, n_clusters1 <int>, n_clusters2 <int>,
-#> #   cue_convergence <int>, partial_ct <int>, yy <dbl>, yyc <dbl>, rankxx <int>,
-#> #   rankzz <int>, condxx <dbl>, condzz <dbl>, ll <dbl>, weak_id_stat <dbl>,
-#> #   weak_id_robust_stat <dbl>, underid_stat <dbl>, underid_p <dbl>, …
+#> # ℹ 7 more variables: vcov_type <chr>, weak_id_stat <dbl>,
+#> #   weak_id_robust_stat <dbl>, underid_stat <dbl>, underid_p <dbl>,
+#> #   overid_stat <dbl>, overid_p <dbl>
 ```
 
 ### Augmented data
@@ -1113,9 +1111,9 @@ for HAC/AC, GMM, CUE, partialling, and panel VCE examples.
 
 | Area | Stata `ivreg2` | `ivreg2r` | Rationale |
 |----|----|----|----|
-| Formula | `ivreg2 y x (endo = z)` | `y ~ x \| endo \| z` | R convention; each variable listed once |
+| Formula | `ivreg2 y x (endo = z)` | `y ~ x | endo | z` | R convention; each variable listed once |
 | Numerical method | Cross-products via Mata | QR-based regression via `lm.fit` | Better conditioning for core estimation |
-| Diagnostics | Some computed at post-estimation | All computed at estimation time | Always available in [`glance()`](https://generics.r-lib.org/reference/glance.html) |
+| Diagnostics | Some computed at post-estimation | All computed at estimation time | Stored in `fit$diagnostics`; headline tests also in [`glance()`](https://generics.r-lib.org/reference/glance.html) |
 | Factor variables | `i.` prefix syntax | R [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) / contrasts | R convention |
 | COVIV | Implicit for LIML+robust | Explicit `coviv = TRUE` | The covariance weighting is requested explicitly rather than inferred |
 | Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |

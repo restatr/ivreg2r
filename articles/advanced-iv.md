@@ -108,6 +108,9 @@ summary(fit_2sls)
 #> Wald chi2(3):  7.5 (p = 0.0001)
 #> Root MSE:       0.6638 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(3) = 12.82 (p = 0.0051)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           4.34 
 #>   Stock-Yogo critical values (IV size):
@@ -121,17 +124,14 @@ summary(fit_2sls)
 #>      20%  maximal IV relative bias   6.46 
 #>      30%  maximal IV relative bias   5.39 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(3) = 12.82 (p = 0.0051)
+#> Overidentification test (Sargan):
+#>   Chi-sq(2) = 0.70 (p = 0.7042)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)
 #>   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)
 #>   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)
-#> 
-#> Overidentification test (Sargan):
-#>   Chi-sq(2) = 0.70 (p = 0.7042)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.02 (p = 0.8899)
@@ -190,6 +190,9 @@ summary(fit_liml)
 #> Wald chi2(3):  7.5 (p = 0.0001)
 #> Root MSE:       0.6638 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(3) = 12.82 (p = 0.0051)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           4.34 
 #>   Stock-Yogo critical values (LIML size):
@@ -198,21 +201,18 @@ summary(fit_liml)
 #>      20%  maximal LIML size      3.69 
 #>      25%  maximal LIML size      3.32 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(3) = 12.82 (p = 0.0051)
-#> 
-#> Weak-instrument-robust inference:
-#>   H0: B1=0 and orthogonality conditions are valid
-#>   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)
-#>   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)
-#>   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)
-#> 
 #> Overidentification test (Sargan):
 #>   Chi-sq(2) = 0.70 (p = 0.7042)
 #> 
 #> Anderson-Rubin overidentification:
 #>   LR Chi-sq(2) = 0.702 (p = 0.7040)
 #>   Linearized Chi-sq(2) = 0.703 (p = 0.7038)
+#> 
+#> Weak-instrument-robust inference:
+#>   H0: B1=0 and orthogonality conditions are valid
+#>   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)
+#>   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)
+#>   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.02 (p = 0.8899)
@@ -381,6 +381,9 @@ summary(fit_k_liml)
 #> Wald chi2(3):  118.4 (p = 0.0000)
 #> Root MSE:       1.3953 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(5) = 12.01 (p = 0.0347)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           2.89 
 #>   Stock-Yogo critical values (LIML size):
@@ -389,21 +392,18 @@ summary(fit_k_liml)
 #>      20%  maximal LIML size      2.63 
 #>      25%  maximal LIML size      2.46 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(5) = 12.01 (p = 0.0347)
-#> 
-#> Weak-instrument-robust inference:
-#>   H0: B1=0 and orthogonality conditions are valid
-#>   Anderson-Rubin Wald F(6,13) = 18.01 (p = 0.0000)
-#>   Anderson-Rubin Wald Chi-sq(6) = 174.61 (p < 2.2e-16)
-#>   Stock-Wright LM S Chi-sq(6) = 18.75 (p = 0.0046)
-#> 
 #> Overidentification test (Sargan):
 #>   Chi-sq(4) = 6.99 (p = 0.1365)
 #> 
 #> Anderson-Rubin overidentification:
 #>   LR Chi-sq(4) = 8.497 (p = 0.0750)
 #>   Linearized Chi-sq(4) = 10.474 (p = 0.0332)
+#> 
+#> Weak-instrument-robust inference:
+#>   H0: B1=0 and orthogonality conditions are valid
+#>   Anderson-Rubin Wald F(6,13) = 18.01 (p = 0.0000)
+#>   Anderson-Rubin Wald Chi-sq(6) = 174.61 (p < 2.2e-16)
+#>   Stock-Wright LM S Chi-sq(6) = 18.75 (p = 0.0046)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(2) = 8.98 (p = 0.0112)
@@ -479,9 +479,13 @@ examples: a joint overidentification test, then a test of a subset of
 instruments (the help file’s Griliches example), then a test of a single
 regressor’s endogeneity, then the empty-endogenous form for an included
 regressor, and finally the LIML overidentification statistics. Every
-automatic test lives in `fit$diagnostics`, a named list whose elements
-[`glance()`](https://generics.r-lib.org/reference/glance.html) exposes
-as columns; the chunks below use whichever access route reads better.
+automatic test lives in `fit$diagnostics`, a named list;
+[`glance()`](https://generics.r-lib.org/reference/glance.html)
+additionally surfaces the headline tests (weak identification,
+underidentification, overidentification) as columns. The chunks below
+read each statistic from `fit$diagnostics`, dropping into
+[`glance()`](https://generics.r-lib.org/reference/glance.html) where a
+column is available and reads better.
 
 ### Overidentification
 
@@ -517,11 +521,9 @@ fit_orthog <- ivreg2(
     med + kww + age + mrt,
   data = griliches, method = "gmm2s", orthog = c("age", "mrt")
 )
-glance(fit_orthog)[, c("orthog_stat", "orthog_p")]
-#> # A tibble: 1 × 2
-#>   orthog_stat orthog_p
-#>         <dbl>    <dbl>
-#> 1        86.6 1.55e-19
+unlist(fit_orthog$diagnostics$orthog[c("stat", "p")])
+#>         stat            p 
+#> 8.661882e+01 1.552253e-19
 ```
 
 The null is that `age` and `mrt` satisfy the exclusion restrictions
@@ -544,11 +546,9 @@ Stata’s `endog(educ)` example:
 
 fit_endog <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     data = mroz_work, endog = "educ")
-glance(fit_endog)[, c("endogeneity_stat", "endogeneity_p")]
-#> # A tibble: 1 × 2
-#>   endogeneity_stat endogeneity_p
-#>              <dbl>         <dbl>
-#> 1           0.0191         0.890
+unlist(fit_endog$diagnostics$endogeneity[c("stat", "p")])
+#>       stat          p 
+#> 0.01914714 0.88994549
 ```
 
 With a single endogenous regressor this coincides numerically with the
@@ -559,8 +559,8 @@ more endogenous regressors, where it can test a subset:
 
 ``` r
 
-c(automatic = glance(fit_2sls)$endogeneity_stat,
-  endog_arg = glance(fit_endog)$endogeneity_stat)
+c(automatic = fit_2sls$diagnostics$endogeneity$stat,
+  endog_arg = fit_endog$diagnostics$endogeneity$stat)
 #>  automatic  endog_arg 
 #> 0.01914714 0.01914714
 ```
@@ -605,7 +605,6 @@ summary(fit_hols)
 #> Wald chi2(3):  26.3 (p = 0.0000)
 #> Root MSE:       0.6633 
 #> 
-#> 
 #> Overidentification test (Sargan):
 #>   Chi-sq(3) = 0.72 (p = 0.8681)
 #> 
@@ -644,12 +643,10 @@ closely:
 
 ``` r
 
-glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
-                      "ar_overid_lin_stat", "ar_overid_lin_p")]
-#> # A tibble: 1 × 4
-#>   ar_overid_lr_stat ar_overid_lr_p ar_overid_lin_stat ar_overid_lin_p
-#>               <dbl>          <dbl>              <dbl>           <dbl>
-#> 1             0.702          0.704              0.703           0.704
+unlist(fit_liml$diagnostics$anderson_rubin_overid[
+  c("lr_stat", "lr_p", "lin_stat", "lin_p")])
+#>   lr_stat      lr_p  lin_stat     lin_p 
+#> 0.7020291 0.7039735 0.7026052 0.7037708
 ```
 
 ## Weak-instrument-robust inference
@@ -670,11 +667,9 @@ every IV model:
 
 ``` r
 
-glance(fit_2sls)[, c("stock_wright_stat", "stock_wright_p")]
-#> # A tibble: 1 × 2
-#>   stock_wright_stat stock_wright_p
-#>               <dbl>          <dbl>
-#> 1              1.85          0.603
+unlist(fit_2sls$diagnostics$stock_wright[c("stat", "p")])
+#>      stat         p 
+#> 1.8537059 0.6033182
 ```
 
 ### When instruments are genuinely weak
@@ -723,6 +718,9 @@ summary(fit_weak)
 #> Wald chi2(12):  4.4 (p = 0.0000)
 #> Root MSE:       1.1676 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(2) = 5.90 (p = 0.0524)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           2.72 
 #>   Kleibergen-Paap rk Wald F:     2.93 
@@ -733,17 +731,14 @@ summary(fit_weak)
 #>      20%  maximal IV size       8.75 
 #>      25%  maximal IV size       7.25 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(2) = 5.90 (p = 0.0524)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(1) = 1.56 (p = 0.2111)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(2,744) = 46.95 (p < 2.2e-16)
 #>   Anderson-Rubin Wald Chi-sq(2) = 95.66 (p < 2.2e-16)
 #>   Stock-Wright LM S Chi-sq(2) = 71.33 (p = 0.0000)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(1) = 1.56 (p = 0.2111)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 56.06 (p = 0.0000)
@@ -787,11 +782,9 @@ specification with `redundant`:
 
 fit_redund <- ivreg2(weak_form, data = griliches, vcov = "robust",
                      redundant = "mrt")
-glance(fit_redund)[, c("redundancy_stat", "redundancy_p")]
-#> # A tibble: 1 × 2
-#>   redundancy_stat redundancy_p
-#>             <dbl>        <dbl>
-#> 1         0.00176        0.967
+unlist(fit_redund$diagnostics$redundancy[c("stat", "p")])
+#>        stat           p 
+#> 0.001759138 0.966544867
 ```
 
 The LM statistic is essentially zero (p = 0.97), the published result:
@@ -1007,6 +1000,9 @@ summary(fit_iv_2way)
 #> Wald chi2(2):  27.7 (p = 0.0000)
 #> Root MSE:       0.1840 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(2) = 12.14 (p = 0.0023)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           4766.55 
 #>   Kleibergen-Paap rk Wald F:     275.63 
@@ -1017,17 +1013,14 @@ summary(fit_iv_2way)
 #>      20%  maximal IV size       8.75 
 #>      25%  maximal IV size       7.25 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(2) = 12.14 (p = 0.0023)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(1) = 0.94 (p = 0.3325)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(2,28) = 27.10 (p = 0.0000)
 #>   Anderson-Rubin Wald Chi-sq(2) = 56.26 (p = 0.0000)
 #>   Stock-Wright LM S Chi-sq(2) = 12.43 (p = 0.0020)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(1) = 0.94 (p = 0.3325)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.09 (p = 0.7636)

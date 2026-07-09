@@ -150,6 +150,9 @@ summary(fit_iv_hac)
 #> Wald chi2(1):  2.4 (p = 0.1266)
 #> Root MSE:       2.0145 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(3) = 7.23 (p = 0.0649)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           21.01 
 #>   Kleibergen-Paap rk Wald F:     25.63 
@@ -165,17 +168,14 @@ summary(fit_iv_hac)
 #>      20%  maximal IV relative bias   6.46 
 #>      30%  maximal IV relative bias   5.39 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(3) = 7.23 (p = 0.0649)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(2) = 7.53 (p = 0.0231)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(3,42) = 6.92 (p = 0.0007)
 #>   Anderson-Rubin Wald Chi-sq(3) = 22.75 (p = 0.0000)
 #>   Stock-Wright LM S Chi-sq(3) = 6.88 (p = 0.0758)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(2) = 7.53 (p = 0.0231)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.57 (p = 0.4500)
@@ -308,6 +308,9 @@ summary(fit_ab)
 #> Wald chi2(3):  61.1 (p < 2.2e-16)
 #> Root MSE:       0.5602 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(4) = 29.79 (p = 0.0000)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           1.64 
 #>   Kleibergen-Paap rk Wald F:     10.73 
@@ -318,17 +321,14 @@ summary(fit_ab)
 #>      20%  maximal IV relative bias   5.35 
 #>      30%  maximal IV relative bias   4.40 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(4) = 29.79 (p = 0.0000)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(3) = 7.54 (p = 0.0565)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(6,139) = 12.42 (p = 0.0000)
 #>   Anderson-Rubin Wald Chi-sq(6) = 75.69 (p = 0.0000)
 #>   Stock-Wright LM S Chi-sq(6) = 51.94 (p = 0.0000)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(3) = 7.54 (p = 0.0565)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(3) = 2.02 (p = 0.5690)
@@ -665,6 +665,9 @@ summary(fit_gmm)
 #> Wald chi2(1):  2.5 (p = 0.1185)
 #> Root MSE:       0.5668 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(4) = 7.95 (p = 0.0933)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           22.58 
 #>   Kleibergen-Paap rk Wald F:     7.36 
@@ -680,17 +683,14 @@ summary(fit_gmm)
 #>      20%  maximal IV relative bias   6.71 
 #>      30%  maximal IV relative bias   5.34 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(4) = 7.95 (p = 0.0933)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(3) = 3.57 (p = 0.3119)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(4,153) = 1.41 (p = 0.2343)
 #>   Anderson-Rubin Wald Chi-sq(4) = 5.81 (p = 0.2137)
 #>   Stock-Wright LM S Chi-sq(4) = 3.18 (p = 0.5278)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(3) = 3.57 (p = 0.3119)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 1.03 (p = 0.3112)
@@ -745,6 +745,9 @@ summary(fit_cue)
 #> Wald chi2(1):  0.6 (p = 0.4577)
 #> Root MSE:       0.5881 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(4) = 7.95 (p = 0.0933)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           22.58 
 #>   Kleibergen-Paap rk Wald F:     7.36 
@@ -755,17 +758,14 @@ summary(fit_cue)
 #>      20%  maximal LIML size      3.30 
 #>      25%  maximal LIML size      2.98 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(4) = 7.95 (p = 0.0933)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(3) = 2.79 (p = 0.4246)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(4,153) = 1.41 (p = 0.2343)
 #>   Anderson-Rubin Wald Chi-sq(4) = 5.81 (p = 0.2137)
 #>   Stock-Wright LM S Chi-sq(4) = 3.18 (p = 0.5278)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(3) = 2.79 (p = 0.4246)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 1.03 (p = 0.3112)
@@ -997,16 +997,16 @@ corrected matrix, where Stata performs the same correction silently:
 fit_psda <- ivreg2(psd_formula, data = wagepan, dkraay = 2,
                    kernel = "truncated", tvar = "year", ivar = "nr",
                    psd = "psda")
-#> Warning: Non-positive-semidefinite matrix: 2 negative eigenvalues corrected via
-#> psda.
-#> Warning: Non-positive-semidefinite matrix: 2 negative eigenvalues corrected via
-#> psda.
+#> Warning: The covariance matrix was not positive semidefinite; 2 negative
+#> eigenvalues corrected via the 'psda' method.
+#> Warning: The covariance matrix was not positive semidefinite; 2 negative
+#> eigenvalues corrected via the 'psda' method.
 #> Warning: Hansen J statistic not computed; singular moment covariance or Hessian
 #> matrix.
-#> Warning: Non-positive-semidefinite matrix: 2 negative eigenvalues corrected via
-#> psda.
-#> Warning: Non-positive-semidefinite matrix: 1 negative eigenvalue corrected via
-#> psda.
+#> Warning: The covariance matrix was not positive semidefinite; 2 negative
+#> eigenvalues corrected via the 'psda' method.
+#> Warning: The covariance matrix was not positive semidefinite; 1 negative
+#> eigenvalue corrected via the 'psda' method.
 min(eigen(fit_psda$S, symmetric = TRUE)$values)
 #> [1] 5.038001e-14
 ```

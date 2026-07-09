@@ -13,6 +13,8 @@ tight numerical tolerances.
 
 Useful links:
 
+- <https://restatr.com/ivreg2r/>
+
 - <https://github.com/restatr/ivreg2r>
 
 - Report bugs at <https://github.com/restatr/ivreg2r/issues>

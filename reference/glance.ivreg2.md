@@ -1,7 +1,8 @@
 # Glance at an ivreg2 object
 
-Returns a single-row tibble of model-level summary statistics and
-diagnostic test results.
+Returns a single-row tibble of model-level summary statistics and the
+headline IV diagnostics. The column set is deliberately compact so that
+table tools such as modelsummary render a sensible default.
 
 ## Usage
 
@@ -18,9 +19,9 @@ glance(x, diagnostics = TRUE, ...)
 
 - diagnostics:
 
-  Logical: include IV diagnostic test columns? Default `TRUE`. Set to
-  `FALSE` for a compact summary without test statistics. Follows the
-  same convention as broom's `glance.ivreg()`.
+  Logical: include the headline IV diagnostic columns? Default `TRUE`.
+  Set to `FALSE` for a goodness-of-fit summary without the test
+  statistics. Follows the same convention as broom's `glance.ivreg()`.
 
 - ...:
 
@@ -31,52 +32,42 @@ glance(x, diagnostics = TRUE, ...)
 A single-row
 [`tibble::tibble()`](https://tibble.tidyverse.org/reference/tibble.html).
 
-**Always present** (33 columns): `r.squared`, `adj.r.squared`, `sigma`,
-`statistic`, `p.value`, `df`, `df.residual`, `nobs`, `vcov_type`,
-`small`, `weight_type`, `method`, `lambda`, `kclass_value`,
-`fuller_parameter`, `coviv`, `center`, `psd`, `kernel`, `bw`, `kiefer`,
-`dkraay`, `n_clusters1`, `n_clusters2`, `cue_convergence`, `partial_ct`,
-`yy`, `yyc`, `rankxx`, `rankzz`, `condxx`, `condzz`, `ll`.
+**Always present** (9 columns): `r.squared`, `adj.r.squared`, `sigma`,
+`statistic` (model F or Wald chi-squared), `p.value`, `df` (model
+numerator degrees of freedom), `df.residual`, `nobs`, `vcov_type`.
 
-**When `diagnostics = TRUE`** (default, 24 additional columns):
-`weak_id_stat`, `weak_id_robust_stat`, `underid_stat`, `underid_p`,
-`overid_stat`, `overid_p`, `ar_overid_lr_stat`, `ar_overid_lr_p`,
-`ar_overid_lin_stat`, `ar_overid_lin_p`, `ar_overid_df`,
-`endogeneity_stat`, `endogeneity_p`, `stock_wright_stat`,
-`stock_wright_p`, `stock_wright_df`, `orthog_stat`, `orthog_p`,
-`redundancy_stat`, `redundancy_p`, `rf_f_stat`, `rf_f_p`, `ccev_min`,
-`cdev_min`.
+**When `diagnostics = TRUE`** (default, 6 additional columns): the
+headline IV specification tests — `weak_id_stat` (Cragg-Donald Wald F),
+`weak_id_robust_stat` (Kleibergen-Paap rk Wald F), `underid_stat` and
+`underid_p` (underidentification), `overid_stat` and `overid_p`
+(Sargan/Hansen J overidentification).
+
+The remaining stored quantities and configuration flags are **not** in
+[`glance()`](https://generics.r-lib.org/reference/glance.html) — this
+keeps the goodness-of-fit block usable in rendered tables. They remain
+available as named elements on the fitted object: the estimation
+`method`, `lambda`/`kclass_value`/`fuller_parameter`, `coviv`, `center`,
+`psd`, `kernel`/`bw`, `kiefer`, `dkraay`, `sw`, cluster counts,
+`cue_convergence`, `partial_ct`, `small`, the cross-products `yy`/`yyc`,
+ranks and condition numbers (`rank`, `rankzz`, `condxx`, `condzz`), the
+log-likelihood `ll`, and the full diagnostic list `x$diagnostics`
+(endogeneity, orthogonality, redundancy, Anderson-Rubin, Stock-Wright,
+and the Cragg-Donald/Kleibergen-Paap eigenvalues).
 
 ## Details
 
-[`glance()`](https://generics.r-lib.org/reference/glance.html) always
-returns the same columns for a given value of the `diagnostics`
-argument, using `NA` for metrics that do not apply to the fitted model.
+[`glance()`](https://generics.r-lib.org/reference/glance.html) returns a
+fixed set of columns for a given value of `diagnostics`, using `NA` for
+metrics that do not apply to the fitted model. All diagnostic columns
+are `NA` for OLS models (single-part formula). `overid_stat` and
+`overid_p` are also `NA` when the model is exactly identified (the
+number of excluded instruments equals the number of endogenous
+regressors), and `weak_id_robust_stat` is `NA` under `vcov = "iid"` (the
+Cragg-Donald F in `weak_id_stat` is reported instead of the
+Kleibergen-Paap F).
 
-The `small` column indicates whether finite-sample corrections were
-applied. When `small = TRUE`, test statistics are F-distributed; when
-`small = FALSE`, they are chi-squared.
-
-When `diagnostics = TRUE` (default), the output includes IV
-specification tests. Columns that are conditionally `NA`:
-
-- All diagnostic columns are `NA` for OLS models (1-part formula).
-
-- `overid_stat`, `overid_p`: also `NA` when exactly identified (number
-  of excluded instruments equals number of endogenous regressors).
-
-- `weak_id_robust_stat`: `NA` when `vcov = "iid"` (Cragg-Donald F is
-  used instead of Kleibergen-Paap).
-
-- `ar_overid_*`: only non-`NA` for `method = "liml"` with
-  `vcov = "iid"`.
-
-- `orthog_*`, `redundancy_*`: `NA` unless `orthog` or `redundant` was
-  specified.
-
-- `rf_f_*`: `NA` unless `reduced_form = "rf"`.
-
-Set `diagnostics = FALSE` for a compact summary without test statistics.
+Set `diagnostics = FALSE` for a compact goodness-of-fit summary without
+the IV test columns.
 
 ## Examples
 
@@ -88,30 +79,21 @@ fit <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
 
 # Full output with diagnostics
 glance(fit)
-#> # A tibble: 1 × 58
+#> # A tibble: 1 × 15
 #>   r.squared adj.r.squared sigma statistic  p.value    df df.residual  nobs
 #>       <dbl>         <dbl> <dbl>     <dbl>    <dbl> <int>       <int> <int>
 #> 1     0.156         0.150 0.664      6.02 0.000508     3         424   428
-#> # ℹ 50 more variables: vcov_type <chr>, small <lgl>, weight_type <chr>,
-#> #   method <chr>, lambda <dbl>, kclass_value <dbl>, fuller_parameter <dbl>,
-#> #   coviv <lgl>, center <lgl>, psd <chr>, kernel <chr>, bw <dbl>, kiefer <lgl>,
-#> #   dkraay <dbl>, sw <lgl>, n_clusters1 <int>, n_clusters2 <int>,
-#> #   cue_convergence <int>, partial_ct <int>, yy <dbl>, yyc <dbl>, rankxx <int>,
-#> #   rankzz <int>, condxx <dbl>, condzz <dbl>, ll <dbl>, weak_id_stat <dbl>,
-#> #   weak_id_robust_stat <dbl>, underid_stat <dbl>, underid_p <dbl>, …
+#> # ℹ 7 more variables: vcov_type <chr>, weak_id_stat <dbl>,
+#> #   weak_id_robust_stat <dbl>, underid_stat <dbl>, underid_p <dbl>,
+#> #   overid_stat <dbl>, overid_p <dbl>
 
 # Compact output without diagnostics
 glance(fit, diagnostics = FALSE)
-#> # A tibble: 1 × 34
+#> # A tibble: 1 × 9
 #>   r.squared adj.r.squared sigma statistic  p.value    df df.residual  nobs
 #>       <dbl>         <dbl> <dbl>     <dbl>    <dbl> <int>       <int> <int>
 #> 1     0.156         0.150 0.664      6.02 0.000508     3         424   428
-#> # ℹ 26 more variables: vcov_type <chr>, small <lgl>, weight_type <chr>,
-#> #   method <chr>, lambda <dbl>, kclass_value <dbl>, fuller_parameter <dbl>,
-#> #   coviv <lgl>, center <lgl>, psd <chr>, kernel <chr>, bw <dbl>, kiefer <lgl>,
-#> #   dkraay <dbl>, sw <lgl>, n_clusters1 <int>, n_clusters2 <int>,
-#> #   cue_convergence <int>, partial_ct <int>, yy <dbl>, yyc <dbl>, rankxx <int>,
-#> #   rankzz <int>, condxx <dbl>, condzz <dbl>, ll <dbl>
+#> # ℹ 1 more variable: vcov_type <chr>
 
 # Extract specific diagnostics
 glance(fit)[, c("overid_stat", "overid_p")]
@@ -125,6 +107,24 @@ glance(fit)[, c("weak_id_stat", "weak_id_robust_stat")]
 #>          <dbl>               <dbl>
 #> 1         4.34                5.02
 
+# Diagnostics dropped from glance() remain on the fitted object
+fit$diagnostics$endogeneity
+#> $stat
+#> [1] 0.001299792
+#> 
+#> $p
+#> [1] 0.9712404
+#> 
+#> $df
+#> [1] 1
+#> 
+#> $test_name
+#> [1] "Endogeneity"
+#> 
+#> $tested_vars
+#> [1] "educ"
+#> 
+
 # \donttest{
 # Compare Sargan (IID) vs Hansen J (robust)
 fit_iid <- ivreg2(lwage ~ exper + expersq | educ |
@@ -137,5 +137,42 @@ data.frame(
 #>     vcov    overid  overid_p
 #> 1    iid 0.7015124 0.7041554
 #> 2 robust 0.5138488 0.7734267
+
+# A compact modelsummary table built from the curated glance() columns
+if (requireNamespace("modelsummary", quietly = TRUE)) {
+  modelsummary::modelsummary(
+    list("2SLS" = fit),
+    statistic = "std.error",
+    gof_map = c("nobs", "r.squared", "weak_id_stat", "overid_stat")
+  )
+}
+#> 
+#> +--------------+---------+
+#> |              | 2SLS    |
+#> +==============+=========+
+#> | (Intercept)  | -0.385  |
+#> +--------------+---------+
+#> |              | (1.060) |
+#> +--------------+---------+
+#> | educ         | 0.096   |
+#> +--------------+---------+
+#> |              | (0.086) |
+#> +--------------+---------+
+#> | exper        | 0.042   |
+#> +--------------+---------+
+#> |              | (0.017) |
+#> +--------------+---------+
+#> | expersq      | -0.001  |
+#> +--------------+---------+
+#> |              | (0.000) |
+#> +--------------+---------+
+#> | Num.Obs.     | 428     |
+#> +--------------+---------+
+#> | R2           | 0.156   |
+#> +--------------+---------+
+#> | weak_id_stat | 4       |
+#> +--------------+---------+
+#> | overid_stat  | 1       |
+#> +--------------+---------+ 
 # }
 ```

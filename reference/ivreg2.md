@@ -583,6 +583,9 @@ summary(fit)
 #> Wald chi2(1):  2.8 (p = 0.0929)
 #> Root MSE:       0.6878 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(1) = 73.86 (p < 2.2e-16)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           88.84 
 #>   Stock-Yogo critical values (IV size):
@@ -591,16 +594,13 @@ summary(fit)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(1) = 73.86 (p < 2.2e-16)
+#> Overidentification test (Sargan):  excluded (exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(1,426) = 2.59 (p = 0.1086)
 #>   Anderson-Rubin Wald Chi-sq(1) = 2.60 (p = 0.1070)
 #>   Stock-Wright LM S Chi-sq(1) = 2.58 (p = 0.1081)
-#> 
-#> Overidentification test (Sargan):  excluded (exactly identified)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 2.47 (p = 0.1158)
@@ -646,6 +646,9 @@ summary(fit_overid)
 #> Wald chi2(3):  7.5 (p = 0.0001)
 #> Root MSE:       0.6638 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(3) = 12.82 (p = 0.0051)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           4.34 
 #>   Stock-Yogo critical values (IV size):
@@ -659,17 +662,14 @@ summary(fit_overid)
 #>      20%  maximal IV relative bias   6.46 
 #>      30%  maximal IV relative bias   5.39 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(3) = 12.82 (p = 0.0051)
+#> Overidentification test (Sargan):
+#>   Chi-sq(2) = 0.70 (p = 0.7042)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)
 #>   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)
 #>   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)
-#> 
-#> Overidentification test (Sargan):
-#>   Chi-sq(2) = 0.70 (p = 0.7042)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.02 (p = 0.8899)
@@ -715,6 +715,9 @@ summary(fit_robust)
 #> Wald chi2(3):  6.0 (p = 0.0005)
 #> Root MSE:       0.6638 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(3) = 11.23 (p = 0.0105)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           4.34 
 #>   Kleibergen-Paap rk Wald F:     5.02 
@@ -730,17 +733,14 @@ summary(fit_robust)
 #>      20%  maximal IV relative bias   6.46 
 #>      30%  maximal IV relative bias   5.39 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(3) = 11.23 (p = 0.0105)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(2) = 0.51 (p = 0.7734)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(3,422) = 0.58 (p = 0.6287)
 #>   Anderson-Rubin Wald Chi-sq(3) = 1.76 (p = 0.6229)
 #>   Stock-Wright LM S Chi-sq(3) = 1.66 (p = 0.6454)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(2) = 0.51 (p = 0.7734)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.00 (p = 0.9712)
@@ -793,6 +793,9 @@ summary(fit_liml)
 #> Wald chi2(3):  7.5 (p = 0.0001)
 #> Root MSE:       0.6638 
 #> 
+#> Underidentification test (Anderson canon. corr. LM statistic):
+#>   Chi-sq(3) = 12.82 (p = 0.0051)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           4.34 
 #>   Stock-Yogo critical values (LIML size):
@@ -801,21 +804,18 @@ summary(fit_liml)
 #>      20%  maximal LIML size      3.69 
 #>      25%  maximal LIML size      3.32 
 #> 
-#> Underidentification test (Anderson canon. corr. LM statistic):
-#>   Chi-sq(3) = 12.82 (p = 0.0051)
-#> 
-#> Weak-instrument-robust inference:
-#>   H0: B1=0 and orthogonality conditions are valid
-#>   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)
-#>   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)
-#>   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)
-#> 
 #> Overidentification test (Sargan):
 #>   Chi-sq(2) = 0.70 (p = 0.7042)
 #> 
 #> Anderson-Rubin overidentification:
 #>   LR Chi-sq(2) = 0.702 (p = 0.7040)
 #>   Linearized Chi-sq(2) = 0.703 (p = 0.7038)
+#> 
+#> Weak-instrument-robust inference:
+#>   H0: B1=0 and orthogonality conditions are valid
+#>   Anderson-Rubin Wald F(3,422) = 0.61 (p = 0.6076)
+#>   Anderson-Rubin Wald Chi-sq(3) = 1.86 (p = 0.6016)
+#>   Stock-Wright LM S Chi-sq(3) = 1.85 (p = 0.6033)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.02 (p = 0.8899)
@@ -897,6 +897,9 @@ summary(fit_cl)
 #> F(6, 6):     2398.4 (p = 0.0000)
 #> Root MSE:       0.3751 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(3) = 5.86 (p = 0.1188)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           13.75 
 #>   Kleibergen-Paap rk Wald F:     38.47 
@@ -912,16 +915,13 @@ summary(fit_cl)
 #>      20%  maximal IV relative bias   6.46 
 #>      30%  maximal IV relative bias   5.39 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(3) = 5.86 (p = 0.1188)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(2) =  NA (p = NA)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(3,6) = 87.30 (p = 0.0000)
 #>   Anderson-Rubin Wald Chi-sq(3) = 308.81 (p < 2.2e-16)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(2) =  NA (p = NA)
 #> 
 #> Endogeneity test:  not computed (rank-deficient S)
 #> 
@@ -977,6 +977,9 @@ summary(fit_gmm)
 #> Wald chi2(12):  49.7 (p < 2.2e-16)
 #> Root MSE:       0.3274 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(4) = 41.54 (p = 0.0000)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           13.79 
 #>   Kleibergen-Paap rk Wald F:     12.17 
@@ -992,17 +995,14 @@ summary(fit_gmm)
 #>      20%  maximal IV relative bias   6.71 
 #>      30%  maximal IV relative bias   5.34 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(4) = 41.54 (p = 0.0000)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(3) = 74.16 (p = 0.0000)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(4,742) = 25.77 (p < 2.2e-16)
 #>   Anderson-Rubin Wald Chi-sq(4) = 105.31 (p < 2.2e-16)
 #>   Stock-Wright LM S Chi-sq(4) = 76.06 (p = 0.0000)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(3) = 74.16 (p = 0.0000)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 0.45 (p = 0.5021)

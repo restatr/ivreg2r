@@ -163,6 +163,9 @@ summary(fit)
 #> Wald chi2(12):  4.4 (p = 0.0000)
 #> Root MSE:       1.1676 
 #> 
+#> Underidentification test (Kleibergen-Paap rk LM statistic):
+#>   Chi-sq(2) = 5.90 (p = 0.0524)
+#> 
 #> Weak identification test:
 #>   Cragg-Donald Wald F:           2.72 
 #>   Kleibergen-Paap rk Wald F:     2.93 
@@ -173,17 +176,14 @@ summary(fit)
 #>      20%  maximal IV size       8.75 
 #>      25%  maximal IV size       7.25 
 #> 
-#> Underidentification test (Kleibergen-Paap rk LM statistic):
-#>   Chi-sq(2) = 5.90 (p = 0.0524)
+#> Overidentification test (Hansen J):
+#>   Chi-sq(1) = 1.56 (p = 0.2111)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
 #>   Anderson-Rubin Wald F(2,744) = 46.95 (p < 2.2e-16)
 #>   Anderson-Rubin Wald Chi-sq(2) = 95.66 (p < 2.2e-16)
 #>   Stock-Wright LM S Chi-sq(2) = 71.33 (p = 0.0000)
-#> 
-#> Overidentification test (Hansen J):
-#>   Chi-sq(1) = 1.56 (p = 0.2111)
 #> 
 #> Endogeneity test:
 #>   Chi-sq(1) = 56.06 (p = 0.0000)
