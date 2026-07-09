@@ -115,20 +115,15 @@ test_that("orthog under LIML: C = LIML Hansen J - fixed-S restricted minimum (j_
                fit$diagnostics$overid$stat - J_r, tolerance = 1e-10)
 })
 
-test_that("orthog appears in glance output", {
+test_that("orthog is stored on the fitted object", {
   fit <- ivreg2(gril_formula, data = griliches, orthog = c("age", "mrt"))
-  g <- glance(fit)
-  expect_true("orthog_stat" %in% names(g))
-  expect_true("orthog_p" %in% names(g))
-  expect_false(is.na(g$orthog_stat))
-  expect_false(is.na(g$orthog_p))
+  expect_false(is.na(fit$diagnostics$orthog$stat))
+  expect_false(is.na(fit$diagnostics$orthog$p))
 })
 
-test_that("orthog is NA in glance when not requested", {
+test_that("orthog is NULL when not requested", {
   fit <- ivreg2(gril_formula, data = griliches)
-  g <- glance(fit)
-  expect_true(is.na(g$orthog_stat))
-  expect_true(is.na(g$orthog_p))
+  expect_null(fit$diagnostics$orthog)
 })
 
 

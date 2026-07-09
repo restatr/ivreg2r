@@ -141,30 +141,30 @@ test_that("ccev/cdev are NULL when noid = TRUE", {
   expect_null(fit$diagnostics$cdev)
 })
 
-test_that("glance includes new stored results columns", {
+test_that("new stored results columns are stored on the fitted object", {
   data(card)
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4 + nearc2,
                 data = card)
-  gl <- glance(fit, diagnostics = TRUE)
-  expect_true("yy" %in% names(gl))
-  expect_true("yyc" %in% names(gl))
-  expect_true("rankxx" %in% names(gl))
-  expect_true("rankzz" %in% names(gl))
-  expect_true("condxx" %in% names(gl))
-  expect_true("condzz" %in% names(gl))
-  expect_true("ll" %in% names(gl))
-  expect_true("ccev_min" %in% names(gl))
-  expect_true("cdev_min" %in% names(gl))
-  expect_false(is.na(gl$ccev_min))
-  expect_false(is.na(gl$cdev_min))
+  expect_false(is.null(fit$yy))
+  expect_false(is.null(fit$yyc))
+  expect_false(is.null(fit$rank))
+  expect_false(is.null(fit$rankzz))
+  expect_false(is.null(fit$condxx))
+  expect_false(is.null(fit$condzz))
+  expect_false(is.null(fit$ll))
+  # Assert non-NULL explicitly: min(NULL) returns Inf (not NA), so an
+  # is.na() check alone would pass silently if these ever regressed to NULL.
+  expect_false(is.null(fit$diagnostics$ccev))
+  expect_false(is.null(fit$diagnostics$cdev))
+  expect_true(all(is.finite(fit$diagnostics$ccev)))
+  expect_true(all(is.finite(fit$diagnostics$cdev)))
 })
 
-test_that("glance OLS has condzz = condxx and ccev/cdev are NA", {
+test_that("OLS has condzz = condxx and ccev/cdev are NULL", {
   data(card)
   fit <- ivreg2(lwage ~ educ + exper, data = card)
-  gl <- glance(fit, diagnostics = TRUE)
-  expect_equal(gl$condzz, gl$condxx)
-  expect_equal(gl$rankzz, gl$rankxx)
-  expect_true(is.na(gl$ccev_min))
-  expect_true(is.na(gl$cdev_min))
+  expect_equal(fit$condzz, fit$condxx)
+  expect_equal(fit$rankzz, fit$rank)
+  expect_null(fit$diagnostics$ccev)
+  expect_null(fit$diagnostics$cdev)
 })

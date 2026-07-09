@@ -626,7 +626,7 @@ test_that("glance works for gmmw method", {
                 data = card, vcov = "robust", wmatrix = diag(7))
   g <- glance(fit)
   expect_equal(nrow(g), 1L)
-  expect_equal(g$method, "gmmw")
+  expect_equal(fit$method, "gmmw")
   expect_true(!is.na(g$overid_stat))
 })
 

@@ -185,8 +185,9 @@
          tested_vars = redundant_vars)
 
   }, error = function(e) {
-    warning("Redundancy test computation failed: ", conditionMessage(e),
-            call. = FALSE)
+    warning("The instrument redundancy test could not be computed and is ",
+            "reported as NA, usually because the instrument set is ",
+            "rank-deficient or severely collinear.", call. = FALSE)
     na_result
   })
 

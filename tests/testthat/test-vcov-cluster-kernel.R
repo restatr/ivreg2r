@@ -409,15 +409,12 @@ test_that("Thompson two-way sets vcov_type to CL", {
   expect_equal(fit$bw, 3)
 })
 
-test_that("glance includes kiefer and dkraay columns", {
+test_that("kiefer and dkraay are stored on the fitted object", {
   fit <- ivreg2(
     lwage ~ exper + expersq + married + union | hours | educ + black,
     data = wagepan, dkraay = 3, tvar = "year", ivar = "nr"
   )
-  gl <- glance(fit)
-  expect_true("kiefer" %in% names(gl))
-  expect_true("dkraay" %in% names(gl))
-  expect_equal(gl$dkraay, 3)
+  expect_equal(fit$dkraay, 3)
 })
 
 test_that("Thompson normalizes cluster order (ivar first)", {

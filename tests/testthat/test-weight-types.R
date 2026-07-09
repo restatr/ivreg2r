@@ -482,20 +482,18 @@ for (cell in list(
 
 
 # ============================================================================
-# Section 7: glance includes weight_type
+# Section 7: weight_type stored on the fitted object
 # ============================================================================
 
-test_that("glance includes weight_type for fweight", {
+test_that("weight_type is stored on the fitted object for fweight", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card_wt, weights = fwt, weight_type = "fweight")
-  gl <- glance(fit)
-  expect_equal(gl$weight_type, "fweight")
+  expect_equal(fit$weight_type, "fweight")
 })
 
-test_that("glance includes weight_type='aweight' by default", {
+test_that("weight_type='aweight' is stored on the fitted object by default", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars)
-  gl <- glance(fit)
-  expect_equal(gl$weight_type, "aweight")
+  expect_equal(fit$weight_type, "aweight")
 })
 
 test_that("weight_type is stored in fitted object", {

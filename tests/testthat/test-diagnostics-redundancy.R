@@ -89,20 +89,15 @@ test_that("duplicate redundant entries are deduplicated with warning", {
                fit_single$diagnostics$redundancy$df)
 })
 
-test_that("redundancy appears in glance output", {
+test_that("redundancy is stored on the fitted object", {
   fit <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt")
-  g <- glance(fit)
-  expect_true("redundancy_stat" %in% names(g))
-  expect_true("redundancy_p" %in% names(g))
-  expect_false(is.na(g$redundancy_stat))
-  expect_false(is.na(g$redundancy_p))
+  expect_false(is.na(fit$diagnostics$redundancy$stat))
+  expect_false(is.na(fit$diagnostics$redundancy$p))
 })
 
-test_that("redundancy is NA in glance when not requested", {
+test_that("redundancy is NULL when not requested", {
   fit <- ivreg2(gril_weak_formula, data = griliches)
-  g <- glance(fit)
-  expect_true(is.na(g$redundancy_stat))
-  expect_true(is.na(g$redundancy_p))
+  expect_null(fit$diagnostics$redundancy)
 })
 
 

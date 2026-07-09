@@ -404,9 +404,8 @@ test_that("summary prints partial footer", {
 # Broom methods with partial (griliches)
 # ============================================================================
 
-test_that("glance includes partial_ct", {
-  gl <- glance(fit_basic)
-  expect_equal(gl$partial_ct, 7L)
+test_that("partial_ct is stored on the fitted object", {
+  expect_equal(fit_basic$partial_ct, 7L)
 })
 
 test_that("tidy works with partial model", {

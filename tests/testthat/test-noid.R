@@ -73,7 +73,7 @@ test_that("glance() returns NA for suppressed diagnostics with noid = TRUE", {
   expect_true(is.na(gl$underid_p))
   # Non-suppressed should be non-NA
   expect_false(is.na(gl$overid_stat))
-  expect_false(is.na(gl$endogeneity_stat))
+  expect_false(is.na(fit$diagnostics$endogeneity$stat))
 })
 
 # ============================================================================

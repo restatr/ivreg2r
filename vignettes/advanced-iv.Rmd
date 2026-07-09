@@ -157,7 +157,7 @@ On this tiny (N = `r nobs(fit_k_cue)`) problem the cross-platform agreement is o
 
 ## Instrument-validity tests
 
-The tests below follow the escalating order of the help file's testing examples: a joint overidentification test, then a test of a subset of instruments (the help file's Griliches example), then a test of a single regressor's endogeneity, then the empty-endogenous form for an included regressor, and finally the LIML overidentification statistics. Every automatic test lives in `fit$diagnostics`, a named list whose elements `glance()` exposes as columns; the chunks below use whichever access route reads better.
+The tests below follow the escalating order of the help file's testing examples: a joint overidentification test, then a test of a subset of instruments (the help file's Griliches example), then a test of a single regressor's endogeneity, then the empty-endogenous form for an included regressor, and finally the LIML overidentification statistics. Every automatic test lives in `fit$diagnostics`, a named list; `glance()` additionally surfaces the headline tests (weak identification, underidentification, overidentification) as columns. The chunks below read each statistic from `fit$diagnostics`, dropping into `glance()` where a column is available and reads better.
 
 ### Overidentification
 
@@ -177,7 +177,7 @@ fit_orthog <- ivreg2(
     med + kww + age + mrt,
   data = griliches, method = "gmm2s", orthog = c("age", "mrt")
 )
-glance(fit_orthog)[, c("orthog_stat", "orthog_p")]
+unlist(fit_orthog$diagnostics$orthog[c("stat", "p")])
 ```
 
 The null is that `age` and `mrt` satisfy the exclusion restrictions given that the remaining instruments do. The C-statistic rejects emphatically, so the data are inconsistent with treating `age` and `mrt` as valid exclusions in this equation. The same pair reappears below as Baum, Schaffer & Stillman's weak-instruments illustration. The equation must remain identified after the challenged instruments are dropped, and under robust or cluster-robust standard errors the test is a difference in Hansen J statistics rather than in Sargan statistics.
@@ -189,14 +189,14 @@ The `endog` argument tests whether a nominated endogenous regressor is in fact e
 ```{r endog}
 fit_endog <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     data = mroz_work, endog = "educ")
-glance(fit_endog)[, c("endogeneity_stat", "endogeneity_p")]
+unlist(fit_endog$diagnostics$endogeneity[c("stat", "p")])
 ```
 
 With a single endogenous regressor this coincides numerically with the endogeneity test that `ivreg2()` already reports for the baseline, so `endog` earns its keep only with two or more endogenous regressors, where it can test a subset:
 
 ```{r endog-identity}
-c(automatic = glance(fit_2sls)$endogeneity_stat,
-  endog_arg = glance(fit_endog)$endogeneity_stat)
+c(automatic = fit_2sls$diagnostics$endogeneity$stat,
+  endog_arg = fit_endog$diagnostics$endogeneity$stat)
 ```
 
 ### Testing an included regressor: the empty-endogenous form
@@ -218,8 +218,8 @@ Estimation is exactly OLS — the instruments play no role in the coefficients �
 Under LIML with i.i.d. errors the summary reports two further overidentification statistics. The Anderson-Rubin (1950) LR statistic is `N * log(lambda)`, and its linearized form is `N * (lambda - 1)`; both are chi-squared with `L - K` degrees of freedom under the null that the overidentifying restrictions hold. When `lambda` is close to 1 the three overidentification tests — Sargan, AR LR, and AR linearized — agree closely:
 
 ```{r ar-overid}
-glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
-                      "ar_overid_lin_stat", "ar_overid_lin_p")]
+unlist(fit_liml$diagnostics$anderson_rubin_overid[
+  c("lr_stat", "lr_p", "lin_stat", "lin_p")])
 ```
 
 ## Weak-instrument-robust inference
@@ -229,7 +229,7 @@ glance(fit_liml)[, c("ar_overid_lr_stat", "ar_overid_lr_p",
 The Stock-Wright (2000) S statistic is a weak-instrument-robust test of the joint null that the coefficients on the endogenous regressors are zero and the overidentifying restrictions hold. The Anderson-Rubin statistic tests the same null, and under it both are chi-squared with `L1` degrees of freedom, where `L1` is the number of excluded instruments: Anderson-Rubin is the Wald form of the test and S is the LM / GMM-distance form (Baum, Schaffer & Stillman, 2007, pp. 491--492). Unlike Wald tests on 2SLS coefficients, both keep correct size even when instruments are weak. The S statistic is the value of the CUE objective with the exogenous regressors partialled out, and it is computed for every IV model:
 
 ```{r stock-wright}
-glance(fit_2sls)[, c("stock_wright_stat", "stock_wright_p")]
+unlist(fit_2sls$diagnostics$stock_wright[c("stat", "p")])
 ```
 
 ### When instruments are genuinely weak
@@ -253,10 +253,10 @@ Redundancy is a separate question from validity: it asks whether an instrument a
 ```{r redundant}
 fit_redund <- ivreg2(weak_form, data = griliches, vcov = "robust",
                      redundant = "mrt")
-glance(fit_redund)[, c("redundancy_stat", "redundancy_p")]
+unlist(fit_redund$diagnostics$redundancy[c("stat", "p")])
 ```
 
-The LM statistic is essentially zero (p = `r round(glance(fit_redund)$redundancy_p, 2)`), the published result: `mrt` provides no useful information for identifying the coefficient on `iq`, so identification here rests on `age` alone. Redundancy is about efficiency rather than validity, and it is a conditional concept — an instrument redundant given one set of instruments may cease to be so given another.
+The LM statistic is essentially zero (p = `r round(fit_redund$diagnostics$redundancy$p, 2)`), the published result: `mrt` provides no useful information for identifying the coefficient on `iq`, so identification here rests on `age` alone. Redundancy is about efficiency rather than validity, and it is a conditional concept — an instrument redundant given one set of instruments may cease to be so given another.
 
 ### Building the S statistic by hand with `b0`
 

@@ -264,12 +264,9 @@ test_that("n_clusters1 and n_clusters2 are NULL for one-way clustering", {
   expect_null(fit_cl1$n_clusters2)
 })
 
-test_that("glance includes n_clusters1 and n_clusters2", {
-  gl <- glance(fit_cl2)
-  expect_true("n_clusters1" %in% names(gl))
-  expect_true("n_clusters2" %in% names(gl))
-  expect_equal(gl$n_clusters1, fit_cl2$n_clusters1)
-  expect_equal(gl$n_clusters2, fit_cl2$n_clusters2)
+test_that("n_clusters1 and n_clusters2 are stored on the fitted object", {
+  expect_false(is.null(fit_cl2$n_clusters1))
+  expect_false(is.null(fit_cl2$n_clusters2))
 })
 
 

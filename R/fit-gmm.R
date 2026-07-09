@@ -553,7 +553,11 @@
       }
 
       if (convergence != 0L) {
-        warning("CUE optimization did not converge.", call. = FALSE)
+        warning("CUE optimization did not converge, so the reported CUE ",
+                "estimates may be unreliable. A flat or ill-behaved GMM ",
+                "objective is the usual cause, often from weak instruments; ",
+                "check the weak-identification diagnostics and compare against ",
+                'two-step GMM (`method = "gmm2s"`).', call. = FALSE)
       }
     }
 

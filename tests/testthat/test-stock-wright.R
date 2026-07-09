@@ -74,21 +74,17 @@ test_that("HC0 and HC1 produce identical S stats", {
                fit1$diagnostics$stock_wright$p)
 })
 
-test_that("stock_wright appears in glance()", {
+test_that("stock_wright is stored on the fitted object", {
   fit <- ivreg2(lwage ~ exper + expersq | educ | age, data = mroz)
-  g <- glance(fit)
-  expect_true("stock_wright_stat" %in% names(g))
-  expect_true("stock_wright_p" %in% names(g))
-  expect_true("stock_wright_df" %in% names(g))
-  expect_equal(g$stock_wright_stat, fit$diagnostics$stock_wright$stat)
+  sw <- fit$diagnostics$stock_wright
+  expect_false(is.na(sw$stat))
+  expect_false(is.na(sw$p))
+  expect_false(is.na(sw$df))
 })
 
-test_that("glance() stock_wright columns are NA for OLS", {
+test_that("stock_wright is NULL on the fitted object for OLS", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars)
-  g <- glance(fit)
-  expect_true(is.na(g$stock_wright_stat))
-  expect_true(is.na(g$stock_wright_p))
-  expect_true(is.na(g$stock_wright_df))
+  expect_null(fit$diagnostics$stock_wright)
 })
 
 

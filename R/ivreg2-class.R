@@ -811,7 +811,6 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
 
   # --- Diagnostics (models with instruments) ---
   if ((is_iv || has_instruments) && !is.null(x$diagnostics)) {
-    cat("\n")
     .print_iv_diagnostics(x, digits)
   }
 
@@ -959,15 +958,31 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
 .print_iv_diagnostics <- function(x, digits) {
   diag <- x$diagnostics
 
-  # --- Weak identification ---
-  if (!is.null(diag$weak_id)) {
-    cat("Weak identification test:\n")
-    cat("  Cragg-Donald Wald F:          ",
-        formatC(diag$weak_id$stat, digits = 2, format = "f"), "\n")
+  # Diagnostics are printed in Stata's escalation order: underidentification
+  # (is the model identified at all?) -> weak identification (is it weakly
+  # identified?) -> overidentification (are the extra restrictions valid?),
+  # followed by the conditional extras.
+
+  # --- Underidentification ---
+  if (!is.null(diag$underid)) {
+    uid <- diag$underid
+    cat("\nUnderidentification test (", uid$test_name, "):\n", sep = "")
+    cat("  Chi-sq(", uid$df, ") = ",
+        formatC(uid$stat, digits = 2, format = "f"),
+        " (p ", .format_pval(uid$p), ")\n", sep = "")
   }
-  if (!is.null(diag$weak_id_robust)) {
-    cat("  Kleibergen-Paap rk Wald F:    ",
-        formatC(diag$weak_id_robust$stat, digits = 2, format = "f"), "\n")
+
+  # --- Weak identification ---
+  if (!is.null(diag$weak_id) || !is.null(diag$weak_id_robust)) {
+    cat("\nWeak identification test:\n")
+    if (!is.null(diag$weak_id)) {
+      cat("  Cragg-Donald Wald F:          ",
+          formatC(diag$weak_id$stat, digits = 2, format = "f"), "\n")
+    }
+    if (!is.null(diag$weak_id_robust)) {
+      cat("  Kleibergen-Paap rk Wald F:    ",
+          formatC(diag$weak_id_robust$stat, digits = 2, format = "f"), "\n")
+    }
   }
   # Stock-Yogo critical values
   if (!is.null(diag$weak_id_sy)) {
@@ -1035,39 +1050,6 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     cat("  Stock-Yogo critical values:   <not available>\n")
   }
 
-  # --- Underidentification ---
-  if (!is.null(diag$underid)) {
-    uid <- diag$underid
-    cat("\nUnderidentification test (", uid$test_name, "):\n", sep = "")
-    cat("  Chi-sq(", uid$df, ") = ",
-        formatC(uid$stat, digits = 2, format = "f"),
-        " (p ", .format_pval(uid$p), ")\n", sep = "")
-  }
-
-  # --- Weak-instrument-robust inference ---
-  ar <- diag$anderson_rubin
-  sw <- diag$stock_wright
-  if (!is.null(ar) || !is.null(sw)) {
-    cat("\nWeak-instrument-robust inference:\n")
-    cat("  H0: B1=0 and orthogonality conditions are valid\n")
-    if (!is.null(ar)) {
-      cat("  Anderson-Rubin Wald F(",
-          ar$f_df1, ",", ar$f_df2, ") = ",
-          formatC(ar$f_stat, digits = 2, format = "f"),
-          " (p ", .format_pval(ar$f_p), ")\n", sep = "")
-      cat("  Anderson-Rubin Wald Chi-sq(",
-          ar$chi2_df, ") = ",
-          formatC(ar$chi2_stat, digits = 2, format = "f"),
-          " (p ", .format_pval(ar$chi2_p), ")\n", sep = "")
-    }
-    if (!is.null(sw) && !is.na(sw$stat)) {
-      cat("  Stock-Wright LM S Chi-sq(",
-          sw$df, ") = ",
-          formatC(sw$stat, digits = 2, format = "f"),
-          " (p ", .format_pval(sw$p), ")\n", sep = "")
-    }
-  }
-
   # --- Overidentification ---
   if (!is.null(diag$overid)) {
     oid <- diag$overid
@@ -1094,6 +1076,30 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
       cat("  Linearized Chi-sq(", aro$df, ") = ",
           formatC(aro$lin_stat, digits = 3, format = "f"),
           " (p ", .format_pval(aro$lin_p), ")\n", sep = "")
+    }
+  }
+
+  # --- Weak-instrument-robust inference ---
+  ar <- diag$anderson_rubin
+  sw <- diag$stock_wright
+  if (!is.null(ar) || !is.null(sw)) {
+    cat("\nWeak-instrument-robust inference:\n")
+    cat("  H0: B1=0 and orthogonality conditions are valid\n")
+    if (!is.null(ar)) {
+      cat("  Anderson-Rubin Wald F(",
+          ar$f_df1, ",", ar$f_df2, ") = ",
+          formatC(ar$f_stat, digits = 2, format = "f"),
+          " (p ", .format_pval(ar$f_p), ")\n", sep = "")
+      cat("  Anderson-Rubin Wald Chi-sq(",
+          ar$chi2_df, ") = ",
+          formatC(ar$chi2_stat, digits = 2, format = "f"),
+          " (p ", .format_pval(ar$chi2_p), ")\n", sep = "")
+    }
+    if (!is.null(sw) && !is.na(sw$stat)) {
+      cat("  Stock-Wright LM S Chi-sq(",
+          sw$df, ") = ",
+          formatC(sw$stat, digits = 2, format = "f"),
+          " (p ", .format_pval(sw$p), ")\n", sep = "")
     }
   }
 

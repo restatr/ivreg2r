@@ -127,8 +127,11 @@
     z <- forwardsolve(t(R_chol), Rb)
     drop(crossprod(z))
   }, error = function(e) {
-    warning("Anderson-Rubin: RVR matrix is singular; returning NA.",
-            call. = FALSE)
+    warning("The Anderson-Rubin weak-instrument-robust statistic could not ",
+            "be computed and is reported as NA because its covariance matrix ",
+            "was singular (for example, too few clusters relative to the ",
+            "number of instruments, or near-collinear or degenerate ",
+            "residuals).", call. = FALSE)
     NA_real_
   })
 

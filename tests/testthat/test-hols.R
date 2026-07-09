@@ -402,8 +402,7 @@ test_that("summary/print/glance/predict work on a K1 = 0 fit", {
   expect_false(any(grepl("Instrumented:", out)))
   expect_false(any(grepl("Stock-Yogo", out)))
 
-  gl <- glance(fit)
-  expect_equal(gl$method, "ols")
+  expect_equal(fit$method, "ols")
 
   pr <- predict(fit, newdata = mroz[1:5, ])
   expect_equal(length(pr), 5L)

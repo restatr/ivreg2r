@@ -90,7 +90,7 @@ test_that("glance OLS returns 1-row tibble with expected columns", {
   gl <- glance(fit)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 58L)
+  expect_equal(ncol(gl), 15L)
 })
 
 test_that("glance OLS has correct column names", {
@@ -98,29 +98,27 @@ test_that("glance OLS has correct column names", {
   gl <- glance(fit)
   expected_names <- c("r.squared", "adj.r.squared", "sigma", "statistic",
                       "p.value", "df", "df.residual", "nobs", "vcov_type",
-                      "small", "weight_type",
-                      "method", "lambda", "kclass_value", "fuller_parameter",
-                      "coviv", "center", "psd", "kernel", "bw",
-                      "kiefer", "dkraay", "sw",
-                      "n_clusters1", "n_clusters2",
-                      "cue_convergence",
-                      "partial_ct",
-                      "yy", "yyc", "rankxx", "rankzz",
-                      "condxx", "condzz", "ll",
                       "weak_id_stat", "weak_id_robust_stat",
                       "underid_stat", "underid_p",
-                      "overid_stat", "overid_p",
-                      "ar_overid_lr_stat", "ar_overid_lr_p",
-                      "ar_overid_lin_stat", "ar_overid_lin_p",
-                      "ar_overid_df",
-                      "endogeneity_stat", "endogeneity_p",
-                      "stock_wright_stat", "stock_wright_p",
-                      "stock_wright_df",
-                      "orthog_stat", "orthog_p",
-                      "redundancy_stat", "redundancy_p",
-                      "rf_f_stat", "rf_f_p",
-                      "ccev_min", "cdev_min")
+                      "overid_stat", "overid_p")
   expect_named(gl, expected_names)
+})
+
+test_that("glance drops config flags and stored results (reachable on object)", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  gl <- glance(fit)
+  dropped <- c("small", "weight_type", "method", "lambda", "kclass_value",
+               "coviv", "center", "psd", "kernel", "bw", "kiefer", "sw",
+               "cue_convergence", "partial_ct", "yy", "yyc", "condxx", "ll",
+               "endogeneity_stat", "orthog_stat", "redundancy_stat",
+               "stock_wright_stat", "ar_overid_lr_stat", "rf_f_stat")
+  for (col in dropped) {
+    expect_false(col %in% names(gl),
+                 info = paste(col, "should not be a glance column"))
+  }
+  # The dropped quantities remain reachable on the fitted object
+  expect_type(fit$small, "logical")
+  expect_identical(fit$method, "ols")
 })
 
 test_that("glance OLS column types are correct", {
@@ -139,9 +137,7 @@ test_that("glance OLS: all diagnostic columns are NA", {
   gl <- glance(fit)
   diag_cols <- c("weak_id_stat", "weak_id_robust_stat",
                  "underid_stat", "underid_p",
-                 "overid_stat", "overid_p",
-                 "endogeneity_stat", "endogeneity_p",
-                 "orthog_stat", "orthog_p")
+                 "overid_stat", "overid_p")
   for (col in diag_cols) {
     expect_true(is.na(gl[[col]]), info = paste(col, "should be NA for OLS"))
   }
@@ -302,19 +298,11 @@ test_that("glance diagnostics = FALSE returns compact tibble", {
   gl <- glance(fit, diagnostics = FALSE)
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(ncol(gl), 34L)
-  # Model-level stored results should be present
-  expect_true("yy" %in% names(gl))
-  expect_true("ll" %in% names(gl))
-  expect_true("condxx" %in% names(gl))
+  expect_equal(ncol(gl), 9L)
   # Diagnostic test columns should be absent
   diag_cols <- c("weak_id_stat", "weak_id_robust_stat",
                  "underid_stat", "underid_p",
-                 "overid_stat", "overid_p",
-                 "endogeneity_stat", "endogeneity_p",
-                 "orthog_stat", "orthog_p",
-                 "redundancy_stat", "redundancy_p",
-                 "rf_f_stat", "rf_f_p")
+                 "overid_stat", "overid_p")
   for (col in diag_cols) {
     expect_false(col %in% names(gl),
                  info = paste(col, "should not be present with diagnostics = FALSE"))
@@ -332,8 +320,7 @@ test_that("glance diagnostics = FALSE retains model-fit columns", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
   gl <- glance(fit, diagnostics = FALSE)
   retained <- c("r.squared", "adj.r.squared", "sigma", "statistic",
-                "p.value", "df", "df.residual", "nobs", "vcov_type",
-                "small", "weight_type", "method")
+                "p.value", "df", "df.residual", "nobs", "vcov_type")
   for (col in retained) {
     expect_true(col %in% names(gl),
                 info = paste(col, "should be present with diagnostics = FALSE"))
@@ -421,17 +408,13 @@ test_that("modelsummary works with IV model", {
 
 
 # ============================================================================
-# glance() — small column
+# small flag — now off glance(), carried on the fitted object
 # ============================================================================
 
-test_that("glance includes small column matching fit$small", {
+test_that("small flag is stored on the fitted object", {
   fit_small <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
   fit_large <- ivreg2(mpg ~ wt + hp, data = mtcars, small = FALSE)
-  expect_true(glance(fit_small)$small)
-  expect_false(glance(fit_large)$small)
-})
-
-test_that("glance small column is logical", {
-  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
-  expect_type(glance(fit)$small, "logical")
+  expect_true(fit_small$small)
+  expect_false(fit_large$small)
+  expect_type(fit_small$small, "logical")
 })

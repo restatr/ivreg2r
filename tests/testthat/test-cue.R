@@ -468,22 +468,20 @@ test_that("tidy works for CUE", {
                   names(td)))
 })
 
-test_that("glance works for CUE and includes cue_convergence", {
+test_that("glance works for CUE; cue_convergence is stored on the fit", {
   fit <- sw_cue_fit_iid
   gl <- glance(fit)
 
   expect_s3_class(gl, "tbl_df")
   expect_equal(nrow(gl), 1L)
-  expect_equal(gl$method, "cue")
-  expect_true("cue_convergence" %in% names(gl))
-  expect_equal(gl$cue_convergence, 0L)
+  expect_equal(fit$method, "cue")
+  expect_equal(fit$cue_convergence, 0L)
 })
 
-test_that("glance cue_convergence is NA for non-CUE", {
+test_that("cue_convergence is NULL for non-CUE", {
   fit <- ivreg2(sw_formula, data = stockwatson)
-  gl <- glance(fit)
 
-  expect_true(is.na(gl$cue_convergence))
+  expect_null(fit$cue_convergence)
 })
 
 test_that("augment works for CUE", {

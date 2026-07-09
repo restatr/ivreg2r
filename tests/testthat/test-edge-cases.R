@@ -417,17 +417,27 @@ test_that("endogeneity test matches Stata sim_intercept_only hc1 fixture", {
 # Near-singular KP matrix unit tests (no Stata fixtures)
 # ============================================================================
 
-test_that(".sym_sqrt clamps negative eigenvalues with warning", {
-  # Construct a 2x2 matrix with a tiny negative eigenvalue
-  # Start from eigendecomposition: eigenvalues (1, -1e-12)
+test_that(".sym_sqrt clamps round-off negative eigenvalues silently", {
+  # Eigenvalues (1, -1e-12): the negative is floating-point noise relative to
+  # the largest eigenvalue, so it is clamped without a warning.
   Q <- matrix(c(1, 1, 1, -1), nrow = 2) / sqrt(2)  # orthogonal
   A <- Q %*% diag(c(1, -1e-12)) %*% t(Q)
 
+  expect_no_warning(result <- ivreg2r:::.sym_sqrt(A))
+  expect_false(any(is.nan(result)))
+  expect_true(is.matrix(result))
+})
+
+test_that(".sym_sqrt warns and projects when genuinely non-PSD", {
+  # Eigenvalues (1, -0.5): the negative eigenvalue is too large to be noise,
+  # so .sym_sqrt warns and projects to the nearest PSD matrix.
+  Q <- matrix(c(1, 1, 1, -1), nrow = 2) / sqrt(2)  # orthogonal
+  A <- Q %*% diag(c(1, -0.5)) %*% t(Q)
+
   expect_warning(
     result <- ivreg2r:::.sym_sqrt(A),
-    "Negative eigenvalues clamped to 0"
+    "not positive"
   )
-  # Result should be a valid matrix (no NaN)
   expect_false(any(is.nan(result)))
   expect_true(is.matrix(result))
 })

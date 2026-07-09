@@ -317,11 +317,18 @@
 
   # QWW^{-1/2} via eigendecomposition
   eig <- eigen(QWW, symmetric = TRUE)
-  d <- eig$values
-  if (any(d < 0)) {
-    warning("Negative eigenvalues clamped to 0 in LIML eigenvalue computation.",
-            call. = FALSE)
-    d[d < 0] <- 0
+  # Tiny negative eigenvalues are round-off on the (PSD) residual concentration
+  # matrix Y'M_Z Y; clamp them silently. Warn only when a negative eigenvalue is
+  # too large to be noise, which points to severe collinearity among the
+  # instruments (an ill-conditioned Z'Z in the projection).
+  cl <- .clamp_psd_eigenvalues(eig$values)
+  d <- cl$values
+  if (cl$non_psd) {
+    warning("The LIML residual concentration matrix (Y'M_Z Y) was not ",
+            "positive semidefinite (most negative eigenvalue ",
+            formatC(cl$most_negative, format = "g", digits = 3),
+            ") in the LIML eigenvalue computation; this usually indicates ",
+            "severe collinearity among the instruments.", call. = FALSE)
   }
   inv_sqrt_d <- ifelse(d > 0, 1 / sqrt(d), 0)
   QWW_inv_sqrt <- eig$vectors %*% (inv_sqrt_d * t(eig$vectors))

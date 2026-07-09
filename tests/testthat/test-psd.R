@@ -90,9 +90,9 @@ test_that(".psd_correct emits warning when correction is applied", {
   mat <- V %*% D %*% t(V)
 
   expect_warning(.psd_correct(mat, "psd0"),
-                 "1 negative eigenvalue corrected via psd0")
+                 "1 negative eigenvalue corrected via the 'psd0' method")
   expect_warning(.psd_correct(mat, "psda"),
-                 "1 negative eigenvalue corrected via psda")
+                 "1 negative eigenvalue corrected via the 'psda' method")
 })
 
 test_that(".psd_correct emits warning with correct plural for multiple eigenvalues", {
@@ -100,7 +100,7 @@ test_that(".psd_correct emits warning with correct plural for multiple eigenvalu
   mat <- D  # diagonal = eigenvalues
 
   expect_warning(.psd_correct(mat, "psd0"),
-                 "2 negative eigenvalues corrected via psd0")
+                 "2 negative eigenvalues corrected via the 'psd0' method")
 })
 
 test_that(".psd_correct emits no warning when no correction needed", {
@@ -156,17 +156,14 @@ test_that("psd is stored in the returned object", {
   expect_equal(fita$psd, "psda")
 })
 
-test_that("psd appears in glance() output", {
+test_that("psd is stored on the fitted object", {
   fit0 <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                   data = card, vcov = "robust", psd = "psd0")
-  gl <- glance(fit0)
-  expect_true("psd" %in% names(gl))
-  expect_equal(gl$psd, "psd0")
+  expect_equal(fit0$psd, "psd0")
 
   fit_none <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                       data = card, vcov = "robust")
-  gl_none <- glance(fit_none)
-  expect_true(is.na(gl_none$psd))
+  expect_null(fit_none$psd)
 })
 
 test_that("psd appears in summary footer", {
@@ -296,8 +293,8 @@ test_that("binding case: psd correction fires at the S level", {
   expect_true(min(eigen(res_psda$fit$S, symmetric = TRUE)$values) >= -tol_eig)
 
   # The correction warns; the uncorrected fit does not warn about psd
-  expect_true(any(grepl("corrected via psd0", res_psd0$warnings)))
-  expect_true(any(grepl("corrected via psda", res_psda$warnings)))
+  expect_true(any(grepl("corrected via the 'psd0' method",res_psd0$warnings)))
+  expect_true(any(grepl("corrected via the 'psda' method",res_psda$warnings)))
   expect_false(any(grepl("corrected via", res_null$warnings)))
 
   # Coefficients are untouched by psd on plain (non-GMM) paths
@@ -470,13 +467,13 @@ check_psd_fixture <- function(fit, suffix, prefix = "wp_psd",
 
 test_that("binding DK + truncated psd0 matches Stata", {
   res <- dk_binding_fit(psd = "psd0")
-  expect_true(any(grepl("corrected via psd0", res$warnings)))
+  expect_true(any(grepl("corrected via the 'psd0' method",res$warnings)))
   check_psd_fixture(res$fit, "dk_tru2_psd0", skip_model_f = TRUE)
 })
 
 test_that("binding DK + truncated psda matches Stata", {
   res <- dk_binding_fit(psd = "psda")
-  expect_true(any(grepl("corrected via psda", res$warnings)))
+  expect_true(any(grepl("corrected via the 'psda' method",res$warnings)))
   check_psd_fixture(res$fit, "dk_tru2_psda")
 })
 
@@ -515,7 +512,7 @@ test_that("all-zero Omega returns NA J instead of crashing", {
   )
   expect_true(any(grepl("Hansen J statistic not computed", res$warnings)))
   expect_true(all(grepl(
-    "Hansen J statistic not computed|Anderson-Rubin: RVR matrix is singular|Stock-Wright: Omega is rank-deficient",
+    "Hansen J statistic not computed|Anderson-Rubin.*could not be computed|Stock-Wright: Omega is rank-deficient",
     res$warnings
   )))
   expect_true(is.na(res$fit$diagnostics$overid$stat))

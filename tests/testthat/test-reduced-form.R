@@ -251,33 +251,26 @@ test_that("system VCV first-stage blocks match individual first-stage VCVs", {
 
 
 # ===========================================================================
-# GLANCE COLUMNS
+# REDUCED-FORM F STORED ON THE FITTED OBJECT
 # ===========================================================================
 
-test_that("glance() includes rf_f_stat and rf_f_p for rf mode", {
+test_that("rf_f_stat and rf_f_p are stored on the fitted object for rf mode", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, reduced_form = "rf")
-  g <- glance(fit)
-  expect_true("rf_f_stat" %in% names(g))
-  expect_true("rf_f_p" %in% names(g))
-  expect_false(is.na(g$rf_f_stat))
-  expect_false(is.na(g$rf_f_p))
+  expect_false(is.na(fit$reduced_form$f_stat))
+  expect_false(is.na(fit$reduced_form$f_p))
 })
 
-test_that("glance() rf_f columns are NA without reduced_form", {
+test_that("rf_f fields are absent without reduced_form", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card)
-  g <- glance(fit)
-  expect_true(is.na(g$rf_f_stat))
-  expect_true(is.na(g$rf_f_p))
+  expect_true(is.null(fit$reduced_form) || fit$reduced_form$mode != "rf")
 })
 
-test_that("glance() rf_f columns are NA for system mode", {
+test_that("rf_f fields are absent for system mode", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc4,
                 data = card, reduced_form = "system")
-  g <- glance(fit)
-  expect_true(is.na(g$rf_f_stat))
-  expect_true(is.na(g$rf_f_p))
+  expect_true(is.null(fit$reduced_form) || fit$reduced_form$mode != "rf")
 })
 
 

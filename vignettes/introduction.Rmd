@@ -306,7 +306,7 @@ For the intervals alone, `confint(fit_iv)` returns the same bounds as a matrix; 
 
 ### Model summary
 
-`glance()` returns a single-row tibble with fit statistics and all diagnostic test results --- useful for building model comparison tables:
+`glance()` returns a single-row tibble with fit statistics and the headline diagnostic tests (weak identification, underidentification, overidentification) --- a compact set chosen so that model-comparison tables render sensibly. The remaining specification tests live in `fit$diagnostics`:
 
 ```{r glance}
 glance(fit_iv)
@@ -399,9 +399,9 @@ See `vignette("advanced-iv")` for LIML, k-class, two-way clustering, and model c
 
 | Area | Stata `ivreg2` | `ivreg2r` | Rationale |
 |------|----------------|-----------|-----------|
-| Formula | `ivreg2 y x (endo = z)` | `y ~ x \| endo \| z` | R convention; each variable listed once |
+| Formula | `ivreg2 y x (endo = z)` | `y ~ x | endo | z` | R convention; each variable listed once |
 | Numerical method | Cross-products via Mata | QR-based regression via `lm.fit` | Better conditioning for core estimation |
-| Diagnostics | Some computed at post-estimation | All computed at estimation time | Always available in `glance()` |
+| Diagnostics | Some computed at post-estimation | All computed at estimation time | Stored in `fit$diagnostics`; headline tests also in `glance()` |
 | Factor variables | `i.` prefix syntax | R `model.matrix()` / contrasts | R convention |
 | COVIV | Implicit for LIML+robust | Explicit `coviv = TRUE` | The covariance weighting is requested explicitly rather than inferred |
 | Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |

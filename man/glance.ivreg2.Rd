@@ -9,66 +9,55 @@
 \arguments{
 \item{x}{An object of class \code{"ivreg2"}.}
 
-\item{diagnostics}{Logical: include IV diagnostic test columns? Default
-\code{TRUE}. Set to \code{FALSE} for a compact summary without test statistics.
-Follows the same convention as broom's \code{glance.ivreg()}.}
+\item{diagnostics}{Logical: include the headline IV diagnostic columns?
+Default \code{TRUE}. Set to \code{FALSE} for a goodness-of-fit summary without the
+test statistics. Follows the same convention as broom's
+\code{glance.ivreg()}.}
 
 \item{...}{Additional arguments (ignored).}
 }
 \value{
 A single-row \code{\link[tibble:tibble]{tibble::tibble()}}.
 
-\strong{Always present} (33 columns):
-\code{r.squared}, \code{adj.r.squared}, \code{sigma}, \code{statistic}, \code{p.value}, \code{df},
-\code{df.residual}, \code{nobs}, \code{vcov_type}, \code{small}, \code{weight_type}, \code{method},
-\code{lambda}, \code{kclass_value}, \code{fuller_parameter}, \code{coviv}, \code{center}, \code{psd},
-\code{kernel}, \code{bw}, \code{kiefer}, \code{dkraay}, \code{n_clusters1}, \code{n_clusters2},
-\code{cue_convergence}, \code{partial_ct},
-\code{yy}, \code{yyc}, \code{rankxx}, \code{rankzz}, \code{condxx}, \code{condzz}, \code{ll}.
+\strong{Always present} (9 columns): \code{r.squared}, \code{adj.r.squared}, \code{sigma},
+\code{statistic} (model F or Wald chi-squared), \code{p.value}, \code{df} (model
+numerator degrees of freedom), \code{df.residual}, \code{nobs}, \code{vcov_type}.
 
-\strong{When \code{diagnostics = TRUE}} (default, 24 additional columns):
-\code{weak_id_stat}, \code{weak_id_robust_stat},
-\code{underid_stat}, \code{underid_p},
-\code{overid_stat}, \code{overid_p},
-\code{ar_overid_lr_stat}, \code{ar_overid_lr_p},
-\code{ar_overid_lin_stat}, \code{ar_overid_lin_p}, \code{ar_overid_df},
-\code{endogeneity_stat}, \code{endogeneity_p},
-\code{stock_wright_stat}, \code{stock_wright_p}, \code{stock_wright_df},
-\code{orthog_stat}, \code{orthog_p},
-\code{redundancy_stat}, \code{redundancy_p},
-\code{rf_f_stat}, \code{rf_f_p},
-\code{ccev_min}, \code{cdev_min}.
+\strong{When \code{diagnostics = TRUE}} (default, 6 additional columns): the
+headline IV specification tests — \code{weak_id_stat} (Cragg-Donald Wald F),
+\code{weak_id_robust_stat} (Kleibergen-Paap rk Wald F), \code{underid_stat} and
+\code{underid_p} (underidentification), \code{overid_stat} and \code{overid_p}
+(Sargan/Hansen J overidentification).
+
+The remaining stored quantities and configuration flags are \strong{not} in
+\code{glance()} — this keeps the goodness-of-fit block usable in rendered
+tables. They remain available as named elements on the fitted object: the
+estimation \code{method}, \code{lambda}/\code{kclass_value}/\code{fuller_parameter}, \code{coviv},
+\code{center}, \code{psd}, \code{kernel}/\code{bw}, \code{kiefer}, \code{dkraay}, \code{sw}, cluster counts,
+\code{cue_convergence}, \code{partial_ct}, \code{small}, the cross-products \code{yy}/\code{yyc},
+ranks and condition numbers (\code{rank}, \code{rankzz}, \code{condxx}, \code{condzz}), the
+log-likelihood \code{ll}, and the full diagnostic list \code{x$diagnostics}
+(endogeneity, orthogonality, redundancy, Anderson-Rubin, Stock-Wright,
+and the Cragg-Donald/Kleibergen-Paap eigenvalues).
 }
 \description{
-Returns a single-row tibble of model-level summary statistics and
-diagnostic test results.
+Returns a single-row tibble of model-level summary statistics and the
+headline IV diagnostics. The column set is deliberately compact so that
+table tools such as \pkg{modelsummary} render a sensible default.
 }
 \details{
-\code{glance()} always returns the same columns for a given value of the
-\code{diagnostics} argument, using \code{NA} for metrics that do not apply
-to the fitted model.
+\code{glance()} returns a fixed set of columns for a given value of
+\code{diagnostics}, using \code{NA} for metrics that do not apply to the
+fitted model. All diagnostic columns are \code{NA} for OLS models
+(single-part formula). \code{overid_stat} and \code{overid_p} are also
+\code{NA} when the model is exactly identified (the number of excluded
+instruments equals the number of endogenous regressors), and
+\code{weak_id_robust_stat} is \code{NA} under \code{vcov = "iid"} (the
+Cragg-Donald F in \code{weak_id_stat} is reported instead of the
+Kleibergen-Paap F).
 
-The \code{small} column indicates whether finite-sample corrections were
-applied. When \code{small = TRUE}, test statistics are F-distributed;
-when \code{small = FALSE}, they are chi-squared.
-
-When \code{diagnostics = TRUE} (default), the output includes IV
-specification tests. Columns that are conditionally \code{NA}:
-\itemize{
-\item All diagnostic columns are \code{NA} for OLS models (1-part formula).
-\item \code{overid_stat}, \code{overid_p}: also \code{NA} when exactly
-identified (number of excluded instruments equals number of endogenous
-regressors).
-\item \code{weak_id_robust_stat}: \code{NA} when \code{vcov = "iid"}
-(Cragg-Donald F is used instead of Kleibergen-Paap).
-\item \code{ar_overid_*}: only non-\code{NA} for \code{method = "liml"}
-with \code{vcov = "iid"}.
-\item \code{orthog_*}, \code{redundancy_*}: \code{NA} unless \code{orthog}
-or \code{redundant} was specified.
-\item \code{rf_f_*}: \code{NA} unless \code{reduced_form = "rf"}.
-}
-
-Set \code{diagnostics = FALSE} for a compact summary without test statistics.
+Set \code{diagnostics = FALSE} for a compact goodness-of-fit summary
+without the IV test columns.
 }
 \examples{
 data(mroz)
@@ -86,6 +75,9 @@ glance(fit, diagnostics = FALSE)
 glance(fit)[, c("overid_stat", "overid_p")]
 glance(fit)[, c("weak_id_stat", "weak_id_robust_stat")]
 
+# Diagnostics dropped from glance() remain on the fitted object
+fit$diagnostics$endogeneity
+
 \donttest{
 # Compare Sargan (IID) vs Hansen J (robust)
 fit_iid <- ivreg2(lwage ~ exper + expersq | educ |
@@ -95,5 +87,14 @@ data.frame(
   overid = c(glance(fit_iid)$overid_stat, glance(fit)$overid_stat),
   overid_p = c(glance(fit_iid)$overid_p, glance(fit)$overid_p)
 )
+
+# A compact modelsummary table built from the curated glance() columns
+if (requireNamespace("modelsummary", quietly = TRUE)) {
+  modelsummary::modelsummary(
+    list("2SLS" = fit),
+    statistic = "std.error",
+    gof_map = c("nobs", "r.squared", "weak_id_stat", "overid_stat")
+  )
+}
 }
 }

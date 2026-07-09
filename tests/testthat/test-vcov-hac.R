@@ -332,20 +332,18 @@ test_that("HAC fit stores kernel, bw, tvar metadata", {
   expect_null(fit$ivar)
 })
 
-test_that("glance includes kernel and bw", {
+test_that("kernel and bw are stored on the fitted object", {
   skip_if(!file.exists(hac_data_path), "HAC data not found")
   fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
                 vcov = "HAC", kernel = "bartlett", bw = 3, tvar = "t")
-  gl <- glance(fit)
-  expect_equal(gl$kernel, "Bartlett")
-  expect_equal(gl$bw, 3)
+  expect_equal(fit$kernel, "Bartlett")
+  expect_equal(fit$bw, 3)
 })
 
-test_that("glance kernel/bw are NA for non-HAC fit", {
+test_that("kernel/bw are NULL for non-HAC fit", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
-  gl <- glance(fit)
-  expect_true(is.na(gl$kernel))
-  expect_true(is.na(gl$bw))
+  expect_null(fit$kernel)
+  expect_null(fit$bw)
 })
 
 
@@ -737,13 +735,12 @@ test_that("bw = 'auto' stores resolved numeric in fit$bw", {
   expect_true(fit$bw >= 1)
 })
 
-test_that("glance reports resolved bw for auto-bandwidth", {
+test_that("fitted object reports resolved bw for auto-bandwidth", {
   skip_if(!file.exists(hac_data_path), "HAC data not found")
   fit <- ivreg2(y ~ w | x | z1 + z2, data = ts_data,
                 vcov = "HAC", kernel = "bartlett", bw = "auto", tvar = "t")
-  gl <- glance(fit)
-  expect_true(is.numeric(gl$bw))
-  expect_true(gl$bw >= 1)
+  expect_true(is.numeric(fit$bw))
+  expect_true(fit$bw >= 1)
 })
 
 # ============================================================================

@@ -8,25 +8,65 @@
 
 
 # --------------------------------------------------------------------------
+# .clamp_psd_eigenvalues
+# --------------------------------------------------------------------------
+#' Clamp negative eigenvalues of a symmetric matrix to zero
+#'
+#' Shared helper for the eigendecomposition-based routines that project a
+#' matrix onto the nearest positive-semidefinite one. Negative eigenvalues
+#' that are only floating-point round-off are clamped to zero silently; the
+#' `non_psd` flag is set only when a negative eigenvalue is too large to be
+#' noise, so the caller can decide whether to warn.
+#'
+#' The tolerance is relative to the largest eigenvalue magnitude but carries an
+#' absolute floor at machine epsilon, so a matrix that is numerically zero
+#' throughout (all eigenvalues near the round-off floor) is treated as noise
+#' rather than as a genuinely non-PSD input.
+#'
+#' @param d Numeric vector of eigenvalues (from `eigen(..., symmetric = TRUE)`).
+#' @return List with `values` (eigenvalues with negatives clamped to zero),
+#'   `non_psd` (logical: a non-noise negative eigenvalue was present), and
+#'   `most_negative` (the smallest eigenvalue before clamping, or 0 if none
+#'   were negative) for use in a caller's warning message.
+#' @keywords internal
+.clamp_psd_eigenvalues <- function(d) {
+  neg <- d < 0
+  if (!any(neg)) {
+    return(list(values = d, non_psd = FALSE, most_negative = 0))
+  }
+  tol <- max(max(abs(d)) * sqrt(.Machine$double.eps), .Machine$double.eps)
+  most_negative <- min(d)
+  d[neg] <- 0
+  list(values = d, non_psd = most_negative < -tol, most_negative = most_negative)
+}
+
+
+# --------------------------------------------------------------------------
 # .sym_sqrt
 # --------------------------------------------------------------------------
 #' Symmetric matrix square root via eigendecomposition
 #'
 #' Computes the symmetric square root of a PSD matrix via eigendecomposition.
-#' Negative eigenvalues (numerical noise) are clamped to zero with a warning.
+#' Eigenvalues that are negative only by floating-point round-off are clamped
+#' to zero silently; a warning is issued only when a negative eigenvalue is
+#' large enough to indicate a genuinely non-PSD input.
 #'
 #' @param A Symmetric matrix.
 #' @return Symmetric square root matrix.
 #' @keywords internal
 .sym_sqrt <- function(A) {
   eig <- eigen(A, symmetric = TRUE)
-  d <- eig$values
-  if (any(d < 0)) {
-    warning("Negative eigenvalues clamped to 0 in symmetric square root.",
+  cl <- .clamp_psd_eigenvalues(eig$values)
+  if (cl$non_psd) {
+    warning("A matrix in the identification tests was not positive ",
+            "semidefinite (most negative eigenvalue ",
+            formatC(cl$most_negative, format = "g", digits = 3),
+            ") and was projected to the nearest PSD matrix; the ",
+            "identification diagnostics may be unreliable when the ",
+            "instruments are collinear or the model is rank-deficient.",
             call. = FALSE)
-    d[d < 0] <- 0
   }
-  eig$vectors %*% (sqrt(d) * t(eig$vectors))
+  eig$vectors %*% (sqrt(cl$values) * t(eig$vectors))
 }
 
 
@@ -545,8 +585,10 @@
     )
 
   }, error = function(e) {
-    warning("Identification test computation failed: ", conditionMessage(e),
-            call. = FALSE)
+    warning("The identification tests (underidentification and weak ",
+            "identification) could not be computed and are reported as NA. ",
+            "This usually means the instrument set is rank-deficient or ",
+            "severely collinear.", call. = FALSE)
     list(
       underid = list(stat = NA_real_, p = NA_real_,
                      df = as.integer(L1 - K1 + 1L),

@@ -27,8 +27,9 @@
   neg_idx <- eig$values < -tol
   if (!any(neg_idx)) return(mat)
   n_neg <- sum(neg_idx)
-  warning("Non-positive-semidefinite matrix: ", n_neg, " negative eigenvalue",
-          if (n_neg > 1L) "s", " corrected via ", psd, ".", call. = FALSE)
+  warning("The covariance matrix was not positive semidefinite; ", n_neg,
+          " negative eigenvalue", if (n_neg > 1L) "s",
+          " corrected via the '", psd, "' method.", call. = FALSE)
   if (psd == "psd0") {
     eig$values <- pmax(eig$values, 0)
   } else {

@@ -136,11 +136,9 @@ test_that("center is stored in fit object", {
   expect_false(fit2$center)
 })
 
-test_that("glance includes center column", {
+test_that("center is stored on the fitted object", {
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "robust", center = TRUE)
-  gl <- glance(fit)
-  expect_true("center" %in% names(gl))
-  expect_true(gl$center)
+  expect_true(fit$center)
 })
 
 

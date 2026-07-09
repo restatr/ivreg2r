@@ -319,28 +319,22 @@ test_that("summary.ivreg2 shows lambda and kclass", {
   expect_true(any(grepl("kclass:", output)))
 })
 
-test_that("glance includes LIML columns", {
+test_that("LIML columns are stored on the fitted object", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml")
-  g <- glance(fit)
 
-  expect_true("method" %in% names(g))
-  expect_true("lambda" %in% names(g))
-  expect_true("kclass_value" %in% names(g))
-  expect_true("fuller_parameter" %in% names(g))
-  expect_equal(g$method, "liml")
-  expect_false(is.na(g$lambda))
-  expect_equal(g$fuller_parameter, 0)
+  expect_equal(fit$method, "liml")
+  expect_false(is.na(fit$lambda))
+  expect_equal(fit$fuller_parameter, 0)
 })
 
-test_that("glance includes Fuller columns", {
+test_that("Fuller columns are stored on the fitted object", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, fuller = 1)
-  g <- glance(fit)
 
-  expect_equal(g$method, "liml")
-  expect_equal(g$fuller_parameter, 1)
-  expect_false(is.na(g$kclass_value))
+  expect_equal(fit$method, "liml")
+  expect_equal(fit$fuller_parameter, 1)
+  expect_false(is.na(fit$kclass_value))
 })
 
 
@@ -389,17 +383,14 @@ test_that("COVIV appears in summary output", {
   expect_true(any(grepl("coviv:", output)))
 })
 
-test_that("COVIV appears in glance output", {
+test_that("coviv is stored on the fitted object", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml", coviv = TRUE)
-  g <- glance(fit)
-  expect_true("coviv" %in% names(g))
-  expect_true(g$coviv)
+  expect_true(fit$coviv)
 
   fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                  data = card, method = "liml")
-  g2 <- glance(fit2)
-  expect_false(g2$coviv)
+  expect_false(fit2$coviv)
 })
 
 
@@ -715,23 +706,19 @@ test_that("AR LIML overid: NULL for OLS", {
               is.null(fit$diagnostics$anderson_rubin_overid))
 })
 
-test_that("AR LIML overid appears in glance()", {
+test_that("AR LIML overid is stored on the fitted object", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card, method = "liml")
-  gl <- generics::glance(fit)
-  expect_true("ar_overid_lr_stat" %in% names(gl))
-  expect_true("ar_overid_lr_p" %in% names(gl))
-  expect_true("ar_overid_lin_stat" %in% names(gl))
-  expect_true("ar_overid_lin_p" %in% names(gl))
-  expect_true("ar_overid_df" %in% names(gl))
-  expect_false(is.na(gl$ar_overid_lr_stat))
-  expect_false(is.na(gl$ar_overid_lin_stat))
+  ar <- fit$diagnostics$anderson_rubin_overid
+  expect_false(is.na(ar$lr_stat))
+  expect_false(is.na(ar$lr_p))
+  expect_false(is.na(ar$lin_stat))
+  expect_false(is.na(ar$lin_p))
+  expect_false(is.na(ar$df))
 })
 
-test_that("AR LIML overid: glance() returns NA for 2SLS", {
+test_that("AR LIML overid: NULL on the fitted object for 2SLS", {
   fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                 data = card)
-  gl <- generics::glance(fit)
-  expect_true(is.na(gl$ar_overid_lr_stat))
-  expect_true(is.na(gl$ar_overid_lin_stat))
+  expect_null(fit$diagnostics$anderson_rubin_overid)
 })

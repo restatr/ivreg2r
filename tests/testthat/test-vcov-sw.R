@@ -310,12 +310,10 @@ test_that("sw is stored on the return object", {
   expect_true(fit$sw)
 })
 
-test_that("glance includes sw column", {
+test_that("sw is stored on the fitted object", {
   fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
                 sw = TRUE, ivar = "nr")
-  g <- glance(fit)
-  expect_true("sw" %in% names(g))
-  expect_true(g$sw)
+  expect_true(fit$sw)
 })
 
 test_that("summary shows SW VCV description", {
