@@ -391,8 +391,9 @@
     pos <- eig$values > tol
     rrank <- sum(!pos)
     if (rrank > 0L) {
-      warning("vlab is rank-deficient (rank deficit = ", rrank,
-              "); using pseudoinverse.", call. = FALSE)
+      warning("The identification-test score matrix is rank-deficient ",
+              "(rank deficit = ", rrank, "); using a pseudoinverse.",
+              call. = FALSE)
     }
     vlab_inv <- eig$vectors[, pos, drop = FALSE] %*%
       (t(eig$vectors[, pos, drop = FALSE]) / eig$values[pos])

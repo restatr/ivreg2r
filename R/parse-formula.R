@@ -355,7 +355,9 @@ NULL
   # collinearity): reject like Stata's CheckMisc (ivreg2.ado:4246-4249,
   # "no regressors specified", also checked post-collinearity).
   if (K == 0L) {
-    stop("No regressors specified.", call. = FALSE)
+    stop("No regressors specified. The formula must include at least one ",
+         "regressor (for example y ~ x, or y ~ 1 for an intercept-only model).",
+         call. = FALSE)
   }
   if (!is.null(endo)) {
     endo_cols_in_X <- intersect(colnames(endo), colnames(X))

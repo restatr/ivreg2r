@@ -52,14 +52,14 @@
   # .cluster_rank_bound). Stata's efficient-GMM path exits r(506) here
   # (s_egmm, ivreg2.ado:5436-5440).
   if (omega_rank_bound < L) {
-    stop("estimated covariance matrix of moment conditions not of full rank;\n",
-         "optimal GMM weighting matrix not unique.", call. = FALSE)
+    stop("The estimated covariance matrix of the moment conditions is not of full rank, ",
+         "so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.", call. = FALSE)
   }
   R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
   if (is.null(R_chol)) {
     if (qr(Omega)$rank < L) {
-      stop("estimated covariance matrix of moment conditions not of full rank;\n",
-           "optimal GMM weighting matrix not unique.", call. = FALSE)
+      stop("The estimated covariance matrix of the moment conditions is not of full rank, ",
+           "so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.", call. = FALSE)
     }
     # Omega is full rank but not PD — use QR path
     R_chol <- NULL
@@ -95,7 +95,7 @@
   R_M <- tryCatch(chol(M_hess), error = function(e) NULL)
   if (is.null(R_M)) {
     if (qr(M_hess)$rank < K) {
-      stop("GMM Hessian matrix is singular; model not identified.",
+      stop("The GMM Hessian matrix is singular, so the model is not identified. Check for collinearity among the regressors and instruments.",
            call. = FALSE)
     }
     beta <- drop(qr.solve(M_hess, rhs))
@@ -227,7 +227,7 @@
   R_H <- tryCatch(chol(H), error = function(e) NULL)
   if (is.null(R_H)) {
     if (qr(H)$rank < K)
-      stop("GMM Hessian is singular; model not identified.", call. = FALSE)
+      stop("The GMM Hessian matrix is singular, so the model is not identified. Check for collinearity among the regressors and instruments.", call. = FALSE)
     beta <- drop(qr.solve(H, rhs))
   } else {
     beta <- drop(backsolve(R_H, forwardsolve(t(R_H), rhs)))
@@ -293,7 +293,7 @@
   R_H <- tryCatch(chol(H), error = function(e) NULL)
   if (is.null(R_H)) {
     if (qr(H)$rank < K)
-      stop("GMM Hessian is singular; model not identified.", call. = FALSE)
+      stop("The GMM Hessian matrix is singular, so the model is not identified. Check for collinearity among the regressors and instruments.", call. = FALSE)
     beta <- drop(qr.solve(H, rhs))
     H_inv <- qr.solve(H)
   } else {
@@ -587,14 +587,14 @@
   # errors on this condition; this belt covers the b0 path, which skips the
   # init's Omega inversion.
   if (omega_rank_bound < L) {
-    stop("estimated covariance matrix of moment conditions not of full rank;\n",
-         "optimal GMM weighting matrix not unique.", call. = FALSE)
+    stop("The estimated covariance matrix of the moment conditions is not of full rank, ",
+         "so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.", call. = FALSE)
   }
   R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
   if (is.null(R_chol)) {
     if (qr(Omega)$rank < L) {
-      stop("estimated covariance matrix of moment conditions not of full rank;\n",
-           "optimal GMM weighting matrix not unique.", call. = FALSE)
+      stop("The estimated covariance matrix of the moment conditions is not of full rank, ",
+           "so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.", call. = FALSE)
     }
     R_chol <- NULL
   }
@@ -621,7 +621,7 @@
   R_M <- tryCatch(chol(M_hess), error = function(e) NULL)
   if (is.null(R_M)) {
     if (qr(M_hess)$rank < K) {
-      stop("GMM Hessian matrix is singular; model not identified.",
+      stop("The GMM Hessian matrix is singular, so the model is not identified. Check for collinearity among the regressors and instruments.",
            call. = FALSE)
     }
     M_hess_inv <- qr.solve(M_hess)
@@ -632,8 +632,9 @@
   # VCV rank check (Stata line 5983-5988)
   diag_V <- diag(M_hess_inv) / N
   if (any(diag_V <= 0)) {
-    stop("estimated VCV has zero or negative diagonal elements;\n",
-         "model may be unidentified.", call. = FALSE)
+    stop("The estimated variance-covariance matrix has zero or negative ",
+         "diagonal elements, so the model may not be identified. Check for ",
+         "collinearity among the regressors and instruments.", call. = FALSE)
   }
 
   V <- M_hess_inv / N

@@ -390,8 +390,8 @@
                                                               weights))
 
   if (is.na(J)) {
-    warning("Hansen J statistic not computed; ",
-            "singular moment covariance or Hessian matrix.",
+    warning("Hansen J statistic not computed; the moment covariance or ",
+            "Hessian matrix is singular.",
             call. = FALSE)
     return(list(stat = NA_real_, p = NA_real_, df = overid_df,
                 test_name = "Hansen J"))
@@ -581,8 +581,8 @@
     Omega <- .psd_correct(Omega, psd)
     J <- .compute_j_with_omega(Z, X, y, Omega, weights, N)
     if (is.na(J)) {
-      warning("Sargan statistic not computed; ",
-              "singular moment covariance or Hessian matrix.",
+      warning("Sargan statistic not computed; the moment covariance or ",
+              "Hessian matrix is singular.",
               call. = FALSE)
       return(list(stat = NA_real_, p = NA_real_, df = overid_df,
                   test_name = "Sargan"))

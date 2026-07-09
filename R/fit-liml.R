@@ -78,9 +78,9 @@
   }
 
   if (lm_XZ$rank < K) {
-    stop("Projected regressor matrix X_hat is rank-deficient (rank ",
-         lm_XZ$rank, " < ", K, " regressors). ",
-         "Instruments may not identify the endogenous regressors.",
+    stop("The projected regressor matrix is rank-deficient (rank ",
+         lm_XZ$rank, " < ", K, " regressors), so the instruments may not ",
+         "identify the endogenous regressors.",
          call. = FALSE)
   }
 
@@ -107,8 +107,9 @@
 
     # Guard: spurious lambda near zero
     if (!is.na(lambda) && lambda < 1e-8) {
-      warning("LIML eigenvalue (lambda = ", format(lambda, digits = 4),
-              ") is near zero; estimates may be unreliable.", call. = FALSE)
+      warning("The LIML eigenvalue (lambda = ", format(lambda, digits = 4),
+              ") is near zero, so the estimates may be unreliable.",
+              call. = FALSE)
     }
   }
 
@@ -146,8 +147,8 @@
   coef <- tryCatch(
     drop(.chol_solve(XhXh, Xhy)),
     error = function(e) {
-      stop("k-class normal equation matrix is singular or near-singular. ",
-           "Check for collinearity among regressors/instruments.",
+      stop("The k-class normal-equation matrix is singular or nearly singular. ",
+           "Check for collinearity among the regressors and instruments.",
            call. = FALSE)
     }
   )
@@ -167,8 +168,8 @@
   XhXh_inv <- tryCatch(
     .chol_solve(XhXh, diag(ncol(XhXh))),
     error = function(e) {
-      stop("k-class normal equation matrix is singular or near-singular. ",
-           "Check for collinearity among regressors/instruments.",
+      stop("The k-class normal-equation matrix is singular or nearly singular. ",
+           "Check for collinearity among the regressors and instruments.",
            call. = FALSE)
     }
   )
@@ -260,7 +261,7 @@
     QWW <- tryCatch(
       YtY - crossprod(ZtY, .chol_solve(ZtZ, ZtY)),
       error = function(e) {
-        stop("Instrument matrix Z'Z is singular. ",
+        stop("The instrument cross-product matrix is singular. ",
              "Check for collinear instruments.", call. = FALSE)
       }
     )
@@ -272,7 +273,7 @@
       QWW1 <- tryCatch(
         YtY - crossprod(Z2tY, .chol_solve(Z2tZ2, Z2tY)),
         error = function(e) {
-          stop("Included instrument matrix Z2'Z2 is singular. ",
+          stop("The included-instrument cross-product matrix is singular. ",
                "Check for collinear instruments.", call. = FALSE)
         }
       )
@@ -290,7 +291,7 @@
     QWW  <- tryCatch(
       YtWY - crossprod(ZtWY, .chol_solve(ZtWZ, ZtWY)),
       error = function(e) {
-        stop("Instrument matrix Z'WZ is singular. ",
+        stop("The instrument cross-product matrix is singular. ",
              "Check for collinear instruments.", call. = FALSE)
       }
     )
@@ -302,7 +303,7 @@
       QWW1 <- tryCatch(
         YtWY - crossprod(Z2tWY, .chol_solve(Z2tWZ2, Z2tWY)),
         error = function(e) {
-          stop("Included instrument matrix Z2'WZ2 is singular. ",
+          stop("The included-instrument cross-product matrix is singular. ",
                "Check for collinear instruments.", call. = FALSE)
         }
       )

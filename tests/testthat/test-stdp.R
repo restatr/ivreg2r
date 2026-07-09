@@ -201,7 +201,7 @@ test_that("se.fit errors when model and x not stored", {
   data(card, package = "ivreg2r")
   fit <- ivreg2(lwage ~ exper + expersq | educ | nearc4,
                 data = card, model = FALSE, x = FALSE)
-  expect_error(predict(fit, se.fit = TRUE), "refit")
+  expect_error(predict(fit, se.fit = TRUE), "Refit")
 })
 
 

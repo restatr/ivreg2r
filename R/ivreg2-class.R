@@ -522,8 +522,9 @@ predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
     reg_contrasts <- object$contrasts[intersect(names(object$contrasts), reg_vars)]
     X <- stats::model.matrix(tt, object$model, contrasts.arg = reg_contrasts)
   } else {
-    stop("not enough information in fitted model to compute prediction SEs;\n",
-         "refit with `model = TRUE` or `x = TRUE`", call. = FALSE)
+    stop("There is not enough information in the fitted model to compute ",
+         "prediction standard errors. Refit with `model = TRUE` or `x = TRUE`.",
+         call. = FALSE)
   }
   cf <- coef(object)
   common <- intersect(colnames(X), names(cf))
@@ -617,8 +618,9 @@ model.matrix.ivreg2 <- function(object,
       Z <- NULL
     }
   } else {
-    stop("not enough information in fitted model to return model.matrix;\n",
-         "refit with `model = TRUE` or `x = TRUE`", call. = FALSE)
+    stop("There is not enough information in the fitted model to return the ",
+         "model matrix. Refit with `model = TRUE` or `x = TRUE`.",
+         call. = FALSE)
   }
 
   switch(component,
@@ -671,7 +673,10 @@ model.matrix.ivreg2 <- function(object,
 #' @export
 update.ivreg2 <- function(object, formula., ..., evaluate = TRUE) {
   call <- stats::getCall(object)
-  if (is.null(call)) stop("need an object with call component", call. = FALSE)
+  if (is.null(call)) {
+    stop("`update()` needs the original model call, which this object does ",
+         "not store. Re-fit the model with `ivreg2()` directly.", call. = FALSE)
+  }
   extras <- match.call(expand.dots = FALSE)$...
   if (!missing(formula.)) {
     call$formula <- formula(update(

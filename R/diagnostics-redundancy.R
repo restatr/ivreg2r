@@ -160,8 +160,9 @@
       pos <- eig$values > tol
       rrank <- sum(!pos)
       if (rrank > 0L) {
-        warning("shat0 is rank-deficient (rank deficit = ", rrank,
-                "); using pseudoinverse for redundancy test.", call. = FALSE)
+        warning("The redundancy-test moment covariance is rank-deficient ",
+                "(rank deficit = ", rrank, "); using a pseudoinverse.",
+                call. = FALSE)
       }
       shat0_inv <- eig$vectors[, pos, drop = FALSE] %*%
         (t(eig$vectors[, pos, drop = FALSE]) / eig$values[pos])

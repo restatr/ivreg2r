@@ -56,9 +56,9 @@
   }
 
   if (lm_XZ$rank < K) {
-    stop("Projected regressor matrix X_hat is rank-deficient (rank ",
-         lm_XZ$rank, " < ", K, " regressors). ",
-         "Instruments may not identify the endogenous regressors.",
+    stop("The projected regressor matrix is rank-deficient (rank ",
+         lm_XZ$rank, " < ", K, " regressors), so the instruments may not ",
+         "identify the endogenous regressors.",
          call. = FALSE)
   }
 

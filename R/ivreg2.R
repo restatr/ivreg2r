@@ -341,8 +341,8 @@
   # --- Validate method / kclass / fuller ---
   valid_methods <- c("2sls", "liml", "kclass", "gmm2s", "cue")
   if (!method %in% valid_methods) {
-    stop('`method` must be one of "2sls", "liml", "kclass", "gmm2s", or "cue".',
-         call. = FALSE)
+    stop('`method` must be one of "2sls", "liml", "kclass", "gmm2s", or ',
+         '"cue"; you supplied "', method, '".', call. = FALSE)
   }
   if (!is.numeric(fuller) || length(fuller) != 1L || !is.finite(fuller)) {
     stop("`fuller` must be a single finite numeric value.", call. = FALSE)
@@ -954,8 +954,8 @@
     if (is.numeric(bw) && !isTRUE(kiefer)) {
       max_bw <- (time_index$T_span - 1) / time_index$tdelta
       if (bw > max_bw) {
-        stop("invalid bandwidth in option bw() - cannot exceed timespan of data",
-             call. = FALSE)
+        stop("The bandwidth `bw` (", bw, ") cannot exceed the time span of ",
+             "the data (", max_bw, ").", call. = FALSE)
       }
     }
 

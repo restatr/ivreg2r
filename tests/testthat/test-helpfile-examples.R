@@ -750,12 +750,12 @@ test_that("H90/H92: bw(9) is rejected by both Stata and R (help.txt:1551/1561)",
   expect_error(
     ivreg2(n ~ w + k, data = abdata, kernel = "truncated", bw = 9,
            tvar = "year", ivar = "id"),
-    "timespan"
+    "time span"
   )
   expect_error(
     ivreg2(n ~ w + k, data = abdata, kernel = "truncated", bw = 9,
            vcov = "robust", tvar = "year", ivar = "id"),
-    "timespan"
+    "time span"
   )
 })
 
