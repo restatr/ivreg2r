@@ -294,6 +294,17 @@ Lag and difference operators for time-series and panel instruments.
   [`d()`](https://restatr.com/ivreg2r/reference/ts-operators.md) :
   Time-series operators for ivreg2 formulas
 
+## Conventions & glossary
+
+Statistical conventions (relative to
+[`lm()`](https://rdrr.io/r/stats/lm.html)) and the diagnostic-output
+acronyms.
+
+- [`ivreg2r-conventions`](https://restatr.com/ivreg2r/reference/ivreg2r-conventions.md)
+  : Statistical conventions in ivreg2r
+- [`ivreg2r-glossary`](https://restatr.com/ivreg2r/reference/ivreg2r-glossary.md)
+  : Glossary of diagnostic-output acronyms
+
 ## Datasets
 
 Datasets used throughout the help-file examples and vignettes.

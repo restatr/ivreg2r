@@ -20,9 +20,9 @@ The topics are:
 - LIML, Fuller, and k-class estimation, including the canonical Klein
   consumption function
 - Instrument-validity tests: overidentification, the orthogonality
-  C-statistic, endogeneity, and redundancy
+  C-statistic, and endogeneity
 - Weak-instrument-robust inference (the Anderson-Rubin and Stock-Wright
-  statistics)
+  statistics) and instrument redundancy
 - Two-way clustering, including with instrumental variables
 - Reduced-form regression and degrees-of-freedom adjustments
 
@@ -578,7 +578,7 @@ the help file’s C-test of `educ` in the Mroz equation:
 
 fit_hols <- ivreg2(
   lwage ~ exper + expersq + educ | 0 | age + kidslt6 + kidsge6,
-  data = mroz, orthog = "educ"
+  data = mroz_work, orthog = "educ"
 )
 summary(fit_hols)
 #> 
@@ -586,7 +586,7 @@ summary(fit_hols)
 #> 
 #> Call:
 #> ivreg2(formula = lwage ~ exper + expersq + educ | 0 | age + kidslt6 + 
-#>     kidsge6, data = mroz, orthog = "educ")
+#>     kidsge6, data = mroz_work, orthog = "educ")
 #> 
 #> Observations: 428 
 #> VCV type:     Classical (iid) 

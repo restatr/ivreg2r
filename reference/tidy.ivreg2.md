@@ -42,6 +42,14 @@ A
 with columns `term`, `estimate`, `std.error`, `statistic`, `p.value`,
 and optionally `conf.low`, `conf.high`.
 
+## See also
+
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md)
+
+Other broom methods:
+[`augment.ivreg2()`](https://restatr.com/ivreg2r/reference/augment.ivreg2.md),
+[`glance.ivreg2()`](https://restatr.com/ivreg2r/reference/glance.ivreg2.md)
+
 ## Examples
 
 ``` r

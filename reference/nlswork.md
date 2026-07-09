@@ -114,6 +114,20 @@ Distributed via Stata's `webuse nlswork`.
 upstream numeric coding; not converted to a factor). Many columns
 contain missing values, consistent with the source survey.
 
+## See also
+
+Other ivreg2r datasets:
+[`abdata`](https://restatr.com/ivreg2r/reference/abdata.md),
+[`card`](https://restatr.com/ivreg2r/reference/card.md),
+[`cigar`](https://restatr.com/ivreg2r/reference/cigar.md),
+[`griliches`](https://restatr.com/ivreg2r/reference/griliches.md),
+[`grunfeld`](https://restatr.com/ivreg2r/reference/grunfeld.md),
+[`klein`](https://restatr.com/ivreg2r/reference/klein.md),
+[`mroz`](https://restatr.com/ivreg2r/reference/mroz.md),
+[`phillips`](https://restatr.com/ivreg2r/reference/phillips.md),
+[`stockwatson`](https://restatr.com/ivreg2r/reference/stockwatson.md),
+[`wagepan`](https://restatr.com/ivreg2r/reference/wagepan.md)
+
 ## Examples
 
 ``` r

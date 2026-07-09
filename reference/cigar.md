@@ -74,6 +74,20 @@ Distributed via R package `plm`, `data(Cigar)`.
 
 `price` and `ndi` are nominal; deflate by `cpi` for real terms.
 
+## See also
+
+Other ivreg2r datasets:
+[`abdata`](https://restatr.com/ivreg2r/reference/abdata.md),
+[`card`](https://restatr.com/ivreg2r/reference/card.md),
+[`griliches`](https://restatr.com/ivreg2r/reference/griliches.md),
+[`grunfeld`](https://restatr.com/ivreg2r/reference/grunfeld.md),
+[`klein`](https://restatr.com/ivreg2r/reference/klein.md),
+[`mroz`](https://restatr.com/ivreg2r/reference/mroz.md),
+[`nlswork`](https://restatr.com/ivreg2r/reference/nlswork.md),
+[`phillips`](https://restatr.com/ivreg2r/reference/phillips.md),
+[`stockwatson`](https://restatr.com/ivreg2r/reference/stockwatson.md),
+[`wagepan`](https://restatr.com/ivreg2r/reference/wagepan.md)
+
 ## Examples
 
 ``` r

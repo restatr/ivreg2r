@@ -106,6 +106,20 @@ Baum, C.F., Schaffer, M.E. and Stillman, S. (2007). Enhanced routines
 for instrumental variables/generalized method of moments estimation and
 testing. *The Stata Journal*, 7(4), 465–506.
 
+## See also
+
+Other ivreg2r datasets:
+[`abdata`](https://restatr.com/ivreg2r/reference/abdata.md),
+[`card`](https://restatr.com/ivreg2r/reference/card.md),
+[`cigar`](https://restatr.com/ivreg2r/reference/cigar.md),
+[`griliches`](https://restatr.com/ivreg2r/reference/griliches.md),
+[`grunfeld`](https://restatr.com/ivreg2r/reference/grunfeld.md),
+[`klein`](https://restatr.com/ivreg2r/reference/klein.md),
+[`mroz`](https://restatr.com/ivreg2r/reference/mroz.md),
+[`nlswork`](https://restatr.com/ivreg2r/reference/nlswork.md),
+[`phillips`](https://restatr.com/ivreg2r/reference/phillips.md),
+[`wagepan`](https://restatr.com/ivreg2r/reference/wagepan.md)
+
 ## Examples
 
 ``` r

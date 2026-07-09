@@ -80,9 +80,9 @@ longer the efficient use of the moment conditions. This vignette covers
 the tools <code>ivreg2r</code> provides for such settings:
 heteroskedasticity- and autocorrelation-consistent (HAC) standard errors
 and their kernel machinery, the panel variance estimators (Kiefer,
-Driscoll-Kraay, and cluster-plus-kernel), and generalized method of
-moments (GMM) estimation, including the continuously-updated estimator.
-Each dataset is introduced where it is first used.</p>
+Driscoll-Kraay, Stock-Watson, and cluster-plus-kernel), and generalized
+method of moments (GMM) estimation, including the continuously-updated
+estimator. Each dataset is introduced where it is first used.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://restatr.com/ivreg2r/">ivreg2r</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">phillips</span><span class="op">)</span></span>
@@ -217,8 +217,8 @@ based</td>
 </table>
 <p>Bartlett, Parzen, and Quadratic Spectral guarantee a positive
 semi-definite covariance estimate (Andrews 1991). For the other kernels,
-use the <code>psd</code> option if negative eigenvalues arise, as
-demonstrated below.</p>
+use the <code>psd</code> option if negative eigenvalues arise (see the
+PSD corrections section below).</p>
 </div>
 <div class="section level3">
 <h3 id="automatic-bandwidth">Automatic bandwidth<a class="anchor" aria-label="anchor" href="#automatic-bandwidth"></a>
@@ -356,7 +356,10 @@ steps by one period rather than by one row:</p>
 <p>On these annual data with no gaps, <code>l(unem, 1)</code> and this
 pre-computed <code>unem_lag1</code> coincide; on panels with gaps,
 filling the calendar first is what keeps a positional <code><a href="https://dplyr.tidyverse.org/reference/lead-lag.html" class="external-link">lag()</a></code>
-aligned to calendar time.</p>
+aligned to calendar time. (<code>dplyr</code> and <code>tidyr</code> are
+optional Suggests, needed only for this pre-computation idiom; the
+<code><a href="../reference/ts-operators.html">l()</a></code> and <code><a href="../reference/ts-operators.html">d()</a></code> formula operators require
+neither.)</p>
 </div>
 </div>
 <div class="section level2">
@@ -764,11 +767,11 @@ preferable.</p>
 </h3>
 <p>We follow the worked example of Baum, Schaffer &amp; Stillman (2007,
 p. 476): a quarterly U.S. Phillips-curve equation from Stock &amp;
-Watson’s textbook dataset, regressing the change in inflation on the
-unemployment rate, instrumented by lags of GDP growth, the T-bill rate,
-the exchange rate, and the T-bond rate. The errors are serially
-correlated, so the GMM weighting matrix is HAC (Bartlett, bandwidth 5).
-First the 2SLS baseline, then two-step GMM:</p>
+Watson’s textbook dataset (168 observations, 1959–2000), regressing the
+change in inflation on the unemployment rate, instrumented by lags of
+GDP growth, the T-bill rate, the exchange rate, and the T-bond rate. The
+errors are serially correlated, so the GMM weighting matrix is HAC
+(Bartlett, bandwidth 5). First the 2SLS baseline, then two-step GMM:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sw_formula</span> <span class="op">&lt;-</span> <span class="va">dinf</span> <span class="op">~</span> <span class="fl">1</span> <span class="op">|</span> <span class="va">UR</span> <span class="op">|</span> <span class="va">ggdp_2</span> <span class="op">+</span> <span class="va">TBILL_1</span> <span class="op">+</span> <span class="va">ER_1</span> <span class="op">+</span> <span class="va">TBON_1</span></span>
 <span><span class="va">fit_sw_2sls</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">sw_formula</span>, data <span class="op">=</span> <span class="va">stockwatson</span><span class="op">)</span></span>
@@ -933,11 +936,11 @@ trusting a CUE fit.</p>
 <h3 id="reusing-the-weighting-matrix">Reusing the weighting matrix<a class="anchor" aria-label="anchor" href="#reusing-the-weighting-matrix"></a>
 </h3>
 <p>GMM works with every variance type. On the Griliches (1976) wage
-equation — the help file’s own heteroskedastic-GMM illustration,
-following Hayashi (2000, p. 255) — two-step GMM with
-heteroskedasticity-robust weighting estimates the return to measured
-ability (<code>iq</code>) instrumented by test scores and family
-background:</p>
+equation — 758 young men from the U.S. National Longitudinal Survey, the
+help file’s own heteroskedastic-GMM illustration following Hayashi
+(2000, p. 255) — two-step GMM with heteroskedasticity-robust weighting
+estimates the return to measured ability (<code>iq</code>) instrumented
+by test scores and family background:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gril_formula</span> <span class="op">&lt;-</span> <span class="va">lw</span> <span class="op">~</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="va">rns</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span> <span class="op">|</span></span>
 <span>  <span class="va">iq</span> <span class="op">|</span> <span class="va">med</span> <span class="op">+</span> <span class="va">kww</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">mrt</span></span>
@@ -1023,20 +1026,22 @@ gives far fewer clusters than moment conditions, so the cluster-robust
 moment covariance is singular and the overidentification statistics
 cannot be computed. The warnings are the point, not a malfunction: they
 report exactly the rank deficiency that Baum, Schaffer &amp; Stillman
-(2007, pp. 484–485) describe. Partialling out the year dummies leaves
-the reported coefficients unchanged but, as the counts after the fit
-show, does not by itself repair the deficiency:</p>
+(2007, pp. 484–485) describe. This equation instruments <code>iq</code>
+with <code>med</code>, <code>kww</code>, and <code>age</code>, without
+the <code>mrt</code> term used in the GMM example above. Partialling out
+the year dummies leaves the reported coefficients unchanged but, as the
+counts after the fit show, does not by itself repair the deficiency:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gril_cl</span> <span class="op">&lt;-</span> <span class="va">lw</span> <span class="op">~</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="va">rns</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span> <span class="op">|</span></span>
 <span>  <span class="va">iq</span> <span class="op">|</span> <span class="va">med</span> <span class="op">+</span> <span class="va">kww</span> <span class="op">+</span> <span class="va">age</span></span>
 <span><span class="va">fit_full</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">gril_cl</span>, data <span class="op">=</span> <span class="va">griliches</span>, clusters <span class="op">=</span> <span class="op">~</span> <span class="va">year</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Hansen J statistic not computed; singular moment covariance or Hessian</span></span>
-<span><span class="co">#&gt; matrix.</span></span>
+<span><span class="co">#&gt; Warning: Hansen J statistic not computed; the moment covariance or Hessian</span></span>
+<span><span class="co">#&gt; matrix is singular.</span></span>
 <span><span class="co">#&gt; Warning: Stock-Wright: Omega is rank-deficient; S statistic not computed.</span></span>
 <span><span class="va">fit_partial</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">gril_cl</span>, data <span class="op">=</span> <span class="va">griliches</span>, clusters <span class="op">=</span> <span class="op">~</span> <span class="va">year</span>,</span>
 <span>                      partial <span class="op">=</span> <span class="st">"factor(year)"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Hansen J statistic not computed; singular moment covariance or Hessian</span></span>
-<span><span class="co">#&gt; matrix.</span></span>
+<span><span class="co">#&gt; Warning: Hansen J statistic not computed; the moment covariance or Hessian</span></span>
+<span><span class="co">#&gt; matrix is singular.</span></span>
 <span><span class="co">#&gt; Warning: Stock-Wright: Omega is rank-deficient; S statistic not computed.</span></span>
 <span><span class="va">shared</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"s"</span>, <span class="st">"expr"</span>, <span class="st">"tenure"</span>, <span class="st">"rns"</span>, <span class="st">"smsa"</span>, <span class="st">"iq"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_full</span><span class="op">)</span><span class="op">[</span><span class="va">shared</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_partial</span><span class="op">)</span><span class="op">[</span><span class="va">shared</span><span class="op">]</span><span class="op">)</span></span>
@@ -1055,8 +1060,7 @@ error rather than proceeding with a singular weighting matrix:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">gril_cl</span>, data <span class="op">=</span> <span class="va">griliches</span>, clusters <span class="op">=</span> <span class="op">~</span> <span class="va">year</span>,</span>
 <span>       partial <span class="op">=</span> <span class="st">"factor(year)"</span>, method <span class="op">=</span> <span class="st">"gmm2s"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> estimated covariance matrix of moment conditions not of full rank;</span></span>
-<span><span class="co">#&gt; optimal GMM weighting matrix not unique.</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> The estimated covariance matrix of the moment conditions is not of full rank, so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.</span></span></code></pre></div>
 <p>Partialling out one further regressor brings the instrument count
 down to the number of clusters, and two-step GMM becomes feasible:</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
@@ -1100,8 +1104,8 @@ leaves them blank:</p>
 <code class="sourceCode R"><span><span class="va">psd_formula</span> <span class="op">&lt;-</span> <span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">+</span> <span class="va">married</span> <span class="op">+</span> <span class="va">union</span> <span class="op">|</span> <span class="va">hours</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">+</span> <span class="va">black</span></span>
 <span><span class="va">fit_nopsd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">psd_formula</span>, data <span class="op">=</span> <span class="va">wagepan</span>, dkraay <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>                    kernel <span class="op">=</span> <span class="st">"truncated"</span>, tvar <span class="op">=</span> <span class="st">"year"</span>, ivar <span class="op">=</span> <span class="st">"nr"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: Hansen J statistic not computed; singular moment covariance or Hessian</span></span>
-<span><span class="co">#&gt; matrix.</span></span>
+<span><span class="co">#&gt; Warning: Hansen J statistic not computed; the moment covariance or Hessian</span></span>
+<span><span class="co">#&gt; matrix is singular.</span></span>
 <span><span class="co">#&gt; Warning: Stock-Wright: Omega is rank-deficient; S statistic not computed.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen</a></span><span class="op">(</span><span class="va">fit_nopsd</span><span class="op">$</span><span class="va">S</span>, symmetric <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">values</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] -212.1851</span></span></code></pre></div>
@@ -1116,8 +1120,8 @@ correction silently:</p>
 <span><span class="co">#&gt; eigenvalues corrected via the 'psda' method.</span></span>
 <span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 2 negative</span></span>
 <span><span class="co">#&gt; eigenvalues corrected via the 'psda' method.</span></span>
-<span><span class="co">#&gt; Warning: Hansen J statistic not computed; singular moment covariance or Hessian</span></span>
-<span><span class="co">#&gt; matrix.</span></span>
+<span><span class="co">#&gt; Warning: Hansen J statistic not computed; the moment covariance or Hessian</span></span>
+<span><span class="co">#&gt; matrix is singular.</span></span>
 <span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 2 negative</span></span>
 <span><span class="co">#&gt; eigenvalues corrected via the 'psda' method.</span></span>
 <span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 1 negative</span></span>

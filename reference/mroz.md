@@ -111,6 +111,20 @@ Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married
 Women's Hours of Work to Economic and Statistical Assumptions."
 *Econometrica*, 55(4), 765–799.
 
+## See also
+
+Other ivreg2r datasets:
+[`abdata`](https://restatr.com/ivreg2r/reference/abdata.md),
+[`card`](https://restatr.com/ivreg2r/reference/card.md),
+[`cigar`](https://restatr.com/ivreg2r/reference/cigar.md),
+[`griliches`](https://restatr.com/ivreg2r/reference/griliches.md),
+[`grunfeld`](https://restatr.com/ivreg2r/reference/grunfeld.md),
+[`klein`](https://restatr.com/ivreg2r/reference/klein.md),
+[`nlswork`](https://restatr.com/ivreg2r/reference/nlswork.md),
+[`phillips`](https://restatr.com/ivreg2r/reference/phillips.md),
+[`stockwatson`](https://restatr.com/ivreg2r/reference/stockwatson.md),
+[`wagepan`](https://restatr.com/ivreg2r/reference/wagepan.md)
+
 ## Examples
 
 ``` r

@@ -105,20 +105,21 @@ use the control set from Card (1995, Table 2), which is also the
 specification in Example 15.4 of Wooldridge (2020): experience and its
 square, race, urban residence (<code>smsa</code>), and region (current
 South plus the 1966 residence indicators <code>smsa66</code> and
-<code>reg662</code>–<code>reg669</code>). This control set recurs in
-every fit below, so we define it once and reuse it:</p>
+<code>reg662</code>–<code>reg669</code>). This control set recurs across
+the core wage-equation fits below, so we define the terms once and build
+each formula with <code><a href="https://rdrr.io/r/stats/delete.response.html" class="external-link">reformulate()</a></code>:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">base_controls</span> <span class="op">&lt;-</span> <span class="st">"exper + expersq + black + smsa + south + smsa66"</span></span>
-<span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">base_controls</span>,</span>
-<span>              <span class="st">"+ reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">base_controls</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"exper"</span>, <span class="st">"expersq"</span>, <span class="st">"black"</span>, <span class="st">"smsa"</span>, <span class="st">"south"</span>, <span class="st">"smsa66"</span><span class="op">)</span></span>
+<span><span class="va">controls</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">base_controls</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"reg66"</span>, <span class="fl">2</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fit_ols</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/formula.html" class="external-link">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"lwage ~ educ +"</span>, <span class="va">ctrl</span><span class="op">)</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">card</span><span class="op">)</span></span>
+<span><span class="va">fit_ols</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/delete.response.html" class="external-link">reformulate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"educ"</span>, <span class="va">controls</span><span class="op">)</span>, response <span class="op">=</span> <span class="st">"lwage"</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">card</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_ols</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; OLS Estimation</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
-<span><span class="co">#&gt; ivreg2(formula = as.formula(paste("lwage ~ educ +", ctrl)), data = card)</span></span>
+<span><span class="co">#&gt; ivreg2(formula = reformulate(c("educ", controls), response = "lwage"), </span></span>
+<span><span class="co">#&gt;     data = card)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Observations: 3,010 </span></span>
 <span><span class="co">#&gt; VCV type:     Classical (iid) </span></span>
@@ -156,13 +157,15 @@ indicators already expanded as <code>reg661</code>–<code>reg669</code>,
 with <code>reg661</code> the omitted reference, so we list
 <code>reg662</code>–<code>reg669</code> directly. Had the data carried a
 single region code, <code>factor(region)</code> would have produced the
-identical design matrix. We can recover that code from the indicators
-and confirm the two specifications agree exactly:</p>
+identical design matrix. We can recover that code from the indicators —
+on a local copy that leaves <code>card</code> untouched — and confirm
+the two specifications agree exactly:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">card</span><span class="op">$</span><span class="va">region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/maxCol.html" class="external-link">max.col</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">card</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"reg66"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">card_region</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/transform.html" class="external-link">transform</a></span><span class="op">(</span><span class="va">card</span>,</span>
+<span>  region <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/maxCol.html" class="external-link">max.col</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">card</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"reg66"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit_factor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/formula.html" class="external-link">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"lwage ~ educ +"</span>, <span class="va">base_controls</span>, <span class="st">"+ factor(region)"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">card</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/delete.response.html" class="external-link">reformulate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"educ"</span>, <span class="va">base_controls</span>, <span class="st">"factor(region)"</span><span class="op">)</span>, response <span class="op">=</span> <span class="st">"lwage"</span><span class="op">)</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">card_region</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_ols</span><span class="op">)</span><span class="op">[</span><span class="st">"educ"</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_factor</span><span class="op">)</span><span class="op">[</span><span class="st">"educ"</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
@@ -190,7 +193,8 @@ automatically included as instruments.</p>
 formula, since the later robust, first-stage, and weighted fits reuse
 it:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">f_iv</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/formula.html" class="external-link">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"lwage ~"</span>, <span class="va">ctrl</span>, <span class="st">"| educ | nearc4"</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">f_iv</span> <span class="op">&lt;-</span> <span class="fu">Formula</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Formula/man/Formula.html" class="external-link">as.Formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/delete.response.html" class="external-link">reformulate</a></span><span class="op">(</span><span class="va">controls</span>, response <span class="op">=</span> <span class="st">"lwage"</span><span class="op">)</span>,</span>
+<span>                            <span class="op">~</span> <span class="va">educ</span>, <span class="op">~</span> <span class="va">nearc4</span><span class="op">)</span></span>
 <span><span class="va">fit_iv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">f_iv</span>, data <span class="op">=</span> <span class="va">card</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_iv</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -389,7 +393,8 @@ instrument gives the specification of Computer Exercise C5, Chapter 15,
 in Wooldridge (2020):</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_overid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/stats/formula.html" class="external-link">as.formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"lwage ~"</span>, <span class="va">ctrl</span>, <span class="st">"| educ | nearc2 + nearc4"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="fu">Formula</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Formula/man/Formula.html" class="external-link">as.Formula</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/delete.response.html" class="external-link">reformulate</a></span><span class="op">(</span><span class="va">controls</span>, response <span class="op">=</span> <span class="st">"lwage"</span><span class="op">)</span>,</span>
+<span>                      <span class="op">~</span> <span class="va">educ</span>, <span class="op">~</span> <span class="va">nearc2</span> <span class="op">+</span> <span class="va">nearc4</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">card</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_overid</span><span class="op">)</span></span>
@@ -397,8 +402,8 @@ in Wooldridge (2020):</p>
 <span><span class="co">#&gt; 2SLS Estimation</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
-<span><span class="co">#&gt; ivreg2(formula = as.formula(paste("lwage ~", ctrl, "| educ | nearc2 + nearc4")), </span></span>
-<span><span class="co">#&gt;     data = card)</span></span>
+<span><span class="co">#&gt; ivreg2(formula = Formula::as.Formula(reformulate(controls, response = "lwage"), </span></span>
+<span><span class="co">#&gt;     ~educ, ~nearc2 + nearc4), data = card)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Observations: 3,010 </span></span>
 <span><span class="co">#&gt; VCV type:     Classical (iid) </span></span>
@@ -764,13 +769,22 @@ clustered-IV demonstrations live in the other two vignettes.</p>
 <span><span class="co">#&gt; Wald chi2(4):  966.0 (p &lt; 2.2e-16)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.3949</span></span></code></pre></div>
 <p>Supplying <code>clusters</code> selects the cluster-robust VCE
-automatically, without setting <code>vcov</code>. Fitting on the full
-28,099 observations, the cluster-robust standard error on
-<code>grade</code> is 0.0022, versus 0.0010 under the classical (i.i.d.)
-VCE fit on the same data. Clustering roughly doubles the standard error
-here because wages are serially correlated within person across the
-panel’s multiple survey years, a dependence that classical and
-heteroskedasticity-robust standard errors both ignore.</p>
+automatically, without setting <code>vcov</code>. To see how much
+clustering changes the standard error on <code>grade</code>, we compare
+it against a classical (i.i.d.) fit on the same data:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_iid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">ln_wage</span> <span class="op">~</span> <span class="va">grade</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">ttl_exp</span> <span class="op">+</span> <span class="va">tenure</span>, data <span class="op">=</span> <span class="va">nlswork</span><span class="op">)</span></span>
+<span><span class="va">se_iid_grade</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">fit_iid</span><span class="op">)</span><span class="op">[</span><span class="st">"grade"</span>, <span class="st">"grade"</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">se_cluster_grade</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">fit_cluster</span><span class="op">)</span><span class="op">[</span><span class="st">"grade"</span>, <span class="st">"grade"</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>iid <span class="op">=</span> <span class="va">se_iid_grade</span>, cluster <span class="op">=</span> <span class="va">se_cluster_grade</span><span class="op">)</span></span>
+<span><span class="co">#&gt;         iid     cluster </span></span>
+<span><span class="co">#&gt; 0.001041338 0.002161257</span></span></code></pre></div>
+<p>Fitting on the full 28,099 observations, the cluster-robust standard
+error on <code>grade</code> is 0.0022, versus 0.0010 under the i.i.d.
+VCE. Clustering roughly doubles the standard error here because wages
+are serially correlated within person across the panel’s multiple survey
+years, a dependence that classical and heteroskedasticity-robust
+standard errors both ignore.</p>
 <p>Cluster-robust inference is asymptotic in the number of clusters
 rather than observations: with only a handful of clusters the standard
 errors can be biased downward even when N is large, and
@@ -861,7 +875,7 @@ the NLS sampling weight, reflecting each respondent’s probability of
 selection into the survey. Probability/sampling weights (equivalent to
 Stata’s <code>[pw=varname]</code>) are specified with
 <code>weights</code> plus <code>weight_type = "pweight"</code>:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_pw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">f_iv</span>, data <span class="op">=</span> <span class="va">card</span>, weights <span class="op">=</span> <span class="va">weight</span>, weight_type <span class="op">=</span> <span class="st">"pweight"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_pw</span><span class="op">)</span></span>
@@ -954,14 +968,11 @@ directly: collapse the individual data to the cells of the
 <code>black</code>, <code>smsa</code>, <code>south</code> covariate
 pattern, take each cell’s mean log wage and count, and fit both the
 micro regression and the weighted cell regression.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">micro</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">black</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="va">south</span>, data <span class="op">=</span> <span class="va">card</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">cells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">black</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="va">south</span>, data <span class="op">=</span> <span class="va">card</span>,</span>
-<span>                   FUN <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>, n <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">cell_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="va">cells</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"black"</span>, <span class="st">"smsa"</span>, <span class="st">"south"</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>                      lwage <span class="op">=</span> <span class="va">cells</span><span class="op">$</span><span class="va">lwage</span><span class="op">[</span>, <span class="st">"mean"</span><span class="op">]</span>,</span>
-<span>                      n <span class="op">=</span> <span class="va">cells</span><span class="op">$</span><span class="va">lwage</span><span class="op">[</span>, <span class="st">"n"</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">cell_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">black</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="va">south</span>, data <span class="op">=</span> <span class="va">card</span>, FUN <span class="op">=</span> <span class="va">mean</span><span class="op">)</span></span>
+<span><span class="va">cell_df</span><span class="op">$</span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">black</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="va">south</span>, data <span class="op">=</span> <span class="va">card</span>, FUN <span class="op">=</span> <span class="va">length</span><span class="op">)</span><span class="op">$</span><span class="va">lwage</span></span>
 <span></span>
 <span><span class="va">grouped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">black</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="va">south</span>, data <span class="op">=</span> <span class="va">cell_df</span>,</span>
 <span>                  weights <span class="op">=</span> <span class="va">n</span>, weight_type <span class="op">=</span> <span class="st">"aweight"</span><span class="op">)</span></span>
@@ -982,7 +993,7 @@ therefore reproduce the frequency-weighted fit exactly — including the
 standard errors and the sample size, since <code>fweight</code>
 redefines N as <code>sum(weights)</code>. We check the identity on a
 small set of distinct rows with integer frequencies:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rows</span> <span class="op">&lt;-</span> <span class="va">card</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">card</span><span class="op">)</span>, length.out <span class="op">=</span> <span class="fl">24</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lwage"</span>, <span class="st">"black"</span>, <span class="st">"smsa"</span>, <span class="st">"south"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="va">freq</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep_len</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span>, <span class="fl">24</span><span class="op">)</span></span>
 <span></span>
@@ -1040,7 +1051,7 @@ errors; neither estimator is robust to violations of that assumption
 <p><code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> returns a tibble of coefficient estimates with
 standard errors, test statistics, p-values, and confidence
 intervals:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_iv</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 16 × 7</span></span></span>
 <span><span class="co">#&gt;    term        estimate std.error statistic  p.value conf.low conf.high</span></span>
@@ -1074,7 +1085,7 @@ and the headline diagnostic tests (weak identification,
 underidentification, overidentification) — a compact set chosen so that
 model-comparison tables render sensibly. The remaining specification
 tests live in <code>fit$diagnostics</code>:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance</a></span><span class="op">(</span><span class="va">fit_iv</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 15</span></span></span>
 <span><span class="co">#&gt;   r.squared adj.r.squared sigma statistic   p.value    df df.residual  nobs</span></span>
@@ -1089,7 +1100,7 @@ tests live in <code>fit$diagnostics</code>:</p>
 </h3>
 <p><code><a href="https://generics.r-lib.org/reference/augment.html" class="external-link">augment()</a></code> returns the original data with fitted values
 and residuals appended:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://generics.r-lib.org/reference/augment.html" class="external-link">augment</a></span><span class="op">(</span><span class="va">fit_iv</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 19</span></span></span>
 <span><span class="co">#&gt;   lwage exper expersq black  smsa south smsa66 reg662 reg663 reg664 reg665</span></span>
@@ -1505,14 +1516,6 @@ partialling, and panel VCE examples.</p>
 <td>R convention</td>
 </tr>
 <tr class="odd">
-<td>COVIV</td>
-<td>Implicit for LIML+robust</td>
-<td>Explicit <code>coviv = TRUE</code>
-</td>
-<td>The covariance weighting is requested explicitly rather than
-inferred</td>
-</tr>
-<tr class="even">
 <td>Time-series</td>
 <td>
 <code>tsset</code> declares time/panel</td>
@@ -1520,7 +1523,7 @@ inferred</td>
 <code>tvar=</code> / <code>ivar=</code> arguments</td>
 <td>R has no <code>tsset</code>; explicit args</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>CUE optimizer</td>
 <td>Mata <code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>
 </td>

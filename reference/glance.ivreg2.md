@@ -69,6 +69,14 @@ Kleibergen-Paap F).
 Set `diagnostics = FALSE` for a compact goodness-of-fit summary without
 the IV test columns.
 
+## See also
+
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md)
+
+Other broom methods:
+[`augment.ivreg2()`](https://restatr.com/ivreg2r/reference/augment.ivreg2.md),
+[`tidy.ivreg2()`](https://restatr.com/ivreg2r/reference/tidy.ivreg2.md)
+
 ## Examples
 
 ``` r

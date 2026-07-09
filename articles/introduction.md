@@ -44,22 +44,23 @@ by OLS. We use the control set from Card (1995, Table 2), which is also
 the specification in Example 15.4 of Wooldridge (2020): experience and
 its square, race, urban residence (`smsa`), and region (current South
 plus the 1966 residence indicators `smsa66` and `reg662`–`reg669`). This
-control set recurs in every fit below, so we define it once and reuse
-it:
+control set recurs across the core wage-equation fits below, so we
+define the terms once and build each formula with
+[`reformulate()`](https://rdrr.io/r/stats/delete.response.html):
 
 ``` r
 
-base_controls <- "exper + expersq + black + smsa + south + smsa66"
-ctrl <- paste(base_controls,
-              "+ reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669")
+base_controls <- c("exper", "expersq", "black", "smsa", "south", "smsa66")
+controls <- c(base_controls, paste0("reg66", 2:9))
 
-fit_ols <- ivreg2(as.formula(paste("lwage ~ educ +", ctrl)), data = card)
+fit_ols <- ivreg2(reformulate(c("educ", controls), response = "lwage"), data = card)
 summary(fit_ols)
 #> 
 #> OLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = as.formula(paste("lwage ~ educ +", ctrl)), data = card)
+#> ivreg2(formula = reformulate(c("educ", controls), response = "lwage"), 
+#>     data = card)
 #> 
 #> Observations: 3,010 
 #> VCV type:     Classical (iid) 
@@ -99,14 +100,16 @@ the census-region indicators already expanded as `reg661`–`reg669`, with
 `reg661` the omitted reference, so we list `reg662`–`reg669` directly.
 Had the data carried a single region code, `factor(region)` would have
 produced the identical design matrix. We can recover that code from the
-indicators and confirm the two specifications agree exactly:
+indicators — on a local copy that leaves `card` untouched — and confirm
+the two specifications agree exactly:
 
 ``` r
 
-card$region <- factor(max.col(as.matrix(card[paste0("reg66", 1:9)])))
+card_region <- transform(card,
+  region = factor(max.col(as.matrix(card[paste0("reg66", 1:9)]))))
 fit_factor <- ivreg2(
-  as.formula(paste("lwage ~ educ +", base_controls, "+ factor(region)")),
-  data = card
+  reformulate(c("educ", base_controls, "factor(region)"), response = "lwage"),
+  data = card_region
 )
 all.equal(coef(fit_ols)["educ"], coef(fit_factor)["educ"])
 #> [1] TRUE
@@ -138,7 +141,8 @@ first-stage, and weighted fits reuse it:
 
 ``` r
 
-f_iv <- as.formula(paste("lwage ~", ctrl, "| educ | nearc4"))
+f_iv <- Formula::as.Formula(reformulate(controls, response = "lwage"),
+                            ~ educ, ~ nearc4)
 fit_iv <- ivreg2(f_iv, data = card)
 summary(fit_iv)
 #> 
@@ -311,7 +315,8 @@ specification of Computer Exercise C5, Chapter 15, in Wooldridge (2020):
 ``` r
 
 fit_overid <- ivreg2(
-  as.formula(paste("lwage ~", ctrl, "| educ | nearc2 + nearc4")),
+  Formula::as.Formula(reformulate(controls, response = "lwage"),
+                      ~ educ, ~ nearc2 + nearc4),
   data = card
 )
 summary(fit_overid)
@@ -319,8 +324,8 @@ summary(fit_overid)
 #> 2SLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = as.formula(paste("lwage ~", ctrl, "| educ | nearc2 + nearc4")), 
-#>     data = card)
+#> ivreg2(formula = Formula::as.Formula(reformulate(controls, response = "lwage"), 
+#>     ~educ, ~nearc2 + nearc4), data = card)
 #> 
 #> Observations: 3,010 
 #> VCV type:     Classical (iid) 
@@ -710,13 +715,26 @@ summary(fit_cluster)
 ```
 
 Supplying `clusters` selects the cluster-robust VCE automatically,
-without setting `vcov`. Fitting on the full 28,099 observations, the
-cluster-robust standard error on `grade` is 0.0022, versus 0.0010 under
-the classical (i.i.d.) VCE fit on the same data. Clustering roughly
-doubles the standard error here because wages are serially correlated
-within person across the panel’s multiple survey years, a dependence
-that classical and heteroskedasticity-robust standard errors both
-ignore.
+without setting `vcov`. To see how much clustering changes the standard
+error on `grade`, we compare it against a classical (i.i.d.) fit on the
+same data:
+
+``` r
+
+fit_iid <- ivreg2(ln_wage ~ grade + age + ttl_exp + tenure, data = nlswork)
+se_iid_grade <- sqrt(vcov(fit_iid)["grade", "grade"])
+se_cluster_grade <- sqrt(vcov(fit_cluster)["grade", "grade"])
+c(iid = se_iid_grade, cluster = se_cluster_grade)
+#>         iid     cluster 
+#> 0.001041338 0.002161257
+```
+
+Fitting on the full 28,099 observations, the cluster-robust standard
+error on `grade` is 0.0022, versus 0.0010 under the i.i.d. VCE.
+Clustering roughly doubles the standard error here because wages are
+serially correlated within person across the panel’s multiple survey
+years, a dependence that classical and heteroskedasticity-robust
+standard errors both ignore.
 
 Cluster-robust inference is asymptotic in the number of clusters rather
 than observations: with only a handful of clusters the standard errors
@@ -870,11 +888,8 @@ regression.
 
 micro <- ivreg2(lwage ~ black + smsa + south, data = card)
 
-cells <- aggregate(lwage ~ black + smsa + south, data = card,
-                   FUN = function(y) c(mean = mean(y), n = length(y)))
-cell_df <- data.frame(cells[c("black", "smsa", "south")],
-                      lwage = cells$lwage[, "mean"],
-                      n = cells$lwage[, "n"])
+cell_df <- aggregate(lwage ~ black + smsa + south, data = card, FUN = mean)
+cell_df$n <- aggregate(lwage ~ black + smsa + south, data = card, FUN = length)$lwage
 
 grouped <- ivreg2(lwage ~ black + smsa + south, data = cell_df,
                   weights = n, weight_type = "aweight")
@@ -1115,7 +1130,6 @@ for HAC/AC, GMM, CUE, partialling, and panel VCE examples.
 | Numerical method | Cross-products via Mata | QR-based regression via `lm.fit` | Better conditioning for core estimation |
 | Diagnostics | Some computed at post-estimation | All computed at estimation time | Stored in `fit$diagnostics`; headline tests also in [`glance()`](https://generics.r-lib.org/reference/glance.html) |
 | Factor variables | `i.` prefix syntax | R [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) / contrasts | R convention |
-| COVIV | Implicit for LIML+robust | Explicit `coviv = TRUE` | The covariance weighting is requested explicitly rather than inferred |
 | Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |
 | CUE optimizer | Mata [`optimize()`](https://rdrr.io/r/stats/optimize.html) | R [`optim()`](https://rdrr.io/r/stats/optim.html) (BFGS + Nelder-Mead) | Different optimizer, same objective |
 

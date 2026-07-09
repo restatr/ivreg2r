@@ -155,6 +155,20 @@ Estimate the Return to Schooling." In L.N. Christofides, E.K. Grant, and
 R. Swidinsky (Eds.), *Aspects of Labour Market Behaviour: Essays in
 Honour of John Vanderkamp*. University of Toronto Press.
 
+## See also
+
+Other ivreg2r datasets:
+[`abdata`](https://restatr.com/ivreg2r/reference/abdata.md),
+[`cigar`](https://restatr.com/ivreg2r/reference/cigar.md),
+[`griliches`](https://restatr.com/ivreg2r/reference/griliches.md),
+[`grunfeld`](https://restatr.com/ivreg2r/reference/grunfeld.md),
+[`klein`](https://restatr.com/ivreg2r/reference/klein.md),
+[`mroz`](https://restatr.com/ivreg2r/reference/mroz.md),
+[`nlswork`](https://restatr.com/ivreg2r/reference/nlswork.md),
+[`phillips`](https://restatr.com/ivreg2r/reference/phillips.md),
+[`stockwatson`](https://restatr.com/ivreg2r/reference/stockwatson.md),
+[`wagepan`](https://restatr.com/ivreg2r/reference/wagepan.md)
+
 ## Examples
 
 ``` r

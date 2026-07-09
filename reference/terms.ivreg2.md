@@ -30,3 +30,24 @@ terms(x, component = c("regressors", "instruments", "full"), ...)
 
 A [terms](https://rdrr.io/r/stats/terms.html) object, or `NULL` if
 `component = "instruments"` for an OLS model.
+
+## See also
+
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md)
+
+Other ivreg2 methods:
+[`coef.ivreg2()`](https://restatr.com/ivreg2r/reference/coef.ivreg2.md),
+[`confint.ivreg2()`](https://restatr.com/ivreg2r/reference/confint.ivreg2.md),
+[`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md),
+[`fitted.ivreg2()`](https://restatr.com/ivreg2r/reference/fitted.ivreg2.md),
+[`formula.ivreg2()`](https://restatr.com/ivreg2r/reference/formula.ivreg2.md),
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md),
+[`model.matrix.ivreg2()`](https://restatr.com/ivreg2r/reference/model.matrix.ivreg2.md),
+[`nobs.ivreg2()`](https://restatr.com/ivreg2r/reference/nobs.ivreg2.md),
+[`predict.ivreg2()`](https://restatr.com/ivreg2r/reference/predict.ivreg2.md),
+[`print.ivreg2()`](https://restatr.com/ivreg2r/reference/print.ivreg2.md),
+[`print.summary.ivreg2()`](https://restatr.com/ivreg2r/reference/print.summary.ivreg2.md),
+[`residuals.ivreg2()`](https://restatr.com/ivreg2r/reference/residuals.ivreg2.md),
+[`summary.ivreg2()`](https://restatr.com/ivreg2r/reference/summary.ivreg2.md),
+[`update.ivreg2()`](https://restatr.com/ivreg2r/reference/update.ivreg2.md),
+[`vcov.ivreg2()`](https://restatr.com/ivreg2r/reference/vcov.ivreg2.md)

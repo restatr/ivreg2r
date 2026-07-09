@@ -76,17 +76,12 @@ ivreg2(
   types: multiplying all weights by a constant changes no coefficients,
   standard errors, or test statistics. Frequency and importance weights
   are *not* normalized — they redefine N as `sum(weights)` (see
-  `weight_type`), so their scale matters by construction.
-
-  **Note:** for aweights and pweights, sigma will differ from
-  [`lm()`](https://rdrr.io/r/stats/lm.html)`(..., weights = w)` by a
-  factor of `sqrt(N / sum(w))` because
-  [`lm()`](https://rdrr.io/r/stats/lm.html) uses raw (unnormalized)
-  weights. Coefficients are identical to
+  `weight_type`), so their scale matters by construction. See
+  [ivreg2r-conventions](https://restatr.com/ivreg2r/reference/ivreg2r-conventions.md)
+  for how weights interact with sigma and for the comparison to
+  [`lm()`](https://rdrr.io/r/stats/lm.html) (coefficients match
   [`lm()`](https://rdrr.io/r/stats/lm.html) for OLS; SEs and the VCV
-  matrix additionally match [`lm()`](https://rdrr.io/r/stats/lm.html)
-  when `small = TRUE` (the default `small = FALSE` reports
-  Stata-convention SEs without the N - K finite-sample correction).
+  match only when `small = TRUE`).
 
 - subset:
 
@@ -547,6 +542,48 @@ values. LIML coincides with 2SLS when the model is exactly identified,
 because the LIML eigenvalue equals one in that case. Fuller does not,
 since it subtracts `fuller / (N - L)` from that eigenvalue.
 
+## See also
+
+[ivreg2r-conventions](https://restatr.com/ivreg2r/reference/ivreg2r-conventions.md)
+for the statistical conventions (sigma normalization, `small`, weights,
+degrees of freedom) and how they differ from
+[`lm()`](https://rdrr.io/r/stats/lm.html);
+[ivreg2r-glossary](https://restatr.com/ivreg2r/reference/ivreg2r-glossary.md)
+for the diagnostic-output acronyms;
+[`summary.ivreg2()`](https://restatr.com/ivreg2r/reference/summary.ivreg2.md)
+and
+[`print.ivreg2()`](https://restatr.com/ivreg2r/reference/print.ivreg2.md)
+for console output;
+[`tidy.ivreg2()`](https://restatr.com/ivreg2r/reference/tidy.ivreg2.md),
+[`glance.ivreg2()`](https://restatr.com/ivreg2r/reference/glance.ivreg2.md),
+and
+[`augment.ivreg2()`](https://restatr.com/ivreg2r/reference/augment.ivreg2.md)
+for broom-style output;
+[`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md)
+for first-stage regressions. The vignettes
+[`vignette("introduction", "ivreg2r")`](https://restatr.com/ivreg2r/articles/introduction.md),
+[`vignette("advanced-iv", "ivreg2r")`](https://restatr.com/ivreg2r/articles/advanced-iv.md),
+and
+[`vignette("time-series-gmm", "ivreg2r")`](https://restatr.com/ivreg2r/articles/time-series-gmm.md)
+work through applied examples.
+
+Other ivreg2 methods:
+[`coef.ivreg2()`](https://restatr.com/ivreg2r/reference/coef.ivreg2.md),
+[`confint.ivreg2()`](https://restatr.com/ivreg2r/reference/confint.ivreg2.md),
+[`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md),
+[`fitted.ivreg2()`](https://restatr.com/ivreg2r/reference/fitted.ivreg2.md),
+[`formula.ivreg2()`](https://restatr.com/ivreg2r/reference/formula.ivreg2.md),
+[`model.matrix.ivreg2()`](https://restatr.com/ivreg2r/reference/model.matrix.ivreg2.md),
+[`nobs.ivreg2()`](https://restatr.com/ivreg2r/reference/nobs.ivreg2.md),
+[`predict.ivreg2()`](https://restatr.com/ivreg2r/reference/predict.ivreg2.md),
+[`print.ivreg2()`](https://restatr.com/ivreg2r/reference/print.ivreg2.md),
+[`print.summary.ivreg2()`](https://restatr.com/ivreg2r/reference/print.summary.ivreg2.md),
+[`residuals.ivreg2()`](https://restatr.com/ivreg2r/reference/residuals.ivreg2.md),
+[`summary.ivreg2()`](https://restatr.com/ivreg2r/reference/summary.ivreg2.md),
+[`terms.ivreg2()`](https://restatr.com/ivreg2r/reference/terms.ivreg2.md),
+[`update.ivreg2()`](https://restatr.com/ivreg2r/reference/update.ivreg2.md),
+[`vcov.ivreg2()`](https://restatr.com/ivreg2r/reference/vcov.ivreg2.md)
+
 ## Examples
 
 ``` r
@@ -866,7 +903,7 @@ data(griliches)
 fit_cl <- ivreg2(lw ~ s + expr + tenure + rns + smsa |
                    iq | med + kww + age,
                  data = griliches, clusters = ~year, small = TRUE)
-#> Warning: Hansen J statistic not computed; singular moment covariance or Hessian matrix.
+#> Warning: Hansen J statistic not computed; the moment covariance or Hessian matrix is singular.
 #> Warning: Stock-Wright: Omega is rank-deficient; S statistic not computed.
 summary(fit_cl)
 #> 

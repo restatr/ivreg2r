@@ -32,6 +32,14 @@ A
 [`tibble::tibble()`](https://tibble.tidyverse.org/reference/tibble.html)
 with all original data columns plus `.fitted` and `.resid`.
 
+## See also
+
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md)
+
+Other broom methods:
+[`glance.ivreg2()`](https://restatr.com/ivreg2r/reference/glance.ivreg2.md),
+[`tidy.ivreg2()`](https://restatr.com/ivreg2r/reference/tidy.ivreg2.md)
+
 ## Examples
 
 ``` r
@@ -54,4 +62,5 @@ augment(fit) |> head()
 aug <- augment(fit)
 plot(aug$.fitted, aug$.resid, xlab = "Fitted", ylab = "Residuals")
 abline(h = 0, lty = 2)
+
 ```

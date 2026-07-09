@@ -122,14 +122,10 @@ scale-invariant for those types: multiplying all weights by a constant
 changes no coefficients, standard errors, or test statistics. Frequency
 and importance weights are <em>not</em> normalized — they redefine N as
 <code>sum(weights)</code> (see <code>weight_type</code>), so their scale matters by
-construction.</p>
-<p><strong>Note:</strong> for aweights and pweights, sigma will differ from
-<code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code><code>(..., weights = w)</code> by a factor
-of <code>sqrt(N / sum(w))</code> because <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> uses raw (unnormalized) weights.
-Coefficients are identical to <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> for OLS; SEs and the VCV matrix
-additionally match <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> when <code>small = TRUE</code> (the default
-<code>small = FALSE</code> reports Stata-convention SEs without the N - K
-finite-sample correction).</p></dd>
+construction.
+See <a href="ivreg2r-conventions.html">ivreg2r-conventions</a> for how weights interact with sigma and for
+the comparison to <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> (coefficients match <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> for OLS; SEs and the
+VCV match only when <code>small = TRUE</code>).</p></dd>
 
 
 <dt id="arg-subset">subset<a class="anchor" aria-label="anchor" href="#arg-subset"></a></dt>
@@ -565,6 +561,34 @@ LIML and Fuller uses estimator-specific critical values rather than the
 identified, because the LIML eigenvalue equals one in that case. Fuller
 does not, since it subtracts <code>fuller / (N - L)</code> from that eigenvalue.</p>
     </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><a href="ivreg2r-conventions.html">ivreg2r-conventions</a> for the statistical conventions (sigma
+normalization, <code>small</code>, weights, degrees of freedom) and how they differ
+from <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code>; <a href="ivreg2r-glossary.html">ivreg2r-glossary</a> for the diagnostic-output acronyms;
+<code><a href="summary.ivreg2.html">summary.ivreg2()</a></code> and <code><a href="print.ivreg2.html">print.ivreg2()</a></code> for console output;
+<code><a href="tidy.ivreg2.html">tidy.ivreg2()</a></code>, <code><a href="glance.ivreg2.html">glance.ivreg2()</a></code>, and <code><a href="augment.ivreg2.html">augment.ivreg2()</a></code> for
+broom-style output; <code><a href="first_stage.html">first_stage()</a></code> for first-stage regressions.
+The vignettes <code><a href="../articles/introduction.html">vignette("introduction", "ivreg2r")</a></code>,
+<code><a href="../articles/advanced-iv.html">vignette("advanced-iv", "ivreg2r")</a></code>, and
+<code><a href="../articles/time-series-gmm.html">vignette("time-series-gmm", "ivreg2r")</a></code> work through applied examples.</p>
+<p>Other ivreg2 methods:
+<code><a href="coef.ivreg2.html">coef.ivreg2()</a></code>,
+<code><a href="confint.ivreg2.html">confint.ivreg2()</a></code>,
+<code><a href="first_stage.html">first_stage()</a></code>,
+<code><a href="fitted.ivreg2.html">fitted.ivreg2()</a></code>,
+<code><a href="formula.ivreg2.html">formula.ivreg2()</a></code>,
+<code><a href="model.matrix.ivreg2.html">model.matrix.ivreg2()</a></code>,
+<code><a href="nobs.ivreg2.html">nobs.ivreg2()</a></code>,
+<code><a href="predict.ivreg2.html">predict.ivreg2()</a></code>,
+<code><a href="print.ivreg2.html">print.ivreg2()</a></code>,
+<code><a href="print.summary.ivreg2.html">print.summary.ivreg2()</a></code>,
+<code><a href="residuals.ivreg2.html">residuals.ivreg2()</a></code>,
+<code><a href="summary.ivreg2.html">summary.ivreg2()</a></code>,
+<code><a href="terms.ivreg2.html">terms.ivreg2()</a></code>,
+<code><a href="update.ivreg2.html">update.ivreg2()</a></code>,
+<code><a href="vcov.ivreg2.html">vcov.ivreg2()</a></code></p></div>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
@@ -884,7 +908,7 @@ does not, since it subtracts <code>fuller / (N - L)</code> from that eigenvalue.
 <span class="r-in"><span><span class="va">fit_cl</span> <span class="op">&lt;-</span> <span class="fu">ivreg2</span><span class="op">(</span><span class="va">lw</span> <span class="op">~</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="va">rns</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">|</span></span></span>
 <span class="r-in"><span>                   <span class="va">iq</span> <span class="op">|</span> <span class="va">med</span> <span class="op">+</span> <span class="va">kww</span> <span class="op">+</span> <span class="va">age</span>,</span></span>
 <span class="r-in"><span>                 data <span class="op">=</span> <span class="va">griliches</span>, clusters <span class="op">=</span> <span class="op">~</span><span class="va">year</span>, small <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Hansen J statistic not computed; singular moment covariance or Hessian matrix.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Hansen J statistic not computed; the moment covariance or Hessian matrix is singular.</span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Stock-Wright: Omega is rank-deficient; S statistic not computed.</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_cl</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>

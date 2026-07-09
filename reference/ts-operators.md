@@ -80,6 +80,10 @@ rows needed for the lags; rows whose lags are missing get `NA`
 predictions (again matching Stata). Operators confined to the instrument
 part impose no requirement on `newdata`.
 
+## See also
+
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md)
+
 ## Examples
 
 ``` r

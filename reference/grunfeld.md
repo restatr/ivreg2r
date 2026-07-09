@@ -52,6 +52,20 @@ Economic Review*, 11(4), 404–417.
 
 Distributed via Stata's `webuse grunfeld`.
 
+## See also
+
+Other ivreg2r datasets:
+[`abdata`](https://restatr.com/ivreg2r/reference/abdata.md),
+[`card`](https://restatr.com/ivreg2r/reference/card.md),
+[`cigar`](https://restatr.com/ivreg2r/reference/cigar.md),
+[`griliches`](https://restatr.com/ivreg2r/reference/griliches.md),
+[`klein`](https://restatr.com/ivreg2r/reference/klein.md),
+[`mroz`](https://restatr.com/ivreg2r/reference/mroz.md),
+[`nlswork`](https://restatr.com/ivreg2r/reference/nlswork.md),
+[`phillips`](https://restatr.com/ivreg2r/reference/phillips.md),
+[`stockwatson`](https://restatr.com/ivreg2r/reference/stockwatson.md),
+[`wagepan`](https://restatr.com/ivreg2r/reference/wagepan.md)
+
 ## Examples
 
 ``` r

@@ -12,10 +12,10 @@ statistics use the wrong variance, and two-stage least squares is no
 longer the efficient use of the moment conditions. This vignette covers
 the tools `ivreg2r` provides for such settings: heteroskedasticity- and
 autocorrelation-consistent (HAC) standard errors and their kernel
-machinery, the panel variance estimators (Kiefer, Driscoll-Kraay, and
-cluster-plus-kernel), and generalized method of moments (GMM)
-estimation, including the continuously-updated estimator. Each dataset
-is introduced where it is first used.
+machinery, the panel variance estimators (Kiefer, Driscoll-Kraay,
+Stock-Watson, and cluster-plus-kernel), and generalized method of
+moments (GMM) estimation, including the continuously-updated estimator.
+Each dataset is introduced where it is first used.
 
 ``` r
 
@@ -100,8 +100,8 @@ the equivalent `newey cinf unem, lag(2)`.
 
 Bartlett, Parzen, and Quadratic Spectral guarantee a positive
 semi-definite covariance estimate (Andrews 1991). For the other kernels,
-use the `psd` option if negative eigenvalues arise, as demonstrated
-below.
+use the `psd` option if negative eigenvalues arise (see the PSD
+corrections section below).
 
 ### Automatic bandwidth
 
@@ -250,7 +250,11 @@ On these annual data with no gaps, `l(unem, 1)` and this pre-computed
 `unem_lag1` coincide; on panels with gaps, filling the calendar first is
 what keeps a positional
 [`lag()`](https://dplyr.tidyverse.org/reference/lead-lag.html) aligned
-to calendar time.
+to calendar time. (`dplyr` and `tidyr` are optional Suggests, needed
+only for this pre-computation idiom; the
+[`l()`](https://restatr.com/ivreg2r/reference/ts-operators.md) and
+[`d()`](https://restatr.com/ivreg2r/reference/ts-operators.md) formula
+operators require neither.)
 
 ## Panel variance estimators
 
@@ -621,11 +625,11 @@ modest overidentification, robust 2SLS may be preferable.
 
 We follow the worked example of Baum, Schaffer & Stillman (2007,
 p. 476): a quarterly U.S. Phillips-curve equation from Stock & Watson’s
-textbook dataset, regressing the change in inflation on the unemployment
-rate, instrumented by lags of GDP growth, the T-bill rate, the exchange
-rate, and the T-bond rate. The errors are serially correlated, so the
-GMM weighting matrix is HAC (Bartlett, bandwidth 5). First the 2SLS
-baseline, then two-step GMM:
+textbook dataset (168 observations, 1959–2000), regressing the change in
+inflation on the unemployment rate, instrumented by lags of GDP growth,
+the T-bill rate, the exchange rate, and the T-bond rate. The errors are
+serially correlated, so the GMM weighting matrix is HAC (Bartlett,
+bandwidth 5). First the 2SLS baseline, then two-step GMM:
 
 ``` r
 
@@ -801,10 +805,11 @@ statistic and R-squared before trusting a CUE fit.
 ### Reusing the weighting matrix
 
 GMM works with every variance type. On the Griliches (1976) wage
-equation — the help file’s own heteroskedastic-GMM illustration,
-following Hayashi (2000, p. 255) — two-step GMM with
-heteroskedasticity-robust weighting estimates the return to measured
-ability (`iq`) instrumented by test scores and family background:
+equation — 758 young men from the U.S. National Longitudinal Survey, the
+help file’s own heteroskedastic-GMM illustration following Hayashi
+(2000, p. 255) — two-step GMM with heteroskedasticity-robust weighting
+estimates the return to measured ability (`iq`) instrumented by test
+scores and family background:
 
 ``` r
 
@@ -895,22 +900,23 @@ than moment conditions, so the cluster-robust moment covariance is
 singular and the overidentification statistics cannot be computed. The
 warnings are the point, not a malfunction: they report exactly the rank
 deficiency that Baum, Schaffer & Stillman (2007, pp. 484–485) describe.
-Partialling out the year dummies leaves the reported coefficients
-unchanged but, as the counts after the fit show, does not by itself
-repair the deficiency:
+This equation instruments `iq` with `med`, `kww`, and `age`, without the
+`mrt` term used in the GMM example above. Partialling out the year
+dummies leaves the reported coefficients unchanged but, as the counts
+after the fit show, does not by itself repair the deficiency:
 
 ``` r
 
 gril_cl <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | med + kww + age
 fit_full    <- ivreg2(gril_cl, data = griliches, clusters = ~ year)
-#> Warning: Hansen J statistic not computed; singular moment covariance or Hessian
-#> matrix.
+#> Warning: Hansen J statistic not computed; the moment covariance or Hessian
+#> matrix is singular.
 #> Warning: Stock-Wright: Omega is rank-deficient; S statistic not computed.
 fit_partial <- ivreg2(gril_cl, data = griliches, clusters = ~ year,
                       partial = "factor(year)")
-#> Warning: Hansen J statistic not computed; singular moment covariance or Hessian
-#> matrix.
+#> Warning: Hansen J statistic not computed; the moment covariance or Hessian
+#> matrix is singular.
 #> Warning: Stock-Wright: Omega is rank-deficient; S statistic not computed.
 shared <- c("s", "expr", "tenure", "rns", "smsa", "iq")
 all.equal(coef(fit_full)[shared], coef(fit_partial)[shared])
@@ -933,8 +939,7 @@ than proceeding with a singular weighting matrix:
 ivreg2(gril_cl, data = griliches, clusters = ~ year,
        partial = "factor(year)", method = "gmm2s")
 #> Error:
-#> ! estimated covariance matrix of moment conditions not of full rank;
-#> optimal GMM weighting matrix not unique.
+#> ! The estimated covariance matrix of the moment conditions is not of full rank, so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.
 ```
 
 Partialling out one further regressor brings the instrument count down
@@ -982,8 +987,8 @@ computed and are reported as `NA`, exactly as Stata leaves them blank:
 psd_formula <- lwage ~ exper + expersq + married + union | hours | educ + black
 fit_nopsd <- ivreg2(psd_formula, data = wagepan, dkraay = 2,
                     kernel = "truncated", tvar = "year", ivar = "nr")
-#> Warning: Hansen J statistic not computed; singular moment covariance or Hessian
-#> matrix.
+#> Warning: Hansen J statistic not computed; the moment covariance or Hessian
+#> matrix is singular.
 #> Warning: Stock-Wright: Omega is rank-deficient; S statistic not computed.
 min(eigen(fit_nopsd$S, symmetric = TRUE)$values)
 #> [1] -212.1851
@@ -1001,8 +1006,8 @@ fit_psda <- ivreg2(psd_formula, data = wagepan, dkraay = 2,
 #> eigenvalues corrected via the 'psda' method.
 #> Warning: The covariance matrix was not positive semidefinite; 2 negative
 #> eigenvalues corrected via the 'psda' method.
-#> Warning: Hansen J statistic not computed; singular moment covariance or Hessian
-#> matrix.
+#> Warning: Hansen J statistic not computed; the moment covariance or Hessian
+#> matrix is singular.
 #> Warning: The covariance matrix was not positive semidefinite; 2 negative
 #> eigenvalues corrected via the 'psda' method.
 #> Warning: The covariance matrix was not positive semidefinite; 1 negative

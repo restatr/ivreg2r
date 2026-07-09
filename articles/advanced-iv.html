@@ -85,9 +85,9 @@ example on a cigarette-demand panel.</p>
 <li>LIML, Fuller, and k-class estimation, including the canonical Klein
 consumption function</li>
 <li>Instrument-validity tests: overidentification, the orthogonality
-C-statistic, endogeneity, and redundancy</li>
+C-statistic, and endogeneity</li>
 <li>Weak-instrument-robust inference (the Anderson-Rubin and
-Stock-Wright statistics)</li>
+Stock-Wright statistics) and instrument redundancy</li>
 <li>Two-way clustering, including with instrumental variables</li>
 <li>Reduced-form regression and degrees-of-freedom adjustments</li>
 </ul>
@@ -608,7 +608,7 @@ of <code>educ</code> in the Mroz equation:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_hols</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
 <span>  <span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">+</span> <span class="va">educ</span> <span class="op">|</span> <span class="fl">0</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">kidslt6</span> <span class="op">+</span> <span class="va">kidsge6</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">mroz</span>, orthog <span class="op">=</span> <span class="st">"educ"</span></span>
+<span>  data <span class="op">=</span> <span class="va">mroz_work</span>, orthog <span class="op">=</span> <span class="st">"educ"</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_hols</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -616,7 +616,7 @@ of <code>educ</code> in the Mroz equation:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
 <span><span class="co">#&gt; ivreg2(formula = lwage ~ exper + expersq + educ | 0 | age + kidslt6 + </span></span>
-<span><span class="co">#&gt;     kidsge6, data = mroz, orthog = "educ")</span></span>
+<span><span class="co">#&gt;     kidsge6, data = mroz_work, orthog = "educ")</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Observations: 428 </span></span>
 <span><span class="co">#&gt; VCV type:     Classical (iid) </span></span>
