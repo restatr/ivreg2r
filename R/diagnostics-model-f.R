@@ -181,7 +181,7 @@
   for (step in seq_len(n)) {
     # Partial pivoting: largest *positive* current diagonal among remaining.
     # Only positive diagonals are valid pivots — a negative diagonal after
-    # elimination indicates a non-PSD direction. Stata's syminv() treats
+    # elimination indicates a non-PSD direction. Stata's invsym() treats
     # negative diagonals as rank-deficient and skips them.
     remaining <- which(!pivoted)
     if (length(remaining) == 0L) break
