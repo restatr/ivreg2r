@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-Classical and heteroskedasticity-robust standard errors both assume that the errors are serially uncorrelated. In time-series and panel instrumental-variables models that assumption rarely holds: shocks persist across periods, and in panels they may also be correlated across units in the same period. When it fails, the usual standard errors are inconsistent, the reported weak-identification and overidentification statistics use the wrong variance, and two-stage least squares is no longer the efficient use of the moment conditions. This vignette covers the tools `ivreg2r` provides for such settings: heteroskedasticity- and autocorrelation-consistent (HAC) standard errors and their kernel machinery, the panel variance estimators (Kiefer, Driscoll-Kraay, and cluster-plus-kernel), and generalized method of moments (GMM) estimation, including the continuously-updated estimator. Each dataset is introduced where it is first used.
+Classical and heteroskedasticity-robust standard errors both assume that the errors are serially uncorrelated. In time-series and panel instrumental-variables models that assumption rarely holds: shocks persist across periods, and in panels they may also be correlated across units in the same period. When it fails, the usual standard errors are inconsistent, the reported weak-identification and overidentification statistics use the wrong variance, and two-stage least squares is no longer the efficient use of the moment conditions. This vignette covers the tools `ivreg2r` provides for such settings: heteroskedasticity- and autocorrelation-consistent (HAC) standard errors and their kernel machinery, the panel variance estimators (Kiefer, Driscoll-Kraay, Stock-Watson, and cluster-plus-kernel), and generalized method of moments (GMM) estimation, including the continuously-updated estimator. Each dataset is introduced where it is first used.
 
 ```{r setup}
 library(ivreg2r)
@@ -67,7 +67,7 @@ The coefficients are identical across the three fits (the variance estimator doe
 | Daniell | $\sin(x)/x$ | No | Spectral analysis |
 | Tent | Tent-shaped spectral window | No | Spectral analysis |
 
-Bartlett, Parzen, and Quadratic Spectral guarantee a positive semi-definite covariance estimate (Andrews 1991). For the other kernels, use the `psd` option if negative eigenvalues arise, as demonstrated below.
+Bartlett, Parzen, and Quadratic Spectral guarantee a positive semi-definite covariance estimate (Andrews 1991). For the other kernels, use the `psd` option if negative eigenvalues arise (see the PSD corrections section below).
 
 ### Automatic bandwidth
 
@@ -108,7 +108,7 @@ phillips_lagged <- phillips |>
 head(phillips_lagged[, c("year", "unem", "unem_lag1")], 3)
 ```
 
-On these annual data with no gaps, `l(unem, 1)` and this pre-computed `unem_lag1` coincide; on panels with gaps, filling the calendar first is what keeps a positional `lag()` aligned to calendar time.
+On these annual data with no gaps, `l(unem, 1)` and this pre-computed `unem_lag1` coincide; on panels with gaps, filling the calendar first is what keeps a positional `lag()` aligned to calendar time. (`dplyr` and `tidyr` are optional Suggests, needed only for this pre-computation idiom; the `l()` and `d()` formula operators require neither.)
 
 ## Panel variance estimators
 
@@ -233,7 +233,7 @@ Two-step efficient GMM (`method = "gmm2s"`) uses an optimal weighting matrix to 
 
 ### A HAC-GMM arc on the Stock-Watson data
 
-We follow the worked example of Baum, Schaffer & Stillman (2007, p. 476): a quarterly U.S. Phillips-curve equation from Stock & Watson's textbook dataset, regressing the change in inflation on the unemployment rate, instrumented by lags of GDP growth, the T-bill rate, the exchange rate, and the T-bond rate. The errors are serially correlated, so the GMM weighting matrix is HAC (Bartlett, bandwidth 5). First the 2SLS baseline, then two-step GMM:
+We follow the worked example of Baum, Schaffer & Stillman (2007, p. 476): a quarterly U.S. Phillips-curve equation from Stock & Watson's textbook dataset (`r nrow(stockwatson)` observations, `r min(stockwatson$year)`--`r max(stockwatson$year)`), regressing the change in inflation on the unemployment rate, instrumented by lags of GDP growth, the T-bill rate, the exchange rate, and the T-bond rate. The errors are serially correlated, so the GMM weighting matrix is HAC (Bartlett, bandwidth 5). First the 2SLS baseline, then two-step GMM:
 
 ```{r sw-2sls}
 sw_formula <- dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1
@@ -265,7 +265,7 @@ Like LIML, CUE has no finite moments of any order regardless of the degree of ov
 
 ### Reusing the weighting matrix
 
-GMM works with every variance type. On the Griliches (1976) wage equation — the help file's own heteroskedastic-GMM illustration, following Hayashi (2000, p. 255) — two-step GMM with heteroskedasticity-robust weighting estimates the return to measured ability (`iq`) instrumented by test scores and family background:
+GMM works with every variance type. On the Griliches (1976) wage equation — `r nrow(griliches)` young men from the U.S. National Longitudinal Survey, the help file's own heteroskedastic-GMM illustration following Hayashi (2000, p. 255) — two-step GMM with heteroskedasticity-robust weighting estimates the return to measured ability (`iq`) instrumented by test scores and family background:
 
 ```{r gril-gmm}
 gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
@@ -310,7 +310,7 @@ Because two-step GMM uses `S` as its second-step weighting matrix, centering cha
 
 The `partial` argument removes specified exogenous regressors from every variable — dependent, endogenous, and excluded instruments — by Frisch-Waugh-Lovell projection before estimation, which absorbs high-dimensional fixed effects without carrying them as reported coefficients. The coefficients on partialled-out variables are not reported, but the remaining coefficients are numerically identical to including those variables directly, for 2SLS, LIML, and two-step GMM (the identity does not extend to CUE or to iterated GMM beyond two steps).
 
-Partialling also has a substantive role that the Griliches wage equation illustrates. Clustering that equation on `year` gives far fewer clusters than moment conditions, so the cluster-robust moment covariance is singular and the overidentification statistics cannot be computed. The warnings are the point, not a malfunction: they report exactly the rank deficiency that Baum, Schaffer & Stillman (2007, pp. 484--485) describe. Partialling out the year dummies leaves the reported coefficients unchanged but, as the counts after the fit show, does not by itself repair the deficiency:
+Partialling also has a substantive role that the Griliches wage equation illustrates. Clustering that equation on `year` gives far fewer clusters than moment conditions, so the cluster-robust moment covariance is singular and the overidentification statistics cannot be computed. The warnings are the point, not a malfunction: they report exactly the rank deficiency that Baum, Schaffer & Stillman (2007, pp. 484--485) describe. This equation instruments `iq` with `med`, `kww`, and `age`, without the `mrt` term used in the GMM example above. Partialling out the year dummies leaves the reported coefficients unchanged but, as the counts after the fit show, does not by itself repair the deficiency:
 
 ```{r partial-fwl, warning = TRUE}
 gril_cl <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
