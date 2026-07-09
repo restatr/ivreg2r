@@ -21,8 +21,8 @@ This vignette covers features of `ivreg2r` beyond the basic two-stage least squa
 The topics are:
 
 - LIML, Fuller, and k-class estimation, including the canonical Klein consumption function
-- Instrument-validity tests: overidentification, the orthogonality C-statistic, endogeneity, and redundancy
-- Weak-instrument-robust inference (the Anderson-Rubin and Stock-Wright statistics)
+- Instrument-validity tests: overidentification, the orthogonality C-statistic, and endogeneity
+- Weak-instrument-robust inference (the Anderson-Rubin and Stock-Wright statistics) and instrument redundancy
 - Two-way clustering, including with instrumental variables
 - Reduced-form regression and degrees-of-freedom adjustments
 
@@ -206,7 +206,7 @@ The C-statistic can also challenge an *included* regressor's exogeneity. Write t
 ```{r hols-orthog}
 fit_hols <- ivreg2(
   lwage ~ exper + expersq + educ | 0 | age + kidslt6 + kidsge6,
-  data = mroz, orthog = "educ"
+  data = mroz_work, orthog = "educ"
 )
 summary(fit_hols)
 ```
