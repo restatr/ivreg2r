@@ -70,6 +70,9 @@ generics::augment
 #' )
 #' comparison[comparison$term == "educ", c("method", "estimate", "std.error")]
 #' }
+#'
+#' @family broom methods
+#' @seealso [ivreg2()]
 #' @export
 tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95,
                          exponentiate = FALSE, ...) {
@@ -194,6 +197,9 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95,
 #'   )
 #' }
 #' }
+#'
+#' @family broom methods
+#' @seealso [ivreg2()]
 #' @export
 glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
   diag <- x$diagnostics
@@ -256,6 +262,9 @@ glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
 #' aug <- augment(fit)
 #' plot(aug$.fitted, aug$.resid, xlab = "Fitted", ylab = "Residuals")
 #' abline(h = 0, lty = 2)
+#'
+#' @family broom methods
+#' @seealso [ivreg2()]
 #' @export
 augment.ivreg2 <- function(x, data = NULL, ...) {
   if (is.null(data)) {

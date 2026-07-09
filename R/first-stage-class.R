@@ -36,6 +36,8 @@
 #' c(kp_rk_wald_F = fit$diagnostics$weak_id_robust$stat,
 #'   first_stage_F = glance(fs$educ)$f_stat)
 #'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 first_stage <- function(x, ...) UseMethod("first_stage")
 

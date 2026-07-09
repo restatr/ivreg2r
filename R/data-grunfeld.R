@@ -38,4 +38,5 @@
 #'   dkraay = 2, small = TRUE, tvar = "year", ivar = "company"
 #' )
 #' summary(fit)
+#' @family ivreg2r datasets
 "grunfeld"

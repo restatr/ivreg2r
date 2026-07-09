@@ -60,4 +60,5 @@
 #'                   tvar = "date")
 #' summary(fit_gmm)
 #' }
+#' @family ivreg2r datasets
 "stockwatson"

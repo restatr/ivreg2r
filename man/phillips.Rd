@@ -50,4 +50,18 @@ fit_hac <- ivreg2(cinf ~ unem, data = phillips, vcov = "robust",
                   small = TRUE)
 summary(fit_hac)
 }
+\seealso{
+Other ivreg2r datasets:
+\code{\link{abdata}},
+\code{\link{card}},
+\code{\link{cigar}},
+\code{\link{griliches}},
+\code{\link{grunfeld}},
+\code{\link{klein}},
+\code{\link{mroz}},
+\code{\link{nlswork}},
+\code{\link{stockwatson}},
+\code{\link{wagepan}}
+}
+\concept{ivreg2r datasets}
 \keyword{datasets}

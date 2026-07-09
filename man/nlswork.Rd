@@ -65,4 +65,18 @@ fit2 <- ivreg2(ln_wage ~ grade + age + ttl_exp + tenure, data = nlswork,
                clusters = ~idcode + year)
 summary(fit2)
 }
+\seealso{
+Other ivreg2r datasets:
+\code{\link{abdata}},
+\code{\link{card}},
+\code{\link{cigar}},
+\code{\link{griliches}},
+\code{\link{grunfeld}},
+\code{\link{klein}},
+\code{\link{mroz}},
+\code{\link{phillips}},
+\code{\link{stockwatson}},
+\code{\link{wagepan}}
+}
+\concept{ivreg2r datasets}
 \keyword{datasets}

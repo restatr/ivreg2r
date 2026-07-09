@@ -19,3 +19,25 @@ Builds a coefficient table (estimates, standard errors, test statistics,
 p-values) and collects model diagnostics for display by
 \code{\link[=print.summary.ivreg2]{print.summary.ivreg2()}}.
 }
+\seealso{
+\code{\link[=ivreg2]{ivreg2()}}; \link{ivreg2r-glossary} for the diagnostic acronyms printed
+here; \link{ivreg2r-conventions} for the statistical conventions.
+
+Other ivreg2 methods:
+\code{\link[=coef.ivreg2]{coef.ivreg2()}},
+\code{\link[=confint.ivreg2]{confint.ivreg2()}},
+\code{\link[=first_stage]{first_stage()}},
+\code{\link[=fitted.ivreg2]{fitted.ivreg2()}},
+\code{\link[=formula.ivreg2]{formula.ivreg2()}},
+\code{\link[=ivreg2]{ivreg2()}},
+\code{\link[=model.matrix.ivreg2]{model.matrix.ivreg2()}},
+\code{\link[=nobs.ivreg2]{nobs.ivreg2()}},
+\code{\link[=predict.ivreg2]{predict.ivreg2()}},
+\code{\link[=print.ivreg2]{print.ivreg2()}},
+\code{\link[=print.summary.ivreg2]{print.summary.ivreg2()}},
+\code{\link[=residuals.ivreg2]{residuals.ivreg2()}},
+\code{\link[=terms.ivreg2]{terms.ivreg2()}},
+\code{\link[=update.ivreg2]{update.ivreg2()}},
+\code{\link[=vcov.ivreg2]{vcov.ivreg2()}}
+}
+\concept{ivreg2 methods}

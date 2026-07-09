@@ -1962,14 +1962,9 @@
 #'   and importance weights are *not* normalized --- they redefine N as
 #'   `sum(weights)` (see `weight_type`), so their scale matters by
 #'   construction.
-#'
-#'   **Note:** for aweights and pweights, sigma will differ from
-#'   [lm()]`(..., weights = w)` by a factor
-#'   of `sqrt(N / sum(w))` because `lm()` uses raw (unnormalized) weights.
-#'   Coefficients are identical to `lm()` for OLS; SEs and the VCV matrix
-#'   additionally match `lm()` when `small = TRUE` (the default
-#'   `small = FALSE` reports Stata-convention SEs without the N - K
-#'   finite-sample correction).
+#'   See [ivreg2r-conventions] for how weights interact with sigma and for
+#'   the comparison to [lm()] (coefficients match `lm()` for OLS; SEs and the
+#'   VCV match only when `small = TRUE`).
 #' @param subset Optional subset expression (evaluated in `data`).
 #' @param na.action Function for handling `NA`s (default [na.omit]).
 #'   Use [na.exclude] to drop incomplete cases during estimation but
@@ -2307,6 +2302,18 @@
 #' 2SLS values. LIML coincides with 2SLS when the model is exactly
 #' identified, because the LIML eigenvalue equals one in that case. Fuller
 #' does not, since it subtracts `fuller / (N - L)` from that eigenvalue.
+#'
+#' @seealso [ivreg2r-conventions] for the statistical conventions (sigma
+#'   normalization, `small`, weights, degrees of freedom) and how they differ
+#'   from [lm()]; [ivreg2r-glossary] for the diagnostic-output acronyms;
+#'   [summary.ivreg2()] and [print.ivreg2()] for console output;
+#'   [tidy.ivreg2()], [glance.ivreg2()], and [augment.ivreg2()] for
+#'   broom-style output; [first_stage()] for first-stage regressions.
+#'   The vignettes `vignette("introduction", "ivreg2r")`,
+#'   `vignette("advanced-iv", "ivreg2r")`, and
+#'   `vignette("time-series-gmm", "ivreg2r")` work through applied examples.
+#'
+#' @family ivreg2 methods
 #'
 #' @examples
 #' data(mroz)

@@ -51,4 +51,5 @@
 #' fit <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
 #'               data = mroz_work)
 #' summary(fit)
+#' @family ivreg2r datasets
 "mroz"

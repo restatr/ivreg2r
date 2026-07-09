@@ -61,4 +61,18 @@ fit <- ivreg2(lwage ~ exper + expersq | educ | motheduc + fatheduc,
               data = mroz_work)
 summary(fit)
 }
+\seealso{
+Other ivreg2r datasets:
+\code{\link{abdata}},
+\code{\link{card}},
+\code{\link{cigar}},
+\code{\link{griliches}},
+\code{\link{grunfeld}},
+\code{\link{klein}},
+\code{\link{nlswork}},
+\code{\link{phillips}},
+\code{\link{stockwatson}},
+\code{\link{wagepan}}
+}
+\concept{ivreg2r datasets}
 \keyword{datasets}

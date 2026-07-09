@@ -54,4 +54,5 @@
 #' fit2 <- ivreg2(ln_wage ~ grade + age + ttl_exp + tenure, data = nlswork,
 #'                clusters = ~idcode + year)
 #' summary(fit2)
+#' @family ivreg2r datasets
 "nlswork"

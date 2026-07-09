@@ -58,4 +58,5 @@
 #' )
 #' fit <- ivreg2(lsales ~ lrndi | lrprice | lrpimin, data = cigar_real)
 #' summary(fit)
+#' @family ivreg2r datasets
 "cigar"

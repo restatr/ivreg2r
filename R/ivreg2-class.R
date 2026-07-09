@@ -223,6 +223,9 @@ NULL
 #' @param digits Minimum number of significant digits to print.
 #' @param ... Additional arguments (ignored).
 #' @return `x`, invisibly.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 print.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L), ...) {
   est_type <- .estimation_label(x)
@@ -251,6 +254,9 @@ print.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L), ...) {
 #' @param object An object of class `"ivreg2"`.
 #' @param ... Additional arguments (ignored).
 #' @return Named numeric vector of coefficient estimates.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 coef.ivreg2 <- function(object, ...) {
   object$coefficients
@@ -265,6 +271,9 @@ coef.ivreg2 <- function(object, ...) {
 #' @param object An object of class `"ivreg2"`.
 #' @param ... Additional arguments (ignored).
 #' @return The variance-covariance matrix of the coefficient estimates.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 vcov.ivreg2 <- function(object, ...) {
   object$vcov
@@ -283,6 +292,9 @@ vcov.ivreg2 <- function(object, ...) {
 #' @param object An object of class `"ivreg2"`.
 #' @param ... Additional arguments (ignored).
 #' @return Numeric vector of residuals.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 residuals.ivreg2 <- function(object, ...) {
   stats::naresid(object$na.action, object$residuals)
@@ -301,6 +313,9 @@ residuals.ivreg2 <- function(object, ...) {
 #' @param object An object of class `"ivreg2"`.
 #' @param ... Additional arguments (ignored).
 #' @return Numeric vector of fitted values.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 fitted.ivreg2 <- function(object, ...) {
   stats::napredict(object$na.action, object$fitted.values)
@@ -315,6 +330,9 @@ fitted.ivreg2 <- function(object, ...) {
 #' @param object An object of class `"ivreg2"`.
 #' @param ... Additional arguments (ignored).
 #' @return Integer: number of observations.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 nobs.ivreg2 <- function(object, ...) {
   object$nobs
@@ -330,6 +348,9 @@ nobs.ivreg2 <- function(object, ...) {
 #' @param ... Additional arguments passed to [Formula::formula.Formula()]
 #'   (e.g., `rhs`, `lhs`, `collapse`).
 #' @return The original model formula.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 formula.ivreg2 <- function(x, ...) {
   stats::formula(x$formula, ...)
@@ -351,6 +372,9 @@ formula.ivreg2 <- function(x, ...) {
 #' @param level The confidence level (default 0.95).
 #' @param ... Additional arguments (ignored).
 #' @return A matrix with columns for the lower and upper confidence limits.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]; [ivreg2r-conventions] for when the t vs normal distribution is used.
 #' @export
 confint.ivreg2 <- function(object, parm, level = 0.95, ...) {
   cf <- coef(object)
@@ -406,6 +430,9 @@ confint.ivreg2 <- function(object, parm, level = 0.95, ...) {
 #' # Predictions with standard errors for new data
 #' nd <- data.frame(exper = c(5, 10), educ = c(12, 16), nearc4 = c(0, 1))
 #' predict(fit, newdata = nd, se.fit = TRUE)
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
                             na.action = stats::na.pass, ...) {
@@ -517,6 +544,9 @@ predict.ivreg2 <- function(object, newdata, se.fit = FALSE,
 #' @param ... Additional arguments (ignored).
 #' @return A [terms] object, or `NULL` if `component = "instruments"` for
 #'   an OLS model.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 terms.ivreg2 <- function(x, component = c("regressors", "instruments", "full"), ...) {
   x$terms[[match.arg(component)]]
@@ -545,6 +575,9 @@ terms.ivreg2 <- function(x, component = c("regressors", "instruments", "full"), 
 #' @param ... Additional arguments (ignored).
 #' @return A numeric matrix, or `NULL` if `component = "instruments"`
 #'   for an OLS model.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 model.matrix.ivreg2 <- function(object,
                                  component = c("regressors", "projected",
@@ -632,6 +665,9 @@ model.matrix.ivreg2 <- function(object,
 #'   if `FALSE`, return the unevaluated call.
 #' @return If `evaluate = TRUE`, a new `ivreg2` object. If `evaluate = FALSE`,
 #'   the unevaluated call.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 update.ivreg2 <- function(object, formula., ..., evaluate = TRUE) {
   call <- stats::getCall(object)
@@ -667,6 +703,10 @@ update.ivreg2 <- function(object, formula., ..., evaluate = TRUE) {
 #' @param object An object of class `"ivreg2"`.
 #' @param ... Additional arguments (ignored).
 #' @return An object of class `"summary.ivreg2"`.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]; [ivreg2r-glossary] for the diagnostic acronyms printed
+#'   here; [ivreg2r-conventions] for the statistical conventions.
 #' @export
 summary.ivreg2 <- function(object, ...) {
   cf <- coef(object)
@@ -703,6 +743,9 @@ summary.ivreg2 <- function(object, ...) {
 #' @param signif.stars Logical: print significance stars? Default `TRUE`.
 #' @param ... Additional arguments passed to [printCoefmat()].
 #' @return `x`, invisibly.
+#'
+#' @family ivreg2 methods
+#' @seealso [ivreg2()]
 #' @export
 print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
                                   signif.stars = getOption("show.signif.stars", TRUE),

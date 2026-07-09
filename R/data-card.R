@@ -61,4 +61,5 @@
 #'   data = card
 #' )
 #' summary(fit)
+#' @family ivreg2r datasets
 "card"

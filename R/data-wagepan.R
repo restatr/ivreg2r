@@ -32,4 +32,5 @@
 #' fit <- ivreg2(lwage ~ educ + black + hisp + exper + expersq + married + union,
 #'               data = wagepan, clusters = ~ nr + year, small = TRUE)
 #' summary(fit)
+#' @family ivreg2r datasets
 "wagepan"

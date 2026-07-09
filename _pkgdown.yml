@@ -37,6 +37,11 @@ reference:
   desc: Lag and difference operators for time-series and panel instruments.
   contents:
   - ts-operators
+- title: Conventions & glossary
+  desc: Statistical conventions (relative to `lm()`) and the diagnostic-output acronyms.
+  contents:
+  - ivreg2r-conventions
+  - ivreg2r-glossary
 - title: Datasets
   desc: Datasets used throughout the help-file examples and vignettes.
   contents:

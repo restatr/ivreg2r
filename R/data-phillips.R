@@ -40,4 +40,5 @@
 #'                   kernel = "bartlett", bw = 3, tvar = "year",
 #'                   small = TRUE)
 #' summary(fit_hac)
+#' @family ivreg2r datasets
 "phillips"

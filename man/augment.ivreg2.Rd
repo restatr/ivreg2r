@@ -34,4 +34,13 @@ augment(fit) |> head()
 aug <- augment(fit)
 plot(aug$.fitted, aug$.resid, xlab = "Fitted", ylab = "Residuals")
 abline(h = 0, lty = 2)
+
 }
+\seealso{
+\code{\link[=ivreg2]{ivreg2()}}
+
+Other broom methods:
+\code{\link[=glance.ivreg2]{glance.ivreg2()}},
+\code{\link[=tidy.ivreg2]{tidy.ivreg2()}}
+}
+\concept{broom methods}

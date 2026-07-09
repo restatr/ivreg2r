@@ -97,4 +97,13 @@ if (requireNamespace("modelsummary", quietly = TRUE)) {
   )
 }
 }
+
 }
+\seealso{
+\code{\link[=ivreg2]{ivreg2()}}
+
+Other broom methods:
+\code{\link[=augment.ivreg2]{augment.ivreg2()}},
+\code{\link[=tidy.ivreg2]{tidy.ivreg2()}}
+}
+\concept{broom methods}

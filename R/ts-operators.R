@@ -83,6 +83,8 @@
 #' fit <- ivreg2(cinf ~ 1 | unem | l(unem, 1:3), data = phillips,
 #'               tvar = "year", vcov = "AC", kernel = "bartlett", bw = 3)
 #' coef(fit)
+#'
+#' @seealso [ivreg2()]
 #' @name ts-operators
 #' @aliases l d
 NULL

@@ -71,4 +71,18 @@ fit <- ivreg2(
 )
 summary(fit)
 }
+\seealso{
+Other ivreg2r datasets:
+\code{\link{abdata}},
+\code{\link{cigar}},
+\code{\link{griliches}},
+\code{\link{grunfeld}},
+\code{\link{klein}},
+\code{\link{mroz}},
+\code{\link{nlswork}},
+\code{\link{phillips}},
+\code{\link{stockwatson}},
+\code{\link{wagepan}}
+}
+\concept{ivreg2r datasets}
 \keyword{datasets}

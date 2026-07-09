@@ -68,14 +68,9 @@ changes no coefficients, standard errors, or test statistics. Frequency
 and importance weights are \emph{not} normalized --- they redefine N as
 \code{sum(weights)} (see \code{weight_type}), so their scale matters by
 construction.
-
-\strong{Note:} for aweights and pweights, sigma will differ from
-\code{\link[=lm]{lm()}}\verb{(..., weights = w)} by a factor
-of \code{sqrt(N / sum(w))} because \code{lm()} uses raw (unnormalized) weights.
-Coefficients are identical to \code{lm()} for OLS; SEs and the VCV matrix
-additionally match \code{lm()} when \code{small = TRUE} (the default
-\code{small = FALSE} reports Stata-convention SEs without the N - K
-finite-sample correction).}
+See \link{ivreg2r-conventions} for how weights interact with sigma and for
+the comparison to \code{\link[=lm]{lm()}} (coefficients match \code{lm()} for OLS; SEs and the
+VCV match only when \code{small = TRUE}).}
 
 \item{subset}{Optional subset expression (evaluated in \code{data}).}
 
@@ -540,3 +535,32 @@ summary(fit_gmm)
 }
 
 }
+\seealso{
+\link{ivreg2r-conventions} for the statistical conventions (sigma
+normalization, \code{small}, weights, degrees of freedom) and how they differ
+from \code{\link[=lm]{lm()}}; \link{ivreg2r-glossary} for the diagnostic-output acronyms;
+\code{\link[=summary.ivreg2]{summary.ivreg2()}} and \code{\link[=print.ivreg2]{print.ivreg2()}} for console output;
+\code{\link[=tidy.ivreg2]{tidy.ivreg2()}}, \code{\link[=glance.ivreg2]{glance.ivreg2()}}, and \code{\link[=augment.ivreg2]{augment.ivreg2()}} for
+broom-style output; \code{\link[=first_stage]{first_stage()}} for first-stage regressions.
+The vignettes \code{vignette("introduction", "ivreg2r")},
+\code{vignette("advanced-iv", "ivreg2r")}, and
+\code{vignette("time-series-gmm", "ivreg2r")} work through applied examples.
+
+Other ivreg2 methods:
+\code{\link[=coef.ivreg2]{coef.ivreg2()}},
+\code{\link[=confint.ivreg2]{confint.ivreg2()}},
+\code{\link[=first_stage]{first_stage()}},
+\code{\link[=fitted.ivreg2]{fitted.ivreg2()}},
+\code{\link[=formula.ivreg2]{formula.ivreg2()}},
+\code{\link[=model.matrix.ivreg2]{model.matrix.ivreg2()}},
+\code{\link[=nobs.ivreg2]{nobs.ivreg2()}},
+\code{\link[=predict.ivreg2]{predict.ivreg2()}},
+\code{\link[=print.ivreg2]{print.ivreg2()}},
+\code{\link[=print.summary.ivreg2]{print.summary.ivreg2()}},
+\code{\link[=residuals.ivreg2]{residuals.ivreg2()}},
+\code{\link[=summary.ivreg2]{summary.ivreg2()}},
+\code{\link[=terms.ivreg2]{terms.ivreg2()}},
+\code{\link[=update.ivreg2]{update.ivreg2()}},
+\code{\link[=vcov.ivreg2]{vcov.ivreg2()}}
+}
+\concept{ivreg2 methods}

@@ -42,4 +42,18 @@ fit <- ivreg2(lwage ~ educ + black + hisp + exper + expersq + married + union,
               data = wagepan, clusters = ~ nr + year, small = TRUE)
 summary(fit)
 }
+\seealso{
+Other ivreg2r datasets:
+\code{\link{abdata}},
+\code{\link{card}},
+\code{\link{cigar}},
+\code{\link{griliches}},
+\code{\link{grunfeld}},
+\code{\link{klein}},
+\code{\link{mroz}},
+\code{\link{nlswork}},
+\code{\link{phillips}},
+\code{\link{stockwatson}}
+}
+\concept{ivreg2r datasets}
 \keyword{datasets}

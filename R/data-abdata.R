@@ -48,4 +48,5 @@
 #' # ivreg2 help file line 1558: one-way cluster on firm id
 #' fit <- ivreg2(n ~ w + k, data = abdata, clusters = ~id)
 #' summary(fit)
+#' @family ivreg2r datasets
 "abdata"

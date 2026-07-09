@@ -61,4 +61,5 @@
 #'   data = klein, tvar = "yr", method = "liml"
 #' )
 #' summary(fit)
+#' @family ivreg2r datasets
 "klein"

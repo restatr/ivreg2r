@@ -59,4 +59,5 @@
 #'               data = griliches, vcov = "robust",
 #'               redundant = "mrt")
 #' summary(fit)
+#' @family ivreg2r datasets
 "griliches"

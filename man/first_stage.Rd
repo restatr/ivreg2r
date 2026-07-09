@@ -39,3 +39,24 @@ c(kp_rk_wald_F = fit$diagnostics$weak_id_robust$stat,
   first_stage_F = glance(fs$educ)$f_stat)
 
 }
+\seealso{
+\code{\link[=ivreg2]{ivreg2()}}
+
+Other ivreg2 methods:
+\code{\link[=coef.ivreg2]{coef.ivreg2()}},
+\code{\link[=confint.ivreg2]{confint.ivreg2()}},
+\code{\link[=fitted.ivreg2]{fitted.ivreg2()}},
+\code{\link[=formula.ivreg2]{formula.ivreg2()}},
+\code{\link[=ivreg2]{ivreg2()}},
+\code{\link[=model.matrix.ivreg2]{model.matrix.ivreg2()}},
+\code{\link[=nobs.ivreg2]{nobs.ivreg2()}},
+\code{\link[=predict.ivreg2]{predict.ivreg2()}},
+\code{\link[=print.ivreg2]{print.ivreg2()}},
+\code{\link[=print.summary.ivreg2]{print.summary.ivreg2()}},
+\code{\link[=residuals.ivreg2]{residuals.ivreg2()}},
+\code{\link[=summary.ivreg2]{summary.ivreg2()}},
+\code{\link[=terms.ivreg2]{terms.ivreg2()}},
+\code{\link[=update.ivreg2]{update.ivreg2()}},
+\code{\link[=vcov.ivreg2]{vcov.ivreg2()}}
+}
+\concept{ivreg2 methods}

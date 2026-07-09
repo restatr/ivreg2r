@@ -49,4 +49,13 @@ comparison <- rbind(
 )
 comparison[comparison$term == "educ", c("method", "estimate", "std.error")]
 }
+
 }
+\seealso{
+\code{\link[=ivreg2]{ivreg2()}}
+
+Other broom methods:
+\code{\link[=augment.ivreg2]{augment.ivreg2()}},
+\code{\link[=glance.ivreg2]{glance.ivreg2()}}
+}
+\concept{broom methods}

@@ -79,4 +79,8 @@ data(phillips)
 fit <- ivreg2(cinf ~ 1 | unem | l(unem, 1:3), data = phillips,
               tvar = "year", vcov = "AC", kernel = "bartlett", bw = 3)
 coef(fit)
+
+}
+\seealso{
+\code{\link[=ivreg2]{ivreg2()}}
 }
