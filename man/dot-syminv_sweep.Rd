@@ -13,10 +13,12 @@
 The generalized inverse matrix, or \code{NULL} if no pivots succeed.
 }
 \description{
-Matches the behavior of Stata's \code{syminv()}: at each step, the largest
-remaining diagonal element is selected as the pivot (partial pivoting).
-Rows/columns whose pivot falls below a tolerance are zeroed out.
-This differs from the Moore-Penrose pseudoinverse for rank-deficient
-matrices and matches how Stata's \code{test} command computes Wald statistics.
+At each step the largest remaining diagonal element is selected as the
+pivot (partial pivoting); rows and columns whose pivot falls below a
+tolerance are zeroed out. For a rank-deficient matrix this yields a
+generalized inverse that zeroes the collinear rows rather than the
+Moore-Penrose pseudoinverse, matching the rank-deficiency handling of
+Stata's \code{invsym()} and hence how Stata's \code{test} command forms Wald
+statistics.
 }
 \keyword{internal}

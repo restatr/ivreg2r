@@ -9,15 +9,18 @@
 #' method. Tables are available for K1 (endogenous regressors) <= 3 (IV bias)
 #' or K1 <= 2 (all others), and L1 (excluded instruments) 1-100.
 #'
-#' Dispatch logic (matches Stata's `Disp_cdsy` in ivreg2.ado):
-#' - 2SLS/OLS: IV relative bias + IV size distortion
+#' Dispatch logic (matches Stata's `Disp_cdsy` in ivreg2.ado). The caller maps
+#' `gmm2s`/`gmmw` to `"2sls"` and `cue` to `"liml"` before this lookup; OLS
+#' models never reach it (no weak-identification test):
+#' - 2SLS: IV relative bias + IV size distortion
 #' - LIML (no Fuller): LIML size distortion only
 #' - Fuller (LIML with fuller > 0): Fuller relative bias + Fuller maximum bias
 #' - kclass: NULL (no Stock-Yogo tables)
 #'
 #' @param K1 Integer, number of endogenous regressors.
 #' @param L1 Integer, number of excluded instruments.
-#' @param method Character, estimation method: "ols", "2sls", "liml", "kclass".
+#' @param method Character, estimation method after upstream mapping:
+#'   "2sls", "liml", or "kclass".
 #' @param fuller Numeric, Fuller parameter (0 = plain LIML).
 #' @return A data.frame with columns `type`, `threshold`, `critical_value`,
 #'   or NULL if no tables are available for the given K1/L1/method combination.
