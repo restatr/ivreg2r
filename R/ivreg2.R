@@ -1247,8 +1247,8 @@
     inv <- tryCatch(qr.solve(A), error = function(e) NULL)
   }
   if (is.null(inv)) {
-    warning("Could not invert ", what, " (computationally singular); ",
-            "storing NULL.", call. = FALSE)
+    warning("The GMM weighting matrix (`$W`) could not be computed because ",
+            what, " is singular; `$W` is set to NULL.", call. = FALSE)
   }
   inv
 }
@@ -1338,7 +1338,7 @@
   } else if (!is.null(est$wmatrix)) {
     W <- est$wmatrix
   } else if (method %in% c("gmm2s", "gmmw", "cue")) {
-    W <- .safe_inverse(S, what = "moment covariance S for fit$W")
+    W <- .safe_inverse(S, what = "the moment covariance")
   } else {
     ZWZ <- if (is.null(parsed$weights)) {
       crossprod(Zmat)
@@ -1346,7 +1346,8 @@
       crossprod(Zmat, parsed$weights * Zmat)
     }
     sigma2 <- fit$rss / (parsed$N - opts$dofminus)
-    QZZinv <- .safe_inverse(ZWZ / parsed$N, what = "Z'Z/N for fit$W")
+    QZZinv <- .safe_inverse(ZWZ / parsed$N,
+                            what = "the instrument cross-product matrix")
     W <- if (is.null(QZZinv)) NULL else QZZinv / sigma2
   }
   if (!is.null(W)) dimnames(W) <- list(inames, inames)

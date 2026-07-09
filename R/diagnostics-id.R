@@ -391,7 +391,7 @@
     pos <- eig$values > tol
     rrank <- sum(!pos)
     if (rrank > 0L) {
-      warning("The identification-test score matrix is rank-deficient ",
+      warning("The identification-test covariance matrix is rank-deficient ",
               "(rank deficit = ", rrank, "); using a pseudoinverse.",
               call. = FALSE)
     }
