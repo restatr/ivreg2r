@@ -62,8 +62,22 @@ data).</p>
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
 <dd><p>A data frame to augment. If <code>NULL</code> (default), uses the stored
-model frame (<code>x$model</code>). An error is raised if <code>model = FALSE</code> was used
-at estimation time and <code>data</code> is not supplied.</p></dd>
+model frame (<code>x$model</code>) and attaches the stored fitted values and
+residuals. An error is raised if <code>model = FALSE</code> was used at estimation
+time and <code>data</code> is not supplied. When <code>data</code> is supplied, <code>.fitted</code> is
+computed fresh via <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> on the supplied rows, which matches
+columns by name rather than position; the result is therefore correct
+for data that is reordered, subsetted, or extended with new rows. Rows
+with <code>NA</code> in a required predictor receive <code>NA</code> in <code>.fitted</code>. <code>.resid</code> is
+added only when the response column is present in <code>data</code> (broom
+convention); it is omitted otherwise. Supplying <code>data</code> for a model fit
+with <code>partial =</code> raises an error, since <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> cannot score new
+data after partialling. Because <code>.fitted</code> is a prediction, not an
+estimation-sample indicator, a row of <code>data</code> that was excluded from
+estimation only because the response (or an instrument) was <code>NA</code> still
+receives a real predicted value whenever its regressors are complete;
+use <code><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals()</a></code> or the stored model frame (<code>x$model</code>) to identify
+which rows were actually used in estimation.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -72,8 +86,8 @@ at estimation time and <code>data</code> is not supplied.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble::tibble()</a></code> with all original data columns plus <code>.fitted</code>
-and <code>.resid</code>.</p>
+    <p>A <code><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble::tibble()</a></code> with all original data columns plus <code>.fitted</code>,
+and <code>.resid</code> when the response is available.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

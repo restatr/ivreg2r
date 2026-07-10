@@ -1568,6 +1568,14 @@ also in <code><a href="https://generics.r-lib.org/reference/glance.html" class="
 <td>Warns that the test is skipped</td>
 <td>An explicitly requested test should not disappear silently</td>
 </tr>
+<tr class="even">
+<td>Missing values in a cluster variable</td>
+<td>Silently drops the affected observations from the estimation
+sample</td>
+<td>Raises an error asking the user to drop or handle those rows
+explicitly</td>
+<td>The estimation sample should never change silently</td>
+</tr>
 </tbody>
 </table>
 </div>

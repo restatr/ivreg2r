@@ -4,6 +4,15 @@
 
 - **Francis DiTraglia**. Author, maintainer.
 
+- **Christopher F. Baum**. Contributor, copyright holder.  
+  Author of the Stata ivreg2 program from which ivreg2r is adapted
+
+- **Mark E. Schaffer**. Contributor, copyright holder.  
+  Author of the Stata ivreg2 program from which ivreg2r is adapted
+
+- **Steven Stillman**. Contributor, copyright holder.  
+  Author of the Stata ivreg2 program from which ivreg2r is adapted
+
 ## Citation
 
 Source:

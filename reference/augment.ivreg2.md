@@ -19,8 +19,24 @@ augment(x, data = NULL, ...)
 - data:
 
   A data frame to augment. If `NULL` (default), uses the stored model
-  frame (`x$model`). An error is raised if `model = FALSE` was used at
-  estimation time and `data` is not supplied.
+  frame (`x$model`) and attaches the stored fitted values and residuals.
+  An error is raised if `model = FALSE` was used at estimation time and
+  `data` is not supplied. When `data` is supplied, `.fitted` is computed
+  fresh via [`predict()`](https://rdrr.io/r/stats/predict.html) on the
+  supplied rows, which matches columns by name rather than position; the
+  result is therefore correct for data that is reordered, subsetted, or
+  extended with new rows. Rows with `NA` in a required predictor receive
+  `NA` in `.fitted`. `.resid` is added only when the response column is
+  present in `data` (broom convention); it is omitted otherwise.
+  Supplying `data` for a model fit with `partial =` raises an error,
+  since [`predict()`](https://rdrr.io/r/stats/predict.html) cannot score
+  new data after partialling. Because `.fitted` is a prediction, not an
+  estimation-sample indicator, a row of `data` that was excluded from
+  estimation only because the response (or an instrument) was `NA` still
+  receives a real predicted value whenever its regressors are complete;
+  use [`residuals()`](https://rdrr.io/r/stats/residuals.html) or the
+  stored model frame (`x$model`) to identify which rows were actually
+  used in estimation.
 
 - ...:
 
@@ -30,7 +46,8 @@ augment(x, data = NULL, ...)
 
 A
 [`tibble::tibble()`](https://tibble.tidyverse.org/reference/tibble.html)
-with all original data columns plus `.fitted` and `.resid`.
+with all original data columns plus `.fitted`, and `.resid` when the
+response is available.
 
 ## See also
 

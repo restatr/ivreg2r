@@ -1,9 +1,14 @@
 # Extract design matrices from an ivreg2 model
 
 Returns the regressor matrix (X), instrument matrix (Z), or projected
-regressors (X_hat = P_Z X). Matrices are retrieved from the stored `x`
-component if available (when `ivreg2(..., x = TRUE)` was used),
-otherwise reconstructed from the model frame.
+regressors (X_hat = P_Z X), as used in estimation. For models estimated
+with `partial`, these are the post-partialling matrices that
+[`coef()`](https://rdrr.io/r/stats/coef.html),
+[`residuals()`](https://rdrr.io/r/stats/residuals.html), and
+[`vcov()`](https://rdrr.io/r/stats/vcov.html) correspond to. The
+returned matrices do not depend on whether the model was fitted with
+`x = TRUE`: when the matrices were not stored, they are reconstructed
+from the model frame and the same partialling projection is re-applied.
 
 ## Usage
 
@@ -37,12 +42,6 @@ model.matrix(
 
 A numeric matrix, or `NULL` if `component = "instruments"` for an OLS
 model.
-
-## Details
-
-For models estimated with `partial`, the stored matrices (when
-`x = TRUE`) are the post-partialling matrices. Reconstruction from the
-model frame returns pre-partialling matrices.
 
 ## See also
 

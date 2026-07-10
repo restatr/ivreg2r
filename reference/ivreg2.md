@@ -119,7 +119,11 @@ ivreg2(
   effective cluster count is `min(M1, M2)` per Stata convention. The
   `small` argument controls whether the finite-sample correction
   `(N-1)/(N-K) * M/(M-1)` is applied (matching Stata's `cluster() small`
-  combination).
+  combination). Unlike Stata's `ivreg2`, which silently drops
+  observations with missing cluster values from the estimation sample,
+  ivreg2r raises an error; the user should drop or handle those rows
+  explicitly (e.g., by filtering them out) so the estimation sample is
+  never changed silently.
 
 - endog:
 

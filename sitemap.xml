@@ -22,6 +22,7 @@
 <url><loc>https://restatr.com/ivreg2r/reference/dot-canonical_correlations.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-check_duplicates.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-check_formula_parts.html</loc></url>
+<url><loc>https://restatr.com/ivreg2r/reference/dot-check_no_offset.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-chol_solve.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-cl_scores.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-clamp_psd_eigenvalues.html</loc></url>
@@ -76,6 +77,7 @@
 <url><loc>https://restatr.com/ivreg2r/reference/dot-partial_fwl.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-partial_out.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-psd_correct.html</loc></url>
+<url><loc>https://restatr.com/ivreg2r/reference/dot-reapply_partial.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-sargan_test.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-strip_intercept.html</loc></url>
 <url><loc>https://restatr.com/ivreg2r/reference/dot-sw_cross_meat.html</loc></url>

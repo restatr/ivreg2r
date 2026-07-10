@@ -1153,6 +1153,7 @@ for HAC/AC, GMM, CUE, partialling, and panel VCE examples.
 | Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |
 | CUE optimizer | Mata [`optimize()`](https://rdrr.io/r/stats/optimize.html) | R [`optim()`](https://rdrr.io/r/stats/optim.html) (BFGS + Nelder-Mead) | Different optimizer, same objective |
 | `redundant` with no endogenous regressors | Silently ignored | Warns that the test is skipped | An explicitly requested test should not disappear silently |
+| Missing values in a cluster variable | Silently drops the affected observations from the estimation sample | Raises an error asking the user to drop or handle those rows explicitly | The estimation sample should never change silently |
 
 ## References
 
