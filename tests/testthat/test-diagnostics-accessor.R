@@ -144,11 +144,12 @@ test_that("diagnostics() SY rows match the weak_id_sy data frame", {
 
   expect_equal(nrow(sy_rows), nrow(sy))
 
-  expected_keys <- paste0(
-    "sy_", gsub("[^a-z0-9]+", "_", tolower(sy$type)), "_",
-    sub("%$", "", sy$threshold)
+  # Literal keys, deliberately NOT derived with the implementation's own
+  # slug regex, so a slug bug cannot mirror itself into the expectation.
+  expect_identical(
+    sy_rows$test,
+    c("sy_iv_size_10", "sy_iv_size_15", "sy_iv_size_20", "sy_iv_size_25")
   )
-  expect_identical(sy_rows$test, expected_keys)
   expect_equal(sy_rows$statistic, sy$critical_value)
   expect_true(all(is.na(sy_rows$p_value)))
   expect_true(all(is.na(sy_rows$df)))
@@ -169,6 +170,14 @@ test_that("diagnostics() reports AR overid rows and omits weak_id_robust for LIM
 
   expect_true(is.null(diag$weak_id_robust))
   expect_false("weak_id_robust" %in% d$test)
+
+  # A LIML fit gets the "LIML size" Stock-Yogo table, so this pins the slug
+  # for a non-"IV size" type with a literal key.
+  expect_true("sy_liml_size_10" %in% d$test)
+  expect_equal(
+    d[d$test == "sy_liml_size_10", ]$statistic,
+    diag$weak_id_sy$critical_value[diag$weak_id_sy$threshold == "10%"]
+  )
 
   expect_true(all(c("anderson_rubin_overid_lr", "anderson_rubin_overid_lin")
                   %in% d$test))

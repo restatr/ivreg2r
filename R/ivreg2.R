@@ -2486,7 +2486,9 @@
 #' fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
 #'                       age + kidslt6 + kidsge6, data = mroz_work,
 #'                       endog = "educ")
-#' diagnostics(fit_endog)
+#' if (requireNamespace("dplyr", quietly = TRUE)) {
+#'   diagnostics(fit_endog) |> dplyr::filter(test == "endogeneity")
+#' }
 #'
 #' # --- Clustering ---
 #' # Griliches (1976) wage equation, cluster on year.

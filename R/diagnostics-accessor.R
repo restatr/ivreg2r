@@ -116,6 +116,9 @@ diagnostics.ivreg2 <- function(x, ...) {
     )
   }
 
+  # The anderson_rubin_overid, anderson_rubin, and stock_wright slots store
+  # no test_name field, so the labels below are typed here; keep them in
+  # sync with the cat() labels in print.summary.ivreg2() (ivreg2-class.R).
   if (!is.null(diag$anderson_rubin_overid)) {
     aro <- diag$anderson_rubin_overid
     rows[[length(rows) + 1L]] <- .diag_row(
@@ -137,7 +140,7 @@ diagnostics.ivreg2 <- function(x, ...) {
       statistic = ar$f_stat, df = ar$f_df1, df2 = ar$f_df2, p_value = ar$f_p
     )
     rows[[length(rows) + 1L]] <- .diag_row(
-      test = "anderson_rubin_chi2", test_name = "Anderson-Rubin Wald chi-sq",
+      test = "anderson_rubin_chi2", test_name = "Anderson-Rubin Wald Chi-sq",
       statistic = ar$chi2_stat, df = ar$chi2_df, p_value = ar$chi2_p
     )
   }

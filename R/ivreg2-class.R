@@ -1128,6 +1128,8 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
   }
 
   # --- Weak-instrument-robust inference ---
+  # These labels (and the AR-overid ones above) are also typed in
+  # diagnostics.ivreg2() (diagnostics-accessor.R); keep the two in sync.
   ar <- diag$anderson_rubin
   sw <- diag$stock_wright
   if (!is.null(ar) || !is.null(sw)) {
