@@ -237,7 +237,8 @@ We follow the worked example of Baum, Schaffer & Stillman (2007, p. 476): a quar
 ```{r sw-2sls}
 sw_formula <- dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1
 fit_sw_2sls <- ivreg2(sw_formula, data = stockwatson)
-tidy(fit_sw_2sls) |> filter(term == "UR")
+ur_2sls <- tidy(fit_sw_2sls) |> filter(term == "UR")
+ur_2sls
 ```
 
 ```{r gmm2s}
@@ -245,10 +246,6 @@ fit_gmm <- ivreg2(sw_formula, data = stockwatson, method = "gmm2s",
                   vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date")
 ur_gmm <- tidy(fit_gmm) |> filter(term == "UR")
 summary(fit_gmm)
-```
-
-```{r gmm2s-values, include = FALSE}
-ur_2sls <- tidy(fit_sw_2sls) |> filter(term == "UR")
 ```
 
 The first step estimates the model by 2SLS and forms the optimal weighting matrix from the residuals; the second step re-estimates with that weighting, and the Hansen (1982) J statistic tests the overidentifying restrictions. Following the published narrative, the i.i.d. 2SLS estimate of the unemployment coefficient is `r sprintf("%.3f", ur_2sls$estimate)` and clearly significant, while the HAC-GMM estimate falls to `r sprintf("%.3f", ur_gmm$estimate)` (p = `r round(ur_gmm$p.value, 3)`): once the serial correlation is accounted for, the apparent significance disappears.
@@ -305,15 +302,12 @@ bind_rows(uncentered = tidy(fit_g_gmm), centered = tidy(fit_g_cen),
           .id = "fit") |>
   filter(term == "iq") |>
   select(fit, term, estimate, std.error)
-diagnostics(fit_g_gmm) |> filter(test == "overid")
-diagnostics(fit_g_cen) |> filter(test == "overid")
-max(abs(coef(fit_g_cen) - coef(fit_g_gmm)))
-```
-
-```{r gril-center-values, include = FALSE}
 overid_g_gmm <- diagnostics(fit_g_gmm) |> filter(test == "overid")
 overid_g_cen <- diagnostics(fit_g_cen) |> filter(test == "overid")
+overid_g_gmm
+overid_g_cen
 coef_shift <- max(abs(coef(fit_g_cen) - coef(fit_g_gmm)))
+coef_shift
 ```
 
 Because two-step GMM uses `S` as its second-step weighting matrix, centering changes the coefficients as well as the inference — here by at most `r signif(coef_shift, 2)` — and shifts the J statistic from `r round(overid_g_gmm$statistic, 1)` to `r round(overid_g_cen$statistic, 1)`, with a slight change in the standard errors on the `iq` row shown above. For estimators whose coefficients do not depend on `S`, such as 2SLS with a centered robust variance, only the standard errors and the J statistic move.
