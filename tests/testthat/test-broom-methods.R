@@ -218,13 +218,60 @@ test_that("augment .fitted matches fitted(), .resid matches residuals()", {
   expect_equal(aug$.resid, unname(residuals(fit)))
 })
 
-test_that("augment with data argument works", {
+test_that("augment with data = original data matches the stored fit", {
+  # New contract: .fitted is computed via predict() on the supplied rows,
+  # so passing the original data reproduces the stored fitted/residuals.
   fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
   aug <- augment(fit, data = mtcars)
   expect_s3_class(aug, "tbl_df")
   expect_equal(nrow(aug), nrow(mtcars))
   expect_true(".fitted" %in% names(aug))
   expect_true(".resid" %in% names(aug))
+  expect_equal(aug$.fitted, unname(fitted(fit)))
+  expect_equal(aug$.resid, unname(residuals(fit)))
+})
+
+test_that("augment with reordered data keeps rows aligned by name", {
+  # Row-misalignment regression: a reordered same-size data frame must get
+  # fitted values matched by name, so re-sorting to the original order
+  # reproduces the stored fit row-for-row.
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  set.seed(42)
+  idx <- sample(nrow(mtcars))
+  shuffled <- mtcars[idx, ]
+  aug <- augment(fit, data = shuffled)
+  expect_equal(nrow(aug), nrow(mtcars))
+  # Undo the shuffle: aug is in shuffled order, so order(idx) restores rows.
+  restored <- aug$.fitted[order(idx)]
+  expect_equal(restored, unname(fitted(fit)))
+})
+
+test_that("augment with a subset of rows matches the corresponding fit", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  sub <- mtcars[10:20, ]
+  aug <- augment(fit, data = sub)
+  expect_equal(nrow(aug), 11L)
+  expect_equal(aug$.fitted, unname(fitted(fit))[10:20])
+  expect_equal(aug$.resid, unname(residuals(fit))[10:20])
+})
+
+test_that("augment omits .resid when the response is absent from data", {
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, small = TRUE)
+  no_resp <- mtcars[, c("wt", "hp")]
+  aug <- augment(fit, data = no_resp)
+  expect_true(".fitted" %in% names(aug))
+  expect_false(".resid" %in% names(aug))
+  expect_equal(aug$.fitted, unname(fitted(fit)))
+})
+
+test_that("augment data = NULL path is unchanged (stored fit)", {
+  # The default path must keep attaching the stored fitted values and
+  # residuals from the model frame, untouched by the predict-based path.
+  fit <- ivreg2(mroz_justid_formula, data = mroz)
+  aug <- augment(fit)
+  expect_equal(nrow(aug), nobs(fit))
+  expect_equal(aug$.fitted, unname(fitted(fit)))
+  expect_equal(aug$.resid, unname(residuals(fit)))
 })
 
 test_that("augment errors when model = FALSE and no data supplied", {
@@ -244,20 +291,25 @@ test_that("augment model = FALSE works with data argument", {
 # augment() — NA alignment with na.exclude
 # ============================================================================
 
-test_that("augment handles na.exclude alignment", {
+test_that("augment on NA-predictor rows yields NA .fitted and .resid", {
+  # New contract: a model fit under na.omit, then augmented with the full
+  # data (NAs included), gives NA .fitted where predict() cannot score the
+  # row (a required predictor is missing) and NA .resid there, with correct
+  # finite values elsewhere.
   dat <- mtcars
-  dat$mpg[c(3, 7)] <- NA
-  fit <- ivreg2(mpg ~ wt + hp, data = dat, na.action = na.exclude,
+  dat$wt[c(3, 7)] <- NA
+  fit <- ivreg2(mpg ~ wt + hp, data = dat, na.action = na.omit,
                 small = TRUE)
-  # With data argument: should have NAs at rows 3 and 7
   aug <- augment(fit, data = dat)
   expect_equal(nrow(aug), nrow(dat))
   expect_true(is.na(aug$.fitted[3]))
   expect_true(is.na(aug$.fitted[7]))
   expect_true(is.na(aug$.resid[3]))
   expect_true(is.na(aug$.resid[7]))
-  # Non-missing rows should be finite
+  # Non-missing rows should be finite and match the stored fit.
   expect_true(all(is.finite(aug$.fitted[-c(3, 7)])))
+  expect_equal(aug$.fitted[-c(3, 7)], unname(fitted(fit)))
+  expect_equal(aug$.resid[-c(3, 7)], unname(residuals(fit)))
 })
 
 test_that("augment with no data and na.exclude: nrow = nobs (no NAs)", {

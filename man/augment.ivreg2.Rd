@@ -10,14 +10,23 @@
 \item{x}{An object of class \code{"ivreg2"}.}
 
 \item{data}{A data frame to augment. If \code{NULL} (default), uses the stored
-model frame (\code{x$model}). An error is raised if \code{model = FALSE} was used
-at estimation time and \code{data} is not supplied.}
+model frame (\code{x$model}) and attaches the stored fitted values and
+residuals. An error is raised if \code{model = FALSE} was used at estimation
+time and \code{data} is not supplied. When \code{data} is supplied, \code{.fitted} is
+computed fresh via \code{\link[=predict]{predict()}} on the supplied rows, which matches
+columns by name rather than position; the result is therefore correct
+for data that is reordered, subsetted, or extended with new rows. Rows
+with \code{NA} in a required predictor receive \code{NA} in \code{.fitted}. \code{.resid} is
+added only when the response column is present in \code{data} (broom
+convention); it is omitted otherwise. Supplying \code{data} for a model fit
+with \verb{partial =} raises an error, since \code{\link[=predict]{predict()}} cannot score new
+data after partialling.}
 
 \item{...}{Additional arguments (ignored).}
 }
 \value{
-A \code{\link[tibble:tibble]{tibble::tibble()}} with all original data columns plus \code{.fitted}
-and \code{.resid}.
+A \code{\link[tibble:tibble]{tibble::tibble()}} with all original data columns plus \code{.fitted},
+and \code{.resid} when the response is available.
 }
 \description{
 Adds \code{.fitted} and \code{.resid} columns to the model frame (or user-supplied

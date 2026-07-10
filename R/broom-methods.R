@@ -250,11 +250,20 @@ glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
 #'
 #' @param x An object of class `"ivreg2"`.
 #' @param data A data frame to augment. If `NULL` (default), uses the stored
-#'   model frame (`x$model`). An error is raised if `model = FALSE` was used
-#'   at estimation time and `data` is not supplied.
+#'   model frame (`x$model`) and attaches the stored fitted values and
+#'   residuals. An error is raised if `model = FALSE` was used at estimation
+#'   time and `data` is not supplied. When `data` is supplied, `.fitted` is
+#'   computed fresh via [predict()] on the supplied rows, which matches
+#'   columns by name rather than position; the result is therefore correct
+#'   for data that is reordered, subsetted, or extended with new rows. Rows
+#'   with `NA` in a required predictor receive `NA` in `.fitted`. `.resid` is
+#'   added only when the response column is present in `data` (broom
+#'   convention); it is omitted otherwise. Supplying `data` for a model fit
+#'   with `partial =` raises an error, since [predict()] cannot score new
+#'   data after partialling.
 #' @param ... Additional arguments (ignored).
-#' @return A [tibble::tibble()] with all original data columns plus `.fitted`
-#'   and `.resid`.
+#' @return A [tibble::tibble()] with all original data columns plus `.fitted`,
+#'   and `.resid` when the response is available.
 #' @examples
 #' data(mroz)
 #' mroz_work <- subset(mroz, inlf == 1)
@@ -279,10 +288,25 @@ augment.ivreg2 <- function(x, data = NULL, ...) {
     out <- tibble::as_tibble(x$model)
     out$.fitted <- unname(x$fitted.values)
     out$.resid  <- unname(x$residuals)
-  } else {
-    out <- tibble::as_tibble(data)
-    out$.fitted <- unname(stats::napredict(x$na.action, x$fitted.values))
-    out$.resid  <- unname(stats::naresid(x$na.action, x$residuals))
+    return(out)
+  }
+  # data supplied: compute fitted values fresh via predict(), which matches
+  # columns by name, so rows stay aligned under reordering, subsetting, or
+  # new rows. NA in a required predictor yields NA in .fitted. Partialled
+  # models propagate predict()'s "cannot predict on new data" error.
+  out <- tibble::as_tibble(data)
+  fitted <- unname(predict(x, newdata = data))
+  out$.fitted <- fitted
+  # .resid requires the response column; broom convention omits it when the
+  # response is absent from `data`. The response name lives on the full
+  # three-part terms (the regressors terms carries no response).
+  tt <- x$terms$full
+  resp_pos <- attr(tt, "response")
+  if (resp_pos > 0L) {
+    resp_name <- deparse1(attr(tt, "variables")[[resp_pos + 1L]])
+    if (resp_name %in% names(data)) {
+      out$.resid <- unname(data[[resp_name]]) - fitted
+    }
   }
   out
 }
