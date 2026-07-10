@@ -7,8 +7,14 @@
 # ============================================================================
 
 data(mroz, package = "ivreg2r")
+data(griliches, package = "ivreg2r")
 
 # mroz_justid_formula and mroz_overid_formula come from helper-fixtures.R.
+
+# Partialled-model formula for the augment() error-path pin below: same base
+# as test-partial.R's gril_partial_formula (griliches H28 minus cluster(year)).
+broom_partial_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
+  iq | med + kww + age
 
 
 # ============================================================================
@@ -338,6 +344,51 @@ test_that("augment IV returns expected columns", {
   expect_true(".fitted" %in% names(aug))
   expect_true(".resid" %in% names(aug))
   expect_equal(nrow(aug), nobs(fit))
+})
+
+
+# ============================================================================
+# augment() — data contract: response-NA, partialling, transformed response
+# ============================================================================
+
+test_that("augment predicts real .fitted for response-NA rows outside the estimation sample", {
+  # Intended behavior (not a bug): .fitted is a prediction for every scoreable
+  # row, not an estimation-sample indicator. A row dropped from estimation
+  # only because the response was NA still has complete regressors, so
+  # predict() scores it -- .fitted is finite and matches predict() directly,
+  # while .resid is NA because the response needed to form it is NA.
+  dat <- mtcars
+  dat$mpg[c(3, 7)] <- NA
+  fit <- ivreg2(mpg ~ wt + hp, data = dat, na.action = na.omit, small = TRUE)
+  aug <- augment(fit, data = dat)
+  expect_equal(nrow(aug), nrow(dat))
+  expect_true(all(is.finite(aug$.fitted[c(3, 7)])))
+  expect_equal(aug$.fitted, unname(predict(fit, newdata = dat)))
+  expect_true(all(is.na(aug$.resid[c(3, 7)])))
+})
+
+test_that("augment errors on supplied data after partialling; data = NULL still works", {
+  fit <- ivreg2(broom_partial_formula, data = griliches, partial = "factor(year)")
+  expect_error(
+    augment(fit, data = griliches),
+    "Cannot predict on new data after partialling"
+  )
+  aug <- augment(fit)
+  expect_s3_class(aug, "tbl_df")
+  expect_true(".fitted" %in% names(aug))
+  expect_true(".resid" %in% names(aug))
+  expect_equal(nrow(aug), nobs(fit))
+})
+
+test_that("augment omits .resid for a transformed response (silent-omission contract)", {
+  # The deparsed response is "log(mpg)", which matches no column of mtcars,
+  # so .resid is silently omitted rather than computed against the wrong
+  # column -- pinning the same contract as the "response absent" test above,
+  # but triggered by a transformation rather than a missing column.
+  fit <- ivreg2(log(mpg) ~ wt + hp, data = mtcars, small = TRUE)
+  aug <- augment(fit, data = mtcars)
+  expect_true(".fitted" %in% names(aug))
+  expect_false(".resid" %in% names(aug))
 })
 
 

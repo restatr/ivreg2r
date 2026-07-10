@@ -97,29 +97,20 @@ test_that("smatrix non-symmetric", {
   )
 })
 
-test_that("wmatrix rejects non-finite entries", {
+test_that("wmatrix/smatrix reject non-finite entries", {
   bad_values <- list(`NA` = NA_real_, `NaN` = NaN, `Inf` = Inf, `-Inf` = -Inf)
-  for (bad in bad_values) {
-    W <- diag(7)
-    W[1, 1] <- bad
-    expect_error(
-      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-             data = card, vcov = "robust", wmatrix = W),
-      "`wmatrix` must not contain NA, NaN, or infinite values"
-    )
-  }
-})
-
-test_that("smatrix rejects non-finite entries", {
-  bad_values <- list(`NA` = NA_real_, `NaN` = NaN, `Inf` = Inf, `-Inf` = -Inf)
-  for (bad in bad_values) {
-    S <- diag(7)
-    S[1, 1] <- bad
-    expect_error(
-      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-             data = card, vcov = "robust", smatrix = S),
-      "`smatrix` must not contain NA, NaN, or infinite values"
-    )
+  for (param in c("wmatrix", "smatrix")) {
+    for (bad in bad_values) {
+      M <- diag(7)
+      M[1, 1] <- bad
+      args <- list(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                   data = card, vcov = "robust")
+      args[[param]] <- M
+      expect_error(
+        do.call(ivreg2, args),
+        paste0("`", param, "` must not contain NA, NaN, or infinite values")
+      )
+    }
   }
 })
 

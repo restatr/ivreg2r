@@ -20,7 +20,12 @@ with \code{NA} in a required predictor receive \code{NA} in \code{.fitted}. \cod
 added only when the response column is present in \code{data} (broom
 convention); it is omitted otherwise. Supplying \code{data} for a model fit
 with \verb{partial =} raises an error, since \code{\link[=predict]{predict()}} cannot score new
-data after partialling.}
+data after partialling. Because \code{.fitted} is a prediction, not an
+estimation-sample indicator, a row of \code{data} that was excluded from
+estimation only because the response (or an instrument) was \code{NA} still
+receives a real predicted value whenever its regressors are complete;
+use \code{\link[=residuals]{residuals()}} or the stored model frame (\code{x$model}) to identify
+which rows were actually used in estimation.}
 
 \item{...}{Additional arguments (ignored).}
 }

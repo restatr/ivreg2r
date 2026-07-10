@@ -577,6 +577,10 @@ terms.ivreg2 <- function(x, component = c("regressors", "instruments", "full"), 
   partial_colnames <- .expand_terms_to_colnames(
     object$partial_names, term_labels, colnames(X), attr(X, "assign")
   )
+  # Guard against a partialled term that lost a column to collinearity
+  # detection: keep only names present in the reconstructed X, mirroring the
+  # intersect estimation runs before .partial_out (ivreg2.R, ~line 796).
+  partial_colnames <- intersect(partial_colnames, colnames(X))
   if (isTRUE(object$partialcons)) {
     partial_colnames <- c("(Intercept)", partial_colnames)
   }
@@ -627,6 +631,18 @@ model.matrix.ivreg2 <- function(object,
     reg_contrasts <- object$contrasts[intersect(names(object$contrasts), reg_vars)]
     X <- stats::model.matrix(object$terms$regressors, object$model,
                              contrasts.arg = reg_contrasts)
+    # Drop within-term regressor columns removed by collinearity detection.
+    # `terms$regressors` is rebuilt post-drop, so whole dropped terms are
+    # already absent, but a dropped column of a surviving term (e.g. one
+    # factor level) is regenerated here and must be removed. Subset the
+    # `assign` attribute in lockstep; `X[, keep]` discards it otherwise, and
+    # .reapply_partial's .expand_terms_to_colnames depends on it.
+    if (length(object$dropped_regressors) > 0L) {
+      keep <- !colnames(X) %in% object$dropped_regressors
+      assign_attr <- attr(X, "assign")
+      X <- X[, keep, drop = FALSE]
+      attr(X, "assign") <- assign_attr[keep]
+    }
     if (!is.null(object$terms$instruments)) {
       # Build Z = cbind(exog columns from X, excluded IV columns)
       # Use X (already correct post-collinearity) to extract the exog part,
@@ -650,7 +666,7 @@ model.matrix.ivreg2 <- function(object,
     }
     # Reconstruction yields pre-partialling matrices; re-apply estimation's
     # FWL projection so the result matches the stored post-partialling matrices.
-    if (object$partial_ct > 0L) {
+    if (!is.null(object$partial_ct) && object$partial_ct > 0L) {
       reprojected <- .reapply_partial(object, X, Z)
       X <- reprojected$X
       Z <- reprojected$Z

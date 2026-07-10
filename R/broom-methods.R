@@ -260,7 +260,12 @@ glance.ivreg2 <- function(x, diagnostics = TRUE, ...) {
 #'   added only when the response column is present in `data` (broom
 #'   convention); it is omitted otherwise. Supplying `data` for a model fit
 #'   with `partial =` raises an error, since [predict()] cannot score new
-#'   data after partialling.
+#'   data after partialling. Because `.fitted` is a prediction, not an
+#'   estimation-sample indicator, a row of `data` that was excluded from
+#'   estimation only because the response (or an instrument) was `NA` still
+#'   receives a real predicted value whenever its regressors are complete;
+#'   use [residuals()] or the stored model frame (`x$model`) to identify
+#'   which rows were actually used in estimation.
 #' @param ... Additional arguments (ignored).
 #' @return A [tibble::tibble()] with all original data columns plus `.fitted`,
 #'   and `.resid` when the response is available.

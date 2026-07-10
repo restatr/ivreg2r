@@ -544,3 +544,69 @@ test_that("model.matrix() is storage-independent for a plain (non-partialled) IV
     ivreg2(f, data = card, x = FALSE, model = TRUE)
   )
 })
+
+
+# ============================================================================
+# model.matrix() reconstruction drops within-term collinear columns
+#
+# When collinearity detection removes an individual column of a surviving term
+# (e.g. one factor level made collinear with a numeric regressor), the rebuilt
+# terms object still regenerates that column. model.matrix() must strip it so
+# reconstruction reproduces exactly what estimation used, matching coef().
+# Recipe: x3 == indicator(region == "C") makes the regionC dummy collinear
+# with x3, so the fit drops regionC and warns.
+# ============================================================================
+
+# Build the collinear-dummy design once; every fit below drops regionC.
+local({
+  set.seed(1)
+  n <- 200L
+  region <- factor(sample(c("A", "B", "C"), n, replace = TRUE))
+  collin_df <- data.frame(
+    y = rnorm(n),
+    x1 = rnorm(n),
+    x2 = rnorm(n),
+    x3 = as.numeric(region == "C"),
+    z1 = rnorm(n),
+    z2 = rnorm(n),
+    region = region
+  )
+  f <- y ~ x1 + x3 + region | x2 | z1 + z2
+
+  test_that("model.matrix() reconstruction drops a within-term collinear column (plain IV)", {
+    expect_warning(
+      fit_stored <- ivreg2(f, data = collin_df, x = TRUE),
+      "Dropped 1 collinear regressor: regionC"
+    )
+    expect_warning(
+      fit_rebuilt <- ivreg2(f, data = collin_df, x = FALSE, model = TRUE),
+      "Dropped 1 collinear regressor: regionC"
+    )
+    expect_model_matrix_equal(fit_stored, fit_rebuilt)
+    # The reconstructed regressor columns must match coef() exactly: no revived
+    # regionC. coef() itself already excludes the dropped column.
+    expect_equal(
+      colnames(model.matrix(fit_rebuilt, component = "regressors")),
+      names(coef(fit_rebuilt))
+    )
+  })
+
+  test_that("model.matrix() reconstruction drops a within-term collinear column (partialled IV)", {
+    expect_warning(
+      fit_stored <- ivreg2(f, data = collin_df, x = TRUE, partial = "x1"),
+      "Dropped 1 collinear regressor: regionC"
+    )
+    expect_warning(
+      fit_rebuilt <- ivreg2(f, data = collin_df, x = FALSE, model = TRUE,
+                            partial = "x1"),
+      "Dropped 1 collinear regressor: regionC"
+    )
+    expect_model_matrix_equal(fit_stored, fit_rebuilt)
+    # Partialling removes x1 from both coef() and the regressor matrix, so the
+    # surviving columns still match coef() name-for-name, with no revived regionC.
+    expect_equal(
+      colnames(model.matrix(fit_rebuilt, component = "regressors")),
+      setdiff(names(coef(fit_rebuilt)), "x1")
+    )
+  })
+})

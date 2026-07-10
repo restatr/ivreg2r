@@ -49,32 +49,76 @@ read_coef_fixture <- function(path) {
   )
 }
 
-# Compare VCV matrices by name (for fixtures with term column). Asserts
-# identical dimensions and an identical row-name set (setequal, order-blind)
-# before comparing any values, so a fitted model that drops or gains a
-# coefficient fails loudly instead of passing on whatever terms happen to
-# overlap (CRAN-readiness audit finding, 2026-07-10).
-expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
+# Shared structural gate for the two expect_vcov_*() comparators below.
+# Asserts identical dimensions, then (when names are being checked) that
+# neither side's row names contain duplicates and that the row-name sets are
+# identical (setequal, order-blind), each via a loud expect_true() so a
+# structural mismatch fails immediately instead of silently comparing
+# whichever cells happen to line up. Returns TRUE/FALSE (all checks passed
+# or not) so callers can early-return on failure.
+#
+# require_names = TRUE (expect_vcov_equal): the name checks always run,
+# matching that comparator's by-name contract.
+# require_names = FALSE (expect_vcov_match): the name checks run only when
+# both sides carry row names; one-sided-named or fully unnamed inputs (e.g.
+# call sites that strip names via unname() first) skip straight to a pure
+# positional comparison, unchanged from before this helper existed.
+#
+# Factored out of expect_vcov_equal()/expect_vcov_match() at the follow-up
+# review (2026-07-11): the dims/name-set scaffolding had been duplicated
+# almost verbatim between the two and had already drifted once (the
+# NULL-dimnames tolerance existed only in expect_vcov_match).
+.check_vcov_structure <- function(V_r, V_stata, label = "", require_names = TRUE) {
+  prefix <- if (nzchar(label)) paste0(label, " ") else ""
+
   dims_ok <- identical(dim(V_r), dim(V_stata))
   expect_true(dims_ok, info = sprintf(
-    "VCV dimension mismatch: R is %s, Stata is %s",
-    paste(dim(V_r), collapse = "x"), paste(dim(V_stata), collapse = "x")
+    "%sVCV dimension mismatch: R is %s, Stata is %s",
+    prefix, paste(dim(V_r), collapse = "x"), paste(dim(V_stata), collapse = "x")
   ))
 
   r_names <- rownames(V_r)
   stata_names <- rownames(V_stata)
-  missing_in_r <- setdiff(stata_names, r_names)
-  extra_in_r <- setdiff(r_names, stata_names)
-  names_ok <- length(missing_in_r) == 0 && length(extra_in_r) == 0
-  expect_true(names_ok, info = sprintf(
-    "VCV term mismatch: missing from R = [%s]; extra in R = [%s]",
-    paste(missing_in_r, collapse = ", "), paste(extra_in_r, collapse = ", ")
-  ))
+  check_names <- require_names || (!is.null(r_names) && !is.null(stata_names))
 
-  if (!dims_ok || !names_ok) {
+  names_ok <- TRUE
+  if (check_names) {
+    r_dups <- unique(r_names[duplicated(r_names)])
+    stata_dups <- unique(stata_names[duplicated(stata_names)])
+    dups_ok <- length(r_dups) == 0 && length(stata_dups) == 0
+    expect_true(dups_ok, info = sprintf(
+      "%sVCV row names contain duplicates: R = [%s]; Stata = [%s]",
+      prefix, paste(r_dups, collapse = ", "), paste(stata_dups, collapse = ", ")
+    ))
+
+    missing_in_r <- setdiff(stata_names, r_names)
+    extra_in_r <- setdiff(r_names, stata_names)
+    set_ok <- length(missing_in_r) == 0 && length(extra_in_r) == 0
+    expect_true(set_ok, info = sprintf(
+      "%sVCV term mismatch: missing from R = [%s]; extra in R = [%s]",
+      prefix, paste(missing_in_r, collapse = ", "), paste(extra_in_r, collapse = ", ")
+    ))
+
+    names_ok <- dups_ok && set_ok
+  }
+
+  dims_ok && names_ok
+}
+
+# Compare VCV matrices by name (for fixtures with term column). Asserts
+# identical dimensions, no duplicated row names, and an identical row-name
+# set (setequal, order-blind) via .check_vcov_structure() before comparing
+# any values, so a fitted model that drops or gains a coefficient — or that
+# somehow ends up with a duplicated term — fails loudly instead of passing
+# on whatever terms happen to overlap (CRAN-readiness audit finding,
+# 2026-07-10; duplicate-name check added at the 2026-07-11 follow-up).
+expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
+  ok <- .check_vcov_structure(V_r, V_stata, require_names = TRUE)
+  if (!ok) {
     return(invisible(NULL))
   }
 
+  stata_names <- rownames(V_stata)
   for (rn in stata_names) {
     for (cn in stata_names) {
       expect_equal(V_r[rn, cn], V_stata[rn, cn],
@@ -85,38 +129,29 @@ expect_vcov_equal <- function(V_r, V_stata, tol = stata_tol$vcov) {
 
 # Compare VCV matrices by position (for HAC/timeseries fixtures). Some call
 # sites pass matrices that already carry matching dimnames (e.g. via
-# expect_vcov_fixture()); when both sides have names, the row-name sets must
-# be identical (setequal, order-blind) before any value comparison, so a
-# structural mismatch fails loudly rather than silently comparing whichever
-# positions happen to line up. Call sites that intentionally strip names
-# before calling (unname()) keep pure positional comparison, unchanged.
+# expect_vcov_fixture()); when both sides have names, .check_vcov_structure()
+# requires no duplicated row names and an identical row-name set (setequal,
+# order-blind) before any value comparison, so a structural mismatch fails
+# loudly rather than silently comparing whichever positions happen to line
+# up. When the name check passes, V_stata's rows and columns are then
+# reordered to V_r's storage order before the positional loop — otherwise
+# two named matrices holding the same VCV in permuted storage order would
+# pass the name-set check and then compare the wrong cells (follow-up review
+# finding, 2026-07-11). Call sites that intentionally strip names before
+# calling (unname()) keep pure positional comparison, unchanged.
 expect_vcov_match <- function(V_r, V_stata, tol = stata_tol$vcov, label = "") {
   V_r <- as.matrix(V_r)
   V_stata <- as.matrix(V_stata)
 
-  dims_ok <- identical(dim(V_r), dim(V_stata))
-  expect_true(dims_ok, info = sprintf(
-    "%sVCV dimension mismatch: R is %s, Stata is %s",
-    if (nzchar(label)) paste0(label, " ") else "",
-    paste(dim(V_r), collapse = "x"), paste(dim(V_stata), collapse = "x")
-  ))
+  ok <- .check_vcov_structure(V_r, V_stata, label = label, require_names = FALSE)
+  if (!ok) {
+    return(invisible(NULL))
+  }
 
   r_names <- rownames(V_r)
   stata_names <- rownames(V_stata)
-  names_ok <- TRUE
   if (!is.null(r_names) && !is.null(stata_names)) {
-    missing_in_r <- setdiff(stata_names, r_names)
-    extra_in_r <- setdiff(r_names, stata_names)
-    names_ok <- length(missing_in_r) == 0 && length(extra_in_r) == 0
-    expect_true(names_ok, info = sprintf(
-      "%sVCV term mismatch: missing from R = [%s]; extra in R = [%s]",
-      if (nzchar(label)) paste0(label, " ") else "",
-      paste(missing_in_r, collapse = ", "), paste(extra_in_r, collapse = ", ")
-    ))
-  }
-
-  if (!dims_ok || !names_ok) {
-    return(invisible(NULL))
+    V_stata <- V_stata[r_names, r_names]
   }
 
   V_r <- unname(V_r)

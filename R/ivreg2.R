@@ -578,6 +578,19 @@
 .K10_MODEL_DESC <- "the model has no endogenous regressors"
 
 
+#' Stop because a cluster variable contains NA values.
+#'
+#' One wording shared by the one-way and two-way cluster NA checks.
+#' @param var_name Name of the offending cluster variable.
+#' @noRd
+.stop_cluster_na <- function(var_name) {
+  stop("Cluster variable '", var_name, "' contains NA values. ",
+       "Remove or handle rows with missing cluster values explicitly ",
+       "(e.g. by filtering them out) before calling `ivreg2()`.",
+       call. = FALSE)
+}
+
+
 #' Prepare model matrices, weights, clusters, and time-index for estimation.
 #'
 #' Post-parse validation, weight normalization, FWL partialling, b0 validation,
@@ -916,10 +929,7 @@
              call. = FALSE)
       cluster_vec <- data[[cluster_var_name]][mf_rows]
       if (anyNA(cluster_vec))
-        stop("Cluster variable '", cluster_var_name, "' contains NA values. ",
-             "Remove or handle rows with missing cluster values explicitly ",
-             "(e.g. by filtering them out) before calling `ivreg2()`.",
-             call. = FALSE)
+        .stop_cluster_na(cluster_var_name)
       M <- length(unique(cluster_vec))
       if (M < 2L)
         stop("At least 2 clusters required; found ", M, ".", call. = FALSE)
@@ -933,15 +943,9 @@
       cv1 <- data[[cluster_var_name[1L]]][mf_rows]
       cv2 <- data[[cluster_var_name[2L]]][mf_rows]
       if (anyNA(cv1))
-        stop("Cluster variable '", cluster_var_name[1L],
-             "' contains NA values. Remove or handle rows with missing ",
-             "cluster values explicitly (e.g. by filtering them out) ",
-             "before calling `ivreg2()`.", call. = FALSE)
+        .stop_cluster_na(cluster_var_name[1L])
       if (anyNA(cv2))
-        stop("Cluster variable '", cluster_var_name[2L],
-             "' contains NA values. Remove or handle rows with missing ",
-             "cluster values explicitly (e.g. by filtering them out) ",
-             "before calling `ivreg2()`.", call. = FALSE)
+        .stop_cluster_na(cluster_var_name[2L])
       M1 <- length(unique(cv1))
       M2 <- length(unique(cv2))
       if (M1 < 2L)
