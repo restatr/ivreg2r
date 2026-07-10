@@ -4,6 +4,7 @@
 
 # --- Helpers ---
 data(card)
+data(griliches, package = "ivreg2r")
 
 # Stata's instrument order for the Card overid model is:
 #   exper, expersq, black, south, _cons, nearc2, nearc4
@@ -250,6 +251,15 @@ test_that("just-identified: wmatrix + gmm2s equals standard gmm2s", {
   # small difference. Use 1e-6 for coefs, 1e-5 for VCV (contains squared errors).
   expect_equal(coef(fit_wm), coef(fit_std), tolerance = 1e-6)
   expect_equal(vcov(fit_wm), vcov(fit_std), tolerance = 1e-5)
+})
+
+test_that("smatrix reuse reproduces the two-step GMM fit", {
+  a <- ivreg2(gril_formula, data = griliches, method = "gmm2s", vcov = "robust")
+  b <- ivreg2(gril_formula, data = griliches, vcov = "robust")
+  refit <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
+                  vcov = "robust", smatrix = b$S)
+  expect_equal(b$S, a$S)
+  expect_equal(coef(refit), coef(a))
 })
 
 

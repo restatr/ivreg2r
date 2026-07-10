@@ -87,6 +87,17 @@ test_that("stock_wright is NULL on the fitted object for OLS", {
   expect_null(fit$diagnostics$stock_wright)
 })
 
+test_that("b0 objective at OLS-with-zero-endogenous equals the Stock-Wright S", {
+  mroz_work <- mroz[mroz$inlf == 1, ]
+  b0 <- c(educ = 0, coef(ivreg2(lwage ~ exper + expersq, data = mroz_work)))
+  fit_b0 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                   data = mroz_work, vcov = "robust", b0 = b0)
+  fit_reg <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+                    data = mroz_work, vcov = "robust")
+  expect_equal(fit_b0$diagnostics$overid$stat,
+               fit_reg$diagnostics$stock_wright$stat)
+})
+
 
 # ============================================================================
 # Helper: run fixture comparison for one spec/VCE combination

@@ -233,6 +233,26 @@ test_that("kiefer=TRUE is equivalent to AC+Truncated+fullBW", {
   expect_equal(coef(fit_kiefer), coef(fit_manual))
 })
 
+test_that("kiefer equals truncated kernel at maximum bandwidth", {
+  data(abdata)
+  fit_kiefer <- ivreg2(n ~ w + k, data = abdata, kiefer = TRUE,
+                       tvar = "year", ivar = "id")
+  fit_tru <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated",
+                    bw = length(unique(abdata$year)) - 1,
+                    tvar = "year", ivar = "id")
+  expect_equal(vcov(fit_kiefer), vcov(fit_tru))
+})
+
+test_that("cluster-robust equals robust truncated kernel at maximum bandwidth", {
+  data(abdata)
+  fit_cl_rob <- ivreg2(n ~ w + k, data = abdata, clusters = ~ id,
+                       vcov = "robust")
+  fit_tru_rob <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated",
+                        bw = length(unique(abdata$year)) - 1, vcov = "robust",
+                        tvar = "year", ivar = "id")
+  expect_equal(vcov(fit_cl_rob), vcov(fit_tru_rob))
+})
+
 
 # ============================================================================
 # DK equivalence: dkraay=3 == clusters=~year, kernel="bar", bw=3
@@ -254,6 +274,16 @@ test_that("dkraay=3 is equivalent to explicit cluster+kernel on tvar", {
   expect_equal(fit_dk$vcov, fit_manual$vcov,
                tolerance = 1e-12)
   expect_equal(coef(fit_dk), coef(fit_manual))
+})
+
+test_that("dkraay equals cluster on time plus kernel", {
+  data(grunfeld)
+  fit_dk <- ivreg2(invest ~ mvalue + kstock, data = grunfeld, dkraay = 2,
+                   small = TRUE, tvar = "year", ivar = "company")
+  fit_ck <- ivreg2(invest ~ mvalue + kstock, data = grunfeld,
+                   clusters = ~ year, kernel = "bartlett", bw = 2,
+                   small = TRUE, tvar = "year", ivar = "company")
+  expect_equal(vcov(fit_dk), vcov(fit_ck))
 })
 
 
