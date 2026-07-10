@@ -407,6 +407,7 @@ See `vignette("advanced-iv")` for LIML, k-class, two-way clustering, and model c
 | Factor variables | `i.` prefix syntax | R `model.matrix()` / contrasts | R convention |
 | Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |
 | CUE optimizer | Mata `optimize()` | R `optim()` (BFGS + Nelder-Mead) | Different optimizer, same objective |
+| `redundant` with no endogenous regressors | Silently ignored | Warns that the test is skipped | An explicitly requested test should not disappear silently |
 
 ## References
 
