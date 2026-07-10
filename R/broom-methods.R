@@ -300,7 +300,7 @@ augment.ivreg2 <- function(x, data = NULL, ...) {
   # new rows. NA in a required predictor yields NA in .fitted. Partialled
   # models propagate predict()'s "cannot predict on new data" error.
   out <- tibble::as_tibble(data)
-  fitted <- unname(predict(x, newdata = data))
+  fitted <- unname(stats::predict(x, newdata = data))
   out$.fitted <- fitted
   # .resid requires the response column; broom convention omits it when the
   # response is absent from `data`. The response name lives on the full
