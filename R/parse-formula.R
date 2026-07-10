@@ -42,6 +42,7 @@ NULL
   # --- 1. Convert & validate ---
   formula <- Formula::as.Formula(formula)
   n_rhs <- .check_formula_parts(formula)
+  .check_no_offset(formula, n_rhs)
 
   # --- 2. Build model frame (match.call / eval idiom from ivreg) ---
   cl <- match.call()
@@ -519,6 +520,36 @@ NULL
     }
   }
   n_rhs
+}
+
+
+# --------------------------------------------------------------------------
+# .check_no_offset
+# --------------------------------------------------------------------------
+#' Reject offset() terms in any formula part
+#'
+#' Stata's `ivreg2` has no offset concept, so there is no parity target to
+#' implement against; a silently-ignored offset (the model frame never calls
+#' `model.offset()`) is worse than an explicit rejection. `terms()` sets a
+#' non-`NULL` `"offset"` attribute only for the `offset(...)` function form,
+#' so a column merely named `offset` used as an ordinary variable is
+#' unaffected.
+#'
+#' @param formula A `Formula` object (already validated by
+#'   `.check_formula_parts()`).
+#' @param n_rhs Integer: number of RHS parts (1 or 3).
+#' @return Invisible `NULL`. Stops if any part contains an `offset()` term.
+#' @keywords internal
+.check_no_offset <- function(formula, n_rhs) {
+  for (i in seq_len(n_rhs)) {
+    mt <- terms(formula, rhs = i)
+    if (!is.null(attr(mt, "offset"))) {
+      stop("offset() terms are not supported by ivreg2(). Include the ",
+           "offset variable as a regressor, or subtract it from the ",
+           "response before fitting.", call. = FALSE)
+    }
+  }
+  invisible(NULL)
 }
 
 
