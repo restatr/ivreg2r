@@ -8,7 +8,7 @@
 \description{
 \if{html}{\figure{logo.svg}{options: style='float: right' alt='logo' width='120'}}
 
-Comprehensive instrumental variables and GMM estimation with automatic diagnostics, inspired by Stata's 'ivreg2' (Baum, Schaffer & Stillman). Supports 2SLS, LIML, Fuller, k-class, two-step efficient GMM, and continuously-updated (CUE) estimators. Provides classical, robust, cluster-robust, HAC, and Driscoll-Kraay standard errors. Reports weak identification, underidentification, overidentification, and endogeneity tests at estimation time. All outputs are verified against Stata within tight numerical tolerances.
+Comprehensive instrumental variables and GMM estimation with automatic diagnostics, inspired by the Stata command 'ivreg2' of Baum, Schaffer, and Stillman (2003) \doi{10.1177/1536867X0300300101} and Baum, Schaffer, and Stillman (2007) \doi{10.1177/1536867X0800700402}. Supports 2SLS, LIML, Fuller, k-class, two-step efficient GMM, and continuously-updated (CUE) estimators. Provides classical, robust, cluster-robust, HAC, and Driscoll-Kraay standard errors. Reports weak identification, underidentification, overidentification, and endogeneity tests at estimation time. All outputs are verified against Stata within tight numerical tolerances.
 }
 \seealso{
 Useful links:
@@ -25,6 +25,13 @@ Useful links:
 Authors:
 \itemize{
   \item Francis DiTraglia \email{francis.ditraglia@economics.ox.ac.uk}
+}
+
+Other contributors:
+\itemize{
+  \item Christopher F. Baum (Author of the Stata ivreg2 program from which ivreg2r is adapted) [contributor, copyright holder]
+  \item Mark E. Schaffer (Author of the Stata ivreg2 program from which ivreg2r is adapted) [contributor, copyright holder]
+  \item Steven Stillman (Author of the Stata ivreg2 program from which ivreg2r is adapted) [contributor, copyright holder]
 }
 
 }

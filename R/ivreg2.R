@@ -252,10 +252,16 @@
   if (!is.null(wmatrix)) {
     if (!is.matrix(wmatrix) || !is.numeric(wmatrix))
       stop("`wmatrix` must be a numeric matrix.", call. = FALSE)
+    if (any(!is.finite(wmatrix)))
+      stop("`wmatrix` must not contain NA, NaN, or infinite values.",
+           call. = FALSE)
   }
   if (!is.null(smatrix)) {
     if (!is.matrix(smatrix) || !is.numeric(smatrix))
       stop("`smatrix` must be a numeric matrix.", call. = FALSE)
+    if (any(!is.finite(smatrix)))
+      stop("`smatrix` must not contain NA, NaN, or infinite values.",
+           call. = FALSE)
   }
   # --- Normalize method early (needed for b0 checks below) ---
   if (!is.character(method) || length(method) != 1L) {
@@ -910,7 +916,9 @@
              call. = FALSE)
       cluster_vec <- data[[cluster_var_name]][mf_rows]
       if (anyNA(cluster_vec))
-        stop("Cluster variable '", cluster_var_name, "' contains NA values.",
+        stop("Cluster variable '", cluster_var_name, "' contains NA values. ",
+             "Remove or handle rows with missing cluster values explicitly ",
+             "(e.g. by filtering them out) before calling `ivreg2()`.",
              call. = FALSE)
       M <- length(unique(cluster_vec))
       if (M < 2L)
@@ -926,10 +934,14 @@
       cv2 <- data[[cluster_var_name[2L]]][mf_rows]
       if (anyNA(cv1))
         stop("Cluster variable '", cluster_var_name[1L],
-             "' contains NA values.", call. = FALSE)
+             "' contains NA values. Remove or handle rows with missing ",
+             "cluster values explicitly (e.g. by filtering them out) ",
+             "before calling `ivreg2()`.", call. = FALSE)
       if (anyNA(cv2))
         stop("Cluster variable '", cluster_var_name[2L],
-             "' contains NA values.", call. = FALSE)
+             "' contains NA values. Remove or handle rows with missing ",
+             "cluster values explicitly (e.g. by filtering them out) ",
+             "before calling `ivreg2()`.", call. = FALSE)
       M1 <- length(unique(cv1))
       M2 <- length(unique(cv2))
       if (M1 < 2L)
@@ -2099,6 +2111,10 @@
 #'   The `small` argument controls whether the finite-sample correction
 #'   `(N-1)/(N-K) * M/(M-1)` is applied (matching Stata's
 #'   `cluster() small` combination).
+#'   Unlike Stata's `ivreg2`, which silently drops observations with missing
+#'   cluster values from the estimation sample, ivreg2r raises an error;
+#'   the user should drop or handle those rows explicitly (e.g., by
+#'   filtering them out) so the estimation sample is never changed silently.
 #' @param endog Character vector of endogenous regressor names to test for
 #'   exogeneity (endogeneity test / C-statistic). If `NULL` (default), tests
 #'   all endogenous regressors. Names must match variables in the endogenous

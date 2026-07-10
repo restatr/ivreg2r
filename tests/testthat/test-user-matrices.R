@@ -97,6 +97,32 @@ test_that("smatrix non-symmetric", {
   )
 })
 
+test_that("wmatrix rejects non-finite entries", {
+  bad_values <- list(`NA` = NA_real_, `NaN` = NaN, `Inf` = Inf, `-Inf` = -Inf)
+  for (bad in bad_values) {
+    W <- diag(7)
+    W[1, 1] <- bad
+    expect_error(
+      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+             data = card, vcov = "robust", wmatrix = W),
+      "`wmatrix` must not contain NA, NaN, or infinite values"
+    )
+  }
+})
+
+test_that("smatrix rejects non-finite entries", {
+  bad_values <- list(`NA` = NA_real_, `NaN` = NaN, `Inf` = Inf, `-Inf` = -Inf)
+  for (bad in bad_values) {
+    S <- diag(7)
+    S[1, 1] <- bad
+    expect_error(
+      ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+             data = card, vcov = "robust", smatrix = S),
+      "`smatrix` must not contain NA, NaN, or infinite values"
+    )
+  }
+})
+
 test_that("wmatrix + liml errors", {
   expect_error(
     ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,

@@ -97,7 +97,11 @@ Two-way clustering uses the Cameron-Gelbach-Miller (2006) formula.
 The effective cluster count is \code{min(M1, M2)} per Stata convention.
 The \code{small} argument controls whether the finite-sample correction
 \code{(N-1)/(N-K) * M/(M-1)} is applied (matching Stata's
-\verb{cluster() small} combination).}
+\verb{cluster() small} combination).
+Unlike Stata's \code{ivreg2}, which silently drops observations with missing
+cluster values from the estimation sample, ivreg2r raises an error;
+the user should drop or handle those rows explicitly (e.g., by
+filtering them out) so the estimation sample is never changed silently.}
 
 \item{endog}{Character vector of endogenous regressor names to test for
 exogeneity (endogeneity test / C-statistic). If \code{NULL} (default), tests
