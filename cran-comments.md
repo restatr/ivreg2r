@@ -5,10 +5,7 @@
 The one note is the standard "New submission" note (this is the first
 CRAN submission of this package).
 
-The two Stata Journal DOIs cited in CITATION and the README
-(10.1177/1536867X0300300101 and 10.1177/1536867X0800700402) return
-HTTP 403 to automated URL checkers because the publisher (SAGE) blocks
-non-browser clients; both resolve normally in a browser.
+The two Stata Journal DOIs cited in CITATION and the README (10.1177/1536867X0300300101 and 10.1177/1536867X0800700402) return HTTP 403 to automated URL checkers because the publisher (SAGE) blocks non-browser clients; both resolve normally in a browser.
 
 ## Test methodology
 

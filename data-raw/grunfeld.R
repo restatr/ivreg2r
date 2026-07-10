@@ -8,7 +8,8 @@
 #
 # Source: webuse grunfeld (cached at validation/data/grunfeld.dta), 200 x 6.
 # All six columns kept, including `time` (a 1-20 trend index -- constructed
-# but not a lag/difference, so decision D8 does not apply).
+# but not a lag/difference, so the no-constructed-lag-columns rule does not
+# apply).
 
 # Path is relative to the package root (pkg/). Run with setwd("pkg/") or
 # from an RStudio project rooted at pkg/.

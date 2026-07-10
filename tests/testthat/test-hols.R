@@ -171,12 +171,19 @@ test_that("redundant() warns and is skipped with K1 = 0", {
   expect_null(fit$diagnostics$redundancy)
 })
 
-test_that("both parts empty errors; reduced_form silently skipped", {
+test_that("both parts empty errors; reduced_form skipped with a warning", {
   expect_error(
     ivreg2(lwage ~ exper | 0 | 0, data = mroz),
     "both empty"
   )
-  fit <- ivreg2(hols_fml, data = mroz, reduced_form = "rf")
+  # No reduced form is computed or stored (matching Stata, which skips the
+  # whole RF block when the endogenous list is empty), but the ignored
+  # explicit request is warned about rather than dropped silently.
+  expect_warning(
+    fit <- ivreg2(hols_fml, data = mroz, reduced_form = "rf"),
+    "`reduced_form` ignored: the model has no endogenous regressors",
+    fixed = TRUE
+  )
   expect_null(fit$reduced_form)
 })
 

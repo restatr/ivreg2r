@@ -293,7 +293,7 @@ gen double lrprice = ln(price/cpi)
 gen double lrndi   = ln(ndi/cpi)
 gen double lrpimin = ln(pimin/cpi)
 
-// Deterministic aweight (M-11/M-12/M-17 precedent)
+// Deterministic aweight (the deterministic-weight convention used across the fixture generators)
 gen double cwt = mod(state, 4) + 1
 
 
@@ -315,7 +315,8 @@ save_twoway_results, prefix(cigar) suffix(cl2) outdir(`outdir')
 /*===========================================================================
   FIXTURE 2: IV overid, two-way cluster (small=TRUE)
   D5a; Baltagi-Levin lineage. Small-sample-corrected companion to cl2.
-  firststage CSV erased below: M-25 owns first-stage-F fixture coverage,
+  firststage CSV erased below: first-stage-F fixture coverage lives in
+  generate-firststage-fixtures.do,
   and the no-orphans rule says a CSV with no test consumer must
   not be checked in.
 ===========================================================================*/
@@ -332,7 +333,7 @@ capture erase "`outdir'/cigar_firststage_cl2_small.csv"
   known-dirty on the retired sim_twoway draw (Hansen J suppressed under a
   rank-deficient S); that gate was an artifact of the retired synthetic
   draw, not a property of weighted two-way clustering. Expected-clean here.
-  firststage CSV erased: no consumer beyond M-25.
+  firststage CSV erased: no test consumer.
 ===========================================================================*/
 display _newline(2) "=== Fixture: cigar_cl2_wt ==="
 ivreg2 lsales lrndi (lrprice = lrpimin l.lrprice) [aw=cwt], ///
@@ -343,8 +344,7 @@ capture erase "`outdir'/cigar_firststage_cl2_wt.csv"
 
 /*===========================================================================
   FIXTURE 4: IV overid dofminus(2) sdofminus(1), two-way cluster (small=FALSE)
-  D5a; Baltagi-Levin lineage. firststage CSV erased: no consumer beyond
-  M-25.
+  D5a; Baltagi-Levin lineage. firststage CSV erased: no test consumer.
 ===========================================================================*/
 display _newline(2) "=== Fixture: cigar_cl2_dof ==="
 ivreg2 lsales lrndi (lrprice = lrpimin l.lrprice), cluster(state year) ///

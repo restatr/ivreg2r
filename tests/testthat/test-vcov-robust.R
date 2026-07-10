@@ -146,6 +146,22 @@ test_that("vcov = 'Cluster' redirect is case-insensitive", {
   )
 })
 
+test_that("lowercase 'hc1' gets the robust redirect, not the generic error", {
+  expect_error(
+    ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "hc1"),
+    'Use vcov = "robust" instead',
+    fixed = TRUE
+  )
+})
+
+test_that("vcov = NA errors cleanly instead of crashing the guard", {
+  expect_error(
+    ivreg2(mpg ~ wt + hp, data = mtcars, vcov = NA_character_),
+    "`vcov` must be a single character string.",
+    fixed = TRUE
+  )
+})
+
 # ============================================================================
 # VCV matrix is symmetric
 # ============================================================================

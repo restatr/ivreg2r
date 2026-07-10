@@ -13,7 +13,7 @@
 # rank-deficiency warning as the documented lesson); the H29
 # gmm2s+cluster+partial command is a documented help-file bug, also hf-owned
 # (Stata rejects it with r(506)). card_partial_all was deleted -- partial(_all)
-# Stata parity is owned by M-04's mroz cells, which stay in this file. The
+# Stata parity is owned by the mroz partial(_all) cells, which stay in this file. The
 # card cluster(smsa66) cells were deleted outright (the binary M=2 cluster
 # anti-pattern).
 #
@@ -65,7 +65,7 @@ expect_partial_bookkeeping <- function(fit, diag_file) {
   }
 }
 
-# Shared fits (M-17 hoisting precedent): the plain iid fit, the
+# Shared fits, hoisted because refitting is the slow part: the plain iid fit, the
 # partial(_cons) fit, and the unpartialled full-model fit are each reused by
 # several sections below (Stata-parity, invariance, metadata, FWL invariance).
 fit_basic       <- ivreg2(gril_partial_formula, data = griliches,
@@ -219,7 +219,7 @@ test_that("nosmall x small compositional identity: VCVs differ by exactly the df
 
 
 # ============================================================================
-# M-04 mroz sections: partial(_all) id tests, F5 regression (kept, reworked)
+# Mroz sections: partial(_all) id tests, F5 regression (kept, reworked)
 # ============================================================================
 
 test_that("partial(_all) id tests match Stata -- mroz, IID", {

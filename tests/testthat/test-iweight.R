@@ -1,5 +1,5 @@
 # ============================================================================
-# Tests: Importance weights (iweight) — M-12 re-base
+# Tests: Importance weights (iweight)
 # ============================================================================
 #
 # Importance weights on the mroz base (H31 model, help.txt:1274; Stata
@@ -363,7 +363,7 @@ test_that("iweight fractional weights pin N = floor(sum(w))", {
 
 
 # ============================================================================
-# Section 5: Self-verifying identities (M-12 anchor)
+# Section 5: Self-verifying identities
 # ============================================================================
 # The Stata generator asserts the same identities at generation time
 # (see generate-iweight-fixtures.do self-check block).

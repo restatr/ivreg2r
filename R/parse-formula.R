@@ -54,12 +54,13 @@ NULL
   mf[[1L]] <- quote(stats::model.frame)
   mf <- eval(mf, parent.frame())
 
-  # Zero-row guard: model.frame() with na.omit has already applied listwise
-  # deletion, so an empty frame means there is nothing to fit. Reject here,
-  # before the collinearity machinery runs (which would otherwise warn about
-  # rank-deficient empty matrices first).
+  # Zero-row guard: model.frame() has already applied any `subset` and
+  # listwise deletion, so an empty frame means there is nothing to fit.
+  # Reject here, before the collinearity machinery runs (which would
+  # otherwise warn about rank-deficient empty matrices first).
   if (nrow(mf) == 0L) {
-    stop("The data contain no (complete) observations after listwise deletion.",
+    stop("No observations to fit: the data have zero usable rows (after any ",
+         "`subset` and after dropping rows with missing values).",
          call. = FALSE)
   }
 
@@ -68,15 +69,18 @@ NULL
     stop("Formula must have a response variable on the left-hand side.",
          call. = FALSE)
   }
-  # Reject non-numeric responses before model.response() silently coerces them
-  # (type = "numeric" turns a numeric-looking character column into numbers and
-  # only warns on a factor, then the fit dies deep in qr()). A single clean
-  # error naming the variable and its class is far more informative.
+  # Reject non-numeric responses before model.response() silently coerces
+  # them (type = "numeric" turns a numeric-looking character column into
+  # numbers, only warns on a factor, and passes Date/difftime/complex through
+  # untouched — the fit then dies deep in the numerics or silently discards
+  # information). A single clean error naming the variable and its class is
+  # far more informative. Logical responses are allowed (the usual 0/1
+  # modeling convention). is.numeric() is FALSE for factor, character, Date,
+  # difftime, and complex alike.
   resp_col <- mf[[1L]]
-  if (is.factor(resp_col) || is.character(resp_col)) {
-    resp_class <- if (is.factor(resp_col)) "factor" else "character vector"
-    stop("The response variable `", names(mf)[1L], "` is a ", resp_class,
-         "; it must be numeric.", call. = FALSE)
+  if (!is.numeric(resp_col) && !is.logical(resp_col)) {
+    stop("The response variable `", names(mf)[1L], "` must be numeric ",
+         "(it has class \"", class(resp_col)[1L], "\").", call. = FALSE)
   }
   y <- model.response(mf, "numeric")
   if (is.null(y)) {

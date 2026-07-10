@@ -10,8 +10,8 @@
 # validation/data/abdata.dta), 1031 x 16.
 # All 16 columns kept: n/w/k/ys are logs of emp/wage/cap/indoutpt, and
 # yr1980-yr1984 are year dummies -- constructed but not lags/differences,
-# so decision D8 does not apply, and the help-file examples reference them
-# directly.
+# so the no-constructed-lag-columns rule does not apply, and the help-file
+# examples reference them directly.
 
 # Path is relative to the package root (pkg/). Run with setwd("pkg/") or
 # from an RStudio project rooted at pkg/.

@@ -118,11 +118,11 @@ OLS models. Equivalent to Stata's \code{orthog()} option.}
 for redundancy (zero first-stage explanatory power). The test is a
 KP rk LM test of H0: rank=0 on the first-stage coefficient matrix
 for the tested instruments, conditional on maintained instruments.
-If \code{NULL} (default), no redundancy test is computed. Ignored for OLS
-models (one-part formula). For a model in IV form with no endogenous
-regressors, a warning reports that the test is skipped; Stata's
-\code{redundant()} is silently ignored in that case. Equivalent to Stata's
-\code{redundant()} option.}
+If \code{NULL} (default), no redundancy test is computed. On a model with no
+endogenous regressors (a one-part OLS formula, or the IV form
+\code{y ~ exog | 0 | instruments}), a warning reports that the test is
+skipped; Stata's \code{redundant()} is silently ignored in those cases.
+Equivalent to Stata's \code{redundant()} option.}
 
 \item{method}{Character: estimation method. One of \code{"2sls"} (default),
 \code{"liml"}, \code{"kclass"}, \code{"gmm2s"} (two-step efficient GMM), or \code{"cue"}
@@ -356,16 +356,20 @@ reduced form without storing it). \code{"system"} stores the full system of
 y + all endogenous variables regressed on Z, with cross-equation VCV
 (equivalent to Stata's \code{savesfirst}, an option present in \code{ivreg2.ado}
 but absent from its help file; Stata's \code{sfirst} displays the system
-without storing it). Silently ignored for OLS models and for
-empty-endogenous (\code{y ~ exog | 0 | instruments}) models, matching Stata,
-which skips reduced-form estimation whenever the endogenous list is
-empty.}
+without storing it). On a model with no endogenous regressors (a
+one-part OLS formula, or the IV form \code{y ~ exog | 0 | instruments}), no
+reduced form is computed — matching Stata, which skips reduced-form
+estimation whenever the endogenous list is empty — and a warning
+reports that the request was ignored.}
 
 \item{first_stage}{Logical: if \code{TRUE}, store extractable first-stage
 regression objects on the fitted model. Access them via
 \code{\link[=first_stage]{first_stage()}}. Each object supports \code{\link[=coef]{coef()}}, \code{\link[=vcov]{vcov()}},
 \code{\link[=summary]{summary()}}, \code{\link[=tidy]{tidy()}}, and \code{\link[=glance]{glance()}}. Equivalent to Stata's
-\code{savefirst} option. Default \code{FALSE}. Silently ignored for OLS models.}
+\code{savefirst} option. Default \code{FALSE}. On a model with no endogenous
+regressors (a one-part OLS formula, or the IV form
+\code{y ~ exog | 0 | instruments}), nothing is stored and a warning reports
+that the request was ignored.}
 
 \item{model}{Logical: if \code{TRUE} (default), store the model frame in the
 return object.}

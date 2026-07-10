@@ -327,3 +327,19 @@ test_that("first_stage is ignored with a warning on an OLS model", {
     fixed = TRUE
   )
 })
+
+test_that("reduced_form warns on the zero-endogenous IV form too", {
+  expect_warning(
+    ivreg2(mpg ~ wt | 0 | hp, data = mtcars, reduced_form = "rf"),
+    "`reduced_form` ignored: the model has no endogenous regressors",
+    fixed = TRUE
+  )
+})
+
+test_that("first_stage warns on the zero-endogenous IV form too", {
+  expect_warning(
+    ivreg2(mpg ~ wt | 0 | hp, data = mtcars, first_stage = TRUE),
+    "`first_stage` ignored: the model has no endogenous regressors",
+    fixed = TRUE
+  )
+})

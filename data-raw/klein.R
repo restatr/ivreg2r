@@ -7,11 +7,11 @@
 #
 # Source: webuse klein (cached at validation/data/klein.dta), 22 x 14.
 #
-# Deliberate deviation (decision D8): the
-# upstream file carries two precomputed lag columns, profits1 (= L.profits)
-# and totinc1 (= L.totinc). These are dropped -- the help-file examples
-# reference L.profits/L.totinc, expressible as l(profits, 1)/l(totinc, 1)
-# since ticket F4, and D8 forbids shipping constructed lag columns.
+# Deliberate deviation from the upstream file: it carries two precomputed
+# lag columns, profits1 (= L.profits) and totinc1 (= L.totinc). These are
+# dropped -- the bundled datasets never ship constructed lag columns, since
+# the package's own lag operators express them (the help-file examples
+# reference L.profits/L.totinc, expressible as l(profits, 1)/l(totinc, 1)).
 # capital1 (lagged capital stock) is kept: it is a primitive with no
 # contemporaneous "capital" column to lag it from, and it appears directly
 # in the instrument lists of help-file examples H72-H76. Bundled shape:

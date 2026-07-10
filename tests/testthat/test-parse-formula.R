@@ -528,7 +528,7 @@ test_that("factor response errors cleanly (OLS)", {
   d$y <- factor(sample(letters[1:3], nrow(d), replace = TRUE))
   expect_error(
     .parse_formula(y ~ x1, data = d),
-    "response variable `y` is a factor; it must be numeric",
+    'response variable `y` must be numeric (it has class "factor")',
     fixed = TRUE
   )
 })
@@ -538,7 +538,7 @@ test_that("factor response errors cleanly (IV)", {
   d$y <- factor(sample(letters[1:3], nrow(d), replace = TRUE))
   expect_error(
     .parse_formula(y ~ x1 | endo1 | z1, data = d),
-    "response variable `y` is a factor; it must be numeric",
+    'response variable `y` must be numeric (it has class "factor")',
     fixed = TRUE
   )
 })
@@ -548,7 +548,27 @@ test_that("character response errors instead of being silently coerced", {
   d$y <- as.character(d$y)
   expect_error(
     .parse_formula(y ~ x1, data = d),
-    "response variable `y` is a character vector; it must be numeric",
+    'response variable `y` must be numeric (it has class "character")',
+    fixed = TRUE
+  )
+})
+
+test_that("Date response errors cleanly instead of dying in the numerics", {
+  d <- make_test_data()
+  d$y <- as.Date("2020-01-01") + seq_len(nrow(d))
+  expect_error(
+    .parse_formula(y ~ x1, data = d),
+    'response variable `y` must be numeric (it has class "Date")',
+    fixed = TRUE
+  )
+})
+
+test_that("complex response errors instead of silently dropping imaginary parts", {
+  d <- make_test_data()
+  d$y <- complex(real = d$y, imaginary = 1)
+  expect_error(
+    .parse_formula(y ~ x1, data = d),
+    'response variable `y` must be numeric (it has class "complex")',
     fixed = TRUE
   )
 })
@@ -568,17 +588,26 @@ test_that("zero-row data errors before collinearity machinery", {
   d <- make_test_data()
   expect_error(
     .parse_formula(y ~ x1 + x2, data = d[0, ]),
-    "no (complete) observations",
+    "No observations to fit: the data have zero usable rows",
     fixed = TRUE
   )
 })
 
-test_that("all-missing data errors as no complete observations", {
+test_that("all-missing data errors as zero usable rows", {
   d <- make_test_data()
   d$y <- NA_real_
   expect_error(
     .parse_formula(y ~ x1 + x2, data = d),
-    "no (complete) observations",
+    "No observations to fit: the data have zero usable rows",
+    fixed = TRUE
+  )
+})
+
+test_that("a subset that excludes every row errors as zero usable rows", {
+  d <- make_test_data()
+  expect_error(
+    ivreg2(y ~ x1 + x2, data = d, subset = d$x1 > 1e9),
+    "No observations to fit: the data have zero usable rows",
     fixed = TRUE
   )
 })

@@ -25,10 +25,12 @@
                                           model_flag, x_flag, y_flag) {
 
   # --- Validate vcov ---
-  if (!is.character(vcov) || length(vcov) != 1L) {
+  if (!is.character(vcov) || length(vcov) != 1L || is.na(vcov)) {
     stop("`vcov` must be a single character string.", call. = FALSE)
   }
-  if (vcov %in% c("HC0", "HC1")) {
+  # Redirects for known-wrong values, matched case-insensitively so that
+  # "hc1" and "Cluster" get the same guidance as "HC1" and "cluster".
+  if (toupper(vcov) %in% c("HC0", "HC1")) {
     stop('vcov = "', vcov, '" is not supported. ',
          'Use vcov = "robust" instead. ',
          'The `small` argument controls the finite-sample correction: ',
@@ -504,32 +506,70 @@
 #' Stop with a too-few-observations diagnosis.
 #'
 #' Leads with the observation count relative to the model size (the usual
-#' cause), and only names `dofminus`/`sdofminus` when the user actually set one
-#' of them, so a plain one-row fit is not misdiagnosed as a degrees-of-freedom
-#' argument being too large.
+#' cause). Each of `dofminus`/`sdofminus` is named only when it is actually
+#' positive, so a plain one-row fit is not misdiagnosed as a
+#' degrees-of-freedom argument being too large, and an unset argument is
+#' never presented as if the user supplied it. `sdofminus` may be positive
+#' without the user setting it (partialling raises it by the number of
+#' partialled-out regressors); the caller passes `context` to say so.
 #'
-#' @param N Observation count remaining after listwise deletion.
+#' @param N Observation count: rows remaining after listwise deletion, or the
+#'   weighted count when `weighted = TRUE`.
 #' @param count Model dimension being checked (`K` parameters or `L`
 #'   instruments).
 #' @param dofminus,sdofminus Degrees-of-freedom adjustments.
 #' @param count_label `"parameter"` or `"instrument"`.
-#' @keywords internal
-.stop_too_few_obs <- function(N, count, dofminus, sdofminus, count_label) {
-  obs_phrase <- if (N == 1L) "1 observation remains" else {
-    paste0(N, " observations remain")
+#' @param weighted Logical: is `N` a sum of weights rather than a row count?
+#' @param context Optional sentence appended after the lead diagnosis (for
+#'   example, explaining that partialling raised `sdofminus`).
+#' @noRd
+.stop_too_few_obs <- function(N, count, dofminus, sdofminus, count_label,
+                              weighted = FALSE, context = NULL) {
+  obs_phrase <- if (weighted) {
+    paste0("the weighted observation count (the sum of the weights) is ",
+           format(N))
+  } else if (N == 1L) {
+    "1 observation remains after listwise deletion"
+  } else {
+    paste0(N, " observations remain after listwise deletion")
   }
   count_phrase <- paste0(count, " ", count_label, if (count == 1L) "" else "s")
   msg <- paste0("Too few observations: ", obs_phrase,
-                " after listwise deletion but the model has ", count_phrase, ".")
+                " but the model has ", count_phrase, ".")
+  if (!is.null(context)) {
+    msg <- paste0(msg, " ", context)
+  }
   if (dofminus > 0L || sdofminus > 0L) {
+    named <- c(
+      if (dofminus > 0L) paste0("`dofminus` = ", dofminus),
+      if (sdofminus > 0L) paste0("`sdofminus` = ", sdofminus)
+    )
     letter <- if (identical(count_label, "instrument")) "L" else "K"
     remaining <- N - count - dofminus - sdofminus
-    msg <- paste0(msg, " With `dofminus` = ", dofminus, " and `sdofminus` = ",
-                  sdofminus, ", N - ", letter, " - dofminus - sdofminus = ",
-                  remaining, " (must be > 0).")
+    msg <- paste0(msg, " With ", paste(named, collapse = " and "),
+                  ", N - ", letter, " - dofminus - sdofminus = ",
+                  format(remaining), " (must be > 0).")
   }
   stop(msg, call. = FALSE)
 }
+
+
+#' Warn that an IV-only request is ignored on a model with no endogenous
+#' regressors.
+#'
+#' Stata silently drops these requests; this package's convention is that an
+#' explicitly requested computation never disappears silently. One wording
+#' per model shape: `model_desc` distinguishes the plain OLS form from the
+#' IV form with zero endogenous regressors, and `tail` completes the
+#' sentence for the specific request.
+#' @noRd
+.warn_iv_request_ignored <- function(arg, model_desc, tail) {
+  warning("`", arg, "` ignored: ", model_desc, ", so ", tail, call. = FALSE)
+}
+
+.OLS_MODEL_DESC <- paste0("this is an OLS model (no endogenous regressors ",
+                          "or excluded instruments)")
+.K10_MODEL_DESC <- "the model has no endogenous regressors"
 
 
 #' Prepare model matrices, weights, clusters, and time-index for estimation.
@@ -646,10 +686,12 @@
            call. = FALSE)
     }
     if (N_check - parsed$K - dofminus - sdofminus <= 0L) {
-      .stop_too_few_obs(N_check, parsed$K, dofminus, sdofminus, "parameter")
+      .stop_too_few_obs(N_check, parsed$K, dofminus, sdofminus, "parameter",
+                        weighted = TRUE)
     }
     if (parsed$is_iv && N_check - parsed$L - dofminus - sdofminus <= 0L) {
-      .stop_too_few_obs(N_check, parsed$L, dofminus, sdofminus, "instrument")
+      .stop_too_few_obs(N_check, parsed$L, dofminus, sdofminus, "instrument",
+                        weighted = TRUE)
     }
     # Re-validate fuller against weighted N (Stata validates inside Mata
     # using the already-weighted N; our pre-weight check at line ~447 uses
@@ -770,16 +812,22 @@
       sdofminus <- sdofminus + as.integer(partial_ct)
     }
 
-    # Re-validate dimensions after partialling
+    # Re-validate dimensions after partialling. Partialling raised sdofminus
+    # by partial_ct (unless nopartialsmall), so tell the user that is where
+    # the degrees of freedom went.
+    partial_context <- if (!nopartialsmall && partial_ct > 0L) {
+      paste0("The ", partial_ct, " regressor",
+             if (partial_ct == 1L) "" else "s",
+             " partialled out via `partial` also count against the degrees ",
+             "of freedom (via `sdofminus`).")
+    }
     if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
-      stop("After partialling: N - K - dofminus - sdofminus = ",
-           parsed$N - parsed$K - dofminus - sdofminus,
-           " (must be > 0).", call. = FALSE)
+      .stop_too_few_obs(parsed$N, parsed$K, dofminus, sdofminus, "parameter",
+                        context = partial_context)
     }
     if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
-      stop("After partialling: N - L - dofminus - sdofminus = ",
-           parsed$N - parsed$L - dofminus - sdofminus,
-           " (must be > 0).", call. = FALSE)
+      .stop_too_few_obs(parsed$N, parsed$L, dofminus, sdofminus, "instrument",
+                        context = partial_context)
     }
   }
 
@@ -1851,9 +1899,8 @@
     # silently ignores redundant() here (gated at ivreg2.ado:1741); we warn
     # instead, following the package's explicit-request-ignored convention.
     if (!is.null(redundant) && length(redundant) > 0L && parsed$K1 == 0L) {
-      warning("`redundant` ignored: the model has no endogenous regressors, ",
-              "so there is nothing to test instrument redundancy against.",
-              call. = FALSE)
+      .warn_iv_request_ignored("redundant", .K10_MODEL_DESC,
+                               "there is nothing to test instrument redundancy against.")
     }
     if (!noid && !is.null(redundant) && length(redundant) > 0L &&
         parsed$K1 > 0L) {
@@ -1877,45 +1924,46 @@
 
     }  # end of if (is.null(b0)) — identification diagnostics block
   } else {
-    # OLS path (one-part formula): the IV-only diagnostic requests have no
-    # target here. Warn rather than silently drop them, matching the
-    # explicit-request-ignored convention used for the K1 = 0 IV form.
-    if (!is.null(endog) && length(endog) > 0L) {
-      warning("`endog` ignored: this is an OLS model (no endogenous regressors ",
-              "or excluded instruments), so there is nothing to test.",
-              call. = FALSE)
+    # OLS path (one-part formula): the IV-only requests have no target here.
+    # Warn rather than silently drop them (the explicit-request-ignored
+    # convention; the K1 = 0 IV form gets the same treatment above and at
+    # the reduced-form/first-stage gates below).
+    if (length(endog) > 0L) {
+      .warn_iv_request_ignored("endog", .OLS_MODEL_DESC,
+                               "there is nothing to test.")
     }
-    if (!is.null(orthog) && length(orthog) > 0L) {
-      warning("`orthog` ignored: this is an OLS model (no endogenous regressors ",
-              "or excluded instruments), so there is nothing to test.",
-              call. = FALSE)
+    if (length(orthog) > 0L) {
+      .warn_iv_request_ignored("orthog", .OLS_MODEL_DESC,
+                               "there is nothing to test.")
     }
-    if (!is.null(redundant) && length(redundant) > 0L) {
-      warning("`redundant` ignored: this is an OLS model (no endogenous ",
-              "regressors or excluded instruments), so there is nothing to test.",
-              call. = FALSE)
+    if (length(redundant) > 0L) {
+      .warn_iv_request_ignored("redundant", .OLS_MODEL_DESC,
+                               "there is nothing to test.")
     }
     if (reduced_form != "none") {
-      warning("`reduced_form` ignored: this is an OLS model (no endogenous ",
-              "regressors or excluded instruments), so there is no reduced ",
-              "form to store.", call. = FALSE)
+      .warn_iv_request_ignored("reduced_form", .OLS_MODEL_DESC,
+                               "there is no reduced form to store.")
     }
     if (isTRUE(first_stage_flag)) {
-      warning("`first_stage` ignored: this is an OLS model (no endogenous ",
-              "regressors or excluded instruments), so there are no first-",
-              "stage regressions to store.", call. = FALSE)
+      .warn_iv_request_ignored("first_stage", .OLS_MODEL_DESC,
+                               "there are no first-stage regressions to store.")
     }
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
 
-  # Reduced-form regression. K1 = 0: skipped, matching Stata — the entire
-  # RF/first-stage estimation block is gated on `endo1_ct > 0`
-  # (ivreg2.ado:1256), and saverf on a `(=z)` model stores nothing
-  # (e(rfeq) empty; verified by probe 2026-06-11). Note the y-on-Z reduced
-  # form WOULD differ from the main y-on-X model (Z carries the surplus
-  # instruments), but Stata never computes it, so there is no ground truth
-  # to validate an extension against.
+  # Reduced-form regression. K1 = 0: no reduced form is computed or stored,
+  # matching Stata — the entire RF/first-stage estimation block is gated on
+  # `endo1_ct > 0` (ivreg2.ado:1256), and saverf on a `(=z)` model stores
+  # nothing (e(rfeq) empty; verified by probe 2026-06-11). Note the y-on-Z
+  # reduced form WOULD differ from the main y-on-X model (Z carries the
+  # surplus instruments), but Stata never computes it, so there is no ground
+  # truth to validate an extension against. Where Stata is silent about the
+  # dropped request, we warn (the explicit-request-ignored convention).
   reduced_form_result <- NULL
+  if (parsed$is_iv && parsed$K1 == 0L && reduced_form != "none") {
+    .warn_iv_request_ignored("reduced_form", .K10_MODEL_DESC,
+                             "there is no reduced form to store.")
+  }
   if (parsed$is_iv && parsed$K1 > 0L && reduced_form != "none") {
     rf_depvar <- parsed$y_name
     reduced_form_result <- .compute_reduced_form(
@@ -1948,8 +1996,12 @@
     )
   }
 
-  # Build extractable first-stage model objects (Ticket S1)
+  # Build extractable first-stage model objects
   first_stage_models <- NULL
+  if (isTRUE(first_stage_flag) && parsed$is_iv && parsed$K1 == 0L) {
+    .warn_iv_request_ignored("first_stage", .K10_MODEL_DESC,
+                             "there are no first-stage regressions to store.")
+  }
   if (first_stage_flag && parsed$is_iv && !is.null(first_stage)) {
     first_stage_models <- .build_first_stage_models(
       fs_results   = first_stage,
@@ -2064,11 +2116,11 @@
 #'   for redundancy (zero first-stage explanatory power). The test is a
 #'   KP rk LM test of H0: rank=0 on the first-stage coefficient matrix
 #'   for the tested instruments, conditional on maintained instruments.
-#'   If `NULL` (default), no redundancy test is computed. Ignored for OLS
-#'   models (one-part formula). For a model in IV form with no endogenous
-#'   regressors, a warning reports that the test is skipped; Stata's
-#'   `redundant()` is silently ignored in that case. Equivalent to Stata's
-#'   `redundant()` option.
+#'   If `NULL` (default), no redundancy test is computed. On a model with no
+#'   endogenous regressors (a one-part OLS formula, or the IV form
+#'   `y ~ exog | 0 | instruments`), a warning reports that the test is
+#'   skipped; Stata's `redundant()` is silently ignored in those cases.
+#'   Equivalent to Stata's `redundant()` option.
 #' @param small Logical: if `TRUE`, use small-sample corrections
 #'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
 #' @param weight_type Character: type of weights. One of `"aweight"`
@@ -2276,15 +2328,19 @@
 #'   y + all endogenous variables regressed on Z, with cross-equation VCV
 #'   (equivalent to Stata's `savesfirst`, an option present in `ivreg2.ado`
 #'   but absent from its help file; Stata's `sfirst` displays the system
-#'   without storing it). Silently ignored for OLS models and for
-#'   empty-endogenous (`y ~ exog | 0 | instruments`) models, matching Stata,
-#'   which skips reduced-form estimation whenever the endogenous list is
-#'   empty.
+#'   without storing it). On a model with no endogenous regressors (a
+#'   one-part OLS formula, or the IV form `y ~ exog | 0 | instruments`), no
+#'   reduced form is computed — matching Stata, which skips reduced-form
+#'   estimation whenever the endogenous list is empty — and a warning
+#'   reports that the request was ignored.
 #' @param first_stage Logical: if `TRUE`, store extractable first-stage
 #'   regression objects on the fitted model. Access them via
 #'   [first_stage()]. Each object supports [coef()], [vcov()],
 #'   [summary()], [tidy()], and [glance()]. Equivalent to Stata's
-#'   `savefirst` option. Default `FALSE`. Silently ignored for OLS models.
+#'   `savefirst` option. Default `FALSE`. On a model with no endogenous
+#'   regressors (a one-part OLS formula, or the IV form
+#'   `y ~ exog | 0 | instruments`), nothing is stored and a warning reports
+#'   that the request was ignored.
 #' @param model Logical: if `TRUE` (default), store the model frame in the
 #'   return object.
 #' @param x Logical: if `TRUE`, store model matrices (`X`, `Z`) in the
