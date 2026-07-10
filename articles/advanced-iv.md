@@ -463,7 +463,7 @@ fit_k_coviv <- ivreg2(klein_form, data = klein, tvar = "yr",
                       method = "liml", coviv = TRUE)
 fit_k_cue   <- ivreg2(klein_form, data = klein, tvar = "yr", method = "cue")
 max(abs(coef(fit_k_coviv) - coef(fit_k_cue)))
-#> [1] 1.077372e-06
+#> [1] 7.415976e-07
 ```
 
 On this tiny (N = 21) problem the cross-platform agreement is on the
@@ -1160,9 +1160,9 @@ fit_fwl <- ivreg2(
 
 shared <- names(coef(fit_fwl))
 max(abs(coef(fit_full)[shared] - coef(fit_fwl)[shared]))
-#> [1] 3.330669e-16
+#> [1] 3.191891e-16
 max(abs(sqrt(diag(vcov(fit_full)))[shared] - sqrt(diag(vcov(fit_fwl)))[shared]))
-#> [1] 3.469447e-18
+#> [1] 5.20417e-18
 c(sigma_full = fit_full$sigma, sigma_fwl = fit_fwl$sigma)
 #> sigma_full  sigma_fwl 
 #>  0.3266951  0.3266951
@@ -1200,7 +1200,7 @@ fit_fe <- ivreg2(lw ~ s + expr + tenure, data = gril_within,
 
 slopes <- c("s", "expr", "tenure")
 max(abs(coef(fit_lsdv)[slopes] - coef(fit_fe)[slopes]))
-#> [1] 2.081668e-17
+#> [1] 4.163336e-17
 max(abs(sqrt(diag(vcov(fit_lsdv)))[slopes] - sqrt(diag(vcov(fit_fe)))[slopes]))
 #> [1] 2.602085e-18
 c(sigma_lsdv = fit_lsdv$sigma, sigma_fe = fit_fe$sigma,

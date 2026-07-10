@@ -36,6 +36,7 @@
 <li><a class="dropdown-item" href="../articles/introduction.html">Instrumental Variables Estimation with ivreg2r</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-iv.html">Advanced IV Estimation with ivreg2r</a></li>
     <li><a class="dropdown-item" href="../articles/time-series-gmm.html">Time Series IV, Panel VCE, and GMM</a></li>
+    <li><a class="dropdown-item" href="../articles/validation.html">How ivreg2r Is Validated Against Stata</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -1529,6 +1530,13 @@ partialling, and panel VCE examples.</p>
 </td>
 <td>R <code><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim()</a></code> (BFGS + Nelder-Mead)</td>
 <td>Different optimizer, same objective</td>
+</tr>
+<tr class="odd">
+<td>
+<code>redundant</code> with no endogenous regressors</td>
+<td>Silently ignored</td>
+<td>Warns that the test is skipped</td>
+<td>An explicitly requested test should not disappear silently</td>
 </tr>
 </tbody>
 </table>

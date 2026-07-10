@@ -145,8 +145,11 @@ ivreg2(
   (zero first-stage explanatory power). The test is a KP rk LM test of
   H0: rank=0 on the first-stage coefficient matrix for the tested
   instruments, conditional on maintained instruments. If `NULL`
-  (default), no redundancy test is computed. Ignored for OLS models.
-  Equivalent to Stata's `redundant()` option.
+  (default), no redundancy test is computed. Ignored for OLS models
+  (one-part formula). For a model in IV form with no endogenous
+  regressors, a warning reports that the test is skipped; Stata's
+  `redundant()` is silently ignored in that case. Equivalent to Stata's
+  `redundant()` option.
 
 - method:
 

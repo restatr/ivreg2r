@@ -1132,6 +1132,7 @@ for HAC/AC, GMM, CUE, partialling, and panel VCE examples.
 | Factor variables | `i.` prefix syntax | R [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) / contrasts | R convention |
 | Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |
 | CUE optimizer | Mata [`optimize()`](https://rdrr.io/r/stats/optimize.html) | R [`optim()`](https://rdrr.io/r/stats/optim.html) (BFGS + Nelder-Mead) | Different optimizer, same objective |
+| `redundant` with no endogenous regressors | Silently ignored | Warns that the test is skipped | An explicitly requested test should not disappear silently |
 
 ## References
 

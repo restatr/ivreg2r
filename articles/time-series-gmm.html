@@ -36,6 +36,7 @@
 <li><a class="dropdown-item" href="../articles/introduction.html">Instrumental Variables Estimation with ivreg2r</a></li>
     <li><a class="dropdown-item" href="../articles/advanced-iv.html">Advanced IV Estimation with ivreg2r</a></li>
     <li><a class="dropdown-item" href="../articles/time-series-gmm.html">Time Series IV, Panel VCE, and GMM</a></li>
+    <li><a class="dropdown-item" href="../articles/validation.html">How ivreg2r Is Validated Against Stata</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -459,10 +460,9 @@ treated in full in the GMM section below.</p>
 <p>Kiefer (1980) offers a homoskedastic alternative for the same regime.
 It assumes conditional homoskedasticity across all observations but
 allows arbitrary within-unit serial correlation, and is equivalent to AC
-inference with a truncated kernel at bandwidth
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T - 1</annotation></semantics></math>,
-which weights every lag available within a panel of length
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>:</p>
+inference with a truncated kernel spanning the full panel length
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>,
+so that every available within-panel lag receives full weight:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_kiefer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">n</span> <span class="op">~</span> <span class="va">w</span> <span class="op">+</span> <span class="va">k</span>, data <span class="op">=</span> <span class="va">abdata</span>, kiefer <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>                     tvar <span class="op">=</span> <span class="st">"year"</span>, ivar <span class="op">=</span> <span class="st">"id"</span><span class="op">)</span></span>
@@ -489,14 +489,25 @@ which weights every lag available within a panel of length
 <span><span class="co">#&gt; Adj. R-squared: 0.8342 </span></span>
 <span><span class="co">#&gt; Wald chi2(2):  553.3 (p &lt; 2.2e-16)</span></span>
 <span><span class="co">#&gt; Root MSE:       0.5455</span></span></code></pre></div>
-<p>The equivalence is exact. With
+<p>The equivalence is exact. <code>kiefer = TRUE</code> sets the
+bandwidth to the full span
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
-time periods, both Stata and this package reject any bandwidth of
+internally, just as Stata’s <code>kiefer</code> option does, while an
+<em>explicitly</em> supplied bandwidth must be less than
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
-or more, so the maximum usable bandwidth is
+in both programs, making
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>−</mo><mn>1</mn><mo>=</mo><mn>8</mn></mrow><annotation encoding="application/x-tex">T - 1 = 8</annotation></semantics></math>
-here; the truncated kernel at that maximum weights the same within-panel
-lags Kiefer does:</p>
+the largest explicit choice here. The two nonetheless coincide, because
+the truncated kernel gives every lag up to the bandwidth full weight and
+the largest lag a panel of length
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+contains is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T - 1</annotation></semantics></math>
+— so bandwidths
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T - 1</annotation></semantics></math>
+select exactly the same lags:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bw_max</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">abdata</span><span class="op">$</span><span class="va">year</span><span class="op">)</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1</span></span>
 <span><span class="va">fit_tru8</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">n</span> <span class="op">~</span> <span class="va">w</span> <span class="op">+</span> <span class="va">k</span>, data <span class="op">=</span> <span class="va">abdata</span>, kernel <span class="op">=</span> <span class="st">"truncated"</span>, bw <span class="op">=</span> <span class="va">bw_max</span>,</span>
@@ -873,7 +884,7 @@ errors. Continuing the same equation:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Coefficients:</span></span>
 <span><span class="co">#&gt;             Estimate Std. Error z value Pr(&gt;|z|)</span></span>
-<span><span class="co">#&gt; (Intercept)  0.29784    0.38046   0.783    0.434</span></span>
+<span><span class="co">#&gt; (Intercept)  0.29785    0.38046   0.783    0.434</span></span>
 <span><span class="co">#&gt; UR          -0.04831    0.06447  -0.749    0.454</span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; R-squared:      0.0901 </span></span>
@@ -1127,7 +1138,7 @@ correction silently:</p>
 <span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 1 negative</span></span>
 <span><span class="co">#&gt; eigenvalue corrected via the 'psda' method.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen</a></span><span class="op">(</span><span class="va">fit_psda</span><span class="op">$</span><span class="va">S</span>, symmetric <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">values</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 5.038001e-14</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 9.457119e-14</span></span></code></pre></div>
 <p>The correction is applied to <code>S</code> before the coefficient
 covariance is assembled from it, exactly as in Stata, so the standard
 errors change while the coefficients do not:</p>

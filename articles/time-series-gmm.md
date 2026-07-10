@@ -359,8 +359,8 @@ GMM section below.
 Kiefer (1980) offers a homoskedastic alternative for the same regime. It
 assumes conditional homoskedasticity across all observations but allows
 arbitrary within-unit serial correlation, and is equivalent to AC
-inference with a truncated kernel at bandwidth $`T - 1`$, which weights
-every lag available within a panel of length $`T`$:
+inference with a truncated kernel spanning the full panel length $`T`$,
+so that every available within-panel lag receives full weight:
 
 ``` r
 
@@ -391,10 +391,14 @@ summary(fit_kiefer)
 #> Root MSE:       0.5455
 ```
 
-The equivalence is exact. With $`T`$ time periods, both Stata and this
-package reject any bandwidth of $`T`$ or more, so the maximum usable
-bandwidth is $`T - 1 = 8`$ here; the truncated kernel at that maximum
-weights the same within-panel lags Kiefer does:
+The equivalence is exact. `kiefer = TRUE` sets the bandwidth to the full
+span $`T`$ internally, just as Stata’s `kiefer` option does, while an
+*explicitly* supplied bandwidth must be less than $`T`$ in both
+programs, making $`T - 1 = 8`$ the largest explicit choice here. The two
+nonetheless coincide, because the truncated kernel gives every lag up to
+the bandwidth full weight and the largest lag a panel of length $`T`$
+contains is $`T - 1`$ — so bandwidths $`T`$ and $`T - 1`$ select exactly
+the same lags:
 
 ``` r
 
@@ -741,7 +745,7 @@ summary(fit_cue)
 #> 
 #> Coefficients:
 #>             Estimate Std. Error z value Pr(>|z|)
-#> (Intercept)  0.29784    0.38046   0.783    0.434
+#> (Intercept)  0.29785    0.38046   0.783    0.434
 #> UR          -0.04831    0.06447  -0.749    0.454
 #> ---
 #> R-squared:      0.0901 
@@ -1013,7 +1017,7 @@ fit_psda <- ivreg2(psd_formula, data = wagepan, dkraay = 2,
 #> Warning: The covariance matrix was not positive semidefinite; 1 negative
 #> eigenvalue corrected via the 'psda' method.
 min(eigen(fit_psda$S, symmetric = TRUE)$values)
-#> [1] 5.038001e-14
+#> [1] 9.457119e-14
 ```
 
 The correction is applied to `S` before the coefficient covariance is
