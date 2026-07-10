@@ -671,13 +671,15 @@ test_that("vcov(H98 Driscoll-Kraay) equals vcov(H99 cluster+bartlett bw=2)", {
 })
 
 # H91 (cluster(id)) and H92 (bw(8) + truncated + robust) are NOT asserted
-# equal: help-file-specs.md and validate-helpfile.qmd document them as two
-# separate salvaged examples of the SAME bw(9) help-file bug, but neither
-# source claims H91 == H92 (that equivalence is H89/H90's territory: kiefer
-# == truncated at full bandwidth). H91 is a plain one-way cluster VCE; H92
-# is HAC with truncated kernel and robust. They coincide only when the
-# kernel-implied bandwidth spans the full within-panel timespan, which for
-# a one-way cluster estimator (no kernel at all) is not the same object.
+# equal here: help-file-specs.md and validate-helpfile.qmd document them as
+# two separate salvaged examples of the SAME bw(9) help-file bug, and
+# neither source claims H91 == H92. They are different estimators in
+# general, coinciding only when the kernel-implied bandwidth spans the full
+# within-panel timespan. bw(8) IS that full-span case for abdata (T = 9),
+# and the coincidence is asserted on provable grounds in
+# test-vcov-cluster-kernel.R ("cluster-robust equals robust truncated
+# kernel at maximum bandwidth"); it stays unasserted here because no
+# help-file source states it.
 
 
 # ============================================================================

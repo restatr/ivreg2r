@@ -302,6 +302,8 @@ fit_reg <- ivreg2(
 b0_objective   <- diagnostics(fit_b0)  |> filter(test == "overid")       |> pull(statistic)
 stock_wright_S <- diagnostics(fit_reg) |> filter(test == "stock_wright") |> pull(statistic)
 all.equal(b0_objective, stock_wright_S)
+
+diagnostics(fit_reg) |> filter(test == "stock_wright")
 ```
 
 ```{r b0-values, include = FALSE}

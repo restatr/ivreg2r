@@ -233,16 +233,10 @@ test_that("kiefer=TRUE is equivalent to AC+Truncated+fullBW", {
   expect_equal(coef(fit_kiefer), coef(fit_manual))
 })
 
-test_that("kiefer equals truncated kernel at maximum bandwidth", {
-  data(abdata)
-  fit_kiefer <- ivreg2(n ~ w + k, data = abdata, kiefer = TRUE,
-                       tvar = "year", ivar = "id")
-  fit_tru <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated",
-                    bw = length(unique(abdata$year)) - 1,
-                    tvar = "year", ivar = "id")
-  expect_equal(vcov(fit_kiefer), vcov(fit_tru))
-})
-
+# The homoskedastic Kiefer = truncated-at-full-bandwidth identity on the
+# vignette's abdata spec is already asserted in test-helpfile-examples.R
+# ("vcov(H89 kiefer) equals vcov(H90 truncated bw=8)"); the wagepan test
+# above covers the mechanism. Only the robust counterpart is asserted here.
 test_that("cluster-robust equals robust truncated kernel at maximum bandwidth", {
   data(abdata)
   fit_cl_rob <- ivreg2(n ~ w + k, data = abdata, clusters = ~ id,
