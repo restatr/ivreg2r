@@ -48,6 +48,9 @@ muffle_rank_warnings <- function(expr) {
 # superseding, the end-of-grind re-audit — the CUE optimizer's parscale
 # scaling tightened every optimizer-endpoint cell except ab_cue cl ys,
 # which moved 7.6e-7 -> 9.0e-7, still the overall worst coef).
+# Keep in sync: the tolerance table below is quoted in CLAUDE.md ("Testing
+# Tolerances") and in the public validation article
+# (vignettes/articles/validation.Rmd) — update all three together.
 stata_tol <- list(
   coef = 1e-6,   # coefficients        (worst observed: 9.0e-7, a CUE cell)
   se   = 1e-6,   # standard errors     (worst observed: 1.7e-8, a LIML cell)
