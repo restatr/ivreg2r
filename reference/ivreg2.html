@@ -107,7 +107,9 @@ conditions drive the Sargan/Hansen J overidentification test and
 <code>orthog</code> C-tests, and <code>method = "gmm2s"</code> with <code>vcov = "robust"</code> gives
 Cragg's (1983) heteroskedastic OLS (HOLS) estimator (with the default
 iid VCE the two-step weighting matrix is proportional to
-\((Z'Z)^{-1}\) and the estimates equal OLS exactly).</p></dd>
+\((Z'Z)^{-1}\) and the estimates equal OLS exactly).
+The response must be numeric; a factor or character response is rejected
+with an error.</p></dd>
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
@@ -185,11 +187,11 @@ OLS models. Equivalent to Stata's <code>orthog()</code> option.</p></dd>
 for redundancy (zero first-stage explanatory power). The test is a
 KP rk LM test of H0: rank=0 on the first-stage coefficient matrix
 for the tested instruments, conditional on maintained instruments.
-If <code>NULL</code> (default), no redundancy test is computed. Ignored for OLS
-models (one-part formula). For a model in IV form with no endogenous
-regressors, a warning reports that the test is skipped; Stata's
-<code>redundant()</code> is silently ignored in that case. Equivalent to Stata's
-<code>redundant()</code> option.</p></dd>
+If <code>NULL</code> (default), no redundancy test is computed. On a model with no
+endogenous regressors (a one-part OLS formula, or the IV form
+<code>y ~ exog | 0 | instruments</code>), a warning reports that the test is
+skipped; Stata's <code>redundant()</code> is silently ignored in those cases.
+Equivalent to Stata's <code>redundant()</code> option.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
@@ -457,10 +459,11 @@ reduced form without storing it). <code>"system"</code> stores the full system o
 y + all endogenous variables regressed on Z, with cross-equation VCV
 (equivalent to Stata's <code>savesfirst</code>, an option present in <code>ivreg2.ado</code>
 but absent from its help file; Stata's <code>sfirst</code> displays the system
-without storing it). Silently ignored for OLS models and for
-empty-endogenous (<code>y ~ exog | 0 | instruments</code>) models, matching Stata,
-which skips reduced-form estimation whenever the endogenous list is
-empty.</p></dd>
+without storing it). On a model with no endogenous regressors (a
+one-part OLS formula, or the IV form <code>y ~ exog | 0 | instruments</code>), no
+reduced form is computed — matching Stata, which skips reduced-form
+estimation whenever the endogenous list is empty — and a warning
+reports that the request was ignored.</p></dd>
 
 
 <dt id="arg-first-stage">first_stage<a class="anchor" aria-label="anchor" href="#arg-first-stage"></a></dt>
@@ -468,7 +471,10 @@ empty.</p></dd>
 regression objects on the fitted model. Access them via
 <code><a href="first_stage.html">first_stage()</a></code>. Each object supports <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov()</a></code>,
 <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>. Equivalent to Stata's
-<code>savefirst</code> option. Default <code>FALSE</code>. Silently ignored for OLS models.</p></dd>
+<code>savefirst</code> option. Default <code>FALSE</code>. On a model with no endogenous
+regressors (a one-part OLS formula, or the IV form
+<code>y ~ exog | 0 | instruments</code>), nothing is stored and a warning reports
+that the request was ignored.</p></dd>
 
 
 <dt id="arg-model">model<a class="anchor" aria-label="anchor" href="#arg-model"></a></dt>

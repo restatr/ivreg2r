@@ -61,7 +61,8 @@ ivreg2(
   `orthog` C-tests, and `method = "gmm2s"` with `vcov = "robust"` gives
   Cragg's (1983) heteroskedastic OLS (HOLS) estimator (with the default
   iid VCE the two-step weighting matrix is proportional to
-  \\(Z'Z)^{-1}\\ and the estimates equal OLS exactly).
+  \\(Z'Z)^{-1}\\ and the estimates equal OLS exactly). The response must
+  be numeric; a factor or character response is rejected with an error.
 
 - data:
 
@@ -145,11 +146,11 @@ ivreg2(
   (zero first-stage explanatory power). The test is a KP rk LM test of
   H0: rank=0 on the first-stage coefficient matrix for the tested
   instruments, conditional on maintained instruments. If `NULL`
-  (default), no redundancy test is computed. Ignored for OLS models
-  (one-part formula). For a model in IV form with no endogenous
-  regressors, a warning reports that the test is skipped; Stata's
-  `redundant()` is silently ignored in that case. Equivalent to Stata's
-  `redundant()` option.
+  (default), no redundancy test is computed. On a model with no
+  endogenous regressors (a one-part OLS formula, or the IV form
+  `y ~ exog | 0 | instruments`), a warning reports that the test is
+  skipped; Stata's `redundant()` is silently ignored in those cases.
+  Equivalent to Stata's `redundant()` option.
 
 - method:
 
@@ -433,10 +434,11 @@ ivreg2(
   endogenous variables regressed on Z, with cross-equation VCV
   (equivalent to Stata's `savesfirst`, an option present in `ivreg2.ado`
   but absent from its help file; Stata's `sfirst` displays the system
-  without storing it). Silently ignored for OLS models and for
-  empty-endogenous (`y ~ exog | 0 | instruments`) models, matching
-  Stata, which skips reduced-form estimation whenever the endogenous
-  list is empty.
+  without storing it). On a model with no endogenous regressors (a
+  one-part OLS formula, or the IV form `y ~ exog | 0 | instruments`), no
+  reduced form is computed — matching Stata, which skips reduced-form
+  estimation whenever the endogenous list is empty — and a warning
+  reports that the request was ignored.
 
 - first_stage:
 
@@ -448,8 +450,10 @@ ivreg2(
   [`summary()`](https://rdrr.io/r/base/summary.html),
   [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and
   [`glance()`](https://generics.r-lib.org/reference/glance.html).
-  Equivalent to Stata's `savefirst` option. Default `FALSE`. Silently
-  ignored for OLS models.
+  Equivalent to Stata's `savefirst` option. Default `FALSE`. On a model
+  with no endogenous regressors (a one-part OLS formula, or the IV form
+  `y ~ exog | 0 | instruments`), nothing is stored and a warning reports
+  that the request was ignored.
 
 - model:
 
