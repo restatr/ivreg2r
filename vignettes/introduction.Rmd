@@ -136,7 +136,7 @@ To test a *subset* of instruments while maintaining the rest, use the `orthog` a
 
 The endogeneity test (also called the C-statistic or difference-in-Sargan test) asks whether the regressors treated as endogenous are actually endogenous. The null hypothesis is that they are exogenous. For the just-identified fit above, the statistic is `r round(endog_stat, 2)` (p = `r round(endog_p, 4)`): we cannot reject that `educ` is exogenous. In that case OLS may be preferred because it is more efficient --- this fit is a live example of the trade-off, since the IV point estimate is similar to OLS but far less precise.
 
-The test maintains instrument validity under both hypotheses, so it is uninformative about endogeneity if the instruments are themselves invalid, and it shares the low power under weak instruments noted above. Using its result to choose between OLS and IV is a pre-test whose selection step can badly distort the size of subsequent inference (Guggenberger, 2010); see `?ivreg2` and Hayashi (2000, pp. 218--222, 233--234) for the underlying theory.
+The test maintains instrument validity under both hypotheses, so it is uninformative about endogeneity if the instruments are themselves invalid, and it shares the low power under weak instruments noted above. Using its result to choose between OLS and IV is a pre-test whose selection step can badly distort the size of subsequent inference (Guggenberger, 2010); see `?ivreg2` and Hayashi (2000, pp. 218--221, 232--234) for the underlying theory.
 
 Stata's `ivreg2` computes this test only when `endog()` is requested, whereas `ivreg2r` reports it automatically for all endogenous regressors; use the `endog` argument to test a specific subset (e.g., `endog = "educ"`).
 
