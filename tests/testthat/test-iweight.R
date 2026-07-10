@@ -2,12 +2,11 @@
 # Tests: Importance weights (iweight) — M-12 re-base
 # ============================================================================
 #
-# Family M-12: importance weights on the mroz base (H31 model, help.txt:1274;
-# D5a — Stata documents the `iweight` option for `ivreg2` but provides no
-# worked example, so cells are D5a option-variation on the H31 base). Weights
-# are synthetic and deterministic. The audit-20 anti-pattern (passing the
-# non-integer `wage` variable as an iweight) was retired 2026-07-04 per
-# planning/22-spec-matrix.md. Originally Ticket Q2.
+# Importance weights on the mroz base (H31 model, help.txt:1274; Stata
+# documents the `iweight` option for `ivreg2` but provides no worked example,
+# so cells are option-variations on the H31 base). Weights are synthetic and
+# deterministic. The anti-pattern of passing the non-integer `wage` variable
+# as an iweight was retired 2026-07-04.
 
 # read_coef_fixture comes from helper-fixtures.R
 

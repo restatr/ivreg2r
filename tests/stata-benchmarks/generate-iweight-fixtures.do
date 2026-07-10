@@ -1,8 +1,7 @@
 /*===========================================================================
   generate-iweight-fixtures.do
   ----------------------------
-  Generates CSV benchmark fixtures for importance weights (iweight; family
-  M-12, re-based 2026-07-04 per planning/22-spec-matrix.md).
+  Generates CSV benchmark fixtures for importance weights (iweight).
 
   Canonical base: mroz 2SLS baseline H31 (Stata ivreg2 help.txt line 1274).
   Stata documents the iweight option for ivreg2 but provides no worked
@@ -255,7 +254,7 @@ save_ivreg2_results, prefix(mroz_iweight_overid) suffix(iid_small) outdir(`outdi
 
 /*===========================================================================
   Self-check: integral iweight is equivalent to fweight
-  M-12's self-verifying property (planning/22-spec-matrix.md): an iweight
+  Self-verifying property: an iweight
   whose values are all integers must give the same e(b), e(V), and e(N) as
   an fweight built from the same values. Compares the fweight fit against
   the b_iw/V_iw/N_iw captured from the FIXTURE SET 2 iid fit above.

@@ -29,12 +29,18 @@
     stop("`vcov` must be a single character string.", call. = FALSE)
   }
   if (vcov %in% c("HC0", "HC1")) {
-    stop('vcov = "', vcov, '" is no longer supported. ',
+    stop('vcov = "', vcov, '" is not supported. ',
          'Use vcov = "robust" instead. ',
          'The `small` argument controls the finite-sample correction: ',
          'vcov = "robust" matches Stata `, robust`; ',
          'vcov = "robust", small = TRUE matches Stata `, robust small`.',
          call. = FALSE)
+  }
+  if (tolower(vcov) == "cluster") {
+    stop('vcov = "', vcov, '" is not a VCE type: request clustering with the ',
+         '`clusters` argument (e.g. clusters = ~ firmid), which combines with ',
+         'any `vcov`. With `clusters` supplied, the default vcov = "iid" ',
+         'already gives cluster-robust standard errors.', call. = FALSE)
   }
   valid_vcov <- c("iid", "robust", "HAC", "AC")
   if (!vcov %in% valid_vcov) {
@@ -495,6 +501,37 @@
 }
 
 
+#' Stop with a too-few-observations diagnosis.
+#'
+#' Leads with the observation count relative to the model size (the usual
+#' cause), and only names `dofminus`/`sdofminus` when the user actually set one
+#' of them, so a plain one-row fit is not misdiagnosed as a degrees-of-freedom
+#' argument being too large.
+#'
+#' @param N Observation count remaining after listwise deletion.
+#' @param count Model dimension being checked (`K` parameters or `L`
+#'   instruments).
+#' @param dofminus,sdofminus Degrees-of-freedom adjustments.
+#' @param count_label `"parameter"` or `"instrument"`.
+#' @keywords internal
+.stop_too_few_obs <- function(N, count, dofminus, sdofminus, count_label) {
+  obs_phrase <- if (N == 1L) "1 observation remains" else {
+    paste0(N, " observations remain")
+  }
+  count_phrase <- paste0(count, " ", count_label, if (count == 1L) "" else "s")
+  msg <- paste0("Too few observations: ", obs_phrase,
+                " after listwise deletion but the model has ", count_phrase, ".")
+  if (dofminus > 0L || sdofminus > 0L) {
+    letter <- if (identical(count_label, "instrument")) "L" else "K"
+    remaining <- N - count - dofminus - sdofminus
+    msg <- paste0(msg, " With `dofminus` = ", dofminus, " and `sdofminus` = ",
+                  sdofminus, ", N - ", letter, " - dofminus - sdofminus = ",
+                  remaining, " (must be > 0).")
+  }
+  stop(msg, call. = FALSE)
+}
+
+
 #' Prepare model matrices, weights, clusters, and time-index for estimation.
 #'
 #' Post-parse validation, weight normalization, FWL partialling, b0 validation,
@@ -530,14 +567,10 @@
          call. = FALSE)
   }
   if (parsed$N - parsed$K - dofminus - sdofminus <= 0L) {
-    stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
-         parsed$N - parsed$K - dofminus - sdofminus,
-         " (must be > 0).", call. = FALSE)
+    .stop_too_few_obs(parsed$N, parsed$K, dofminus, sdofminus, "parameter")
   }
   if (parsed$is_iv && parsed$N - parsed$L - dofminus - sdofminus <= 0L) {
-    stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
-         parsed$N - parsed$L - dofminus - sdofminus,
-         " (must be > 0).", call. = FALSE)
+    .stop_too_few_obs(parsed$N, parsed$L, dofminus, sdofminus, "instrument")
   }
 
   # --- Validate method against parsed model ---
@@ -613,14 +646,10 @@
            call. = FALSE)
     }
     if (N_check - parsed$K - dofminus - sdofminus <= 0L) {
-      stop("`dofminus` + `sdofminus` too large: N - K - dofminus - sdofminus = ",
-           N_check - parsed$K - dofminus - sdofminus,
-           " (must be > 0).", call. = FALSE)
+      .stop_too_few_obs(N_check, parsed$K, dofminus, sdofminus, "parameter")
     }
     if (parsed$is_iv && N_check - parsed$L - dofminus - sdofminus <= 0L) {
-      stop("`dofminus` + `sdofminus` too large: N - L - dofminus - sdofminus = ",
-           N_check - parsed$L - dofminus - sdofminus,
-           " (must be > 0).", call. = FALSE)
+      .stop_too_few_obs(N_check, parsed$L, dofminus, sdofminus, "instrument")
     }
     # Re-validate fuller against weighted N (Stata validates inside Mata
     # using the already-weighted N; our pre-weight check at line ~447 uses
@@ -1847,6 +1876,35 @@
     }
 
     }  # end of if (is.null(b0)) — identification diagnostics block
+  } else {
+    # OLS path (one-part formula): the IV-only diagnostic requests have no
+    # target here. Warn rather than silently drop them, matching the
+    # explicit-request-ignored convention used for the K1 = 0 IV form.
+    if (!is.null(endog) && length(endog) > 0L) {
+      warning("`endog` ignored: this is an OLS model (no endogenous regressors ",
+              "or excluded instruments), so there is nothing to test.",
+              call. = FALSE)
+    }
+    if (!is.null(orthog) && length(orthog) > 0L) {
+      warning("`orthog` ignored: this is an OLS model (no endogenous regressors ",
+              "or excluded instruments), so there is nothing to test.",
+              call. = FALSE)
+    }
+    if (!is.null(redundant) && length(redundant) > 0L) {
+      warning("`redundant` ignored: this is an OLS model (no endogenous ",
+              "regressors or excluded instruments), so there is nothing to test.",
+              call. = FALSE)
+    }
+    if (reduced_form != "none") {
+      warning("`reduced_form` ignored: this is an OLS model (no endogenous ",
+              "regressors or excluded instruments), so there is no reduced ",
+              "form to store.", call. = FALSE)
+    }
+    if (isTRUE(first_stage_flag)) {
+      warning("`first_stage` ignored: this is an OLS model (no endogenous ",
+              "regressors or excluded instruments), so there are no first-",
+              "stage regressions to store.", call. = FALSE)
+    }
   }
   if (length(diagnostics) == 0L) diagnostics <- NULL
 
@@ -1953,6 +2011,8 @@
 #'   Cragg's (1983) heteroskedastic OLS (HOLS) estimator (with the default
 #'   iid VCE the two-step weighting matrix is proportional to
 #'   \eqn{(Z'Z)^{-1}} and the estimates equal OLS exactly).
+#'   The response must be numeric; a factor or character response is rejected
+#'   with an error.
 #' @param data A data frame containing the variables in the formula.
 #' @param weights Optional analytic weights expression (evaluated in `data`),
 #'   equivalent to Stata's `[aw=varname]`. Must be strictly positive.

@@ -9,10 +9,9 @@
 # Economics and Statistics, 82(1), 117-126.
 #
 # Source: plm::Cigar (cached at validation/data/cigar.dta), 1380 x 9.
-# Provenance and licensing detail: planning/25-data-provenance.md.
 # All nine columns kept as distributed -- no constructed columns here (the
-# log transforms used in fixtures/vignette are computed on the fly), so
-# decision D8 does not apply.
+# log transforms used in fixtures/vignette are computed on the fly), so the
+# no-constructed-columns rule does not apply.
 
 # Path is relative to the package root (pkg/). Run with setwd("pkg/") or
 # from an RStudio project rooted at pkg/.
@@ -21,8 +20,8 @@ library(haven)
 # The cached .dta is git-ignored (local cache convention for
 # validation/data/); unlike the webuse/bcuse datasets, its upstream is the
 # R plm package, so regenerate the cache from plm::Cigar when absent and
-# re-verify bit-identity either way (planning/25 ground rule for this
-# dataset's reversed provenance direction).
+# re-verify bit-identity either way, as this dataset's provenance direction
+# is reversed.
 data(Cigar, package = "plm")
 cache <- "../validation/data/cigar.dta"
 if (!file.exists(cache)) {

@@ -6,9 +6,8 @@
 # Cowles Commission Monograph No. 11. Wiley.
 #
 # Source: webuse klein (cached at validation/data/klein.dta), 22 x 14.
-# Provenance and licensing detail: planning/25-data-provenance.md.
 #
-# Deliberate deviation (decision D8, planning/25-data-provenance.md): the
+# Deliberate deviation (decision D8): the
 # upstream file carries two precomputed lag columns, profits1 (= L.profits)
 # and totinc1 (= L.totinc). These are dropped -- the help-file examples
 # reference L.profits/L.totinc, expressible as l(profits, 1)/l(totinc, 1)

@@ -15,7 +15,7 @@
   ---------------------------------------------------------------------------
   The prior base for this family, `sim_twoway` (a simulated 25-firm x 20-obs
   panel with correlated firm/year effects), is RETIRED per Frank's ruling
-  2026-07-05 (see planning/22-spec-matrix.md, row M-14). The DGP was not
+  2026-07-05. The DGP was not
   reproducible: covariate draws were assigned after an unstable `sort
   year_id`, so re-running the generator remapped the seeded RNG draws to
   different firm/year cells and the checked-in fixtures could not be
@@ -33,8 +33,8 @@
   `Cigar`; also the empirical-example dataset in the GFIC focused-moment-
   selection paper, which motivates the price-endogeneity specification used
   below). The panel is 46 US states x 30 years (1963-1992), cached with
-  verified provenance at ../validation/data/cigar.dta (source of record;
-  see planning/25-data-provenance.md). No data CSV is exported here: the R
+  verified provenance at ../validation/data/cigar.dta (source of record).
+  No data CSV is exported here: the R
   side tests against the bundled `data(cigar)`, and the Stata side reads the
   same cached .dta -- both trace to one file of record, so there is nothing
   to duplicate into a fixture CSV (machine-readable-fixtures rule; the rule
@@ -272,7 +272,7 @@ end
 
 
 /*===========================================================================
-  Data: cigar panel (base per planning/22-spec-matrix.md, M-14 row)
+  Data: cigar panel
   46 states x 30 years (1963-1992), Baltagi-Levin / Baltagi-Griffin-Xiong.
 ===========================================================================*/
 display _newline(2) "=== Loading cigar panel data ==="
@@ -316,7 +316,7 @@ save_twoway_results, prefix(cigar) suffix(cl2) outdir(`outdir')
   FIXTURE 2: IV overid, two-way cluster (small=TRUE)
   D5a; Baltagi-Levin lineage. Small-sample-corrected companion to cl2.
   firststage CSV erased below: M-25 owns first-stage-F fixture coverage,
-  and planning/18's no-orphans rule says a CSV with no test consumer must
+  and the no-orphans rule says a CSV with no test consumer must
   not be checked in.
 ===========================================================================*/
 display _newline(2) "=== Fixture: cigar_cl2_small ==="

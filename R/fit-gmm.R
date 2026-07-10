@@ -1,4 +1,24 @@
 # --------------------------------------------------------------------------
+# Shared error helpers
+# --------------------------------------------------------------------------
+#' Stop: GMM Hessian singular (shared by all GMM estimation paths)
+#' @noRd
+.stop_gmm_hessian_singular <- function() {
+  stop("The GMM Hessian matrix is singular, so the model is not identified. ",
+       "Check for collinearity among the regressors and instruments.",
+       call. = FALSE)
+}
+
+#' Stop: moment covariance rank-deficient (shared by all GMM estimation paths)
+#' @noRd
+.stop_gmm_omega_singular <- function() {
+  stop("The estimated covariance matrix of the moment conditions is not of ",
+       "full rank, so the optimal GMM weighting matrix is not unique. Too ",
+       "few clusters or too many instruments is the usual cause; reduce the ",
+       "instrument set or change the VCE.", call. = FALSE)
+}
+
+# --------------------------------------------------------------------------
 # .fit_gmm2s
 # --------------------------------------------------------------------------
 #' Fit two-step efficient GMM
@@ -52,14 +72,12 @@
   # .cluster_rank_bound). Stata's efficient-GMM path exits r(506) here
   # (s_egmm, ivreg2.ado:5436-5440).
   if (omega_rank_bound < L) {
-    stop("The estimated covariance matrix of the moment conditions is not of full rank, ",
-         "so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.", call. = FALSE)
+    .stop_gmm_omega_singular()
   }
   R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
   if (is.null(R_chol)) {
     if (qr(Omega)$rank < L) {
-      stop("The estimated covariance matrix of the moment conditions is not of full rank, ",
-           "so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.", call. = FALSE)
+      .stop_gmm_omega_singular()
     }
     # Omega is full rank but not PD — use QR path
     R_chol <- NULL
@@ -95,8 +113,7 @@
   R_M <- tryCatch(chol(M_hess), error = function(e) NULL)
   if (is.null(R_M)) {
     if (qr(M_hess)$rank < K) {
-      stop("The GMM Hessian matrix is singular, so the model is not identified. Check for collinearity among the regressors and instruments.",
-           call. = FALSE)
+      .stop_gmm_hessian_singular()
     }
     beta <- drop(qr.solve(M_hess, rhs))
   } else {
@@ -227,7 +244,7 @@
   R_H <- tryCatch(chol(H), error = function(e) NULL)
   if (is.null(R_H)) {
     if (qr(H)$rank < K)
-      stop("The GMM Hessian matrix is singular, so the model is not identified. Check for collinearity among the regressors and instruments.", call. = FALSE)
+      .stop_gmm_hessian_singular()
     beta <- drop(qr.solve(H, rhs))
   } else {
     beta <- drop(backsolve(R_H, forwardsolve(t(R_H), rhs)))
@@ -293,7 +310,7 @@
   R_H <- tryCatch(chol(H), error = function(e) NULL)
   if (is.null(R_H)) {
     if (qr(H)$rank < K)
-      stop("The GMM Hessian matrix is singular, so the model is not identified. Check for collinearity among the regressors and instruments.", call. = FALSE)
+      .stop_gmm_hessian_singular()
     beta <- drop(qr.solve(H, rhs))
     H_inv <- qr.solve(H)
   } else {
@@ -396,7 +413,32 @@
 # --------------------------------------------------------------------------
 #' Decide the CUE convergence code from the two optimizer results
 #'
-#' Convergence ruling (the wp_sw_cue / M-17 spurious-flag finding): Nelder-Mead exits with code 10 (simplex degeneracy) when started at an already-converged BFGS optimum on low-dimensional problems. Forgive code 10 only when BFGS converged AND the restart provably moved the OBJECTIVE by no more than 1e-6 relative (plus a 1e-10 absolute floor for near-zero J; J >= 0 bounds the forgivable movement by J itself there). The agreement tested is on the objective value, deliberately not on the parameter vectors: in a flat CUE valley two well-separated betas can share the same J, but that non-uniqueness is weak identification — surfaced by the KP/AR identification diagnostics — not an optimization failure, and the reported coefficients are always the Nelder-Mead point regardless of this flag. The 1e-6 bound is derived, not fitted: BFGS's finite-difference gradients leave it short of the optimum by O(sqrt(machine eps)) ~ 1.5e-8 relative on the objective, so genuine refinement noise sits two orders below the bound, while a real basin or valley traversal moves the objective by many orders more (the pre-parscale H22 griliches trajectory moved J from the 67.5 stall point to the 40.1 basin; post-parscale BFGS reaches that basin itself and H22 exercises this forgiveness path, so no bundled fixture fires the non-convergence warning — the decision logic below is instead pinned by direct unit tests in test-cue.R, leaving only the one-line warning emission in .fit_gmm_cue fixture-uncovered, see planning/22 M-17). The additional absolute ceiling of 1 closes the huge-J scale gap (at J ~ 1e9 a purely relative bound would forgive chi-square-scale movement; movement that could visibly change a J p-value is never forgiven) — flagged by the 2026-07-05 Codex second opinion, which otherwise confirmed this ruling against ~12,000 adversarial counterexample trials. isTRUE() keeps a non-finite objective from being forgiven. Code 1 (maxit) is never forgiven: an optimizer still improving at its iteration cap is genuinely unconverged.
+#' Nelder-Mead exits with code 10 (simplex degeneracy) when started at an
+#' already-converged BFGS optimum on low-dimensional problems, so code 10 is
+#' forgiven only when BFGS converged AND the restart provably moved the
+#' OBJECTIVE by no more than 1e-6 relative (plus a 1e-10 absolute floor for
+#' near-zero J; J >= 0 bounds the forgivable movement by J itself there).
+#' The agreement tested is on the objective value, deliberately not on the
+#' parameter vectors: in a flat CUE valley two well-separated betas can share
+#' the same J, but that non-uniqueness is weak identification — surfaced by
+#' the KP/AR identification diagnostics — not an optimization failure, and
+#' the reported coefficients are always the Nelder-Mead point regardless of
+#' this flag. The 1e-6 bound is derived, not fitted: BFGS's finite-difference
+#' gradients leave it short of the optimum by O(sqrt(machine eps)) ~ 1.5e-8
+#' relative on the objective, so genuine refinement noise sits two orders
+#' below the bound, while a genuine move to a different basin shifts the
+#' objective by many orders more (on the Griliches help-file CUE example,
+#' H22, the gap between the degenerate basin and a mid-valley stall point is
+#' order 1e0 in J). The additional absolute ceiling of 1 closes the huge-J
+#' scale gap: at J ~ 1e9 a purely relative bound would forgive
+#' chi-square-scale movement, and movement that could visibly change a J
+#' p-value is never forgiven. isTRUE() keeps a non-finite objective from
+#' being forgiven. Code 1 (maxit) is never forgiven: an optimizer still
+#' improving at its iteration cap is genuinely unconverged. No bundled
+#' fixture reaches the non-convergence warning (H22 converges and exercises
+#' the forgiveness path), so this decision logic is pinned by direct unit
+#' tests in test-cue.R; only the one-line warning emission in .fit_gmm_cue
+#' is fixture-uncovered.
 #'
 #' @param opt_bfgs `stats::optim()` result of the BFGS stage (uses
 #'   `$convergence`, `$value`).
@@ -526,7 +568,26 @@
       # for robust refinement. nlminb struggles with the CUE ratio objective
       # due to noisy finite-difference gradients; this combination matches
       # Stata's Mata optimize() results reliably.
-      # Per-coordinate scaling (the M-17 parscale deferral, discharged at the CUE closeout): optim's Nelder-Mead builds its initial simplex with a SINGLE scalar step — 0.1 * max|scaled coefficient| applied to every coordinate (nmmin C source, established at the 2026-07-05 second opinion) — and BFGS takes its finite-difference gradient steps (ndeps) in scaled units, so under the default parscale = 1 a coefficient vector of mixed magnitudes gets a distorted simplex and gradient geometry. Scaling by the starting values makes every scaled coordinate O(1), so both optimizers step proportionally to each coefficient's own magnitude. The floor at 1e-4 of the largest |coefficient| (a closeout review finding) covers the start coefficients that carry no usable scale of their own — exact zeros, and coordinates accidentally started many orders below the rest, which an unfloored parscale would near-freeze (BFGS reads a ~zero gradient through a ~zero scale). The floor is inert on every benchmarked model (observed min/max coefficient ratios are all >= 3.2e-4) and caps the scale spread the optimizers must handle at 1e4. An all-zero start (no scale information at all) falls back to optim's default scale of 1. Non-finite starts are NOT handled here: optim rejects them identically with or without parscale ("non-finite value supplied by optim", verified), so a guard would be dead code.
+      # Per-coordinate scaling: optim's Nelder-Mead builds its initial
+      # simplex with a SINGLE scalar step — 0.1 * max|scaled coefficient|
+      # applied to every coordinate (nmmin C source) — and BFGS takes its
+      # finite-difference gradient steps (ndeps) in scaled units, so under
+      # the default parscale = 1 a coefficient vector of mixed magnitudes
+      # gets a distorted simplex and gradient geometry. Scaling by the
+      # starting values makes every scaled coordinate O(1), so both
+      # optimizers step proportionally to each coefficient's own magnitude.
+      # The floor at 1e-4 of the largest |coefficient| covers start
+      # coefficients that carry no usable scale of their own — exact zeros,
+      # and coordinates accidentally started many orders below the rest,
+      # which an unfloored parscale would near-freeze (BFGS reads a ~zero
+      # gradient through a ~zero scale). The floor is inert on every
+      # benchmarked model (observed min/max coefficient ratios are all
+      # >= 3.2e-4) and caps the scale spread the optimizers must handle at
+      # 1e4. An all-zero start (no scale information at all) falls back to
+      # optim's default scale of 1. Non-finite starts are NOT handled here:
+      # optim rejects them identically with or without parscale
+      # ("non-finite value supplied by optim", verified), so a guard would
+      # be dead code.
       parscale <- abs(beta_init)
       scale_ref <- max(parscale)
       if (scale_ref == 0) {
@@ -587,14 +648,12 @@
   # errors on this condition; this belt covers the b0 path, which skips the
   # init's Omega inversion.
   if (omega_rank_bound < L) {
-    stop("The estimated covariance matrix of the moment conditions is not of full rank, ",
-         "so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.", call. = FALSE)
+    .stop_gmm_omega_singular()
   }
   R_chol <- tryCatch(chol(Omega), error = function(e) NULL)
   if (is.null(R_chol)) {
     if (qr(Omega)$rank < L) {
-      stop("The estimated covariance matrix of the moment conditions is not of full rank, ",
-           "so the optimal GMM weighting matrix is not unique. Too few clusters or too many instruments is the usual cause; reduce the instrument set or change the VCE.", call. = FALSE)
+      .stop_gmm_omega_singular()
     }
     R_chol <- NULL
   }
@@ -621,8 +680,7 @@
   R_M <- tryCatch(chol(M_hess), error = function(e) NULL)
   if (is.null(R_M)) {
     if (qr(M_hess)$rank < K) {
-      stop("The GMM Hessian matrix is singular, so the model is not identified. Check for collinearity among the regressors and instruments.",
-           call. = FALSE)
+      .stop_gmm_hessian_singular()
     }
     M_hess_inv <- qr.solve(M_hess)
   } else {

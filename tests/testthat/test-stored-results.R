@@ -1,11 +1,11 @@
 # ==========================================================================
-# Tests for M-28: Stored Scalar Results (absorbed into hf suite)
+# Tests: Stored Scalar Results (absorbed into hf suite)
 # ==========================================================================
 # Verifies yy, yyc, rankxx, rankzz, condxx, condzz, ll, ccev, cdev against
 # hf-suite fixtures on the canonical mroz bases H31 (2SLS, help.txt:1274) and
-# H61 (OLS via ivreg2, help.txt:1416). Absorbed into the hf suite 2026-07-04
-# per planning/22-spec-matrix.md; these quantities are VCE-invariant, so two
-# cells (IV overid + OLS) suffice to cover the family. Originally Ticket R2.
+# H61 (OLS via ivreg2, help.txt:1416). Absorbed into the hf suite 2026-07-04;
+# these quantities are VCE-invariant, so two cells (IV overid + OLS) suffice
+# to cover the family.
 
 # Helper: read a Stata fixture CSV into a named list (skip if absent)
 read_sr_fixture <- function(name) {

@@ -1,9 +1,9 @@
 # ============================================================================
-# Tests: Center Option (Ticket N4; M-18 fixture re-base)
+# Tests: Center Option
 #
-# The M-18 fixture re-base moved the center-option Stata-parity cells off the Card fixtures onto the M-16 canonical bases (planning/22-spec-matrix.md): griliches H06 (robust, robust+small, gmm2s+robust, dofminus, endog, orthog option-variations), abdata H88 (cluster, cluster+small, gmm2s+cluster), and phillips (kernel-without-robust HAC) -- all D5a option-variations, since Stata documents center with no worked example.
+# The center-option Stata-parity cells sit on the canonical help-file bases: griliches H06 (robust, robust+small, gmm2s+robust, dofminus, endog, orthog option-variations), abdata H88 (cluster, cluster+small, gmm2s+cluster), and phillips (kernel-without-robust HAC) -- all option-variations, since Stata documents center with no worked example.
 #
-# Both CUE x center cells were DELETED, not ported: CUE x center coverage moves to M-17's canonical bases (the retired CUE+cluster+center cell was the known-dirty ubuntu CI basin-pathology cell, and CUE robust+center was the same card-CUE known-dirty class). The just-identified and (vacuous) card orthog/endog center cells were likewise retired -- center enters only through the shared meat helpers, so the identification-specific card cells added no distinct code path; the griliches endog/orthog cells below pin the C-statistics under center for the first time.
+# Both CUE x center cells were DELETED, not ported: CUE x center coverage moves to the CUE family's canonical bases (the retired CUE+cluster+center cell was the known-dirty ubuntu CI basin-pathology cell, and CUE robust+center was the same card-CUE known-dirty class). The just-identified and (vacuous) card orthog/endog center cells were likewise retired -- center enters only through the shared meat helpers, so the identification-specific card cells added no distinct code path; the griliches endog/orthog cells below pin the C-statistics under center for the first time.
 # ============================================================================
 
 data(griliches, package = "ivreg2r")

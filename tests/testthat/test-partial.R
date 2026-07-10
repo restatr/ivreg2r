@@ -1,12 +1,12 @@
 # ============================================================================
-# Tests: Partial Option (FWL Projection) — Ticket O1 (M-24 fixture re-base)
+# Tests: Partial Option (FWL Projection)
 #
-# The M-24 re-base moves the partial()/FWL Stata-parity cells off the Card
-# fixtures onto the griliches76 H28-minus-cluster base (help.txt:1253):
+# The partial()/FWL Stata-parity cells sit on the griliches76 H28 base
+# (help.txt:1253), minus cluster:
 # `ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age), partial(_I*)`, with
 # cluster(year) dropped. Stata documents partial() with worked examples only
-# in the cluster context (H27-H29), so every Stata-parity cell below is a
-# D5a option-variation on that base (planning/22-spec-matrix.md).
+# in the cluster context (H27-H29), so every Stata-parity cell below is an
+# option-variation on that base.
 #
 # NOT duplicated here: cluster(year) x partial(_I*) parity is hf-owned
 # (hf griliches H28, with the M = 7 clusters vs L = 8 instruments
@@ -15,7 +15,7 @@
 # (Stata rejects it with r(506)). card_partial_all was deleted -- partial(_all)
 # Stata parity is owned by M-04's mroz cells, which stay in this file. The
 # card cluster(smsa66) cells were deleted outright (the binary M=2 cluster
-# anti-pattern on the spec-matrix delete table).
+# anti-pattern).
 #
 # Invariance retirement (byte-identity verified in the retired card fixtures,
 # 2026-07-06): nopartialsmall under plain IID leaves e(b) and e(V)

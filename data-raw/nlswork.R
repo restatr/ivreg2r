@@ -5,7 +5,6 @@
 # manual (webuse nlswork). 28,534 observations, 21 variables.
 #
 # Source: webuse nlswork (cached at validation/data/nlswork.dta).
-# Provenance and licensing detail: planning/25-data-provenance.md.
 # `race` ships as haven_labelled (1 = White, 2 = Black, 3 = Other) and is
 # coerced to plain integer here -- codes documented in the .Rd, no factor
 # conversion (faithful to the upstream numeric coding).

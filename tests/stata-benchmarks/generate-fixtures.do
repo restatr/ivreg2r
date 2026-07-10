@@ -14,20 +14,19 @@
 
   Execution-order dependency: the sim_multi_endo_data.csv and
   sim_cluster_data.csv exports written here are IMPORTED by the rf,
-  redundancy, and orthog generators (see planning/18-fixture-audit.md's
-  cross-file dependency table). Run this file before those; do not delete the
-  sim data sections without checking the downstream consumers.
+  redundancy, and orthog generators. Run this file before those; do not
+  delete the sim data sections without checking the downstream consumers.
 
   M-13 re-base (2026-07-05): the sim_cluster ESTIMATION cells (FIXTURE 5's
   run_all_vce_combos call) were retired and replaced by new ab_cl cells fit
-  on abdata (see planning/22-spec-matrix.md row M-13). sim_cluster_data.csv
+  on abdata. sim_cluster_data.csv
   itself is RETAINED, since generate-rf-fixtures.do imports it (M-21); only
   the direct estimation cells moved.
 
   M-10 re-base (2026-07-06): the card_just_id and card_overid baseline cells
   (formerly FIXTURE 1 and FIXTURE 2) were retired -- the card 2SLS baseline
-  family is absorbed into the helpfile suite (planning/22-spec-matrix.md row
-  M-10). 2SLS baseline Stata parity now lives in the hf suite (hf_mroz H31/
+  family is absorbed into the helpfile suite. 2SLS baseline Stata parity
+  now lives in the hf suite (hf_mroz H31/
   H41, hf_gril H03, generate-helpfile-fixtures.do) plus the new mroz_justid
   D5a cells added there. The small variants were retired by invariance: only
   rmse/sigmasq (an exact N/(N-K) factor) and F_stat floating-point noise
@@ -36,8 +35,8 @@
 
   M-29 re-base (2026-07-06): the card_just_id_dofminus, card_overid_dofminus,
   and sim_cluster_dofminus cells (formerly FIXTURE 7/8/9) were retired. The
-  dofminus family now lives on canonical bases (planning/22-spec-matrix.md
-  row M-29): mroz_dofminus x {iid, robust} on the hf H31 overid model
+  dofminus family now lives on canonical bases: mroz_dofminus x {iid,
+  robust} on the hf H31 overid model
   (FIXTURE 7), ab_cl_dofminus diagnostics-only on the M-13 ab_cl base
   (FIXTURE 8), and grun_fe_dofminus on within-demeaned grunfeld with an
   xtreg-fe self-check (FIXTURE 9). ALL small cells retired by invariance
@@ -537,8 +536,8 @@ export_full_precision using "`outdir'/sim_cluster_data.csv"
 // M-13 re-base (2026-07-05): the estimation cells formerly generated here
 // via run_all_vce_combos (iid/iid_small/hc1/hc1_small/cl/cl_small) were
 // retired -- IV 2SLS + one-way cluster Stata parity now lives on the
-// abdata-based ab_cl cells below (FIXTURE 5b), per planning/22-spec-matrix.md
-// row M-13. The DGP and sim_cluster_data.csv export above are KEPT: they
+// abdata-based ab_cl cells below (FIXTURE 5b). The DGP and
+// sim_cluster_data.csv export above are KEPT: they
 // feed generate-rf-fixtures.do (M-21).
 
 

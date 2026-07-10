@@ -283,3 +283,47 @@ test_that("vcov_type and small are stored", {
   expect_identical(fit$vcov_type, "iid")
   expect_true(fit$small)
 })
+
+# ============================================================================
+# IV-only diagnostic requests warn on the OLS path
+# ============================================================================
+
+test_that("endog is ignored with a warning on an OLS model", {
+  expect_warning(
+    ivreg2(mpg ~ wt + hp, data = mtcars, endog = "wt"),
+    "`endog` ignored: this is an OLS model",
+    fixed = TRUE
+  )
+})
+
+test_that("orthog is ignored with a warning on an OLS model", {
+  expect_warning(
+    ivreg2(mpg ~ wt + hp, data = mtcars, orthog = "wt"),
+    "`orthog` ignored: this is an OLS model",
+    fixed = TRUE
+  )
+})
+
+test_that("redundant is ignored with a warning on an OLS model", {
+  expect_warning(
+    ivreg2(mpg ~ wt + hp, data = mtcars, redundant = "wt"),
+    "`redundant` ignored: this is an OLS model",
+    fixed = TRUE
+  )
+})
+
+test_that("reduced_form is ignored with a warning on an OLS model", {
+  expect_warning(
+    ivreg2(mpg ~ wt + hp, data = mtcars, reduced_form = "rf"),
+    "`reduced_form` ignored: this is an OLS model",
+    fixed = TRUE
+  )
+})
+
+test_that("first_stage is ignored with a warning on an OLS model", {
+  expect_warning(
+    ivreg2(mpg ~ wt + hp, data = mtcars, first_stage = TRUE),
+    "`first_stage` ignored: this is an OLS model",
+    fixed = TRUE
+  )
+})

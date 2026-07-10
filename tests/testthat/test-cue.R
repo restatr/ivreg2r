@@ -1,11 +1,11 @@
 # ============================================================================
-# Tests: Continuously Updated GMM Estimator (CUE) — Ticket N3; M-17 fixture re-base
+# Tests: Continuously Updated GMM Estimator (CUE)
 #
-# The M-17 fixture re-base moved the CUE Stata-parity cells off the Card + synthetic seed-12345 fixtures onto the canonical bases (planning/22-spec-matrix.md): the stockwatson BSS 2007 pp. 476/480 worked CUE arc (Baum, Schaffer & Stillman 2007, Stata Journal 7(4):465-506, Section 4.3) carries the robust/HAC/small/center/dofminus/weighted/endog/orthog option-variations, and abdata H88 minus gmm2s carries the CUE x cluster and CUE x multi-endogenous intersections.
+# The CUE Stata-parity cells sit on canonical bases: the stockwatson BSS 2007 pp. 476/480 worked CUE arc (Baum, Schaffer & Stillman 2007, Stata Journal 7(4):465-506, Section 4.3) carries the robust/HAC/small/center/dofminus/weighted/endog/orthog option-variations, and abdata H88 minus gmm2s carries the CUE x cluster and CUE x multi-endogenous intersections.
 #
 # Reuse rulings: klein H74 CUE-IID coefficient parity and the CUE = LIML identity live in test-ts-operators.R's H74 test — this file adds only the vcov and Hansen-J assertions that test does not make. mroz H68 b0 Stata parity lives in test-helpfile-examples.R (compare_hf asserts coef/SE/VCV/diagnostics) — this file keeps only fixture-free b0 behavioral tests.
 #
-# Delete rulings: all card CUE cells were retired as the known-dirty optimizer-basin class (the cluster(age) cells are also on the spec-matrix delete table); the card just-identified CUE cell was retired to the fixture-free just-id CUE = 2SLS identity below (2SLS Stata parity is owned by M-10); the non-deterministic [aw=age] weighted cell was replaced by the deterministic swwt cell; the synthetic seed-12345 ts DGP and its ts_gmm_data.csv export were retired in favor of the BSS p. 480 HAC cell.
+# Delete rulings: all card CUE cells were retired as the known-dirty optimizer-basin class (the cluster(age) cells were likewise deleted); the card just-identified CUE cell was retired to the fixture-free just-id CUE = 2SLS identity below (2SLS Stata parity is owned by the helpfile suite); the non-deterministic [aw=age] weighted cell was replaced by the deterministic swwt cell; the synthetic seed-12345 ts DGP and its ts_gmm_data.csv export were retired in favor of the BSS p. 480 HAC cell.
 # ============================================================================
 
 data(stockwatson, package = "ivreg2r")
@@ -540,10 +540,9 @@ test_that("print method works for CUE", {
 # fixture drives the non-convergence path (H22 moved into Stata's basin and
 # now exercises the code-10 forgiveness path), so the decision logic is
 # pinned directly here with synthetic optim results. Only the one-line
-# warning emission in .fit_gmm_cue remains fixture-uncovered (recorded in
-# planning/22 M-17). The M-17 refutation of a synthetic near-threshold
-# non-convergence FIT stands -- these tests exercise the ruling, not the
-# optimizer.
+# warning emission in .fit_gmm_cue remains fixture-uncovered. The refutation
+# of a synthetic near-threshold non-convergence FIT stands -- these tests
+# exercise the ruling, not the optimizer.
 
 test_that(".cue_convergence implements the code-10 forgiveness ruling", {
   opt <- function(code, value) list(convergence = code, value = value)

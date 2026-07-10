@@ -1,11 +1,11 @@
 /*===========================================================================
   generate-cue-fixtures.do
   ------------------------
-  Generates CSV benchmark fixtures for the CUE family (M-17 re-base, planning/22-spec-matrix.md): the old Card + synthetic seed-12345 cells are replaced by 10 cells layered as D5a option-variations on the canonical bases -- the stockwatson BSS 2007 pp. 476/480 CUE arc and the abdata H88 model minus gmm2s. Stata's help file has no worked CUE examples beyond H22/H74, so the BSS Stata Journal paper (Baum, Schaffer & Stillman 2007, 7(4):465-506) supplies the canonical worked CUE arc that every new stockwatson cell varies.
+  Generates CSV benchmark fixtures for the CUE family: 10 cells layered as D5a option-variations on the canonical bases -- the stockwatson BSS 2007 pp. 476/480 CUE arc and the abdata H88 model minus gmm2s. Stata's help file has no worked CUE examples beyond H22/H74, so the BSS Stata Journal paper (Baum, Schaffer & Stillman 2007, 7(4):465-506) supplies the canonical worked CUE arc that every new stockwatson cell varies.
 
   Two upstream fixtures are REUSED, not regenerated here: klein H74 CUE-IID parity (CUE = LIML on a just-identified model) is owned by the tsop_klein_cue fixtures in generate-ts-operator-fixtures.do, and mroz H68 b0 parity (CUE evaluated at a fixed b0 vector) is owned by the hf_mroz H68 fixtures in generate-helpfile-fixtures.do. Neither is touched by this file.
 
-  Old cells DELETED, not ported (omitted entirely, not commented out): all card CUE cells (known-dirty optimizer-basin class per the M-17 spec-matrix row; the cluster(age) cells are also on the spec-matrix delete table); the card just-identified CUE cell (retired to the fixture-free just-id CUE = 2SLS identity); the [aw=age] weighted cell (non-deterministic weight anti-pattern, replaced below by the deterministic swwt weight); the card b0 cells and card_overid_b0_vector.csv (b0 Stata parity is owned by the hf_mroz H68 fixture); the synthetic seed-12345 DGP with its ts_cue cell and the ts_gmm_data.csv data export (the M-16 header noted M-17 retires both).
+  Old cells DELETED, not ported (omitted entirely, not commented out): all card CUE cells (known-dirty optimizer-basin class; the cluster(age) cells were likewise deleted); the card just-identified CUE cell (retired to the fixture-free just-id CUE = 2SLS identity); the [aw=age] weighted cell (non-deterministic weight anti-pattern, replaced below by the deterministic swwt weight); the card b0 cells and card_overid_b0_vector.csv (b0 Stata parity is owned by the hf_mroz H68 fixture); the synthetic seed-12345 DGP with its ts_cue cell and the ts_gmm_data.csv data export (both retired).
 
   The retired iid_small cell is retired COMPOSITIONALLY: the small correction applies in the shared VCV assembly regardless of omega type, so a dedicated CUE-IID small cell adds no distinct code path; the sw_cue robust_small cell (cell 3) pins the small correction for CUE.
 
@@ -351,7 +351,7 @@ assert cstatdf_base == cstatdf_small
   BLOCK 2: abdata
   Base model = help-file H88 (help.txt:1541) minus gmm2s, tsset id year already applied:
     ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), cue ...
-  These cells carry the CUE x cluster and CUE x (K1=3 multi-endogenous) intersections, replacing the retired card cluster(age) cells (spec-matrix delete table).
+  These cells carry the CUE x cluster and CUE x (K1=3 multi-endogenous) intersections, replacing the retired card cluster(age) cells.
 ===========================================================================*/
 
 // --- 9. D5a: cue cluster(id) -- CUE x cluster and CUE x multi-endogenous intersections; id gives M=140 clusters ---

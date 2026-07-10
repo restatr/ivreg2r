@@ -1,7 +1,7 @@
 /*===========================================================================
   generate-orthog-fixtures.do
   ---------------------------
-  Generates CSV benchmark fixtures for orthogonality (instrument-subset) C-statistic testing (M-22, planning/22-spec-matrix.md), re-based off the Card/sim ad hoc data onto the canonical help-file bases:
+  Generates CSV benchmark fixtures for orthogonality (instrument-subset) C-statistic testing on the canonical help-file bases:
 
     - griliches76 (H03/H25/H26, help.txt:1138/1235/1242): the schooling-IQ wage model, orthog(s) [an included regressor] and orthog(age mrt) [two excluded IVs], both taken minus gmm2s since the H25/H26 worked examples use gmm2s but the orthog C-stat itself is estimator-agnostic and 2SLS keeps this family independent of the GMM2S fixture family.
     - abdata (H88, help.txt:1541): the Arellano-Bond employment model with first- and second-difference instruments, minus gmm2s, with orthog() added as a D5a option-variation to exercise one-way cluster-robust orthog.

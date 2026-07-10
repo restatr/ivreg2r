@@ -1,8 +1,7 @@
 /*===========================================================================
   generate-rf-fixtures.do
   -----------------------
-  Generates CSV benchmark fixtures for reduced-form regression tests
-  (family M-21, re-based 2026-07-04 per planning/22-spec-matrix.md).
+  Generates CSV benchmark fixtures for reduced-form regression tests.
 
   Canonical base: the mroz H31 model (Stata ivreg2 help.txt line 1274),
   ivreg2 lwage exper expersq (educ = age kidslt6 kidsge6), exercised with
@@ -225,7 +224,7 @@ run_rf_save, prefix(`pre') suffix(hc1_small) outdir(`outdir') ///
   Simulated data with 2 endogenous variables and 4 excluded IVs
   Purpose: Tests system mode with K1 > 1
   Synthetic base kept because K1 > 1 system mode is inexpressible on the
-  single-endogenous mroz H31 base (M-21 row, planning/22).
+  single-endogenous mroz H31 base.
 ===========================================================================*/
 display _newline(2) "=== FIXTURE 2: sim_multi_endo ==="
 

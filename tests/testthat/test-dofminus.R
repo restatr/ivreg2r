@@ -1,12 +1,12 @@
 # ============================================================================
-# Tests: dofminus / sdofminus (Ticket K1, family M-29 re-base)
+# Tests: dofminus / sdofminus
 # ============================================================================
 #
-# M-29 re-base (2026-07-06): canonical bases per planning/22-spec-matrix.md
-# row M-29. All old card_just_id, card_overid, and sim_cluster dofminus
-# fixtures (including the M=2 smsa66 cluster cells and their 1e-5 tolerance
-# exception) are retired; nothing below references them.
-# New base: mroz iid/robust (D5a option-variation on hf H31/H41), ab cluster
+# Canonical help-file bases (2026-07-06). All old card_just_id, card_overid,
+# and sim_cluster dofminus fixtures (including the M=2 smsa66 cluster cells
+# and their 1e-5 tolerance exception) are retired; nothing below references
+# them.
+# New base: mroz iid/robust (option-variation on hf H31/H41), ab cluster
 # (diagnostics-only, endog(w)), and grunfeld within/fe (small, dofminus=9,
 # self-verified against `xtreg, fe` at reldif < 1e-10).
 #
@@ -440,14 +440,30 @@ test_that("dofminus rejects values too large for model dimensions", {
   # dofminus >= N
   expect_error(ivreg2(lwage ~ exper, data = mroz, dofminus = 5000L),
                "must be less than N")
-  # N - K - dofminus - sdofminus <= 0 (OLS: K = 2, intercept + exper)
+  # N - K - dofminus - sdofminus <= 0 (OLS: K = 2, intercept + exper). With
+  # dofminus/sdofminus set, the message names both and reports the residual.
   expect_error(ivreg2(lwage ~ exper, data = mroz, dofminus = 400L, sdofminus = 30L),
-               "too large")
+               "Too few observations")
+  expect_error(ivreg2(lwage ~ exper, data = mroz, dofminus = 400L, sdofminus = 30L),
+               "N - K - dofminus - sdofminus", fixed = TRUE)
   # IV model: N - K - dofminus - sdofminus <= 0 (K = 4: intercept, exper,
   # expersq, educ)
   expect_error(
     ivreg2(mroz_overid_formula, data = mroz, endog = "educ",
            dofminus = 400L, sdofminus = 30L),
-    "too large"
+    "Too few observations"
   )
+})
+
+test_that("too-few-observations message leads with the obs count, no dofminus mention", {
+  # N = 2, K = 2 (intercept + x): N - K = 0 with dofminus/sdofminus untouched.
+  d <- data.frame(y = c(1, 2), x = c(0.3, 0.7))
+  expect_error(
+    ivreg2(y ~ x, data = d),
+    "Too few observations: 2 observations remain",
+    fixed = TRUE
+  )
+  # The user set no dofminus/sdofminus, so neither is named.
+  err <- tryCatch(ivreg2(y ~ x, data = d), error = function(e) conditionMessage(e))
+  expect_false(grepl("dofminus", err))
 })

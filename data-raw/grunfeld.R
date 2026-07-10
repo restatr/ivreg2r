@@ -7,7 +7,6 @@
 # for provenance and the many circulating variants of this dataset.
 #
 # Source: webuse grunfeld (cached at validation/data/grunfeld.dta), 200 x 6.
-# Provenance and licensing detail: planning/25-data-provenance.md.
 # All six columns kept, including `time` (a 1-20 trend index -- constructed
 # but not a lag/difference, so decision D8 does not apply).
 

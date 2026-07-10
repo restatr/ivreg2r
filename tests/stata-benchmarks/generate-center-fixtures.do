@@ -1,13 +1,13 @@
 /*===========================================================================
   generate-center-fixtures.do
   ---------------------------
-  Generates CSV benchmark fixtures for the center-option family (M-18 re-base, planning/22-spec-matrix.md): the old 13 card cells are replaced by 10 cells layered as D5a option-variations on the M-16 canonical bases -- griliches76 H06, abdata H88, and the phillips H83-H85 family. Stata documents the center option with no worked example, so every cell here is a D5a option-variation on a help-file base model.
+  Generates CSV benchmark fixtures for the center-option family on the canonical bases: griliches76 H06, abdata H88, and the phillips H83-H85 family (10 cells). Stata documents the center option with no worked example, so every cell here is a D5a option-variation on a help-file base model.
 
-  Both CUE+center cells are DELETED, not ported: the CUE+cluster+center cell is the known-dirty ubuntu CI basin-pathology cell per the spec-matrix delete table, and the CUE robust+center cell is the same card-CUE known-dirty class -- CUE x center coverage moves to M-17's canonical bases.
+  Both CUE+center cells are DELETED, not ported: the CUE+cluster+center cell is the known-dirty ubuntu CI basin-pathology cell, and the CUE robust+center cell is the same card-CUE known-dirty class -- CUE x center coverage moves to the CUE family's canonical bases.
 
   The just-identified center cell is DELETED: center enters only through the shared meat helpers, with no identification-specific branch (M-12 precedent), so a just-identified center cell adds no distinct code path.
 
-  endog() does not change estimation -- the retired card endog cell's coef/vcov CSVs were byte-identical to the plain hc0 cell's (verified 2026-07-05) -- and Stata does NOT forward center to the recursive endog call (ivreg2.ado ~1576-1601 omit it; documented intentional-match row in planning/07c line 198), so cell 5 exports diagnostics only and its e(estat) pins the uncentered-inner-call behavior both implementations share.
+  endog() does not change estimation -- the retired card endog cell's coef/vcov CSVs were byte-identical to the plain hc0 cell's (verified 2026-07-05) -- and Stata does NOT forward center to the recursive endog call (ivreg2.ado ~1576-1601 omit it), so cell 5 exports diagnostics only and its e(estat) pins the uncentered-inner-call behavior both implementations share.
 
   The retired card orthog+center cell was vacuous -- all three of its CSVs were byte-identical to the hc0 cell's because the old export never recorded e(cstat) -- so cell 6 pins the orthog C-statistic under center for the FIRST time; Stata's recursive orthog call receives the centered full-model S via smatrix() (ivreg2.ado ~1522-1536), so cstat IS center-affected.
 
@@ -272,7 +272,7 @@ display _newline(2) "=== griliches H06 + robust small center ==="
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), robust small center
 save_ivreg2_results, prefix(gril_center) suffix(robust_small) outdir(`outdir')
 
-// --- 3. D5a: gmm2s robust center -- center changes the GMM2S weighting matrix and hence the coefficients; this is the gmm2s+center replacement direction named in the spec-matrix M-18 row ---
+// --- 3. D5a: gmm2s robust center -- center changes the GMM2S weighting matrix and hence the coefficients; this is the gmm2s+center replacement direction ---
 use "`outdir'/_center_gril_temp.dta", clear
 display _newline(2) "=== griliches H06 + gmm2s robust center ==="
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), gmm2s robust center
@@ -284,7 +284,7 @@ display _newline(2) "=== griliches H06 + robust center dofminus(2) ==="
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), robust center dofminus(2)
 save_ivreg2_results, prefix(gril_center_dof) suffix(robust) outdir(`outdir')
 
-// --- 5. D5a: robust center endog(iq) -- diagnostics-only export. endog() does not change estimation (retired card endog cell's coef/vcov CSVs were byte-identical to the plain hc0 cell's, verified 2026-07-05), and Stata does NOT forward center to the recursive endog call (ivreg2.ado ~1576-1601 omit it; intentional-match row in planning/07c line 198), so e(estat) here pins the uncentered-inner-call behavior both implementations share ---
+// --- 5. D5a: robust center endog(iq) -- diagnostics-only export. endog() does not change estimation (retired card endog cell's coef/vcov CSVs were byte-identical to the plain hc0 cell's, verified 2026-07-05), and Stata does NOT forward center to the recursive endog call (ivreg2.ado ~1576-1601 omit it), so e(estat) here pins the uncentered-inner-call behavior both implementations share ---
 use "`outdir'/_center_gril_temp.dta", clear
 display _newline(2) "=== griliches H06 + robust center endog(iq) ==="
 ivreg2 lw s expr tenure rns smsa _I* (iq=med kww age mrt), robust center endog(iq)
@@ -355,7 +355,7 @@ display _newline(2) "=== abdata H88 + cluster(id) small center ==="
 ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), cluster(id) small center
 save_ivreg2_results, prefix(ab_center) suffix(cl_small) outdir(`outdir')
 
-// --- 9. D5a: gmm2s cluster(id) center -- the designated replacement for the deleted CUE+cluster+center headline cell ("drop ... in favor of gmm2s+center", spec-matrix M-18 row + delete table) ---
+// --- 9. D5a: gmm2s cluster(id) center -- the designated replacement for the deleted CUE+cluster+center headline cell ("drop ... in favor of gmm2s+center") ---
 use "`outdir'/_center_ab_temp.dta", clear
 display _newline(2) "=== abdata H88 + gmm2s cluster(id) center ==="
 ivreg2 n (w k ys = d.w d.k d.ys d2.w d2.k d2.ys), gmm2s cluster(id) center

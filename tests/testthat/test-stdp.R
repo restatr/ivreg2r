@@ -1,6 +1,4 @@
-# Tests for predict(..., se.fit = TRUE) — fixture family M-26
-# (re-based onto the canonical mroz H31 base 2026-07-04 per
-# planning/22-spec-matrix.md; originally Ticket Q1).
+# Tests for predict(..., se.fit = TRUE) on the canonical mroz H31 base.
 # Prediction standard errors: SE = sqrt(diag(X %*% V %*% t(X)))
 
 # === Data: mroz estimation sample (Stata's e(sample) = lwage non-missing) ===

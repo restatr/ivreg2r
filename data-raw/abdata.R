@@ -7,8 +7,7 @@
 # Review of Economic Studies, 58(2), 277-297.
 #
 # Source: http://fmwww.bc.edu/ec-p/data/macro/abdata.dta (cached at
-# validation/data/abdata.dta), 1031 x 16. Provenance and licensing detail:
-# planning/25-data-provenance.md.
+# validation/data/abdata.dta), 1031 x 16.
 # All 16 columns kept: n/w/k/ys are logs of emp/wage/cap/indoutpt, and
 # yr1980-yr1984 are year dummies -- constructed but not lags/differences,
 # so decision D8 does not apply, and the help-file examples reference them

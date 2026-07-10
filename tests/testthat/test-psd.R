@@ -400,8 +400,7 @@ test_that("iid VCV is never psd-corrected (Stata m_omega parity)", {
 # the joint model F is not a well-defined Wald statistic: Stata inverts the
 # near-singular slope block raw (F ~ 2.9e4 on the binding repro), while our
 # conditioning guard (.is_badly_conditioned_vcov) falls back to the sweep
-# inverse (F ~ 7.7). Documented intentional divergence; see
-# planning/06-parity-deltas.md row 18.
+# inverse (F ~ 7.7). Documented intentional divergence.
 check_psd_fixture <- function(fit, suffix, prefix = "wp_psd",
                               inames_file = "wp_psd_inames.csv",
                               skip_model_f = FALSE) {

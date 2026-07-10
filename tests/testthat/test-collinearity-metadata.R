@@ -201,7 +201,7 @@ test_that("parsed_formula return list includes reclassified_endogenous", {
 
 # ==========================================================================
 # 9. All endo dropped without reclassification clears name vectors
-#    (Codex review fix: guard must not require reclassification)
+#    (guard must not require reclassification)
 # ==========================================================================
 test_that("all endo dropped (zero column) keeps excluded instruments (F3)", {
   d <- make_collin_data()
@@ -233,7 +233,7 @@ test_that("all endo dropped (zero column) keeps excluded instruments (F3)", {
 
 # ==========================================================================
 # 10. Reclassified-then-dropped var does not leak into exog_names
-#     (Codex review fix: filter surviving reclassified by colnames(X))
+#     (filter surviving reclassified by colnames(X))
 # ==========================================================================
 test_that("reclassified var dropped in pass 3 does not appear in exog_names", {
   d <- make_collin_data()

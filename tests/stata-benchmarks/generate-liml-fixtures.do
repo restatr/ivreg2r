@@ -7,7 +7,7 @@
     cd /path/to/ivreg2r/pkg
     do tests/stata-benchmarks/generate-liml-fixtures.do
 
-  Retired cells (planning/22-spec-matrix.md): Fuller(4) and kclass(0.5) were deleted as anti-pattern cells per the spec matrix's delete table — they duplicated the option-variation shape of Fuller(1)/kclass(1.19) without adding new coverage.
+  Retired cells: Fuller(4) and kclass(0.5) were deleted as anti-pattern cells — they duplicated the option-variation shape of Fuller(1)/kclass(1.19) without adding new coverage.
   Just-identified LIML and kclass(1) cells are also retired: plain just-identified LIML short-circuits to 2SLS in R (a bit-identical identity test), and kclass(1) is a fixture-free identity with 2SLS itself; Stata parity for 2SLS is owned by the M-10 family, so neither needs a dedicated LIML-family fixture here.
   coviv x cluster, coviv x small, fuller x cluster, kclass x cluster, weighted x small, fuller x small, and kclass x small cells are retired compositionally: coviv only swaps the VCV bread and is already pinned at iid by the tsop H73 cell and at robust by klein_liml_coviv/hc1 here; fuller/kclass only change the k-class bread, and the k-class-bread x cluster-meat assembly is pinned by the ABDATA ab_liml cl/cl_small cells (cl_small is not a klein suffix); the small finite-sample correction is applied in the shared .vcov_from_omega with no method branch, so fuller x small and kclass x small are pinned by the klein_liml iid_small/hc1_small cells plus the method-uniformity identity test in test-liml.R.
 ===========================================================================*/

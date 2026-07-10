@@ -2,12 +2,11 @@
   generate-stdp-fixtures.do
   -------------------------
   Generates CSV benchmark fixtures for predict(..., se.fit = TRUE) parity
-  testing (family M-26, re-based 2026-07-04 per planning/22-spec-matrix.md).
+  testing.
 
   Canonical base: mroz 2SLS baseline H31 (Stata ivreg2 help.txt line 1274).
   `predict, stdp` is Stata post-estimation with no worked example in the
-  help file, so cells are option-variation on the canonical base per
-  decision D5a (planning/24-execution-roadmap.md).
+  help file, so cells are option-variation on the canonical base.
 
   For each ivreg2 specification, saves fitted values and prediction SEs
   (Stata's "predict, stdp") for (a) all observations and (b) first 10 obs

@@ -1,7 +1,7 @@
 /*===========================================================================
   generate-redundancy-fixtures.do
   --------------------------------
-  Generates CSV benchmark fixtures for instrument redundancy testing (M-23, planning/22-spec-matrix.md), re-based off the Card/sim_multi_endo/ts_hac ad hoc data onto the canonical help-file / literature bases:
+  Generates CSV benchmark fixtures for instrument redundancy testing on the canonical help-file / literature bases:
 
     - griliches76 (BSS 2007 pp. 490-493): the weak-instrument schooling-IQ wage model, redundant(mrt) and redundant(age mrt), used as the canonical anchor — BSS report redundant(mrt) chi2(1) = 0.002, p = 0.9665 on this exact spec.
     - abdata (H88, help.txt:1541): the Arellano-Bond employment model with first- and second-difference instruments, minus gmm2s, with redundant() added as a D5a option-variation to exercise multi-endogenous (K1=3) and cluster-robust redundancy.

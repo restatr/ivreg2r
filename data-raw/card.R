@@ -9,7 +9,7 @@
 # matches the version distributed with Stata's bcuse package ("card"),
 # cached at ../validation/data/card.dta (cached 2026-07-04). Building from
 # the cached .dta (rather than a CSV round-trip) preserves the float32 bit
-# patterns of the Stata distribution, per planning/25 ground rule 1.
+# patterns of the Stata distribution.
 
 # Path is relative to the package root (pkg/). Run with setwd("pkg/") or
 # from an RStudio project rooted at pkg/.

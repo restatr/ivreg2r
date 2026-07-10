@@ -2,8 +2,7 @@
   generate-weight-type-fixtures.do
   ---------------------------------
   Generates CSV benchmark fixtures for frequency weights (fweight),
-  probability weights (pweight), and analytic weights (aweight), family
-  M-11, re-based 2026-07-05 per planning/22-spec-matrix.md.
+  probability weights (pweight), and analytic weights (aweight).
 
   Canonical base: the Card (1995) returns-to-education overidentified spec,
   the same model used by M-10 (card_overid):

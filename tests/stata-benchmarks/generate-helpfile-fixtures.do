@@ -2,11 +2,10 @@
   generate-helpfile-fixtures.do
   ------------------------------
   Generates CSV benchmark fixtures for the in-package help-file example
-  suite (planning/24-execution-roadmap.md, decision D1): reproduce every
-  `ivreg2` invocation in the Examples section of the Stata ivreg2 help file
-  (planning/help-file-specs.md, H01-H105) against the bundled ivreg2r
-  datasets, so test-helpfile-examples.R can assert Stata parity on the
-  package's own worked examples rather than only on synthetic/Card fixtures.
+  suite: reproduce every `ivreg2` invocation in the Examples section of the
+  Stata ivreg2 help file (H01-H105) against the bundled ivreg2r datasets, so
+  test-helpfile-examples.R can assert Stata parity on the package's own
+  worked examples rather than only on synthetic/Card fixtures.
 
   Coverage: griliches76, mroz, phillips, abdata, grunfeld, nlswork.
   klein is intentionally OMITTED here -- the 5 klein commands (H72-H76) are
@@ -15,7 +14,7 @@
   generate-hols-fixtures.do. See the coverage ledger at the top of
   test-helpfile-examples.R for the full H01-H105 accounting.
 
-  M-10 absorbed section (2026-07-06, planning/22-spec-matrix.md): the mroz
+  M-10 absorbed section (2026-07-06): the mroz
   region also carries the mroz_justid cells, a D5a just-identified 2SLS
   baseline (educ = age) that replaces the retired card_just_id family from
   generate-fixtures.do -- see the section banner in the Mroz region below
@@ -293,7 +292,7 @@ save_ivreg2_results, prefix(hf_gril) suffix(H20) outdir(`outdir')
 //     et al. 2011), not a bug in either implementation. Stata's optimizer
 //     has always found it, and since the 2026-07-06 parscale fix R's
 //     optimizer converges to the same basin, so the old "intentional
-//     divergence" classification is retracted (planning/06 delta 20).
+//     divergence" classification is retracted.
 //     The basin is extremely flat: coefficients identify it only to a few
 //     percent, but J varies across it by ~1e-7 relative, so e(j) from the
 //     diagnostics export below is the R test's exact basin identifier
@@ -308,7 +307,7 @@ save_ivreg2_results, prefix(hf_gril) suffix(H22) outdir(`outdir')
 // The R test reads the coef fixture (flat-basin bands) and the diagnostics
 // fixture (J parity). The vcov fixture would have no consumer at any
 // tolerance the flat basin supports -- erase it so no orphaned fixture
-// ships (planning/18 rule).
+// ships.
 erase "`outdir'/hf_gril_vcov_H22.csv"
 
 // --- H25 (help.txt:1235): GMM2S, orthog on an included regressor (s) ---
@@ -398,7 +397,7 @@ save_ivreg2_results, prefix(hf_mroz) suffix(H68) outdir(`outdir')
 
 
 /*===========================================================================
-  M-10 absorbed section (planning/22-spec-matrix.md M-10): the
+  M-10 absorbed section: the
   just-identified 2SLS baseline. D5a WITH DISCLOSURE -- H31 (help.txt:1274)
   restricted to a single excluded instrument (educ = age); the instrument
   choice is arbitrary, not economically motivated (same restriction as the
@@ -564,8 +563,8 @@ save_ivreg2_results, prefix(hf_nls) suffix(H105) outdir(`outdir')
 
 
 /*===========================================================================
-  Stored scalar results (family M-28, absorbed into the hf suite 2026-07-04
-  per planning/22-spec-matrix.md): e(yy), e(yyc), e(rankxx), e(rankzz),
+  Stored scalar results (family M-28, absorbed into the hf suite 2026-07-04):
+  e(yy), e(yyc), e(rankxx), e(rankzz),
   e(condxx), e(condzz), e(ll), e(ccev), e(cdev) on the canonical mroz
   bases H31 (2SLS, help.txt:1274) and H61 (OLS via ivreg2, help.txt:1416).
   These are bookkeeping outputs with no worked example in the help file

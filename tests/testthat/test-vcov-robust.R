@@ -119,14 +119,30 @@ test_that("vcov_type reports robust with small", {
 test_that("vcov = 'HC0' produces informative error", {
   expect_error(
     ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "HC0"),
-    'vcov = "HC0" is no longer supported.*Use vcov = "robust"'
+    'vcov = "HC0" is not supported.*Use vcov = "robust"'
   )
 })
 
 test_that("vcov = 'HC1' produces informative error", {
   expect_error(
     ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "HC1"),
-    'vcov = "HC1" is no longer supported.*Use vcov = "robust"'
+    'vcov = "HC1" is not supported.*Use vcov = "robust"'
+  )
+})
+
+test_that("vcov = 'cluster' redirects to the clusters argument", {
+  expect_error(
+    ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "cluster"),
+    "is not a VCE type: request clustering with the `clusters` argument",
+    fixed = TRUE
+  )
+})
+
+test_that("vcov = 'Cluster' redirect is case-insensitive", {
+  expect_error(
+    ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "Cluster"),
+    "is not a VCE type: request clustering with the `clusters` argument",
+    fixed = TRUE
   )
 })
 

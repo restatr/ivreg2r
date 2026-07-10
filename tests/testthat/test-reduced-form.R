@@ -1,9 +1,8 @@
 # ===========================================================================
 # Tests for reduced-form regression (Ticket J3)
 #
-# M-21 re-base (2026-07-04): reduced-form/system fixtures re-based onto the
-# mroz H31 base per planning/22-spec-matrix.md. The canonical base is the
-# saverf command H54 (help.txt:1385); the saved RF equals the H61
+# The reduced-form/system fixtures sit on the mroz H31 base. The canonical
+# base is the saverf command H54 (help.txt:1385); the saved RF equals the H61
 # reduced-form OLS demo (help.txt:1416) -- the "saverf no-op parity". The
 # card_* rf/system fixtures are retired. sim_multi_endo is kept for K1 > 1
 # system coverage and sim_cluster for cluster RF (mroz has no cluster
@@ -56,15 +55,23 @@ test_that("reduced_form = 'none' returns NULL", {
   expect_null(fit$reduced_form)
 })
 
-test_that("OLS model with reduced_form = 'rf' returns NULL", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south, data = card,
-                reduced_form = "rf")
+test_that("OLS model with reduced_form = 'rf' warns and returns NULL", {
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper + expersq + black + south, data = card,
+                  reduced_form = "rf"),
+    "`reduced_form` ignored: this is an OLS model",
+    fixed = TRUE
+  )
   expect_null(fit$reduced_form)
 })
 
-test_that("OLS model with reduced_form = 'system' returns NULL", {
-  fit <- ivreg2(lwage ~ exper + expersq + black + south, data = card,
-                reduced_form = "system")
+test_that("OLS model with reduced_form = 'system' warns and returns NULL", {
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper + expersq + black + south, data = card,
+                  reduced_form = "system"),
+    "`reduced_form` ignored: this is an OLS model",
+    fixed = TRUE
+  )
   expect_null(fit$reduced_form)
 })
 

@@ -9,7 +9,7 @@
 # ../validation/data/wagepan.dta (cached 2026-07-04), trimmed to essential
 # variables for vignette use. Building from the cached .dta (rather than a
 # CSV round-trip) preserves the float32 bit patterns of the Stata
-# distribution, per planning/25 ground rule 1.
+# distribution.
 
 # Path is relative to the package root (pkg/). Run with setwd("pkg/") or
 # from an RStudio project rooted at pkg/.

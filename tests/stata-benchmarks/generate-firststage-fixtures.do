@@ -1,7 +1,7 @@
 /*===========================================================================
   generate-firststage-fixtures.do
   --------------------------------
-  Generates CSV benchmark fixtures for first-stage diagnostics and first-stage model objects (M-25, planning/22-spec-matrix.md), re-based off the Card/sim ad hoc data onto the canonical help-file bases: mroz (H31/H41, help.txt:1274/1325-1359), griliches76 (H03/H04, help.txt:1138/1141), and abdata (H88 minus gmm2s, help.txt:1541).
+  Generates CSV benchmark fixtures for first-stage diagnostics and first-stage model objects on the canonical help-file bases: mroz (H31/H41, help.txt:1274/1325-1359), griliches76 (H03/H04, help.txt:1138/1141), and abdata (H88 minus gmm2s, help.txt:1541).
 
   `small` variants are deliberately NOT generated for any cell in this file: Stata's first-stage diagnostics (e(first)) were verified byte-identical under `small` across iid/hc1/cluster in the retired card/sim fixtures, so the R tests fit both small = FALSE and small = TRUE against each fixture here and assert the whole first_stage object is equal either way.
   No liml/kclass/gmm2s cells are generated: the saved first-stage regression is the same OLS fit regardless of the main-equation estimator -- fs_overid_liml_* was verified byte-identical to fs_overid_iid_* in the retired card fixtures, so the R tests assert this estimator-invariance as a fixture-free identity rather than pinning a duplicate fixture.

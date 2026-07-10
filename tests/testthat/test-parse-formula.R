@@ -520,6 +520,69 @@ test_that("factor variable in exogenous regressors expands correctly", {
   expect_true("grp" %in% result$exog_names)
 })
 
+# ==========================================================================
+# Response-variable type validation
+# ==========================================================================
+test_that("factor response errors cleanly (OLS)", {
+  d <- make_test_data()
+  d$y <- factor(sample(letters[1:3], nrow(d), replace = TRUE))
+  expect_error(
+    .parse_formula(y ~ x1, data = d),
+    "response variable `y` is a factor; it must be numeric",
+    fixed = TRUE
+  )
+})
+
+test_that("factor response errors cleanly (IV)", {
+  d <- make_test_data()
+  d$y <- factor(sample(letters[1:3], nrow(d), replace = TRUE))
+  expect_error(
+    .parse_formula(y ~ x1 | endo1 | z1, data = d),
+    "response variable `y` is a factor; it must be numeric",
+    fixed = TRUE
+  )
+})
+
+test_that("character response errors instead of being silently coerced", {
+  d <- make_test_data()
+  d$y <- as.character(d$y)
+  expect_error(
+    .parse_formula(y ~ x1, data = d),
+    "response variable `y` is a character vector; it must be numeric",
+    fixed = TRUE
+  )
+})
+
+test_that("logical response still fits", {
+  d <- make_test_data()
+  d$y <- d$x1 > 0
+  result <- .parse_formula(y ~ x1, data = d)
+  expect_s3_class(result, "parsed_formula")
+  expect_type(result$y, "double")
+})
+
+# ==========================================================================
+# Zero-row data
+# ==========================================================================
+test_that("zero-row data errors before collinearity machinery", {
+  d <- make_test_data()
+  expect_error(
+    .parse_formula(y ~ x1 + x2, data = d[0, ]),
+    "no (complete) observations",
+    fixed = TRUE
+  )
+})
+
+test_that("all-missing data errors as no complete observations", {
+  d <- make_test_data()
+  d$y <- NA_real_
+  expect_error(
+    .parse_formula(y ~ x1 + x2, data = d),
+    "no (complete) observations",
+    fixed = TRUE
+  )
+})
+
 test_that("return list has all expected fields", {
   d <- make_test_data()
   result <- .parse_formula(y ~ x1 | endo1 | z1, data = d)
