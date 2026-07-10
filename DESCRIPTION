@@ -1,11 +1,19 @@
 Package: ivreg2r
 Title: Extended Instrumental Variables Estimation with Diagnostics
 Version: 0.1.0
-Authors@R:
-    person("Francis", "DiTraglia", , email = "francis.ditraglia@economics.ox.ac.uk", role = c("aut", "cre"))
+Authors@R: c(
+    person("Francis", "DiTraglia", , email = "francis.ditraglia@economics.ox.ac.uk", role = c("aut", "cre")),
+    person("Christopher F.", "Baum", role = c("ctb", "cph"),
+           comment = "Author of the Stata ivreg2 program from which ivreg2r is adapted"),
+    person("Mark E.", "Schaffer", role = c("ctb", "cph"),
+           comment = "Author of the Stata ivreg2 program from which ivreg2r is adapted"),
+    person("Steven", "Stillman", role = c("ctb", "cph"),
+           comment = "Author of the Stata ivreg2 program from which ivreg2r is adapted"))
 Description: Comprehensive instrumental variables and GMM estimation with
-    automatic diagnostics, inspired by Stata's 'ivreg2' (Baum, Schaffer &
-    Stillman). Supports 2SLS, LIML, Fuller, k-class, two-step efficient GMM,
+    automatic diagnostics, inspired by the Stata command 'ivreg2' of Baum,
+    Schaffer, and Stillman (2003) <doi:10.1177/1536867X0300300101> and Baum,
+    Schaffer, and Stillman (2007) <doi:10.1177/1536867X0800700402>. Supports
+    2SLS, LIML, Fuller, k-class, two-step efficient GMM,
     and continuously-updated (CUE) estimators. Provides classical, robust,
     cluster-robust, HAC, and Driscoll-Kraay standard errors. Reports weak
     identification, underidentification, overidentification, and endogeneity
