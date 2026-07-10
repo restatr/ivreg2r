@@ -381,9 +381,9 @@ reports that the request was ignored.}
 
 \item{first_stage}{Logical: if \code{TRUE}, store extractable first-stage
 regression objects on the fitted model. Access them via
-\code{\link[=first_stage]{first_stage()}}. Each object supports \code{\link[=coef]{coef()}}, \code{\link[=vcov]{vcov()}},
-\code{\link[=summary]{summary()}}, \code{\link[=tidy]{tidy()}}, and \code{\link[=glance]{glance()}}. Equivalent to Stata's
-\code{savefirst} option. Default \code{FALSE}. On a model with no endogenous
+\code{\link[=first_stage]{first_stage()}}; see \code{\link[=first_stage]{first_stage()}} for the full list of supported
+S3 methods (\code{coef()}, \code{vcov()}, \code{summary()}, \code{tidy()}, \code{glance()},
+and others). Equivalent to Stata's \code{savefirst} option. Default \code{FALSE}. On a model with no endogenous
 regressors (a one-part OLS formula, or the IV form
 \code{y ~ exog | 0 | instruments}), nothing is stored and a warning reports
 that the request was ignored.}

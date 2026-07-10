@@ -178,8 +178,6 @@ Common translations (see `vignette("introduction")` for the [full table](https:/
 
 ``` r
 citation("ivreg2r")
-Warning in packageDescription(pkg = package, lib.loc = dirname(dir)): no
-package 'ivreg2r' was found
 DiTraglia F (2026). _ivreg2r: Extended Instrumental Variables
 Estimation with Diagnostics_. R package,
 <https://github.com/restatr/ivreg2r>.

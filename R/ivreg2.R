@@ -49,12 +49,11 @@
   # throughout the rest of the pipeline and in printed output. An
   # unrecognized value is left untouched so the error below echoes exactly
   # what the user typed.
-  vcov_canonical <- c(iid = "iid", robust = "robust", hac = "HAC", ac = "AC")
-  vcov_matched <- vcov_canonical[tolower(vcov)]
-  if (!is.na(vcov_matched)) {
-    vcov <- unname(vcov_matched)
-  }
   valid_vcov <- c("iid", "robust", "HAC", "AC")
+  vcov_idx <- match(tolower(vcov), tolower(valid_vcov))
+  if (!is.na(vcov_idx)) {
+    vcov <- valid_vcov[vcov_idx]
+  }
   if (!vcov %in% valid_vcov) {
     stop('vcov = "', vcov, '" is not supported. ',
          'Supported values: ', paste0('"', valid_vcov, '"', collapse = ", "),
@@ -2378,9 +2377,9 @@
 #'   reports that the request was ignored.
 #' @param first_stage Logical: if `TRUE`, store extractable first-stage
 #'   regression objects on the fitted model. Access them via
-#'   [first_stage()]. Each object supports [coef()], [vcov()],
-#'   [summary()], [tidy()], and [glance()]. Equivalent to Stata's
-#'   `savefirst` option. Default `FALSE`. On a model with no endogenous
+#'   [first_stage()]; see [first_stage()] for the full list of supported
+#'   S3 methods (`coef()`, `vcov()`, `summary()`, `tidy()`, `glance()`,
+#'   and others). Equivalent to Stata's `savefirst` option. Default `FALSE`. On a model with no endogenous
 #'   regressors (a one-part OLS formula, or the IV form
 #'   `y ~ exog | 0 | instruments`), nothing is stored and a warning reports
 #'   that the request was ignored.
