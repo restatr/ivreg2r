@@ -46,6 +46,7 @@ and the Baltagi cigarette-demand panel (`cigar`).
 ``` r
 
 library(ivreg2r)
+library(dplyr)
 data(mroz)
 data(klein)
 data(griliches)
@@ -68,7 +69,7 @@ because they make the instrument-testing machinery interesting.
 
 ``` r
 
-mroz_work <- subset(mroz, inlf == 1)
+mroz_work <- mroz |> filter(inlf == 1)
 nrow(mroz_work)
 #> [1] 428
 ```
@@ -250,9 +251,13 @@ pp. 649–650), as cited in Baum, Schaffer & Stillman (2007, p. 479):
 
 fit_fuller1 <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                       data = mroz_work, fuller = 1)
-c(k = fit_fuller1$kclass_value, educ = unname(coef(fit_fuller1)["educ"]))
-#>          k       educ 
-#> 0.99927193 0.09666366
+fit_fuller1$kclass_value  # the k-class value, Stata's e(kclass)
+#> [1] 0.9992719
+tidy(fit_fuller1) |> filter(term == "educ")
+#> # A tibble: 1 × 7
+#>   term  estimate std.error statistic p.value conf.low conf.high
+#>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+#> 1 educ    0.0967    0.0805      1.20   0.230  -0.0611     0.254
 ```
 
 ### k-class estimation
@@ -273,9 +278,14 @@ K <- fit_2sls$rank
 k_nagar <- 1 + (L - K) / N
 fit_nagar <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     data = mroz_work, kclass = k_nagar)
-c(L = L, K = K, k = k_nagar, educ = unname(coef(fit_nagar)["educ"]))
-#>          L          K          k       educ 
-#> 6.00000000 4.00000000 1.00467290 0.09436094
+c(L = L, K = K, k = k_nagar)
+#>        L        K        k 
+#> 6.000000 4.000000 1.004673
+tidy(fit_nagar) |> filter(term == "educ")
+#> # A tibble: 1 × 7
+#>   term  estimate std.error statistic p.value conf.low conf.high
+#>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+#> 1 educ    0.0944    0.0884      1.07   0.286  -0.0789     0.268
 ```
 
 Both the Fuller and Nagar estimators tend to have better finite-sample
@@ -299,7 +309,7 @@ fit_coviv <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     small = TRUE, coviv = TRUE)
 all.equal(coef(fit_coviv), coef(fit_liml))
 #> [1] TRUE
-subset(tidy(fit_coviv), term == "educ", c(term, estimate, std.error))
+tidy(fit_coviv) |> filter(term == "educ") |> select(term, estimate, std.error)
 #> # A tibble: 1 × 3
 #>   term  estimate std.error
 #>   <chr>    <dbl>     <dbl>
@@ -436,10 +446,22 @@ fit_k_nagar  <- ivreg2(klein_form, data = klein, tvar = "yr",
                        method = "kclass", kclass = 1.19)
 klein_models <- list("2SLS" = fit_k_2sls, LIML = fit_k_liml,
                      "Fuller(1)" = fit_k_fuller, Nagar = fit_k_nagar)
-round(sapply(klein_models, \(m) coef(m)[c("profits", "wagetot")]), 4)
-#>           2SLS    LIML Fuller(1)   Nagar
-#> profits 0.0173 -0.2225   -0.1686 -0.0497
-#> wagetot 0.8102  0.8226    0.8201  0.8140
+bind_rows("2SLS" = tidy(fit_k_2sls), LIML = tidy(fit_k_liml),
+          "Fuller(1)" = tidy(fit_k_fuller), Nagar = tidy(fit_k_nagar),
+          .id = "estimator") |>
+  filter(term %in% c("profits", "wagetot")) |>
+  select(estimator, term, estimate)
+#> # A tibble: 8 × 3
+#>   estimator term    estimate
+#>   <chr>     <chr>      <dbl>
+#> 1 2SLS      profits   0.0173
+#> 2 2SLS      wagetot   0.810 
+#> 3 LIML      profits  -0.223 
+#> 4 LIML      wagetot   0.823 
+#> 5 Fuller(1) profits  -0.169 
+#> 6 Fuller(1) wagetot   0.820 
+#> 7 Nagar     profits  -0.0497
+#> 8 Nagar     wagetot   0.814
 ```
 
 The estimators genuinely diverge here: the `profits` coefficient changes
@@ -466,11 +488,11 @@ max(abs(coef(fit_k_coviv) - coef(fit_k_cue)))
 #> [1] 7.415976e-07
 ```
 
-On this tiny (N = 21) problem the cross-platform agreement is on the
-order of 1e-5; the residual gap is the optimizer’s endpoint, not a
-difference in the estimators. CUE generalizes LIML with COVIV to the
-non-i.i.d. case, where a closed-form eigenvalue solution no longer
-exists.
+On this tiny (N = 21) problem the two agree to optimizer tolerance: the
+small gap printed above is the optimizer’s endpoint, not a difference in
+the estimators, and its exact size depends on where the optimizer stops.
+CUE generalizes LIML with COVIV to the non-i.i.d. case, where a
+closed-form eigenvalue solution no longer exists.
 
 ## Instrument-validity tests
 
@@ -478,12 +500,20 @@ The tests below follow the escalating order of the help file’s testing
 examples: a joint overidentification test, then a test of a subset of
 instruments (the help file’s Griliches example), then a test of a single
 regressor’s endogeneity, then the empty-endogenous form for an included
-regressor, and finally the LIML overidentification statistics. Every
-automatic test lives in `fit$diagnostics`, a named list;
-[`glance()`](https://generics.r-lib.org/reference/glance.html)
-additionally surfaces the headline tests (weak identification,
-underidentification, overidentification) as columns. The chunks below
-read each statistic from `fit$diagnostics`, dropping into
+regressor, and finally the LIML overidentification statistics. Every one
+of these tests prints in
+[`summary()`](https://rdrr.io/r/base/summary.html), and
+`diagnostics(fit)` returns them all as a tibble with one row per test
+under a stable `test` key, so pulling a statistic out for prose or a
+table is a one-line `filter(test == ...)` (see
+[`vignette("introduction")`](https://restatr.com/ivreg2r/articles/introduction.md)
+for the accessor). The
+[`glance()`](https://generics.r-lib.org/reference/glance.html) companion
+surfaces the headline tests (weak identification, underidentification,
+overidentification) as columns for model-comparison tables. The chunks
+below read each statistic from
+[`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md),
+dropping into
 [`glance()`](https://generics.r-lib.org/reference/glance.html) where a
 column is available and reads better.
 
@@ -512,7 +542,11 @@ difference-in-Sargan C-statistic (Hayashi, 2000). Stata’s help file
 demonstrates it on the Griliches (1976) wage equation, challenging the
 exogeneity of `age` and `mrt` (marital status) while maintaining `med`
 (mother’s education) and `kww` (a test score), estimated by two-step
-GMM:
+GMM. The Griliches variables are `lw` (log wage), `s` (years of
+schooling), `expr` (labor-market experience), `tenure` (job tenure),
+`rns` (residence in the South), and `smsa` (urban residence);
+`factor(year)` expands to a set of year dummies, R’s spelling of Stata’s
+`i.year`:
 
 ``` r
 
@@ -521,9 +555,11 @@ fit_orthog <- ivreg2(
     med + kww + age + mrt,
   data = griliches, method = "gmm2s", orthog = c("age", "mrt")
 )
-unlist(fit_orthog$diagnostics$orthog[c("stat", "p")])
-#>         stat            p 
-#> 8.661882e+01 1.552253e-19
+diagnostics(fit_orthog) |> filter(test == "orthog")
+#> # A tibble: 1 × 7
+#>   test   test_name  statistic    df   df2  p_value tested_vars
+#>   <chr>  <chr>          <dbl> <int> <int>    <dbl> <chr>      
+#> 1 orthog C (orthog)      86.6     2    NA 1.55e-19 age, mrt
 ```
 
 The null is that `age` and `mrt` satisfy the exclusion restrictions
@@ -546,9 +582,11 @@ Stata’s `endog(educ)` example:
 
 fit_endog <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     data = mroz_work, endog = "educ")
-unlist(fit_endog$diagnostics$endogeneity[c("stat", "p")])
-#>       stat          p 
-#> 0.01914714 0.88994549
+diagnostics(fit_endog) |> filter(test == "endogeneity")
+#> # A tibble: 1 × 7
+#>   test        test_name   statistic    df   df2 p_value tested_vars
+#>   <chr>       <chr>           <dbl> <int> <int>   <dbl> <chr>      
+#> 1 endogeneity Endogeneity    0.0191     1    NA   0.890 educ
 ```
 
 With a single endogenous regressor this coincides numerically with the
@@ -559,8 +597,8 @@ more endogenous regressors, where it can test a subset:
 
 ``` r
 
-c(automatic = fit_2sls$diagnostics$endogeneity$stat,
-  endog_arg = fit_endog$diagnostics$endogeneity$stat)
+c(automatic = diagnostics(fit_2sls) |> filter(test == "endogeneity") |> pull(statistic),
+  endog_arg = diagnostics(fit_endog) |> filter(test == "endogeneity") |> pull(statistic))
 #>  automatic  endog_arg 
 #> 0.01914714 0.01914714
 ```
@@ -643,10 +681,13 @@ closely:
 
 ``` r
 
-unlist(fit_liml$diagnostics$anderson_rubin_overid[
-  c("lr_stat", "lr_p", "lin_stat", "lin_p")])
-#>   lr_stat      lr_p  lin_stat     lin_p 
-#> 0.7020291 0.7039735 0.7026052 0.7037708
+diagnostics(fit_liml) |>
+  filter(test %in% c("anderson_rubin_overid_lr", "anderson_rubin_overid_lin"))
+#> # A tibble: 2 × 7
+#>   test                      test_name  statistic    df   df2 p_value tested_vars
+#>   <chr>                     <chr>          <dbl> <int> <int>   <dbl> <chr>      
+#> 1 anderson_rubin_overid_lr  Anderson-…     0.702     2    NA   0.704 NA         
+#> 2 anderson_rubin_overid_lin Anderson-…     0.703     2    NA   0.704 NA
 ```
 
 ## Weak-instrument-robust inference
@@ -667,9 +708,11 @@ every IV model:
 
 ``` r
 
-unlist(fit_2sls$diagnostics$stock_wright[c("stat", "p")])
-#>      stat         p 
-#> 1.8537059 0.6033182
+diagnostics(fit_2sls) |> filter(test == "stock_wright")
+#> # A tibble: 1 × 7
+#>   test         test_name         statistic    df   df2 p_value tested_vars
+#>   <chr>        <chr>                 <dbl> <int> <int>   <dbl> <chr>      
+#> 1 stock_wright Stock-Wright LM S      1.85     3    NA   0.603 NA
 ```
 
 ### When instruments are genuinely weak
@@ -683,8 +726,6 @@ heteroskedasticity-robust variance:
 
 weak_form <- lw ~ s + expr + tenure + rns + smsa + factor(year) | iq | age + mrt
 fit_weak <- ivreg2(weak_form, data = griliches, vcov = "robust")
-sy10 <- with(fit_weak$diagnostics$weak_id_sy,
-             critical_value[threshold == "10%"])
 summary(fit_weak)
 #> 
 #> 2SLS Estimation
@@ -751,6 +792,10 @@ summary(fit_weak)
 #> Instrumented:          iq 
 #> Included instruments:  s, expr, tenure, rns, smsa, factor(year)67, factor(year)68, factor(year)69, factor(year)70, factor(year)71, factor(year)73 
 #> Excluded instruments:  age, mrt
+
+sy10 <- diagnostics(fit_weak) |> filter(test == "sy_iv_size_10") |> pull(statistic)
+sy10
+#> [1] 19.93
 ```
 
 Because the variance is robust, the relevant weak-identification
@@ -782,9 +827,11 @@ specification with `redundant`:
 
 fit_redund <- ivreg2(weak_form, data = griliches, vcov = "robust",
                      redundant = "mrt")
-unlist(fit_redund$diagnostics$redundancy[c("stat", "p")])
-#>        stat           p 
-#> 0.001759138 0.966544867
+diagnostics(fit_redund) |> filter(test == "redundancy")
+#> # A tibble: 1 × 7
+#>   test       test_name            statistic    df   df2 p_value tested_vars
+#>   <chr>      <chr>                    <dbl> <int> <int>   <dbl> <chr>      
+#> 1 redundancy Redundancy test (LM)   0.00176     1    NA   0.967 mrt
 ```
 
 The LM statistic is essentially zero (p = 0.97), the published result:
@@ -806,14 +853,17 @@ is the S statistic for the joint null:
 
 ``` r
 
-ols_fit <- lm(lwage ~ exper + expersq, data = mroz_work)
+ols_fit <- ivreg2(lwage ~ exper + expersq, data = mroz_work)
 b0 <- c(educ = 0, coef(ols_fit))
 fit_b0 <- ivreg2(
   lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
   data = mroz_work, vcov = "robust", b0 = b0
 )
-fit_b0$diagnostics$overid$stat  # the objective value, Stata's e(j)
-#> [1] 1.661957
+diagnostics(fit_b0) |> filter(test == "overid")  # the objective value, Stata's e(j)
+#> # A tibble: 1 × 7
+#>   test   test_name statistic    df   df2 p_value tested_vars
+#>   <chr>  <chr>         <dbl> <int> <int>   <dbl> <chr>      
+#> 1 overid Hansen J       1.66     2    NA   0.436 NA
 ```
 
 The identity is easy to confirm against the S statistic that the
@@ -825,18 +875,20 @@ fit_reg <- ivreg2(
   lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
   data = mroz_work, vcov = "robust"
 )
-stopifnot(isTRUE(all.equal(
-  fit_b0$diagnostics$overid$stat,
-  fit_reg$diagnostics$stock_wright$stat
-)))
-c(b0_objective   = fit_b0$diagnostics$overid$stat,
-  stock_wright_S = fit_reg$diagnostics$stock_wright$stat)
-#>   b0_objective stock_wright_S 
-#>       1.661957       1.661957
+b0_objective   <- diagnostics(fit_b0)  |> filter(test == "overid")       |> pull(statistic)
+stock_wright_S <- diagnostics(fit_reg) |> filter(test == "stock_wright") |> pull(statistic)
+all.equal(b0_objective, stock_wright_S)
+#> [1] TRUE
+
+diagnostics(fit_reg) |> filter(test == "stock_wright")
+#> # A tibble: 1 × 7
+#>   test         test_name         statistic    df   df2 p_value tested_vars
+#>   <chr>        <chr>                 <dbl> <int> <int>   <dbl> <chr>      
+#> 1 stock_wright Stock-Wright LM S      1.66     3    NA   0.645 NA
 ```
 
-One caution: the p-value stored beside the raw objective in
-`fit_b0$diagnostics$overid$p` is calibrated against `L - K`
+One caution: the p-value reported beside the raw objective — the
+`p_value` on the `overid` row — is calibrated against `L - K`
 overidentification degrees of freedom, which is the wrong reference
 distribution for this use. Display the raw objective, as Stata’s
 `di e(j)` does, and take the S-statistic p-value (0.6454 here, on L1 = 3
@@ -886,9 +938,13 @@ length(unique(nlswork$year))    # interview years
 ### One-way versus two-way clustering
 
 Compare one-way clustering by person with two-way clustering by person
-and interview year, the help file’s own paired example. Fitting on the
-full data frame restricts to the complete cases the formula needs, so no
-manual subsetting is required:
+and interview year, the help file’s own paired example. Both fits below
+are ordinary least squares with no instruments — the formula has no `|`
+groups — and the `clusters` argument behaves identically once the
+formula gains endogenous and excluded-instrument parts, as the IV
+example that follows shows. Fitting on the full data frame restricts to
+the complete cases the formula needs, so no manual subsetting is
+required:
 
 ``` r
 
@@ -908,19 +964,20 @@ fits. Compare the standard errors:
 
 ``` r
 
-se_comparison <- data.frame(
-  term = names(coef(fit_1way)),
+tibble(
+  term    = tidy(fit_1way)$term,
   se_1way = tidy(fit_1way)$std.error,
   se_2way = tidy(fit_2way)$std.error
-)
-se_comparison$ratio <- se_comparison$se_2way / se_comparison$se_1way
-se_comparison
-#>          term      se_1way     se_2way    ratio
-#> 1 (Intercept) 0.0337636175 0.043107155 1.276734
-#> 2       grade 0.0021612566 0.002654424 1.228185
-#> 3         age 0.0009445326 0.001644370 1.740936
-#> 4     ttl_exp 0.0018369910 0.002677937 1.457785
-#> 5      tenure 0.0016316256 0.003051750 1.870374
+) |>
+  mutate(ratio = se_2way / se_1way)
+#> # A tibble: 5 × 4
+#>   term         se_1way se_2way ratio
+#>   <chr>          <dbl>   <dbl> <dbl>
+#> 1 (Intercept) 0.0338   0.0431   1.28
+#> 2 grade       0.00216  0.00265  1.23
+#> 3 age         0.000945 0.00164  1.74
+#> 4 ttl_exp     0.00184  0.00268  1.46
+#> 5 tenure      0.00163  0.00305  1.87
 ```
 
 Two-way clustering uses the Cameron, Gelbach & Miller (2011)
@@ -942,8 +999,7 @@ dimension adds nothing.
 
 ### Two-way clustering with instrumental variables
 
-The help file’s two-way example is estimated by ordinary least squares,
-but two-way clustering composes with every estimator, so we pair it with
+Two-way clustering composes with every estimator, so we pair it with
 2SLS on a panel demand equation. The Baltagi cigarette-demand data
 (`data(cigar)`) are an annual panel of 46 U.S. states over 1963–1992,
 assembled by Baltagi and Levin (1992) and revisited by Baltagi, Griffin
@@ -962,12 +1018,13 @@ across states.
 ``` r
 
 data(cigar)
-cigar <- transform(cigar,
-  lsales  = log(sales),
-  lrprice = log(price / cpi),
-  lrndi   = log(ndi / cpi),
-  lrpimin = log(pimin / cpi)
-)
+cigar <- cigar |>
+  mutate(
+    lsales  = log(sales),
+    lrprice = log(price / cpi),
+    lrndi   = log(ndi / cpi),
+    lrpimin = log(pimin / cpi)
+  )
 
 fit_iv_2way <- ivreg2(
   lsales ~ lrndi | lrprice | lrpimin + l(lrprice, 1),
@@ -1063,7 +1120,10 @@ alongside the structural estimates:
 ``` r
 
 # Same robust fit as fit_reg above, re-estimated with the reduced form stored
-fit_rf <- update(fit_reg, reduced_form = "rf")
+fit_rf <- ivreg2(
+  lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
+  data = mroz_work, vcov = "robust", reduced_form = "rf"
+)
 fit_rf$reduced_form$coefficients
 #>   (Intercept)         exper       expersq           age       kidslt6 
 #>  0.9940565569  0.0452258622 -0.0009716342 -0.0027608640  0.0175153014 
@@ -1078,10 +1138,11 @@ instruments, and the identity holds exactly:
 
 ``` r
 
-stopifnot(isTRUE(all.equal(fit_rf$reduced_form$f_stat,
-                           fit_rf$diagnostics$anderson_rubin$f_stat)))
-c(rf_F = fit_rf$reduced_form$f_stat,
-  ar_F = fit_rf$diagnostics$anderson_rubin$f_stat)
+rf_F <- fit_rf$reduced_form$f_stat
+ar_F <- diagnostics(fit_rf) |> filter(test == "anderson_rubin_f") |> pull(statistic)
+all.equal(rf_F, ar_F)
+#> [1] TRUE
+c(rf_F = rf_F, ar_F = ar_F)
 #>      rf_F      ar_F 
 #> 0.5795624 0.5795624
 ```
@@ -1127,15 +1188,12 @@ without re-estimating:
   adjustment (for example, the number of partialled-out regressors), and
   it is what Stata’s `partial()` sets internally.
 
-Neither option appears in the help file’s examples, so both
-demonstrations below are self-verifying identities on the Griliches
-data. First `sdofminus`, via the Frisch-Waugh-Lovell theorem.
-Residualize every variable on the year dummies (7 columns including the
-intercept), refit without an intercept, and tell
-[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md) that 7
-degrees of freedom were consumed. The shared coefficients, standard
-errors, and sigma then match the full regression to floating-point
-precision:
+Most of the time neither option needs to be set by hand. The built-in
+`partial =` argument — Stata’s `partial()` — removes named regressors
+inside [`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md) and
+sets `sdofminus` for you. On the Griliches equation, partialling out the
+year dummies leaves the remaining coefficients exactly where the full
+regression put them:
 
 ``` r
 
@@ -1144,53 +1202,62 @@ fit_full <- ivreg2(
   data = griliches, small = TRUE
 )
 
-# Partial the year dummies out of every variable by hand
-yd <- model.matrix(~ factor(year), data = griliches)
-resid_on_years <- function(v) lm.fit(yd, v)$residuals
-gril_fwl <- data.frame(lapply(
-  griliches[c("lw", "s", "expr", "tenure", "rns", "smsa",
-              "iq", "med", "kww", "age")],
-  resid_on_years
-))
-
-fit_fwl <- ivreg2(
-  lw ~ 0 + s + expr + tenure + rns + smsa | iq | med + kww + age,
-  data = gril_fwl, small = TRUE, sdofminus = 7
+fit_partial <- ivreg2(
+  lw ~ s + expr + tenure + rns + smsa + factor(year) | iq | med + kww + age,
+  data = griliches, small = TRUE, partial = "factor(year)"
 )
 
-shared <- names(coef(fit_fwl))
-max(abs(coef(fit_full)[shared] - coef(fit_fwl)[shared]))
-#> [1] 3.191891e-16
-max(abs(sqrt(diag(vcov(fit_full)))[shared] - sqrt(diag(vcov(fit_fwl)))[shared]))
-#> [1] 5.20417e-18
-c(sigma_full = fit_full$sigma, sigma_fwl = fit_fwl$sigma)
-#> sigma_full  sigma_fwl 
-#>  0.3266951  0.3266951
+shared <- c("s", "expr", "tenure", "rns", "smsa", "iq")
+all.equal(coef(fit_full)[shared], coef(fit_partial)[shared])
+#> [1] TRUE
 ```
 
-Without `sdofminus = 7` the coefficients would still match but the
-standard errors and sigma would not, because the refit would not know
-that 7 parameters were already spent on the year dummies. The built-in
-`partial = "factor(year)"` argument performs exactly this
-residualize-and-adjust sequence in one step; see
-[`vignette("time-series-gmm")`](https://restatr.com/ivreg2r/articles/time-series-gmm.md)
-for the partialling workflow.
-
-The `dofminus` twin is the fixed-effects recipe that `xtivreg2, fe`
-automates. Demean each variable by its group, adding back the grand mean
-so the intercept survives, and declare that the G - 1 absorbed group
-effects consumed degrees of freedom. Treating the seven Griliches survey
-years as the groups, the within fit reproduces the dummy-variable fit
-exactly — shared coefficients, standard errors, sigma, and residual
-degrees of freedom:
+The standard errors match too, because `partial =` set `sdofminus` to
+the number of partialled-out columns automatically; passing
+`nopartialsmall = TRUE` (Stata’s `nopartialsmall`) would suppress that
+small-sample adjustment:
 
 ``` r
 
-demean_gm <- function(v, g) v - ave(v, g) + mean(v)
-gril_within <- data.frame(lapply(
-  griliches[c("lw", "s", "expr", "tenure")],
-  demean_gm, g = griliches$year
-))
+all.equal(
+  tidy(fit_full)    |> filter(term %in% shared) |> pull(std.error),
+  tidy(fit_partial) |> filter(term %in% shared) |> pull(std.error)
+)
+#> [1] TRUE
+```
+
+You set `dofminus` and `sdofminus` by hand only when the data were
+partialled or demeaned *outside*
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md) — the
+situation a `xtivreg2, fe` user migrates into, having already
+within-transformed the panel before fitting. Then
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md) cannot see
+how many degrees of freedom were spent, so you declare them: `sdofminus`
+for data residualized on a set of controls, `dofminus` for the within
+(fixed-effects) transformation.
+
+The `dofminus` case is the recipe `xtivreg2, fe` automates. Demean each
+variable by its group and tell
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md) how many
+group effects were absorbed. Treating the seven Griliches survey years
+as the groups, subtract each year’s mean from every variable and add
+back the overall mean so the intercept survives — the within
+transformation that `xtivreg2, fe` performs — then declare that the G -
+1 absorbed year effects consumed degrees of freedom. The demeaned
+regression reproduces the dummy-variable fit exactly: shared
+coefficients, standard errors, sigma, and residual degrees of freedom.
+
+``` r
+
+gril_within <- griliches |>
+  group_by(year) |>
+  mutate(
+    lw     = lw     - mean(lw)     + mean(griliches$lw),
+    s      = s      - mean(s)      + mean(griliches$s),
+    expr   = expr   - mean(expr)   + mean(griliches$expr),
+    tenure = tenure - mean(tenure) + mean(griliches$tenure)
+  ) |>
+  ungroup()
 G <- length(unique(griliches$year))
 
 fit_lsdv <- ivreg2(lw ~ s + expr + tenure + factor(year),
@@ -1199,10 +1266,13 @@ fit_fe <- ivreg2(lw ~ s + expr + tenure, data = gril_within,
                  small = TRUE, dofminus = G - 1)
 
 slopes <- c("s", "expr", "tenure")
-max(abs(coef(fit_lsdv)[slopes] - coef(fit_fe)[slopes]))
-#> [1] 4.163336e-17
-max(abs(sqrt(diag(vcov(fit_lsdv)))[slopes] - sqrt(diag(vcov(fit_fe)))[slopes]))
-#> [1] 2.602085e-18
+all.equal(coef(fit_lsdv)[slopes], coef(fit_fe)[slopes])
+#> [1] TRUE
+all.equal(
+  tidy(fit_lsdv) |> filter(term %in% slopes) |> pull(std.error),
+  tidy(fit_fe)   |> filter(term %in% slopes) |> pull(std.error)
+)
+#> [1] TRUE
 c(sigma_lsdv = fit_lsdv$sigma, sigma_fe = fit_fe$sigma,
   df_lsdv = fit_lsdv$df.residual, df_fe = fit_fe$df.residual)
 #> sigma_lsdv   sigma_fe    df_lsdv      df_fe 
@@ -1335,10 +1405,8 @@ the migration section in
 [`vignette("introduction")`](https://restatr.com/ivreg2r/articles/introduction.md);
 for the full argument list, see
 [`?ivreg2`](https://restatr.com/ivreg2r/reference/ivreg2.md). Factor
-variables are handled through R’s formula interface: `factor(year)` in
-the Griliches specifications above plays the role of Stata’s `xi i.year`
-dummies, expanding to one dummy per non-reference level under treatment
-contrasts.
+variables are handled through R’s formula interface: `factor(year)`
+stands in for Stata’s `i.year` dummies, as glossed above.
 
 ## References
 

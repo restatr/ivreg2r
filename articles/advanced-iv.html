@@ -108,6 +108,7 @@ manual), and the Baltagi cigarette-demand panel
 (<code>cigar</code>).</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://restatr.com/ivreg2r/">ivreg2r</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">mroz</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">klein</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">griliches</span><span class="op">)</span></span>
@@ -130,7 +131,7 @@ affect wage offers through labor-supply channels — and the help file
 adopts them precisely because they make the instrument-testing machinery
 interesting.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mroz_work</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">mroz</span>, <span class="va">inlf</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">mroz_work</span> <span class="op">&lt;-</span> <span class="va">mroz</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">inlf</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">mroz_work</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 428</span></span></code></pre></div>
 <p>The baseline regresses log wages on experience and its square, with
@@ -308,9 +309,13 @@ Stillman (2007, p. 479):</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_fuller1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">kidslt6</span> <span class="op">+</span> <span class="va">kidsge6</span>,</span>
 <span>                      data <span class="op">=</span> <span class="va">mroz_work</span>, fuller <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>k <span class="op">=</span> <span class="va">fit_fuller1</span><span class="op">$</span><span class="va">kclass_value</span>, educ <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_fuller1</span><span class="op">)</span><span class="op">[</span><span class="st">"educ"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;          k       educ </span></span>
-<span><span class="co">#&gt; 0.99927193 0.09666366</span></span></code></pre></div>
+<span><span class="va">fit_fuller1</span><span class="op">$</span><span class="va">kclass_value</span>  <span class="co"># the k-class value, Stata's e(kclass)</span></span>
+<span><span class="co">#&gt; [1] 0.9992719</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_fuller1</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">==</span> <span class="st">"educ"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
+<span><span class="co">#&gt;   term  estimate std.error statistic p.value conf.low conf.high</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> educ    0.096<span style="text-decoration: underline;">7</span>    0.080<span style="text-decoration: underline;">5</span>      1.20   0.230  -<span style="color: #BB0000;">0.061</span><span style="color: #BB0000; text-decoration: underline;">1</span>     0.254</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="k-class-estimation">k-class estimation<a class="anchor" aria-label="anchor" href="#k-class-estimation"></a>
@@ -331,9 +336,14 @@ number of overidentifying restrictions. Rather than hand-counting
 <span><span class="va">k_nagar</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="va">L</span> <span class="op">-</span> <span class="va">K</span><span class="op">)</span> <span class="op">/</span> <span class="va">N</span></span>
 <span><span class="va">fit_nagar</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">kidslt6</span> <span class="op">+</span> <span class="va">kidsge6</span>,</span>
 <span>                    data <span class="op">=</span> <span class="va">mroz_work</span>, kclass <span class="op">=</span> <span class="va">k_nagar</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>L <span class="op">=</span> <span class="va">L</span>, K <span class="op">=</span> <span class="va">K</span>, k <span class="op">=</span> <span class="va">k_nagar</span>, educ <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unname.html" class="external-link">unname</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_nagar</span><span class="op">)</span><span class="op">[</span><span class="st">"educ"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;          L          K          k       educ </span></span>
-<span><span class="co">#&gt; 6.00000000 4.00000000 1.00467290 0.09436094</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>L <span class="op">=</span> <span class="va">L</span>, K <span class="op">=</span> <span class="va">K</span>, k <span class="op">=</span> <span class="va">k_nagar</span><span class="op">)</span></span>
+<span><span class="co">#&gt;        L        K        k </span></span>
+<span><span class="co">#&gt; 6.000000 4.000000 1.004673</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_nagar</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">==</span> <span class="st">"educ"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
+<span><span class="co">#&gt;   term  estimate std.error statistic p.value conf.low conf.high</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> educ    0.094<span style="text-decoration: underline;">4</span>    0.088<span style="text-decoration: underline;">4</span>      1.07   0.286  -<span style="color: #BB0000;">0.078</span><span style="color: #BB0000; text-decoration: underline;">9</span>     0.268</span></span></code></pre></div>
 <p>Both the Fuller and Nagar estimators tend to have better
 finite-sample behavior than 2SLS under weak instruments, though neither
 is robust to violations of the i.i.d. assumption (Baum, Schaffer &amp;
@@ -355,7 +365,7 @@ suite below:</p>
 <span>                    small <span class="op">=</span> <span class="cn">TRUE</span>, coviv <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_coviv</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_liml</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_coviv</span><span class="op">)</span>, <span class="va">term</span> <span class="op">==</span> <span class="st">"educ"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">term</span>, <span class="va">estimate</span>, <span class="va">std.error</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_coviv</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">==</span> <span class="st">"educ"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">term</span>, <span class="va">estimate</span>, <span class="va">std.error</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 3</span></span></span>
 <span><span class="co">#&gt;   term  estimate std.error</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
@@ -483,10 +493,22 @@ endogenous coefficients moving with the estimator:</p>
 <span>                       method <span class="op">=</span> <span class="st">"kclass"</span>, kclass <span class="op">=</span> <span class="fl">1.19</span><span class="op">)</span></span>
 <span><span class="va">klein_models</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"2SLS"</span> <span class="op">=</span> <span class="va">fit_k_2sls</span>, LIML <span class="op">=</span> <span class="va">fit_k_liml</span>,</span>
 <span>                     <span class="st">"Fuller(1)"</span> <span class="op">=</span> <span class="va">fit_k_fuller</span>, Nagar <span class="op">=</span> <span class="va">fit_k_nagar</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">klein_models</span>, \<span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">m</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"profits"</span>, <span class="st">"wagetot"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
-<span><span class="co">#&gt;           2SLS    LIML Fuller(1)   Nagar</span></span>
-<span><span class="co">#&gt; profits 0.0173 -0.2225   -0.1686 -0.0497</span></span>
-<span><span class="co">#&gt; wagetot 0.8102  0.8226    0.8201  0.8140</span></span></code></pre></div>
+<span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="st">"2SLS"</span> <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_k_2sls</span><span class="op">)</span>, LIML <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_k_liml</span><span class="op">)</span>,</span>
+<span>          <span class="st">"Fuller(1)"</span> <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_k_fuller</span><span class="op">)</span>, Nagar <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_k_nagar</span><span class="op">)</span>,</span>
+<span>          .id <span class="op">=</span> <span class="st">"estimator"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"profits"</span>, <span class="st">"wagetot"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">estimator</span>, <span class="va">term</span>, <span class="va">estimate</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 8 × 3</span></span></span>
+<span><span class="co">#&gt;   estimator term    estimate</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 2SLS      profits   0.017<span style="text-decoration: underline;">3</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 2SLS      wagetot   0.810 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> LIML      profits  -<span style="color: #BB0000;">0.223</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> LIML      wagetot   0.823 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> Fuller(1) profits  -<span style="color: #BB0000;">0.169</span> </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> Fuller(1) wagetot   0.820 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span> Nagar     profits  -<span style="color: #BB0000;">0.049</span><span style="color: #BB0000; text-decoration: underline;">7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">8</span> Nagar     wagetot   0.814</span></span></code></pre></div>
 <p>The estimators genuinely diverge here: the <code>profits</code>
 coefficient changes sign between 2SLS and LIML, and the wage-bill
 coefficient moves in the second decimal place — differences that are
@@ -508,11 +530,11 @@ tolerance rather than exactly:</p>
 <span><span class="va">fit_k_cue</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">klein_form</span>, data <span class="op">=</span> <span class="va">klein</span>, tvar <span class="op">=</span> <span class="st">"yr"</span>, method <span class="op">=</span> <span class="st">"cue"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_k_coviv</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_k_cue</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 7.415976e-07</span></span></code></pre></div>
-<p>On this tiny (N = 21) problem the cross-platform agreement is on the
-order of 1e-5; the residual gap is the optimizer’s endpoint, not a
-difference in the estimators. CUE generalizes LIML with COVIV to the
-non-i.i.d. case, where a closed-form eigenvalue solution no longer
-exists.</p>
+<p>On this tiny (N = 21) problem the two agree to optimizer tolerance:
+the small gap printed above is the optimizer’s endpoint, not a
+difference in the estimators, and its exact size depends on where the
+optimizer stops. CUE generalizes LIML with COVIV to the non-i.i.d. case,
+where a closed-form eigenvalue solution no longer exists.</p>
 </div>
 </div>
 <div class="section level2">
@@ -523,12 +545,17 @@ testing examples: a joint overidentification test, then a test of a
 subset of instruments (the help file’s Griliches example), then a test
 of a single regressor’s endogeneity, then the empty-endogenous form for
 an included regressor, and finally the LIML overidentification
-statistics. Every automatic test lives in <code>fit$diagnostics</code>,
-a named list; <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> additionally surfaces the headline
-tests (weak identification, underidentification, overidentification) as
-columns. The chunks below read each statistic from
-<code>fit$diagnostics</code>, dropping into <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> where
-a column is available and reads better.</p>
+statistics. Every one of these tests prints in <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>,
+and <code>diagnostics(fit)</code> returns them all as a tibble with one
+row per test under a stable <code>test</code> key, so pulling a
+statistic out for prose or a table is a one-line
+<code>filter(test == ...)</code> (see
+<code><a href="../articles/introduction.html">vignette("introduction")</a></code> for the accessor). The
+<code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> companion surfaces the headline tests (weak
+identification, underidentification, overidentification) as columns for
+model-comparison tables. The chunks below read each statistic from
+<code><a href="../reference/diagnostics.html">diagnostics()</a></code>, dropping into <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> where a
+column is available and reads better.</p>
 <div class="section level3">
 <h3 id="overidentification">Overidentification<a class="anchor" aria-label="anchor" href="#overidentification"></a>
 </h3>
@@ -553,16 +580,24 @@ difference-in-Sargan C-statistic (Hayashi, 2000). Stata’s help file
 demonstrates it on the Griliches (1976) wage equation, challenging the
 exogeneity of <code>age</code> and <code>mrt</code> (marital status)
 while maintaining <code>med</code> (mother’s education) and
-<code>kww</code> (a test score), estimated by two-step GMM:</p>
+<code>kww</code> (a test score), estimated by two-step GMM. The
+Griliches variables are <code>lw</code> (log wage), <code>s</code>
+(years of schooling), <code>expr</code> (labor-market experience),
+<code>tenure</code> (job tenure), <code>rns</code> (residence in the
+South), and <code>smsa</code> (urban residence);
+<code>factor(year)</code> expands to a set of year dummies, R’s spelling
+of Stata’s <code>i.year</code>:</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_orthog</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
 <span>  <span class="va">lw</span> <span class="op">~</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="va">rns</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span> <span class="op">|</span> <span class="va">iq</span> <span class="op">|</span></span>
 <span>    <span class="va">med</span> <span class="op">+</span> <span class="va">kww</span> <span class="op">+</span> <span class="va">age</span> <span class="op">+</span> <span class="va">mrt</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">griliches</span>, method <span class="op">=</span> <span class="st">"gmm2s"</span>, orthog <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"age"</span>, <span class="st">"mrt"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_orthog</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">orthog</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stat"</span>, <span class="st">"p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="co">#&gt;         stat            p </span></span>
-<span><span class="co">#&gt; 8.661882e+01 1.552253e-19</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_orthog</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"orthog"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
+<span><span class="co">#&gt;   test   test_name  statistic    df   df2  p_value tested_vars</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> orthog C (orthog)      86.6     2    <span style="color: #BB0000;">NA</span> 1.55<span style="color: #949494;">e</span><span style="color: #BB0000;">-19</span> age, mrt</span></span></code></pre></div>
 <p>The null is that <code>age</code> and <code>mrt</code> satisfy the
 exclusion restrictions given that the remaining instruments do. The
 C-statistic rejects emphatically, so the data are inconsistent with
@@ -583,16 +618,18 @@ reproduces Stata’s <code>endog(educ)</code> example:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_endog</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">kidslt6</span> <span class="op">+</span> <span class="va">kidsge6</span>,</span>
 <span>                    data <span class="op">=</span> <span class="va">mroz_work</span>, endog <span class="op">=</span> <span class="st">"educ"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_endog</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">endogeneity</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stat"</span>, <span class="st">"p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="co">#&gt;       stat          p </span></span>
-<span><span class="co">#&gt; 0.01914714 0.88994549</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_endog</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"endogeneity"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
+<span><span class="co">#&gt;   test        test_name   statistic    df   df2 p_value tested_vars</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> endogeneity Endogeneity    0.019<span style="text-decoration: underline;">1</span>     1    <span style="color: #BB0000;">NA</span>   0.890 educ</span></span></code></pre></div>
 <p>With a single endogenous regressor this coincides numerically with
 the endogeneity test that <code><a href="../reference/ivreg2.html">ivreg2()</a></code> already reports for the
 baseline, so <code>endog</code> earns its keep only with two or more
 endogenous regressors, where it can test a subset:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>automatic <span class="op">=</span> <span class="va">fit_2sls</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">endogeneity</span><span class="op">$</span><span class="va">stat</span>,</span>
-<span>  endog_arg <span class="op">=</span> <span class="va">fit_endog</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">endogeneity</span><span class="op">$</span><span class="va">stat</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>automatic <span class="op">=</span> <span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_2sls</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"endogeneity"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">statistic</span><span class="op">)</span>,</span>
+<span>  endog_arg <span class="op">=</span> <span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_endog</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"endogeneity"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">statistic</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;  automatic  endog_arg </span></span>
 <span><span class="co">#&gt; 0.01914714 0.01914714</span></span></code></pre></div>
 </div>
@@ -674,10 +711,13 @@ overidentifying restrictions hold. When <code>lambda</code> is close to
 1 the three overidentification tests — Sargan, AR LR, and AR linearized
 — agree closely:</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_liml</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">anderson_rubin_overid</span><span class="op">[</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lr_stat"</span>, <span class="st">"lr_p"</span>, <span class="st">"lin_stat"</span>, <span class="st">"lin_p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   lr_stat      lr_p  lin_stat     lin_p </span></span>
-<span><span class="co">#&gt; 0.7020291 0.7039735 0.7026052 0.7037708</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_liml</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"anderson_rubin_overid_lr"</span>, <span class="st">"anderson_rubin_overid_lin"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 7</span></span></span>
+<span><span class="co">#&gt;   test                      test_name  statistic    df   df2 p_value tested_vars</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                     <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> anderson_rubin_overid_lr  Anderson-…     0.702     2    <span style="color: #BB0000;">NA</span>   0.704 <span style="color: #BB0000;">NA</span>         </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> anderson_rubin_overid_lin Anderson-…     0.703     2    <span style="color: #BB0000;">NA</span>   0.704 <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -698,9 +738,11 @@ size even when instruments are weak. The S statistic is the value of the
 CUE objective with the exogenous regressors partialled out, and it is
 computed for every IV model:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_2sls</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">stock_wright</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stat"</span>, <span class="st">"p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      stat         p </span></span>
-<span><span class="co">#&gt; 1.8537059 0.6033182</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_2sls</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"stock_wright"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
+<span><span class="co">#&gt;   test         test_name         statistic    df   df2 p_value tested_vars</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> stock_wright Stock-Wright LM S      1.85     3    <span style="color: #BB0000;">NA</span>   0.603 <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="when-instruments-are-genuinely-weak">When instruments are genuinely weak<a class="anchor" aria-label="anchor" href="#when-instruments-are-genuinely-weak"></a>
@@ -713,8 +755,6 @@ heteroskedasticity-robust variance:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">weak_form</span> <span class="op">&lt;-</span> <span class="va">lw</span> <span class="op">~</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="va">rns</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span> <span class="op">|</span> <span class="va">iq</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">mrt</span></span>
 <span><span class="va">fit_weak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">weak_form</span>, data <span class="op">=</span> <span class="va">griliches</span>, vcov <span class="op">=</span> <span class="st">"robust"</span><span class="op">)</span></span>
-<span><span class="va">sy10</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/with.html" class="external-link">with</a></span><span class="op">(</span><span class="va">fit_weak</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">weak_id_sy</span>,</span>
-<span>             <span class="va">critical_value</span><span class="op">[</span><span class="va">threshold</span> <span class="op">==</span> <span class="st">"10%"</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_weak</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; 2SLS Estimation</span></span>
@@ -780,7 +820,11 @@ heteroskedasticity-robust variance:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Instrumented:          iq </span></span>
 <span><span class="co">#&gt; Included instruments:  s, expr, tenure, rns, smsa, factor(year)67, factor(year)68, factor(year)69, factor(year)70, factor(year)71, factor(year)73 </span></span>
-<span><span class="co">#&gt; Excluded instruments:  age, mrt</span></span></code></pre></div>
+<span><span class="co">#&gt; Excluded instruments:  age, mrt</span></span>
+<span></span>
+<span><span class="va">sy10</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_weak</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"sy_iv_size_10"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">statistic</span><span class="op">)</span></span>
+<span><span class="va">sy10</span></span>
+<span><span class="co">#&gt; [1] 19.93</span></span></code></pre></div>
 <p>Because the variance is robust, the relevant weak-identification
 statistic is the Kleibergen-Paap rk Wald F (2.93), far below the
 Stock-Yogo 10% maximal-size critical value of 19.93. The Stock-Yogo
@@ -809,9 +853,11 @@ this weak specification with <code>redundant</code>:</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_redund</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">weak_form</span>, data <span class="op">=</span> <span class="va">griliches</span>, vcov <span class="op">=</span> <span class="st">"robust"</span>,</span>
 <span>                     redundant <span class="op">=</span> <span class="st">"mrt"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_redund</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">redundancy</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"stat"</span>, <span class="st">"p"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="co">#&gt;        stat           p </span></span>
-<span><span class="co">#&gt; 0.001759138 0.966544867</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_redund</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"redundancy"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
+<span><span class="co">#&gt;   test       test_name            statistic    df   df2 p_value tested_vars</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> redundancy Redundancy test (LM)   0.001<span style="text-decoration: underline;">76</span>     1    <span style="color: #BB0000;">NA</span>   0.967 mrt</span></span></code></pre></div>
 <p>The LM statistic is essentially zero (p = 0.97), the published
 result: <code>mrt</code> provides no useful information for identifying
 the coefficient on <code>iq</code>, so identification here rests on
@@ -830,14 +876,17 @@ coefficients to their OLS values; fixing the exogenous coefficients at
 OLS is equivalent to partialling them out, so the objective value at
 that point is the S statistic for the joint null:</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">ols_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span>, data <span class="op">=</span> <span class="va">mroz_work</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">ols_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span>, data <span class="op">=</span> <span class="va">mroz_work</span><span class="op">)</span></span>
 <span><span class="va">b0</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>educ <span class="op">=</span> <span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">ols_fit</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">fit_b0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
 <span>  <span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">kidslt6</span> <span class="op">+</span> <span class="va">kidsge6</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">mroz_work</span>, vcov <span class="op">=</span> <span class="st">"robust"</span>, b0 <span class="op">=</span> <span class="va">b0</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">fit_b0</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">overid</span><span class="op">$</span><span class="va">stat</span>  <span class="co"># the objective value, Stata's e(j)</span></span>
-<span><span class="co">#&gt; [1] 1.661957</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_b0</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"overid"</span><span class="op">)</span>  <span class="co"># the objective value, Stata's e(j)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
+<span><span class="co">#&gt;   test   test_name statistic    df   df2 p_value tested_vars</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid Hansen J       1.66     2    <span style="color: #BB0000;">NA</span>   0.436 <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
 <p>The identity is easy to confirm against the S statistic that the
 ordinary robust fit reports automatically:</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
@@ -845,20 +894,23 @@ ordinary robust fit reports automatically:</p>
 <span>  <span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">kidslt6</span> <span class="op">+</span> <span class="va">kidsge6</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">mroz_work</span>, vcov <span class="op">=</span> <span class="st">"robust"</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
-<span>  <span class="va">fit_b0</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">overid</span><span class="op">$</span><span class="va">stat</span>,</span>
-<span>  <span class="va">fit_reg</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">stock_wright</span><span class="op">$</span><span class="va">stat</span></span>
-<span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>b0_objective   <span class="op">=</span> <span class="va">fit_b0</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">overid</span><span class="op">$</span><span class="va">stat</span>,</span>
-<span>  stock_wright_S <span class="op">=</span> <span class="va">fit_reg</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">stock_wright</span><span class="op">$</span><span class="va">stat</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   b0_objective stock_wright_S </span></span>
-<span><span class="co">#&gt;       1.661957       1.661957</span></span></code></pre></div>
-<p>One caution: the p-value stored beside the raw objective in
-<code>fit_b0$diagnostics$overid$p</code> is calibrated against
-<code>L - K</code> overidentification degrees of freedom, which is the
-wrong reference distribution for this use. Display the raw objective, as
-Stata’s <code>di e(j)</code> does, and take the S-statistic p-value
-(0.6454 here, on L1 = 3 degrees of freedom) from the regular fit.</p>
+<span><span class="va">b0_objective</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_b0</span><span class="op">)</span>  <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"overid"</span><span class="op">)</span>       <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">statistic</span><span class="op">)</span></span>
+<span><span class="va">stock_wright_S</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_reg</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"stock_wright"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">statistic</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">b0_objective</span>, <span class="va">stock_wright_S</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_reg</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"stock_wright"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
+<span><span class="co">#&gt;   test         test_name         statistic    df   df2 p_value tested_vars</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> stock_wright Stock-Wright LM S      1.66     3    <span style="color: #BB0000;">NA</span>   0.645 <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
+<p>One caution: the p-value reported beside the raw objective — the
+<code>p_value</code> on the <code>overid</code> row — is calibrated
+against <code>L - K</code> overidentification degrees of freedom, which
+is the wrong reference distribution for this use. Display the raw
+objective, as Stata’s <code>di e(j)</code> does, and take the
+S-statistic p-value (0.6454 here, on L1 = 3 degrees of freedom) from the
+regular fit.</p>
 </div>
 <div class="section level3">
 <h3 id="what-the-package-does-and-does-not-offer">What the package does and does not offer<a class="anchor" aria-label="anchor" href="#what-the-package-does-and-does-not-offer"></a>
@@ -908,7 +960,11 @@ both.</p>
 <h3 id="one-way-versus-two-way-clustering">One-way versus two-way clustering<a class="anchor" aria-label="anchor" href="#one-way-versus-two-way-clustering"></a>
 </h3>
 <p>Compare one-way clustering by person with two-way clustering by
-person and interview year, the help file’s own paired example. Fitting
+person and interview year, the help file’s own paired example. Both fits
+below are ordinary least squares with no instruments — the formula has
+no <code>|</code> groups — and the <code>clusters</code> argument
+behaves identically once the formula gains endogenous and
+excluded-instrument parts, as the IV example that follows shows. Fitting
 on the full data frame restricts to the complete cases the formula
 needs, so no manual subsetting is required:</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
@@ -924,19 +980,20 @@ needs, so no manual subsetting is required:</p>
 <p>Of the 28,534 person-year rows, 28,099 have complete data and enter
 both fits. Compare the standard errors:</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">se_comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  term <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_1way</span><span class="op">)</span><span class="op">)</span>,</span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  term    <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_1way</span><span class="op">)</span><span class="op">$</span><span class="va">term</span>,</span>
 <span>  se_1way <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_1way</span><span class="op">)</span><span class="op">$</span><span class="va">std.error</span>,</span>
 <span>  se_2way <span class="op">=</span> <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_2way</span><span class="op">)</span><span class="op">$</span><span class="va">std.error</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">se_comparison</span><span class="op">$</span><span class="va">ratio</span> <span class="op">&lt;-</span> <span class="va">se_comparison</span><span class="op">$</span><span class="va">se_2way</span> <span class="op">/</span> <span class="va">se_comparison</span><span class="op">$</span><span class="va">se_1way</span></span>
-<span><span class="va">se_comparison</span></span>
-<span><span class="co">#&gt;          term      se_1way     se_2way    ratio</span></span>
-<span><span class="co">#&gt; 1 (Intercept) 0.0337636175 0.043107155 1.276734</span></span>
-<span><span class="co">#&gt; 2       grade 0.0021612566 0.002654424 1.228185</span></span>
-<span><span class="co">#&gt; 3         age 0.0009445326 0.001644370 1.740936</span></span>
-<span><span class="co">#&gt; 4     ttl_exp 0.0018369910 0.002677937 1.457785</span></span>
-<span><span class="co">#&gt; 5      tenure 0.0016316256 0.003051750 1.870374</span></span></code></pre></div>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>ratio <span class="op">=</span> <span class="va">se_2way</span> <span class="op">/</span> <span class="va">se_1way</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 4</span></span></span>
+<span><span class="co">#&gt;   term         se_1way se_2way ratio</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> (Intercept) 0.033<span style="text-decoration: underline;">8</span>   0.043<span style="text-decoration: underline;">1</span>   1.28</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> grade       0.002<span style="text-decoration: underline;">16</span>  0.002<span style="text-decoration: underline;">65</span>  1.23</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> age         0.000<span style="text-decoration: underline;">945</span> 0.001<span style="text-decoration: underline;">64</span>  1.74</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> ttl_exp     0.001<span style="text-decoration: underline;">84</span>  0.002<span style="text-decoration: underline;">68</span>  1.46</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> tenure      0.001<span style="text-decoration: underline;">63</span>  0.003<span style="text-decoration: underline;">05</span>  1.87</span></span></code></pre></div>
 <p>Two-way clustering uses the Cameron, Gelbach &amp; Miller (2011)
 decomposition
 <code>V_twoway = V_cluster1 + V_cluster2 - V_intersection</code>. This
@@ -957,12 +1014,11 @@ dimension adds nothing.</p>
 <div class="section level3">
 <h3 id="two-way-clustering-with-instrumental-variables">Two-way clustering with instrumental variables<a class="anchor" aria-label="anchor" href="#two-way-clustering-with-instrumental-variables"></a>
 </h3>
-<p>The help file’s two-way example is estimated by ordinary least
-squares, but two-way clustering composes with every estimator, so we
-pair it with 2SLS on a panel demand equation. The Baltagi
-cigarette-demand data (<code>data(cigar)</code>) are an annual panel of
-46 U.S. states over 1963–1992, assembled by Baltagi and Levin (1992) and
-revisited by Baltagi, Griffin and Xiong (2000).</p>
+<p>Two-way clustering composes with every estimator, so we pair it with
+2SLS on a panel demand equation. The Baltagi cigarette-demand data
+(<code>data(cigar)</code>) are an annual panel of 46 U.S. states over
+1963–1992, assembled by Baltagi and Levin (1992) and revisited by
+Baltagi, Griffin and Xiong (2000).</p>
 <p>The specification regresses log per-capita cigarette sales on the log
 real price of cigarettes, with log real per-capita disposable income as
 an exogenous control. Price is plausibly endogenous, because state
@@ -974,12 +1030,13 @@ within-state serial correlation and arbitrary within-year correlation
 across states.</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">cigar</span><span class="op">)</span></span>
-<span><span class="va">cigar</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/transform.html" class="external-link">transform</a></span><span class="op">(</span><span class="va">cigar</span>,</span>
-<span>  lsales  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">sales</span><span class="op">)</span>,</span>
-<span>  lrprice <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">price</span> <span class="op">/</span> <span class="va">cpi</span><span class="op">)</span>,</span>
-<span>  lrndi   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ndi</span> <span class="op">/</span> <span class="va">cpi</span><span class="op">)</span>,</span>
-<span>  lrpimin <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">pimin</span> <span class="op">/</span> <span class="va">cpi</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">cigar</span> <span class="op">&lt;-</span> <span class="va">cigar</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    lsales  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">sales</span><span class="op">)</span>,</span>
+<span>    lrprice <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">price</span> <span class="op">/</span> <span class="va">cpi</span><span class="op">)</span>,</span>
+<span>    lrndi   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">ndi</span> <span class="op">/</span> <span class="va">cpi</span><span class="op">)</span>,</span>
+<span>    lrpimin <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">pimin</span> <span class="op">/</span> <span class="va">cpi</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_iv_2way</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
 <span>  <span class="va">lsales</span> <span class="op">~</span> <span class="va">lrndi</span> <span class="op">|</span> <span class="va">lrprice</span> <span class="op">|</span> <span class="va">lrpimin</span> <span class="op">+</span> <span class="fu"><a href="../reference/ts-operators.html">l</a></span><span class="op">(</span><span class="va">lrprice</span>, <span class="fl">1</span><span class="op">)</span>,</span>
@@ -1073,7 +1130,10 @@ bypassing the first stage.</p>
 reduced form alongside the structural estimates:</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Same robust fit as fit_reg above, re-estimated with the reduced form stored</span></span>
-<span><span class="va">fit_rf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">fit_reg</span>, reduced_form <span class="op">=</span> <span class="st">"rf"</span><span class="op">)</span></span>
+<span><span class="va">fit_rf</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
+<span>  <span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">|</span> <span class="va">age</span> <span class="op">+</span> <span class="va">kidslt6</span> <span class="op">+</span> <span class="va">kidsge6</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">mroz_work</span>, vcov <span class="op">=</span> <span class="st">"robust"</span>, reduced_form <span class="op">=</span> <span class="st">"rf"</span></span>
+<span><span class="op">)</span></span>
 <span><span class="va">fit_rf</span><span class="op">$</span><span class="va">reduced_form</span><span class="op">$</span><span class="va">coefficients</span></span>
 <span><span class="co">#&gt;   (Intercept)         exper       expersq           age       kidslt6 </span></span>
 <span><span class="co">#&gt;  0.9940565569  0.0452258622 -0.0009716342 -0.0027608640  0.0175153014 </span></span>
@@ -1084,10 +1144,11 @@ the excluded instruments <em>is</em> the Anderson-Rubin F. The AR test
 is precisely this reduced-form F-test, which is why it stays valid under
 weak instruments, and the identity holds exactly:</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">fit_rf</span><span class="op">$</span><span class="va">reduced_form</span><span class="op">$</span><span class="va">f_stat</span>,</span>
-<span>                           <span class="va">fit_rf</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">anderson_rubin</span><span class="op">$</span><span class="va">f_stat</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rf_F <span class="op">=</span> <span class="va">fit_rf</span><span class="op">$</span><span class="va">reduced_form</span><span class="op">$</span><span class="va">f_stat</span>,</span>
-<span>  ar_F <span class="op">=</span> <span class="va">fit_rf</span><span class="op">$</span><span class="va">diagnostics</span><span class="op">$</span><span class="va">anderson_rubin</span><span class="op">$</span><span class="va">f_stat</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">rf_F</span> <span class="op">&lt;-</span> <span class="va">fit_rf</span><span class="op">$</span><span class="va">reduced_form</span><span class="op">$</span><span class="va">f_stat</span></span>
+<span><span class="va">ar_F</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_rf</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"anderson_rubin_f"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">statistic</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">rf_F</span>, <span class="va">ar_F</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rf_F <span class="op">=</span> <span class="va">rf_F</span>, ar_F <span class="op">=</span> <span class="va">ar_F</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      rf_F      ar_F </span></span>
 <span><span class="co">#&gt; 0.5795624 0.5795624</span></span></code></pre></div>
 </div>
@@ -1136,62 +1197,66 @@ the small-sample adjustment (for example, the number of partialled-out
 regressors), and it is what Stata’s <code>partial()</code> sets
 internally.</li>
 </ul>
-<p>Neither option appears in the help file’s examples, so both
-demonstrations below are self-verifying identities on the Griliches
-data. First <code>sdofminus</code>, via the Frisch-Waugh-Lovell theorem.
-Residualize every variable on the year dummies (7 columns including the
-intercept), refit without an intercept, and tell <code><a href="../reference/ivreg2.html">ivreg2()</a></code>
-that 7 degrees of freedom were consumed. The shared coefficients,
-standard errors, and sigma then match the full regression to
-floating-point precision:</p>
+<p>Most of the time neither option needs to be set by hand. The built-in
+<code>partial =</code> argument — Stata’s <code>partial()</code> —
+removes named regressors inside <code><a href="../reference/ivreg2.html">ivreg2()</a></code> and sets
+<code>sdofminus</code> for you. On the Griliches equation, partialling
+out the year dummies leaves the remaining coefficients exactly where the
+full regression put them:</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
 <span>  <span class="va">lw</span> <span class="op">~</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="va">rns</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span> <span class="op">|</span> <span class="va">iq</span> <span class="op">|</span> <span class="va">med</span> <span class="op">+</span> <span class="va">kww</span> <span class="op">+</span> <span class="va">age</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">griliches</span>, small <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Partial the year dummies out of every variable by hand</span></span>
-<span><span class="va">yd</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">griliches</span><span class="op">)</span></span>
-<span><span class="va">resid_on_years</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">v</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/stats/lmfit.html" class="external-link">lm.fit</a></span><span class="op">(</span><span class="va">yd</span>, <span class="va">v</span><span class="op">)</span><span class="op">$</span><span class="va">residuals</span></span>
-<span><span class="va">gril_fwl</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span></span>
-<span>  <span class="va">griliches</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lw"</span>, <span class="st">"s"</span>, <span class="st">"expr"</span>, <span class="st">"tenure"</span>, <span class="st">"rns"</span>, <span class="st">"smsa"</span>,</span>
-<span>              <span class="st">"iq"</span>, <span class="st">"med"</span>, <span class="st">"kww"</span>, <span class="st">"age"</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>  <span class="va">resid_on_years</span></span>
-<span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fit_fwl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
-<span>  <span class="va">lw</span> <span class="op">~</span> <span class="fl">0</span> <span class="op">+</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="va">rns</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">|</span> <span class="va">iq</span> <span class="op">|</span> <span class="va">med</span> <span class="op">+</span> <span class="va">kww</span> <span class="op">+</span> <span class="va">age</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">gril_fwl</span>, small <span class="op">=</span> <span class="cn">TRUE</span>, sdofminus <span class="op">=</span> <span class="fl">7</span></span>
+<span><span class="va">fit_partial</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span></span>
+<span>  <span class="va">lw</span> <span class="op">~</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="va">rns</span> <span class="op">+</span> <span class="va">smsa</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span> <span class="op">|</span> <span class="va">iq</span> <span class="op">|</span> <span class="va">med</span> <span class="op">+</span> <span class="va">kww</span> <span class="op">+</span> <span class="va">age</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">griliches</span>, small <span class="op">=</span> <span class="cn">TRUE</span>, partial <span class="op">=</span> <span class="st">"factor(year)"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">shared</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_fwl</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_full</span><span class="op">)</span><span class="op">[</span><span class="va">shared</span><span class="op">]</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_fwl</span><span class="op">)</span><span class="op">[</span><span class="va">shared</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 3.191891e-16</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">fit_full</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="va">shared</span><span class="op">]</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">fit_fwl</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="va">shared</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 5.20417e-18</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma_full <span class="op">=</span> <span class="va">fit_full</span><span class="op">$</span><span class="va">sigma</span>, sigma_fwl <span class="op">=</span> <span class="va">fit_fwl</span><span class="op">$</span><span class="va">sigma</span><span class="op">)</span></span>
-<span><span class="co">#&gt; sigma_full  sigma_fwl </span></span>
-<span><span class="co">#&gt;  0.3266951  0.3266951</span></span></code></pre></div>
-<p>Without <code>sdofminus = 7</code> the coefficients would still match
-but the standard errors and sigma would not, because the refit would not
-know that 7 parameters were already spent on the year dummies. The
-built-in <code>partial = "factor(year)"</code> argument performs exactly
-this residualize-and-adjust sequence in one step; see
-<code><a href="../articles/time-series-gmm.html">vignette("time-series-gmm")</a></code> for the partialling
-workflow.</p>
-<p>The <code>dofminus</code> twin is the fixed-effects recipe that
-<code>xtivreg2, fe</code> automates. Demean each variable by its group,
-adding back the grand mean so the intercept survives, and declare that
-the G - 1 absorbed group effects consumed degrees of freedom. Treating
-the seven Griliches survey years as the groups, the within fit
-reproduces the dummy-variable fit exactly — shared coefficients,
-standard errors, sigma, and residual degrees of freedom:</p>
+<span><span class="va">shared</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"s"</span>, <span class="st">"expr"</span>, <span class="st">"tenure"</span>, <span class="st">"rns"</span>, <span class="st">"smsa"</span>, <span class="st">"iq"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_full</span><span class="op">)</span><span class="op">[</span><span class="va">shared</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_partial</span><span class="op">)</span><span class="op">[</span><span class="va">shared</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>The standard errors match too, because <code>partial =</code> set
+<code>sdofminus</code> to the number of partialled-out columns
+automatically; passing <code>nopartialsmall = TRUE</code> (Stata’s
+<code>nopartialsmall</code>) would suppress that small-sample
+adjustment:</p>
 <div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">demean_gm</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">v</span>, <span class="va">g</span><span class="op">)</span> <span class="va">v</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/ave.html" class="external-link">ave</a></span><span class="op">(</span><span class="va">v</span>, <span class="va">g</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">v</span><span class="op">)</span></span>
-<span><span class="va">gril_within</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span></span>
-<span>  <span class="va">griliches</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lw"</span>, <span class="st">"s"</span>, <span class="st">"expr"</span>, <span class="st">"tenure"</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>  <span class="va">demean_gm</span>, g <span class="op">=</span> <span class="va">griliches</span><span class="op">$</span><span class="va">year</span></span>
-<span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_full</span><span class="op">)</span>    <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">shared</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">std.error</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_partial</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">shared</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">std.error</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>You set <code>dofminus</code> and <code>sdofminus</code> by hand only
+when the data were partialled or demeaned <em>outside</em>
+<code><a href="../reference/ivreg2.html">ivreg2()</a></code> — the situation a <code>xtivreg2, fe</code> user
+migrates into, having already within-transformed the panel before
+fitting. Then <code><a href="../reference/ivreg2.html">ivreg2()</a></code> cannot see how many degrees of
+freedom were spent, so you declare them: <code>sdofminus</code> for data
+residualized on a set of controls, <code>dofminus</code> for the within
+(fixed-effects) transformation.</p>
+<p>The <code>dofminus</code> case is the recipe
+<code>xtivreg2, fe</code> automates. Demean each variable by its group
+and tell <code><a href="../reference/ivreg2.html">ivreg2()</a></code> how many group effects were absorbed.
+Treating the seven Griliches survey years as the groups, subtract each
+year’s mean from every variable and add back the overall mean so the
+intercept survives — the within transformation that
+<code>xtivreg2, fe</code> performs — then declare that the G - 1
+absorbed year effects consumed degrees of freedom. The demeaned
+regression reproduces the dummy-variable fit exactly: shared
+coefficients, standard errors, sigma, and residual degrees of
+freedom.</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gril_within</span> <span class="op">&lt;-</span> <span class="va">griliches</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    lw     <span class="op">=</span> <span class="va">lw</span>     <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">lw</span><span class="op">)</span>     <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">griliches</span><span class="op">$</span><span class="va">lw</span><span class="op">)</span>,</span>
+<span>    s      <span class="op">=</span> <span class="va">s</span>      <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span>      <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">griliches</span><span class="op">$</span><span class="va">s</span><span class="op">)</span>,</span>
+<span>    expr   <span class="op">=</span> <span class="va">expr</span>   <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">expr</span><span class="op">)</span>   <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">griliches</span><span class="op">$</span><span class="va">expr</span><span class="op">)</span>,</span>
+<span>    tenure <span class="op">=</span> <span class="va">tenure</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">tenure</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">griliches</span><span class="op">$</span><span class="va">tenure</span><span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">griliches</span><span class="op">$</span><span class="va">year</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_lsdv</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lw</span> <span class="op">~</span> <span class="va">s</span> <span class="op">+</span> <span class="va">expr</span> <span class="op">+</span> <span class="va">tenure</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">year</span><span class="op">)</span>,</span>
@@ -1200,10 +1265,13 @@ standard errors, sigma, and residual degrees of freedom:</p>
 <span>                 small <span class="op">=</span> <span class="cn">TRUE</span>, dofminus <span class="op">=</span> <span class="va">G</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">slopes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"s"</span>, <span class="st">"expr"</span>, <span class="st">"tenure"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_lsdv</span><span class="op">)</span><span class="op">[</span><span class="va">slopes</span><span class="op">]</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_fe</span><span class="op">)</span><span class="op">[</span><span class="va">slopes</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 4.163336e-17</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">fit_lsdv</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="va">slopes</span><span class="op">]</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">fit_fe</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="va">slopes</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 2.602085e-18</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_lsdv</span><span class="op">)</span><span class="op">[</span><span class="va">slopes</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_fe</span><span class="op">)</span><span class="op">[</span><span class="va">slopes</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_lsdv</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">slopes</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">std.error</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit_fe</span><span class="op">)</span>   <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">slopes</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/pull.html" class="external-link">pull</a></span><span class="op">(</span><span class="va">std.error</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>sigma_lsdv <span class="op">=</span> <span class="va">fit_lsdv</span><span class="op">$</span><span class="va">sigma</span>, sigma_fe <span class="op">=</span> <span class="va">fit_fe</span><span class="op">$</span><span class="va">sigma</span>,</span>
 <span>  df_lsdv <span class="op">=</span> <span class="va">fit_lsdv</span><span class="op">$</span><span class="va">df.residual</span>, df_fe <span class="op">=</span> <span class="va">fit_fe</span><span class="op">$</span><span class="va">df.residual</span><span class="op">)</span></span>
 <span><span class="co">#&gt; sigma_lsdv   sigma_fe    df_lsdv      df_fe </span></span>
@@ -1237,12 +1305,12 @@ package produces publication-quality regression tables from any model
 with <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> methods, and it is
 where the estimator-comparison workflow belongs. <code>ivreg2r</code>
 objects work with it directly.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://modelsummary.com" class="external-link">modelsummary</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="a-single-model">A single model<a class="anchor" aria-label="anchor" href="#a-single-model"></a>
 </h3>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://modelsummary.com/man/modelsummary.html" class="external-link">modelsummary</a></span><span class="op">(</span><span class="va">fit_2sls</span>, output <span class="op">=</span> <span class="st">"markdown"</span><span class="op">)</span></span></code></pre></div>
 <table style="width:51%;" class="table">
 <colgroup>
@@ -1332,7 +1400,7 @@ objects work with it directly.</p>
 <p>The natural side-by-side comparison is the Klein suite, where the
 estimator choice visibly matters — reusing the <code>klein_models</code>
 list built above:</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://modelsummary.com/man/modelsummary.html" class="external-link">modelsummary</a></span><span class="op">(</span><span class="va">klein_models</span>, output <span class="op">=</span> <span class="st">"markdown"</span>,</span>
 <span>             gof_map <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nobs"</span>, <span class="st">"r.squared"</span>, <span class="st">"adj.r.squared"</span>, <span class="st">"sigma"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <table style="width:81%;" class="table">
@@ -1451,7 +1519,7 @@ consistent on the multiplicative scale. This transformation is
 <code>tidy(fit, exponentiate = TRUE)</code> follows the broom convention
 of exponentiating estimates and confidence bounds while leaving
 <code>std.error</code> on the log scale.</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://modelsummary.com/man/modelsummary.html" class="external-link">modelsummary</a></span><span class="op">(</span><span class="va">fit_2sls</span>, output <span class="op">=</span> <span class="st">"markdown"</span>, exponentiate <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <table style="width:51%;" class="table">
 <colgroup>
@@ -1539,7 +1607,7 @@ of exponentiating estimates and confidence bounds while leaving
 <h3 id="customizing-output">Customizing output<a class="anchor" aria-label="anchor" href="#customizing-output"></a>
 </h3>
 <p>Rename coefficients and select goodness-of-fit statistics:</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://modelsummary.com/man/modelsummary.html" class="external-link">modelsummary</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"2SLS"</span> <span class="op">=</span> <span class="va">fit_2sls</span>, <span class="st">"LIML"</span> <span class="op">=</span> <span class="va">fit_liml</span><span class="op">)</span>,</span>
 <span>  output <span class="op">=</span> <span class="st">"markdown"</span>,</span>
@@ -1631,10 +1699,8 @@ see <code><a href="https://modelsummary.com/man/modelsummary.html" class="extern
 <p>For a Stata-to-R translation table covering the most common options,
 see the migration section in <code><a href="../articles/introduction.html">vignette("introduction")</a></code>; for
 the full argument list, see <code><a href="../reference/ivreg2.html">?ivreg2</a></code>. Factor variables are
-handled through R’s formula interface: <code>factor(year)</code> in the
-Griliches specifications above plays the role of Stata’s
-<code>xi i.year</code> dummies, expanding to one dummy per non-reference
-level under treatment contrasts.</p>
+handled through R’s formula interface: <code>factor(year)</code> stands
+in for Stata’s <code>i.year</code> dummies, as glossed above.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

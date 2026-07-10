@@ -51,6 +51,7 @@ model frame returns pre-partialling matrices.
 Other ivreg2 methods:
 [`coef.ivreg2()`](https://restatr.com/ivreg2r/reference/coef.ivreg2.md),
 [`confint.ivreg2()`](https://restatr.com/ivreg2r/reference/confint.ivreg2.md),
+[`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md),
 [`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md),
 [`fitted.ivreg2()`](https://restatr.com/ivreg2r/reference/fitted.ivreg2.md),
 [`formula.ivreg2()`](https://restatr.com/ivreg2r/reference/formula.ivreg2.md),

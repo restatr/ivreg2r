@@ -20,7 +20,12 @@ and GMM estimation with automatic diagnostics, inspired by Stata’s
   [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
   [`glance()`](https://generics.r-lib.org/reference/glance.html), and
   [`augment()`](https://generics.r-lib.org/reference/augment.html)
-  methods.
+  methods, plus
+  [`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md)
+  and
+  [`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md)
+  accessors that return the specification tests and first-stage results
+  as tidy objects.
 - Bundled datasets used throughout the help-file examples and vignettes:
   `card`, `mroz`, `wagepan`, `griliches`, `klein`, `grunfeld`, `abdata`,
   `nlswork`, `phillips`, `stockwatson`, and `cigar`.

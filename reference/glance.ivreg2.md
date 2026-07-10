@@ -69,6 +69,11 @@ Kleibergen-Paap F).
 Set `diagnostics = FALSE` for a compact goodness-of-fit summary without
 the IV test columns.
 
+For the full set of computed tests — including Stock-Yogo critical
+values, Anderson-Rubin, Stock-Wright, endogeneity, orthogonality, and
+redundancy — beyond these six headline columns, see
+[`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md).
+
 ## See also
 
 [`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md)

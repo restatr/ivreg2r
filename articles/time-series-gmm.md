@@ -20,6 +20,7 @@ Each dataset is introduced where it is first used.
 ``` r
 
 library(ivreg2r)
+library(dplyr)
 data(phillips)
 data(stockwatson)
 data(griliches)
@@ -63,25 +64,29 @@ fit_ac  <- ivreg2(f_ph, data = phillips, vcov = "AC",
                   kernel = "bartlett", bw = 3, tvar = "year", small = TRUE)
 fit_hac <- ivreg2(f_ph, data = phillips, vcov = "robust",
                   kernel = "bartlett", bw = 3, tvar = "year", small = TRUE)
-round(cbind(
-  estimate = coef(fit_iid),
-  se_iid   = sqrt(diag(vcov(fit_iid))),
-  se_AC    = sqrt(diag(vcov(fit_ac))),
-  se_HAC   = sqrt(diag(vcov(fit_hac)))
-), 4)
-#>             estimate se_iid  se_AC se_HAC
-#> (Intercept)   3.0306 1.3768 1.2493 1.3895
-#> unem         -0.5426 0.2302 0.2098 0.2215
+bind_rows(iid = tidy(fit_iid), AC = tidy(fit_ac), HAC = tidy(fit_hac),
+          .id = "vce") |>
+  select(vce, term, estimate, std.error)
+#> # A tibble: 6 × 4
+#>   vce   term        estimate std.error
+#>   <chr> <chr>          <dbl>     <dbl>
+#> 1 iid   (Intercept)    3.03      1.38 
+#> 2 iid   unem          -0.543     0.230
+#> 3 AC    (Intercept)    3.03      1.25 
+#> 4 AC    unem          -0.543     0.210
+#> 5 HAC   (Intercept)    3.03      1.39 
+#> 6 HAC   unem          -0.543     0.221
 ```
 
-The coefficients are identical across the three fits (the variance
-estimator does not affect the point estimates), while the standard error
-on `unem` shifts as the error assumptions change. The HAC fit is the
-specification from Stata’s `ivreg2` help file, run on the full N = 48
-sample. The Bartlett kernel applies linearly declining weights to
-autocovariances up to lag `bw - 1`; combined with `vcov = "robust"` this
-is the Newey-West (1987) HAC estimator, and the help file pairs it with
-the equivalent `newey cinf unem, lag(2)`.
+The estimate column repeats each coefficient across the three `vce`
+rows: the point estimates are identical, because the variance estimator
+does not affect them, while the standard error on `unem` shifts as the
+error assumptions change. The HAC fit is the specification from Stata’s
+`ivreg2` help file, run on the full N = 48 sample. The Bartlett kernel
+applies linearly declining weights to autocovariances up to lag
+`bw - 1`; combined with `vcov = "robust"` this is the Newey-West (1987)
+HAC estimator, and the help file pairs it with the equivalent
+`newey cinf unem, lag(2)`.
 
 ### Choosing a kernel
 
@@ -122,7 +127,10 @@ fit_auto$bw
 
 Kernel-based standard errors work with every estimation method.
 Instrumenting unemployment with its own first three lags gives an
-overidentified model with two overidentifying restrictions:
+overidentified model with two overidentifying restrictions. The
+formula’s first part is `~ 1`, which means no exogenous regressors
+beyond the constant, so the whole specification is Stata’s
+`ivreg2 cinf (unem = L.unem L2.unem L3.unem), ...`:
 
 ``` r
 
@@ -192,9 +200,12 @@ summary(fit_iv_hac)
 The diagnostics adapt automatically to the kernel-based variance: the
 identification tests are Kleibergen-Paap rk statistics and the
 overidentification test is a kernel-based Hansen J, here 7.535 on 2
-degrees of freedom (p = 0.023), so the lagged instruments are not
-rejected. The Stock-Yogo critical values printed alongside the
-weak-identification statistic are tabulated for the Cragg-Donald
+degrees of freedom (p = 0.023) — a rejection at the 5% level, and a
+useful caution: a variable’s own lags are not automatically valid
+instruments when the errors are serially correlated, since the same
+persistence that motivates the HAC variance can reach the moment
+conditions themselves. The Stock-Yogo critical values printed alongside
+the weak-identification statistic are tabulated for the Cragg-Donald
 statistic under i.i.d. errors; Baum, Schaffer & Stillman (2007, p. 490)
 advise applying them to the Kleibergen-Paap rk Wald F only with caution.
 The Kleibergen-Paap identification tests always use the Bartlett kernel
@@ -221,9 +232,12 @@ the time variable — the lag is `NA` and the row leaves the estimation
 sample. This is why
 [`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md) warns when
 the time variable has gaps: the warning is informational, not an error,
-and the lags remain correct at their true temporal distance. When it is
-more convenient to build lag columns before fitting, the gap-safe idiom
-is to fill the calendar with
+and the lags remain correct at their true temporal distance. You can
+skip this next step: the
+[`l()`](https://restatr.com/ivreg2r/reference/ts-operators.md) operator
+above already handles gaps, and nothing later in the vignette depends on
+it. When it is more convenient to build lag columns before fitting, the
+gap-safe idiom is to fill the calendar with
 [`tidyr::complete()`](https://tidyr.tidyverse.org/reference/complete.html)
 first, so that
 [`dplyr::lag()`](https://dplyr.tidyverse.org/reference/lead-lag.html)
@@ -231,7 +245,6 @@ steps by one period rather than by one row:
 
 ``` r
 
-library(dplyr)
 library(tidyr)
 phillips_lagged <- phillips |>
   complete(year = full_seq(year, 1)) |>
@@ -250,11 +263,12 @@ On these annual data with no gaps, `l(unem, 1)` and this pre-computed
 `unem_lag1` coincide; on panels with gaps, filling the calendar first is
 what keeps a positional
 [`lag()`](https://dplyr.tidyverse.org/reference/lead-lag.html) aligned
-to calendar time. (`dplyr` and `tidyr` are optional Suggests, needed
-only for this pre-computation idiom; the
+to calendar time. (`tidyr` is an optional Suggests, needed only for the
+[`complete()`](https://tidyr.tidyverse.org/reference/complete.html) call
+in this pre-computation idiom; the
 [`l()`](https://restatr.com/ivreg2r/reference/ts-operators.md) and
 [`d()`](https://restatr.com/ivreg2r/reference/ts-operators.md) formula
-operators require neither.)
+operators require neither it nor `dplyr`.)
 
 ## Panel variance estimators
 
@@ -274,7 +288,8 @@ periods. The help file’s illustration for this regime estimates an
 employment equation by two-step GMM with the regressors instrumented by
 their own first and second differences (built here with
 [`d()`](https://restatr.com/ivreg2r/reference/ts-operators.md)),
-clustering on the firm:
+clustering on the firm with `clusters = ~ id`, which is Stata’s
+`cluster(id)`:
 
 ``` r
 
@@ -360,7 +375,11 @@ Kiefer (1980) offers a homoskedastic alternative for the same regime. It
 assumes conditional homoskedasticity across all observations but allows
 arbitrary within-unit serial correlation, and is equivalent to AC
 inference with a truncated kernel spanning the full panel length $`T`$,
-so that every available within-panel lag receives full weight:
+so that every available within-panel lag receives full weight. The
+specification here drops down to the simpler uninstrumented `n ~ w + k`
+to isolate the variance estimator on a plain regression; that
+simplification is for exposition, not a requirement of `kiefer`, which
+works with any specification:
 
 ``` r
 
@@ -405,9 +424,7 @@ the same lags:
 bw_max <- length(unique(abdata$year)) - 1
 fit_tru8 <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated", bw = bw_max,
                    tvar = "year", ivar = "id")
-eq <- all.equal(vcov(fit_kiefer), vcov(fit_tru8))
-stopifnot(isTRUE(eq))
-eq
+all.equal(vcov(fit_kiefer), vcov(fit_tru8))
 #> [1] TRUE
 ```
 
@@ -426,9 +443,7 @@ fit_cl_rob  <- ivreg2(n ~ w + k, data = abdata, clusters = ~ id,
 fit_tru_rob <- ivreg2(n ~ w + k, data = abdata, kernel = "truncated",
                       bw = bw_max, vcov = "robust",
                       tvar = "year", ivar = "id")
-eq <- all.equal(vcov(fit_cl_rob), vcov(fit_tru_rob))
-stopifnot(isTRUE(eq))
-eq
+all.equal(vcov(fit_cl_rob), vcov(fit_tru_rob))
 #> [1] TRUE
 ```
 
@@ -483,9 +498,7 @@ for exactly this model:
 fit_dk_ck <- ivreg2(invest ~ mvalue + kstock, data = grunfeld,
                     clusters = ~ year, kernel = "bartlett", bw = 2,
                     small = TRUE, tvar = "year", ivar = "company")
-eq <- all.equal(vcov(fit_dk), vcov(fit_dk_ck))
-stopifnot(isTRUE(eq))
-eq
+all.equal(vcov(fit_dk), vcov(fit_dk_ck))
 #> [1] TRUE
 ```
 
@@ -591,7 +604,7 @@ summary(fit_sw)
 
 The `sw` option forces robust standard errors and is incompatible with
 clustering, kernels, Kiefer, and Driscoll-Kraay. It appears in neither
-the help file nor the Baum, Schaffer & Stillman papers, and upstream
+the help file nor the Baum, Schaffer & Stillman papers, and Stata’s
 `ivreg2` labels it a beta feature; the correction itself is standard
 (Stock & Watson 2008). It is unrelated to the Sanderson-Windmeijer “SW”
 first-stage F statistic.
@@ -633,13 +646,17 @@ textbook dataset (168 observations, 1959–2000), regressing the change in
 inflation on the unemployment rate, instrumented by lags of GDP growth,
 the T-bill rate, the exchange rate, and the T-bond rate. The errors are
 serially correlated, so the GMM weighting matrix is HAC (Bartlett,
-bandwidth 5). First the 2SLS baseline, then two-step GMM:
+bandwidth 5). In Stata terms the specification is
+`ivreg2 dinf (UR = ggdp_2 TBILL_1 ER_1 TBON_1)`, with `~ 1` again
+meaning no exogenous regressors beyond the constant. First the 2SLS
+baseline, then two-step GMM:
 
 ``` r
 
 sw_formula <- dinf ~ 1 | UR | ggdp_2 + TBILL_1 + ER_1 + TBON_1
 fit_sw_2sls <- ivreg2(sw_formula, data = stockwatson)
-subset(tidy(fit_sw_2sls), term == "UR")
+ur_2sls <- tidy(fit_sw_2sls) |> filter(term == "UR")
+ur_2sls
 #> # A tibble: 1 × 7
 #>   term  estimate std.error statistic p.value conf.low conf.high
 #>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
@@ -650,7 +667,7 @@ subset(tidy(fit_sw_2sls), term == "UR")
 
 fit_gmm <- ivreg2(sw_formula, data = stockwatson, method = "gmm2s",
                   vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date")
-ur_gmm <- subset(tidy(fit_gmm), term == "UR")
+ur_gmm <- tidy(fit_gmm) |> filter(term == "UR")
 summary(fit_gmm)
 #> 
 #> 2-Step GMM Estimation
@@ -730,7 +747,7 @@ Continuing the same equation:
 
 fit_cue <- ivreg2(sw_formula, data = stockwatson, method = "cue",
                   vcov = "robust", kernel = "bartlett", bw = 5, tvar = "date")
-ur_cue <- subset(tidy(fit_cue), term == "UR")
+ur_cue <- tidy(fit_cue) |> filter(term == "UR")
 summary(fit_cue)
 #> 
 #> CUE Estimation
@@ -813,7 +830,8 @@ equation — 758 young men from the U.S. National Longitudinal Survey, the
 help file’s own heteroskedastic-GMM illustration following Hayashi
 (2000, p. 255) — two-step GMM with heteroskedasticity-robust weighting
 estimates the return to measured ability (`iq`) instrumented by test
-scores and family background:
+scores and family background. Here `factor(year)` expands to a set of
+year dummies, R’s spelling of Stata’s `i.year`:
 
 ``` r
 
@@ -821,7 +839,7 @@ gril_formula <- lw ~ s + expr + tenure + rns + smsa + factor(year) |
   iq | med + kww + age + mrt
 fit_g_gmm <- ivreg2(gril_formula, data = griliches,
                     method = "gmm2s", vcov = "robust")
-subset(tidy(fit_g_gmm), term == "iq")
+tidy(fit_g_gmm) |> filter(term == "iq")
 #> # A tibble: 1 × 7
 #>   term  estimate std.error statistic p.value conf.low conf.high
 #>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
@@ -841,13 +859,10 @@ that `S` back through `smatrix` reproduces the GMM fit exactly:
 fit_g_2sls <- ivreg2(gril_formula, data = griliches, vcov = "robust")
 refit <- ivreg2(gril_formula, data = griliches, method = "gmm2s",
                 vcov = "robust", smatrix = fit_g_2sls$S)
-stopifnot(
-  isTRUE(all.equal(fit_g_2sls$S, fit_g_gmm$S)),
-  isTRUE(all.equal(coef(refit), coef(fit_g_gmm)))
-)
-c(max_coef_diff = max(abs(coef(refit) - coef(fit_g_gmm))))
-#> max_coef_diff 
-#>             0
+all.equal(fit_g_2sls$S, fit_g_gmm$S)
+#> [1] TRUE
+all.equal(coef(refit), coef(fit_g_gmm))
+#> [1] TRUE
 ```
 
 Supplying `wmatrix` instead sets the *first-step* weighting matrix
@@ -864,27 +879,51 @@ forming the covariance matrix `S` that feeds the variance and the
 diagnostics, which can improve the finite-sample behavior of the
 standard errors and the J test. No canonical example exists — the option
 postdates the help-file examples and both Baum-Schaffer-Stillman papers
-— so we show its effect directly on the Griliches GMM fit:
+— so we show its effect directly on the Griliches GMM fit, reading the
+Hansen J from each fit’s
+[`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md)
+table (the package’s one-row-per-test accessor, the diagnostic
+counterpart to
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) for
+coefficients):
 
 ``` r
 
 fit_g_cen <- ivreg2(gril_formula, data = griliches,
                     method = "gmm2s", vcov = "robust", center = TRUE)
-c(max_coef_shift = max(abs(coef(fit_g_cen) - coef(fit_g_gmm))),
-  J_uncentered   = fit_g_gmm$diagnostics$overid$stat,
-  J_centered     = fit_g_cen$diagnostics$overid$stat,
-  se_iq_uncent   = sqrt(diag(vcov(fit_g_gmm)))["iq"],
-  se_iq_cent     = sqrt(diag(vcov(fit_g_cen)))["iq"])
-#>  max_coef_shift    J_uncentered      J_centered se_iq_uncent.iq   se_iq_cent.iq 
-#>     0.004038233    74.164877624    82.208379476     0.004113144     0.004112702
+bind_rows(uncentered = tidy(fit_g_gmm), centered = tidy(fit_g_cen),
+          .id = "fit") |>
+  filter(term == "iq") |>
+  select(fit, term, estimate, std.error)
+#> # A tibble: 2 × 4
+#>   fit        term  estimate std.error
+#>   <chr>      <chr>    <dbl>     <dbl>
+#> 1 uncentered iq    -0.00140   0.00411
+#> 2 centered   iq    -0.00157   0.00411
+overid_g_gmm <- diagnostics(fit_g_gmm) |> filter(test == "overid")
+overid_g_cen <- diagnostics(fit_g_cen) |> filter(test == "overid")
+overid_g_gmm
+#> # A tibble: 1 × 7
+#>   test   test_name statistic    df   df2  p_value tested_vars
+#>   <chr>  <chr>         <dbl> <int> <int>    <dbl> <chr>      
+#> 1 overid Hansen J       74.2     3    NA 5.47e-16 NA
+overid_g_cen
+#> # A tibble: 1 × 7
+#>   test   test_name statistic    df   df2  p_value tested_vars
+#>   <chr>  <chr>         <dbl> <int> <int>    <dbl> <chr>      
+#> 1 overid Hansen J       82.2     3    NA 1.03e-17 NA
+coef_shift <- max(abs(coef(fit_g_cen) - coef(fit_g_gmm)))
+coef_shift
+#> [1] 0.004038233
 ```
 
 Because two-step GMM uses `S` as its second-step weighting matrix,
 centering changes the coefficients as well as the inference — here by at
 most 0.004 — and shifts the J statistic from 74.2 to 82.2, with a slight
-change in the standard errors. For estimators whose coefficients do not
-depend on `S`, such as 2SLS with a centered robust variance, only the
-standard errors and the J statistic move.
+change in the standard errors on the `iq` row shown above. For
+estimators whose coefficients do not depend on `S`, such as 2SLS with a
+centered robust variance, only the standard errors and the J statistic
+move.
 
 ## Partialling out regressors
 
@@ -953,21 +992,28 @@ to the number of clusters, and two-step GMM becomes feasible:
 
 fit_g_feas <- ivreg2(gril_cl, data = griliches, clusters = ~ year,
                      partial = c("factor(year)", "rns"), method = "gmm2s")
-c(iq = coef(fit_g_feas)["iq"],
-  J  = fit_g_feas$diagnostics$overid$stat,
-  clusters = fit_g_feas$n_clusters)
-#>     iq.iq         J  clusters 
-#> 0.0018295 5.3506395 7.0000000
+tidy(fit_g_feas) |> filter(term == "iq")
+#> # A tibble: 1 × 7
+#>   term  estimate std.error statistic p.value conf.low conf.high
+#>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
+#> 1 iq     0.00183   0.00387     0.472   0.637 -0.00576   0.00942
+diagnostics(fit_g_feas) |> filter(test == "overid")
+#> # A tibble: 1 × 7
+#>   test   test_name statistic    df   df2 p_value tested_vars
+#>   <chr>  <chr>         <dbl> <int> <int>   <dbl> <chr>      
+#> 1 overid Hansen J       5.35     2    NA  0.0689 NA
 ```
 
-The special tokens `"_cons"` (partial out the constant, equivalent to
-demeaning every variable) and `"_all"` (partial out all exogenous
-regressors) are also accepted. Partialling adjusts `sdofminus` for the
-degrees of freedom it consumes; `nopartialsmall = TRUE` suppresses that
-adjustment. When fixed effects have been partialled out *manually*,
-outside [`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md),
-the `dofminus` and `sdofminus` arguments make the same adjustment, with
-a self-verifying demonstration in the degrees-of-freedom section of
+With the instrument count now matched to the 7 year clusters, the Hansen
+J is computed and the `iq` coefficient is reported. The special tokens
+`"_cons"` (partial out the constant, equivalent to demeaning every
+variable) and `"_all"` (partial out all exogenous regressors) are also
+accepted. Partialling adjusts `sdofminus` for the degrees of freedom it
+consumes; `nopartialsmall = TRUE` suppresses that adjustment. When fixed
+effects have been partialled out *manually*, outside
+[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md), the
+`dofminus` and `sdofminus` arguments make the same adjustment, with a
+self-verifying demonstration in the degrees-of-freedom section of
 [`vignette("advanced-iv")`](https://restatr.com/ivreg2r/articles/advanced-iv.md).
 
 ## PSD corrections
@@ -1026,18 +1072,24 @@ while the coefficients do not:
 
 ``` r
 
-round(cbind(
-  estimate = coef(fit_psda),
-  se_nopsd = sqrt(diag(vcov(fit_nopsd))),
-  se_psda  = sqrt(diag(vcov(fit_psda)))
-), 4)
-#>             estimate se_nopsd se_psda
-#> (Intercept)  -9.1971   1.7288  1.7330
-#> hours         0.0062   0.0009  0.0009
-#> exper        -0.6638   0.0997  0.1117
-#> expersq       0.0347   0.0059  0.0077
-#> married      -0.8600   0.1086  0.4410
-#> union         0.6932   0.1942  0.2142
+bind_rows(uncorrected = tidy(fit_nopsd), psda = tidy(fit_psda),
+          .id = "fit") |>
+  select(fit, term, estimate, std.error)
+#> # A tibble: 12 × 4
+#>    fit         term        estimate std.error
+#>    <chr>       <chr>          <dbl>     <dbl>
+#>  1 uncorrected (Intercept) -9.20     1.73    
+#>  2 uncorrected hours        0.00622  0.000932
+#>  3 uncorrected exper       -0.664    0.0997  
+#>  4 uncorrected expersq      0.0347   0.00590 
+#>  5 uncorrected married     -0.860    0.109   
+#>  6 uncorrected union        0.693    0.194   
+#>  7 psda        (Intercept) -9.20     1.73    
+#>  8 psda        hours        0.00622  0.000938
+#>  9 psda        exper       -0.664    0.112   
+#> 10 psda        expersq      0.0347   0.00773 
+#> 11 psda        married     -0.860    0.441   
+#> 12 psda        union        0.693    0.214
 ```
 
 Two quantities are deliberately untouched, again matching Stata: the
@@ -1055,13 +1107,23 @@ rank computations they require:
 ``` r
 
 fit_noid <- ivreg2(f_ph_iv, data = phillips, tvar = "year", noid = TRUE)
-is.null(fit_noid$diagnostics$underid)
-#> [1] TRUE
+diagnostics(fit_noid)
+#> # A tibble: 5 × 7
+#>   test                test_name        statistic    df   df2 p_value tested_vars
+#>   <chr>               <chr>                <dbl> <int> <int>   <dbl> <chr>      
+#> 1 overid              Sargan              6.93       2    NA 0.0313  NA         
+#> 2 anderson_rubin_f    Anderson-Rubin …    3.50       3    42 0.0236  NA         
+#> 3 anderson_rubin_chi2 Anderson-Rubin …   11.5        3    NA 0.00932 NA         
+#> 4 stock_wright        Stock-Wright LM…    9.20       3    NA 0.0268  NA         
+#> 5 endogeneity         Endogeneity         0.0962     1    NA 0.756   unem
 ```
 
-The overidentification test is still reported; only the identification
-block is dropped from [`summary()`](https://rdrr.io/r/base/summary.html)
-and [`glance()`](https://generics.r-lib.org/reference/glance.html).
+The `underid`, `weak_id`, and Stock-Yogo rows are absent from the
+returned tibble — the whole identification block is dropped from
+[`summary()`](https://rdrr.io/r/base/summary.html) and
+[`glance()`](https://generics.r-lib.org/reference/glance.html) as well —
+while the `overid` test and the other non-identification diagnostics are
+still reported.
 
 ## Estimator equivalences
 

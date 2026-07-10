@@ -577,6 +577,7 @@ work through applied examples.
 Other ivreg2 methods:
 [`coef.ivreg2()`](https://restatr.com/ivreg2r/reference/coef.ivreg2.md),
 [`confint.ivreg2()`](https://restatr.com/ivreg2r/reference/confint.ivreg2.md),
+[`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md),
 [`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md),
 [`fitted.ivreg2()`](https://restatr.com/ivreg2r/reference/fitted.ivreg2.md),
 [`formula.ivreg2()`](https://restatr.com/ivreg2r/reference/formula.ivreg2.md),
@@ -638,7 +639,7 @@ summary(fit)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Overidentification test (Sargan):  excluded (exactly identified)
+#> Overidentification test (Sargan):  (equation exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
@@ -881,22 +882,13 @@ summary(fit_liml)
 fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
                       age + kidslt6 + kidsge6, data = mroz_work,
                       endog = "educ")
-fit_endog$diagnostics$endogeneity
-#> $stat
-#> [1] 0.01914714
-#> 
-#> $p
-#> [1] 0.8899455
-#> 
-#> $df
-#> [1] 1
-#> 
-#> $test_name
-#> [1] "Endogeneity"
-#> 
-#> $tested_vars
-#> [1] "educ"
-#> 
+if (requireNamespace("dplyr", quietly = TRUE)) {
+  diagnostics(fit_endog) |> dplyr::filter(test == "endogeneity")
+}
+#> # A tibble: 1 × 7
+#>   test        test_name   statistic    df   df2 p_value tested_vars
+#>   <chr>       <chr>           <dbl> <int> <int>   <dbl> <chr>      
+#> 1 endogeneity Endogeneity    0.0191     1    NA   0.890 educ       
 
 # --- Clustering ---
 # Griliches (1976) wage equation, cluster on year.

@@ -33,34 +33,41 @@ discusses at length.
 ``` r
 
 library(ivreg2r)
+library(dplyr)
 data(card)
 ```
 
 ## OLS baseline
 
-With a one-part formula,
-[`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md) estimates
-by OLS. We use the control set from Card (1995, Table 2), which is also
-the specification in Example 15.4 of Wooldridge (2020): experience and
-its square, race, urban residence (`smsa`), and region (current South
-plus the 1966 residence indicators `smsa66` and `reg662`–`reg669`). This
-control set recurs across the core wage-equation fits below, so we
-define the terms once and build each formula with
-[`reformulate()`](https://rdrr.io/r/stats/delete.response.html):
+Give [`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md) an
+ordinary regression formula with no `|` separators — the same
+`y ~ x1 + x2` you would pass to
+[`lm()`](https://rdrr.io/r/stats/lm.html) — and it fits by ordinary
+least squares. In Stata this is the OLS special case of the same
+command: `ivreg2 lwage educ exper ...` with no `(educ = ...)` block. We
+use the control set from Card (1995, Table 2), which is also the
+specification in Example 15.4 of Wooldridge (2020): years of schooling,
+experience and its square, race, urban residence (`smsa`), current
+region (`south`), and the 1966 residence indicators (`smsa66` together
+with the census-region dummies). The Card data ship the census-region
+indicators already expanded as separate dummies, `reg661`–`reg669` with
+`reg661` the omitted base, so we list `reg662`–`reg669` directly:
 
 ``` r
 
-base_controls <- c("exper", "expersq", "black", "smsa", "south", "smsa66")
-controls <- c(base_controls, paste0("reg66", 2:9))
-
-fit_ols <- ivreg2(reformulate(c("educ", controls), response = "lwage"), data = card)
+fit_ols <- ivreg2(
+  lwage ~ educ + exper + expersq + black + smsa + south + smsa66 +
+    reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669,
+  data = card
+)
 summary(fit_ols)
 #> 
 #> OLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = reformulate(c("educ", controls), response = "lwage"), 
-#>     data = card)
+#> ivreg2(formula = lwage ~ educ + exper + expersq + black + smsa + 
+#>     south + smsa66 + reg662 + reg663 + reg664 + reg665 + reg666 + 
+#>     reg667 + reg668 + reg669, data = card)
 #> 
 #> Observations: 3,010 
 #> VCV type:     Classical (iid) 
@@ -92,29 +99,6 @@ summary(fit_ols)
 #> Root MSE:       0.3713
 ```
 
-A researcher migrating from Stata reaches for `i.region` here. The R
-equivalent is `factor(region)` in the formula, which
-[`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) expands
-into contrast dummies exactly as Stata’s `i.` prefix does. Card ships
-the census-region indicators already expanded as `reg661`–`reg669`, with
-`reg661` the omitted reference, so we list `reg662`–`reg669` directly.
-Had the data carried a single region code, `factor(region)` would have
-produced the identical design matrix. We can recover that code from the
-indicators — on a local copy that leaves `card` untouched — and confirm
-the two specifications agree exactly:
-
-``` r
-
-card_region <- transform(card,
-  region = factor(max.col(as.matrix(card[paste0("reg66", 1:9)]))))
-fit_factor <- ivreg2(
-  reformulate(c("educ", base_controls, "factor(region)"), response = "lwage"),
-  data = card_region
-)
-all.equal(coef(fit_ols)["educ"], coef(fit_factor)["educ"])
-#> [1] TRUE
-```
-
 The point estimates are identical to
 [`lm()`](https://rdrr.io/r/stats/lm.html), and the model uses the same
 estimation infrastructure as the IV models below, so switching between
@@ -130,26 +114,31 @@ differently — see Weighted estimation below.)
 
 ## Two-stage least squares
 
-`ivreg2r` uses a three-part formula:
-`y ~ exogenous | endogenous | excluded_instruments`. Each variable
-appears exactly once, and exogenous regressors are automatically
-included as instruments.
+To estimate by two-stage least squares, mark the endogenous regressor
+and its instruments with the `|` separator. Where Stata writes
+`ivreg2 lwage <controls> (educ = nearc4)`, `ivreg2r` writes
+`lwage ~ <controls> | educ | nearc4`: the exogenous regressors first,
+then the endogenous regressor after the first `|`, then the excluded
+instruments after the second. Each variable is listed once, and the
+exogenous regressors are used as instruments automatically.
 
-Here we instrument `educ` (endogenous) with `nearc4` (grew up near a
-4-year college). We store the formula, since the later robust,
-first-stage, and weighted fits reuse it:
+Here we instrument `educ` with `nearc4` (grew up near a four-year
+college). The robust, first-stage, and weighted fits below all reuse
+this same specification, so we write the formula out once and store it:
 
 ``` r
 
-f_iv <- Formula::as.Formula(reformulate(controls, response = "lwage"),
-                            ~ educ, ~ nearc4)
-fit_iv <- ivreg2(f_iv, data = card)
+iv_formula <- lwage ~ exper + expersq + black + smsa + south + smsa66 +
+  reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669 |
+  educ | nearc4
+
+fit_iv <- ivreg2(iv_formula, data = card)
 summary(fit_iv)
 #> 
 #> 2SLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = f_iv, data = card)
+#> ivreg2(formula = iv_formula, data = card)
 #> 
 #> Observations: 3,010 
 #> VCV type:     Classical (iid) 
@@ -191,7 +180,7 @@ summary(fit_iv)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Overidentification test (Sargan):  excluded (exactly identified)
+#> Overidentification test (Sargan):  (equation exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
@@ -217,17 +206,17 @@ schooling (0.1315, versus 0.0747 by OLS) replicates the published
 estimates for this specification (Card, 1995, Table 2; Wooldridge, 2020,
 Example 15.4).
 
-The three parts of the formula are:
+The formula has three groups, separated by the two `|` bars, mapping
+onto the pieces of the Stata command:
 
-| Part | Contents | Example |
+| Group | Contents | In `ivreg2 lwage ... (educ = nearc4)` |
 |----|----|----|
-| LHS | Dependent variable | `lwage` |
-| 1st RHS | Exogenous regressors | `exper + expersq + black + smsa + south + smsa66 + reg662 + ... + reg669` |
-| 2nd RHS | Endogenous regressors | `educ` |
-| 3rd RHS | Excluded instruments | `nearc4` |
+| Before the first `|` | Dependent variable, then exogenous regressors | `lwage`, then the controls |
+| Between the two `|` | Endogenous regressor(s) | `educ` |
+| After the second `|` | Excluded instruments | `nearc4` |
 
 The full instrument set is the union of the exogenous regressors and the
-excluded instruments. You never list the exogenous regressors twice.
+excluded instruments; you never list the exogenous regressors twice.
 
 ## Understanding the diagnostics
 
@@ -315,8 +304,9 @@ specification of Computer Exercise C5, Chapter 15, in Wooldridge (2020):
 ``` r
 
 fit_overid <- ivreg2(
-  Formula::as.Formula(reformulate(controls, response = "lwage"),
-                      ~ educ, ~ nearc2 + nearc4),
+  lwage ~ exper + expersq + black + smsa + south + smsa66 +
+    reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + reg668 + reg669 |
+    educ | nearc2 + nearc4,
   data = card
 )
 summary(fit_overid)
@@ -324,8 +314,9 @@ summary(fit_overid)
 #> 2SLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = Formula::as.Formula(reformulate(controls, response = "lwage"), 
-#>     ~educ, ~nearc2 + nearc4), data = card)
+#> ivreg2(formula = lwage ~ exper + expersq + black + smsa + south + 
+#>     smsa66 + reg662 + reg663 + reg664 + reg665 + reg666 + reg667 + 
+#>     reg668 + reg669 | educ | nearc2 + nearc4, data = card)
 #> 
 #> Observations: 3,010 
 #> VCV type:     Classical (iid) 
@@ -430,7 +421,7 @@ Using its result to choose between OLS and IV is a pre-test whose
 selection step can badly distort the size of subsequent inference
 (Guggenberger, 2010); see
 [`?ivreg2`](https://restatr.com/ivreg2r/reference/ivreg2.md) and Hayashi
-(2000, pp. 218–222, 233–234) for the underlying theory.
+(2000, pp. 218–221, 232–234) for the underlying theory.
 
 Stata’s `ivreg2` computes this test only when `endog()` is requested,
 whereas `ivreg2r` reports it automatically for all endogenous
@@ -495,7 +486,7 @@ regressor, each supporting
 
 ``` r
 
-fit_fs <- ivreg2(f_iv, data = card, first_stage = TRUE)
+fit_fs <- ivreg2(iv_formula, data = card, first_stage = TRUE)
 fs <- first_stage(fit_fs)
 summary(fs$educ)
 #> 
@@ -567,8 +558,9 @@ informative only with several endogenous regressors: Shea’s (1997)
 partial R-squared adjusts for intercorrelation among the instruments,
 while the Sanderson-Windmeijer (2016) and Angrist-Pischke (2009)
 conditional F statistics assess each endogenous regressor’s
-identification given the others. With a single endogenous regressor all
-three collapse to the ordinary first-stage F. See
+identification given the others. With a single endogenous regressor the
+two conditional F statistics collapse to the ordinary first-stage F, and
+Shea’s partial R-squared to the ordinary partial R-squared. See
 [`?ivreg2`](https://restatr.com/ivreg2r/reference/ivreg2.md) for their
 definitions and
 [`?first_stage`](https://restatr.com/ivreg2r/reference/first_stage.md)
@@ -584,13 +576,13 @@ standard errors. Add `small = TRUE` for a finite-sample correction
 
 ``` r
 
-fit_robust <- ivreg2(f_iv, data = card, vcov = "robust", small = TRUE)
+fit_robust <- ivreg2(iv_formula, data = card, vcov = "robust", small = TRUE)
 summary(fit_robust)
 #> 
 #> 2SLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = f_iv, data = card, vcov = "robust", small = TRUE)
+#> ivreg2(formula = iv_formula, data = card, vcov = "robust", small = TRUE)
 #> 
 #> Observations: 3,010 
 #> VCV type:     Robust, small-sample corrected 
@@ -634,7 +626,7 @@ summary(fit_robust)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Overidentification test (Hansen J):  excluded (exactly identified)
+#> Overidentification test (Hansen J):  (equation exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
@@ -662,7 +654,7 @@ Wald F (14.14 here) is reported *alongside* the Cragg-Donald Wald F
 (13.26), which remains in the output for reference — only the rk
 statistic is valid under non-i.i.d. errors. In overidentified models the
 Hansen J replaces the Sargan statistic (this fit is exactly identified,
-so the line reads “excluded”).
+so the line reads “(equation exactly identified)”).
 
 The `small = TRUE` option applies finite-sample corrections throughout:
 t-statistics and F-tests replace z-statistics and chi-squared tests.
@@ -717,24 +709,32 @@ summary(fit_cluster)
 Supplying `clusters` selects the cluster-robust VCE automatically,
 without setting `vcov`. To see how much clustering changes the standard
 error on `grade`, we compare it against a classical (i.i.d.) fit on the
-same data:
+same data. broom’s
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html) returns a
+fit’s coefficient table as a tibble, standard errors and all; stacking
+the tidied i.i.d. and clustered fits and keeping the `grade` row puts
+the two standard errors side by side:
 
 ``` r
 
 fit_iid <- ivreg2(ln_wage ~ grade + age + ttl_exp + tenure, data = nlswork)
-se_iid_grade <- sqrt(vcov(fit_iid)["grade", "grade"])
-se_cluster_grade <- sqrt(vcov(fit_cluster)["grade", "grade"])
-c(iid = se_iid_grade, cluster = se_cluster_grade)
-#>         iid     cluster 
-#> 0.001041338 0.002161257
+
+grade_se <- bind_rows(iid = tidy(fit_iid), cluster = tidy(fit_cluster), .id = "vce") |>
+  filter(term == "grade")
+grade_se
+#> # A tibble: 2 × 8
+#>   vce     term  estimate std.error statistic   p.value conf.low conf.high
+#>   <chr>   <chr>    <dbl>     <dbl>     <dbl>     <dbl>    <dbl>     <dbl>
+#> 1 iid     grade   0.0744   0.00104      71.5 0           0.0724    0.0765
+#> 2 cluster grade   0.0744   0.00216      34.4 8.28e-260   0.0702    0.0787
 ```
 
 Fitting on the full 28,099 observations, the cluster-robust standard
 error on `grade` is 0.0022, versus 0.0010 under the i.i.d. VCE.
-Clustering roughly doubles the standard error here because wages are
-serially correlated within person across the panel’s multiple survey
-years, a dependence that classical and heteroskedasticity-robust
-standard errors both ignore.
+Clustering roughly doubles the standard error because wages are serially
+correlated within person across the panel’s multiple survey years, a
+dependence that classical and heteroskedasticity-robust standard errors
+both ignore.
 
 Cluster-robust inference is asymptotic in the number of clusters rather
 than observations: with only a handful of clusters the standard errors
@@ -776,10 +776,10 @@ For HAC, AC, Kiefer, and Driscoll-Kraay VCE options, see
 `ivreg2r` supports Stata’s four weight types through `weight_type`:
 sampling weights (`"pweight"`), analytic weights (`"aweight"`, the
 default), frequency weights (`"fweight"`), and importance weights
-(`"iweight"`). Three have worked examples below. The aweight and fweight
-demonstrations are self-verifying — each of those types is defined by an
-identity the fit must reproduce — while the pweight example uses the
-genuine survey weight the data ship with.
+(`"iweight"`). All four are passed with the `weights` argument. We work
+through two of them — sampling weights on the genuine survey weight the
+Card data ship with, and analytic weights on a grouped-data example —
+then summarize how the remaining two differ.
 
 ### Sampling weights (pweight)
 
@@ -791,14 +791,14 @@ into the survey. Probability/sampling weights (equivalent to Stata’s
 
 ``` r
 
-fit_pw <- ivreg2(f_iv, data = card, weights = weight, weight_type = "pweight")
+fit_pw <- ivreg2(iv_formula, data = card, weights = weight, weight_type = "pweight")
 #> pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".
 summary(fit_pw)
 #> 
 #> 2SLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = f_iv, data = card, weights = weight, weight_type = "pweight")
+#> ivreg2(formula = iv_formula, data = card, weights = weight, weight_type = "pweight")
 #> 
 #> Observations: 3,010 
 #> VCV type:     Robust 
@@ -843,7 +843,7 @@ summary(fit_pw)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Overidentification test (Hansen J):  excluded (exactly identified)
+#> Overidentification test (Hansen J):  (equation exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
@@ -874,70 +874,60 @@ sample was drawn from — whereas the unweighted fit describes the sample.
 
 ### Analytic weights (aweight)
 
-An analytic weight is inversely proportional to the variance of an
-observation, the classic case being grouped data in which each row is a
-cell mean and its weight is the number of underlying observations. The
-defining property is that a weighted regression on cell means reproduces
-the coefficients of the disaggregated regression. We can verify this
-directly: collapse the individual data to the cells of the `black`,
-`smsa`, `south` covariate pattern, take each cell’s mean log wage and
-count, and fit both the micro regression and the weighted cell
-regression.
+An analytic weight is inversely proportional to an observation’s
+variance. The textbook case is grouped data: each row is a cell mean,
+weighted by the number of individuals that went into the cell, and the
+defining property is that a weighted regression on the cell means
+reproduces the coefficients of the individual-level regression. We can
+watch that identity hold. Collapse the individuals to the cells of three
+binary covariates, taking each cell’s mean log wage and its size —
+`group_by() |> summarize()` is Stata’s
+`collapse (mean) lwage (count) n = lwage, by(black smsa south)`:
 
 ``` r
 
-micro <- ivreg2(lwage ~ black + smsa + south, data = card)
+cells <- card |>
+  group_by(black, smsa, south) |>
+  summarize(lwage = mean(lwage), n = n(), .groups = "drop")
 
-cell_df <- aggregate(lwage ~ black + smsa + south, data = card, FUN = mean)
-cell_df$n <- aggregate(lwage ~ black + smsa + south, data = card, FUN = length)$lwage
-
-grouped <- ivreg2(lwage ~ black + smsa + south, data = cell_df,
+micro   <- ivreg2(lwage ~ black + smsa + south, data = card)
+grouped <- ivreg2(lwage ~ black + smsa + south, data = cells,
                   weights = n, weight_type = "aweight")
 
 all.equal(coef(micro), coef(grouped))
 #> [1] TRUE
 ```
 
-The cell means are taken in double precision, so no information is lost
-in the collapse and the two coefficient vectors agree to numerical
-tolerance.
+The cell means are computed in double precision, so nothing is lost in
+the collapse, and the two coefficient vectors agree to numerical
+tolerance: `aweight` on the cell means recovers exactly what the
+individual-level regression would have given.
 
-### Frequency weights (fweight)
+### The other weight types
 
-A frequency weight records how many identical observations a row stands
-for, so a row with `fweight = 3` is defined to mean three exact copies.
-Expanding the rows and fitting the long data must therefore reproduce
-the frequency-weighted fit exactly — including the standard errors and
-the sample size, since `fweight` redefines N as `sum(weights)`. We check
-the identity on a small set of distinct rows with integer frequencies:
+The remaining two types are passed the same way — `weights =` plus
+`weight_type =` — and differ only in what the weight *means*:
 
-``` r
+- **Frequency weights** (`weight_type = "fweight"`, Stata’s `[fw=]`)
+  record how many identical observations a row stands for, so a row with
+  weight 3 counts as three copies and the sample size becomes the sum of
+  the weights:
+  `ivreg2(y ~ x, data = d, weights = count, weight_type = "fweight")`.
+  They obey an identity of the same kind as analytic weights: an
+  fweighted fit reproduces the fit on the fully expanded rows, standard
+  errors and sample size included. The [validation
+  article](https://restatr.com/ivreg2r/articles/validation.html) checks
+  that identity against Stata.
+- **Importance weights** (`weight_type = "iweight"`, Stata’s `[iw=]`)
+  attach an arbitrary multiplier to each observation without a
+  probabilistic interpretation. Like frequency weights they are not
+  normalized, so N becomes the sum of the weights, but they are
+  restricted to the classical i.i.d. VCE and are incompatible with
+  robust, cluster, HAC, and GMM estimation. They exist mainly for
+  building weighted computations on top of `ivreg2r`.
 
-rows <- card[seq(1, nrow(card), length.out = 24), c("lwage", "black", "smsa", "south")]
-freq <- rep_len(1:4, 24)
-
-fit_long <- ivreg2(lwage ~ black + smsa + south, data = rows[rep(1:24, freq), ])
-fit_fw <- ivreg2(lwage ~ black + smsa + south, data = cbind(rows, freq),
-                 weights = freq, weight_type = "fweight")
-
-all.equal(
-  list(coef(fit_long), vcov(fit_long), nobs(fit_long)),
-  list(coef(fit_fw), vcov(fit_fw), nobs(fit_fw))
-)
-#> [1] TRUE
-```
-
-### Importance weights (iweight)
-
-Importance weights (`"iweight"`, Stata’s `[iw=]`) attach an arbitrary
-multiplier to each observation’s contribution without a probabilistic
-interpretation. Like frequency weights they are not normalized, so N
-becomes `sum(weights)` (kept as a float), but they are restricted to the
-classical i.i.d. VCE and are incompatible with robust, cluster, HAC, and
-GMM estimation. They exist mainly for programmers building weighted
-computations on top of `ivreg2r`; see
-[`?ivreg2`](https://restatr.com/ivreg2r/reference/ivreg2.md) for the
-exact rules.
+See [`?ivreg2`](https://restatr.com/ivreg2r/reference/ivreg2.md) for the
+precise rules.
 
 For aweights and pweights the weights are normalized internally to sum
 to N, following Stata, so coefficients, standard errors, and test
@@ -1006,8 +996,7 @@ used at estimation time and on the standard normal otherwise.
 [`glance()`](https://generics.r-lib.org/reference/glance.html) returns a
 single-row tibble with fit statistics and the headline diagnostic tests
 (weak identification, underidentification, overidentification) — a
-compact set chosen so that model-comparison tables render sensibly. The
-remaining specification tests live in `fit$diagnostics`:
+compact set chosen so that model-comparison tables render sensibly:
 
 ``` r
 
@@ -1020,6 +1009,38 @@ glance(fit_iv)
 #> #   weak_id_robust_stat <dbl>, underid_stat <dbl>, underid_p <dbl>,
 #> #   overid_stat <dbl>, overid_p <dbl>
 ```
+
+### Diagnostic tests as data
+
+[`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md)
+returns the full set of specification tests that
+[`summary()`](https://rdrr.io/r/base/summary.html) prints — including
+the Stock-Yogo critical values — as a tibble with one row per test:
+
+``` r
+
+diagnostics(fit_iv)
+#> # A tibble: 11 × 7
+#>    test                test_name      statistic    df   df2  p_value tested_vars
+#>    <chr>               <chr>              <dbl> <int> <int>    <dbl> <chr>      
+#>  1 underid             Anderson cano…     13.3      1    NA  2.70e-4 NA         
+#>  2 weak_id             Cragg-Donald …     13.3     NA    NA NA       NA         
+#>  3 sy_iv_size_10       Stock-Yogo cr…     16.4     NA    NA NA       NA         
+#>  4 sy_iv_size_15       Stock-Yogo cr…      8.96    NA    NA NA       NA         
+#>  5 sy_iv_size_20       Stock-Yogo cr…      6.66    NA    NA NA       NA         
+#>  6 sy_iv_size_25       Stock-Yogo cr…      5.53    NA    NA NA       NA         
+#>  7 overid              Sargan              0        0    NA NA       NA         
+#>  8 anderson_rubin_f    Anderson-Rubi…      5.42     1  2994  2.00e-2 NA         
+#>  9 anderson_rubin_chi2 Anderson-Rubi…      5.44     1    NA  1.96e-2 NA         
+#> 10 stock_wright        Stock-Wright …      5.43     1    NA  1.97e-2 NA         
+#> 11 endogeneity         Endogeneity         1.17     1    NA  2.79e-1 educ
+```
+
+The `test` column holds stable keys, so pulling one test out for a table
+or a threshold comparison is a one-line `filter(test == "weak_id")`.
+Tests you request through `endog`, `orthog`, or `redundant` — Stata’s
+`endog()`, `orthog()`, and `redundant()` options — appear as additional
+rows.
 
 ### Augmented data
 
@@ -1049,8 +1070,7 @@ augment(fit_iv) |> head()
 | Task | Stata | R (`ivreg2r`) |
 |----|----|----|
 | Basic IV | `ivreg2 y x (endo = z)` | `ivreg2(y ~ x | endo | z, data = d)` |
-| No endogenous regressors (HOLS form) | `ivreg2 y x (=z1 z2)` | `ivreg2(y ~ x | 0 | z1 + z2, data = d)` |
-| Factor dummies | `ivreg2 y i.region ...` (or `xi`) | `ivreg2(y ~ factor(region) + ..., data = d)` |
+| Extra instruments, no endogenous regressor | `ivreg2 y x (=z1 z2)` | `ivreg2(y ~ x | 0 | z1 + z2, data = d)` (the `0` marks an empty endogenous group) |
 | Lag / difference | `L.x` / `D.x` | `l(x, 1)` / `d(x, 1)` (requires `tvar`, plus `ivar` for panels) |
 | Coefficients | `e(b)` | `coef(fit)` |
 | VCV matrix | `e(V)` | `vcov(fit)` |
@@ -1060,7 +1080,7 @@ augment(fit_iv) |> head()
 | Confidence intervals | — | `confint(fit)` |
 | Tidy coef table | — | `tidy(fit)` |
 | Summary statistics | `ereturn list` | `glance(fit)` |
-| Diagnostics | Displayed after estimation | Displayed by `summary(fit)` |
+| Diagnostics | Displayed after estimation | Displayed by `summary(fit)`; as a tibble via `diagnostics(fit)` |
 
 #### Estimators
 
@@ -1128,7 +1148,7 @@ for HAC/AC, GMM, CUE, partialling, and panel VCE examples.
 |----|----|----|----|
 | Formula | `ivreg2 y x (endo = z)` | `y ~ x | endo | z` | R convention; each variable listed once |
 | Numerical method | Cross-products via Mata | QR-based regression via `lm.fit` | Better conditioning for core estimation |
-| Diagnostics | Some computed at post-estimation | All computed at estimation time | Stored in `fit$diagnostics`; headline tests also in [`glance()`](https://generics.r-lib.org/reference/glance.html) |
+| Diagnostics | Some computed at post-estimation | All computed at estimation time | Returned as a tibble by [`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md); headline tests also in [`glance()`](https://generics.r-lib.org/reference/glance.html) |
 | Factor variables | `i.` prefix syntax | R [`model.matrix()`](https://rdrr.io/r/stats/model.matrix.html) / contrasts | R convention |
 | Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |
 | CUE optimizer | Mata [`optimize()`](https://rdrr.io/r/stats/optimize.html) | R [`optim()`](https://rdrr.io/r/stats/optim.html) (BFGS + Nelder-Mead) | Different optimizer, same objective |

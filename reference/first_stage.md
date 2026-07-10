@@ -40,6 +40,7 @@ A named list of `ivreg2_first_stage` objects.
 Other ivreg2 methods:
 [`coef.ivreg2()`](https://restatr.com/ivreg2r/reference/coef.ivreg2.md),
 [`confint.ivreg2()`](https://restatr.com/ivreg2r/reference/confint.ivreg2.md),
+[`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md),
 [`fitted.ivreg2()`](https://restatr.com/ivreg2r/reference/fitted.ivreg2.md),
 [`formula.ivreg2()`](https://restatr.com/ivreg2r/reference/formula.ivreg2.md),
 [`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md),

@@ -254,6 +254,8 @@ Fit models, summarize them, and inspect the first stage.
   : Summary for ivreg2 objects
 - [`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md)
   : Extract first-stage regression objects
+- [`diagnostics()`](https://restatr.com/ivreg2r/reference/diagnostics.md)
+  : Extract IV diagnostic tests as a tibble
 
 ## Methods
 

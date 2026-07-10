@@ -138,7 +138,7 @@ summary(fit)
 #>      20%  maximal IV size       6.66 
 #>      25%  maximal IV size       5.53 
 #> 
-#> Overidentification test (Sargan):  excluded (exactly identified)
+#> Overidentification test (Sargan):  (equation exactly identified)
 #> 
 #> Weak-instrument-robust inference:
 #>   H0: B1=0 and orthogonality conditions are valid
