@@ -1103,7 +1103,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     oid <- diag$overid
     cat("\nOveridentification test (", oid$test_name, "):", sep = "")
     if (oid$df == 0L) {
-      cat("  excluded (exactly identified)\n")
+      cat("  (equation exactly identified)\n")
     } else {
       cat("\n  Chi-sq(", oid$df, ") = ",
           formatC(oid$stat, digits = 2, format = "f"),
@@ -1116,7 +1116,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     aro <- diag$anderson_rubin_overid
     cat("\nAnderson-Rubin overidentification:", sep = "")
     if (aro$df == 0L) {
-      cat("  excluded (exactly identified)\n")
+      cat("  (equation exactly identified)\n")
     } else {
       cat("\n  LR Chi-sq(", aro$df, ") = ",
           formatC(aro$lr_stat, digits = 3, format = "f"),

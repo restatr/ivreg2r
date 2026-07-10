@@ -75,13 +75,16 @@ The full instrument set is the union of the exogenous regressors and the exclude
 The `summary()` output reports several diagnostic tests automatically. This section walks through each one, using the values from the fit above.
 
 ```{r diag-values, include = FALSE}
-d <- fit_iv$diagnostics
-cd_f <- d$weak_id$stat
-sy_iv_size <- d$weak_id_sy
-sy10 <- sy_iv_size$critical_value[sy_iv_size$threshold == "10%"]
-sy15 <- sy_iv_size$critical_value[sy_iv_size$threshold == "15%"]
-td <- tidy(fit_iv)
-educ_z_p <- td$p.value[td$term == "educ"]
+diag_iv <- diagnostics(fit_iv)
+cd_f <- diag_iv |> filter(test == "weak_id") |> pull(statistic)
+sy10 <- diag_iv |> filter(test == "sy_iv_size_10") |> pull(statistic)
+sy15 <- diag_iv |> filter(test == "sy_iv_size_15") |> pull(statistic)
+underid_stat <- diag_iv |> filter(test == "underid") |> pull(statistic)
+underid_p <- diag_iv |> filter(test == "underid") |> pull(p_value)
+endog_stat <- diag_iv |> filter(test == "endogeneity") |> pull(statistic)
+endog_p <- diag_iv |> filter(test == "endogeneity") |> pull(p_value)
+ar_chi2_p <- diag_iv |> filter(test == "anderson_rubin_chi2") |> pull(p_value)
+educ_z_p <- tidy(fit_iv) |> filter(term == "educ") |> pull(p.value)
 ```
 
 ### Weak identification
@@ -99,7 +102,7 @@ One caution: the Stock-Yogo critical values are tabulated for the Cragg-Donald s
 
 ### Underidentification
 
-The fit above reports an Anderson LM statistic of `r round(fit_iv$diagnostics$underid$stat, 2)` (p = `r format.pval(fit_iv$diagnostics$underid$p, digits = 2, eps = 1e-4)`). The underidentification test asks whether the excluded instruments have *any* correlation with the endogenous regressors. Formally, the null hypothesis is that the matrix of reduced-form coefficients on the excluded instruments has rank K1 - 1, where K1 is the number of endogenous regressors --- i.e., that the equation is underidentified. With a single endogenous regressor, as here, this reduces to the intuitive statement that the instruments are irrelevant. Rejection is good news: it means the model is identified.
+The fit above reports an Anderson LM statistic of `r round(underid_stat, 2)` (p = `r format.pval(underid_p, digits = 2, eps = 1e-4)`). The underidentification test asks whether the excluded instruments have *any* correlation with the endogenous regressors. Formally, the null hypothesis is that the matrix of reduced-form coefficients on the excluded instruments has rank K1 - 1, where K1 is the number of endogenous regressors --- i.e., that the equation is underidentified. With a single endogenous regressor, as here, this reduces to the intuitive statement that the instruments are irrelevant. Rejection is good news: it means the model is identified.
 
 With *several* endogenous regressors the test covers the whole system, failing to reject if any one of them is unidentified, so the per-regressor first-stage statistics below are the finer diagnostic. Under i.i.d. errors this is the Anderson (1951) canonical-correlations LM test; under heteroskedasticity or clustering it becomes the Kleibergen-Paap (2006) rk LM statistic.
 
@@ -119,7 +122,11 @@ fit_overid <- ivreg2(
 summary(fit_overid)
 ```
 
-The Sargan (1958) test (for iid models) or Hansen (1982) J test (for robust/cluster models) tests the null hypothesis that all instruments are valid. Here the Sargan statistic is `r round(fit_overid$diagnostics$overid$stat, 2)` (p = `r round(fit_overid$diagnostics$overid$p, 4)`), so the single overidentifying restriction is not rejected. A rejection would have indicated that the instruments are not satisfying the required orthogonality conditions --- either because an instrument is not truly exogenous, or because it is incorrectly excluded from the regression. The test is a joint test of instrument validity *and* correct model specification (Baum, Schaffer & Stillman, 2003, pp. 16--17).
+```{r overid-values, include = FALSE}
+sargan <- diagnostics(fit_overid) |> filter(test == "overid")
+```
+
+The Sargan (1958) test (for iid models) or Hansen (1982) J test (for robust/cluster models) tests the null hypothesis that all instruments are valid. Here the Sargan statistic is `r round(sargan$statistic, 2)` (p = `r round(sargan$p_value, 4)`), so the single overidentifying restriction is not rejected. A rejection would have indicated that the instruments are not satisfying the required orthogonality conditions --- either because an instrument is not truly exogenous, or because it is incorrectly excluded from the regression. The test is a joint test of instrument validity *and* correct model specification (Baum, Schaffer & Stillman, 2003, pp. 16--17).
 
 The test exists only when the model is overidentified; with exact identification there are no testable restrictions. It has low power when instruments are weak, and no power at all against violations that leave every instrument consistent for the same wrong parameter value, so a failure to reject does not by itself establish validity (see `?ivreg2` for the fuller treatment).
 
@@ -127,7 +134,7 @@ To test a *subset* of instruments while maintaining the rest, use the `orthog` a
 
 ### Endogeneity test (C-statistic)
 
-The endogeneity test (also called the C-statistic or difference-in-Sargan test) asks whether the regressors treated as endogenous are actually endogenous. The null hypothesis is that they are exogenous. For the just-identified fit above, the statistic is `r round(fit_iv$diagnostics$endogeneity$stat, 2)` (p = `r round(fit_iv$diagnostics$endogeneity$p, 4)`): we cannot reject that `educ` is exogenous. In that case OLS may be preferred because it is more efficient --- this fit is a live example of the trade-off, since the IV point estimate is similar to OLS but far less precise.
+The endogeneity test (also called the C-statistic or difference-in-Sargan test) asks whether the regressors treated as endogenous are actually endogenous. The null hypothesis is that they are exogenous. For the just-identified fit above, the statistic is `r round(endog_stat, 2)` (p = `r round(endog_p, 4)`): we cannot reject that `educ` is exogenous. In that case OLS may be preferred because it is more efficient --- this fit is a live example of the trade-off, since the IV point estimate is similar to OLS but far less precise.
 
 The test maintains instrument validity under both hypotheses, so it is uninformative about endogeneity if the instruments are themselves invalid, and it shares the low power under weak instruments noted above. Using its result to choose between OLS and IV is a pre-test whose selection step can badly distort the size of subsequent inference (Guggenberger, 2010); see `?ivreg2` and Hayashi (2000, pp. 218--222, 233--234) for the underlying theory.
 
@@ -139,7 +146,7 @@ The Anderson-Rubin (1949) test provides inference on the endogenous regressors t
 
 The null hypothesis is that the coefficients on the endogenous regressors are jointly zero *and* the overidentifying restrictions hold. When the model is overidentified, rejection could indicate either nonzero coefficients or invalid overidentifying restrictions (or both). In the just-identified case, the overidentifying restrictions are trivially satisfied and the test is purely about the coefficients.
 
-This serves as a useful cross-check: if the standard t-test says an endogenous regressor is significant but the AR test does not reject, weak instruments may be distorting inference. In the running example the two tests agree but the gap is visible: the conventional z-test on `educ` gives p = `r round(educ_z_p, 4)`, while the Anderson-Rubin chi-squared test gives p = `r round(fit_iv$diagnostics$anderson_rubin$chi2_p, 4)` --- still a rejection at the 5% level, but a weaker one, consistent with the borderline first stage.
+This serves as a useful cross-check: if the standard t-test says an endogenous regressor is significant but the AR test does not reject, weak instruments may be distorting inference. In the running example the two tests agree but the gap is visible: the conventional z-test on `educ` gives p = `r round(educ_z_p, 4)`, while the Anderson-Rubin chi-squared test gives p = `r round(ar_chi2_p, 4)` --- still a rejection at the 5% level, but a weaker one, consistent with the borderline first stage.
 
 Robustness to weak instruments comes at a price: as instruments weaken, the power of the AR test declines --- Baum, Schaffer & Stillman (2007, p. 491) describe this as an intuitively appealing feature, since weak instruments *should* make confident inference harder. In overidentified models the AR chi-squared statistic has L1 degrees of freedom (L1 = number of excluded instruments), so power also falls as instruments are added without strengthening identification. More powerful weak-instrument-robust procedures of the conditional likelihood ratio type exist for those cases; `vignette("advanced-iv")` discusses what this package does and does not offer and names software that constructs weak-instrument-robust confidence sets.
 
@@ -161,7 +168,7 @@ The headline number is the partial F-statistic of the excluded instruments, the 
 tidy(fs$educ)
 ```
 
-The remaining columns are per-regressor diagnostics that become informative only with several endogenous regressors: Shea's (1997) partial R-squared adjusts for intercorrelation among the instruments, while the Sanderson-Windmeijer (2016) and Angrist-Pischke (2009) conditional F statistics assess each endogenous regressor's identification given the others. With a single endogenous regressor all three collapse to the ordinary first-stage F. See `?ivreg2` for their definitions and `?first_stage` for the stored per-regressor regressions.
+The remaining columns are per-regressor diagnostics that become informative only with several endogenous regressors: Shea's (1997) partial R-squared adjusts for intercorrelation among the instruments, while the Sanderson-Windmeijer (2016) and Angrist-Pischke (2009) conditional F statistics assess each endogenous regressor's identification given the others. With a single endogenous regressor the two conditional F statistics collapse to the ordinary first-stage F, and Shea's partial R-squared to the ordinary partial R-squared. See `?ivreg2` for their definitions and `?first_stage` for the stored per-regressor regressions.
 
 ## Robust and clustered inference
 
@@ -174,7 +181,13 @@ fit_robust <- ivreg2(iv_formula, data = card, vcov = "robust", small = TRUE)
 summary(fit_robust)
 ```
 
-Notice that the diagnostics automatically adapt. The underidentification test is now the Kleibergen-Paap rk LM statistic instead of the Anderson LM statistic. In the weak-identification block, the Kleibergen-Paap rk Wald F (`r round(fit_robust$diagnostics$weak_id_robust$stat, 2)` here) is reported *alongside* the Cragg-Donald Wald F (`r round(fit_robust$diagnostics$weak_id$stat, 2)`), which remains in the output for reference --- only the rk statistic is valid under non-i.i.d. errors. In overidentified models the Hansen J replaces the Sargan statistic (this fit is exactly identified, so the line reads "excluded").
+```{r robust-values, include = FALSE}
+diag_rob <- diagnostics(fit_robust)
+kp_f_rob <- diag_rob |> filter(test == "weak_id_robust") |> pull(statistic)
+cd_f_rob <- diag_rob |> filter(test == "weak_id") |> pull(statistic)
+```
+
+Notice that the diagnostics automatically adapt. The underidentification test is now the Kleibergen-Paap rk LM statistic instead of the Anderson LM statistic. In the weak-identification block, the Kleibergen-Paap rk Wald F (`r round(kp_f_rob, 2)` here) is reported *alongside* the Cragg-Donald Wald F (`r round(cd_f_rob, 2)`), which remains in the output for reference --- only the rk statistic is valid under non-i.i.d. errors. In overidentified models the Hansen J replaces the Sargan statistic (this fit is exactly identified, so the line reads "(equation exactly identified)").
 
 The `small = TRUE` option applies finite-sample corrections throughout: t-statistics and F-tests replace z-statistics and chi-squared tests.
 
@@ -288,11 +301,21 @@ For the intervals alone, `confint(fit_iv)` returns the same bounds as a matrix; 
 
 ### Model summary
 
-`glance()` returns a single-row tibble with fit statistics and the headline diagnostic tests (weak identification, underidentification, overidentification) --- a compact set chosen so that model-comparison tables render sensibly. The remaining specification tests live in `fit$diagnostics`:
+`glance()` returns a single-row tibble with fit statistics and the headline diagnostic tests (weak identification, underidentification, overidentification) --- a compact set chosen so that model-comparison tables render sensibly:
 
 ```{r glance}
 glance(fit_iv)
 ```
+
+### Diagnostic tests as data
+
+`diagnostics()` returns the full set of specification tests that `summary()` prints --- including the Stock-Yogo critical values --- as a tibble with one row per test:
+
+```{r diagnostics}
+diagnostics(fit_iv)
+```
+
+The `test` column holds stable keys, so pulling one test out for a table or a threshold comparison is a one-line `filter(test == "weak_id")`. Tests you request through `endog`, `orthog`, or `redundant` appear as additional rows.
 
 ### Augmented data
 
@@ -319,7 +342,7 @@ augment(fit_iv) |> head()
 | Confidence intervals | — | `confint(fit)` |
 | Tidy coef table | — | `tidy(fit)` |
 | Summary statistics | `ereturn list` | `glance(fit)` |
-| Diagnostics | Displayed after estimation | Displayed by `summary(fit)` |
+| Diagnostics | Displayed after estimation | Displayed by `summary(fit)`; as a tibble via `diagnostics(fit)` |
 
 #### Estimators
 
@@ -382,7 +405,7 @@ See `vignette("advanced-iv")` for LIML, k-class, two-way clustering, and model c
 |------|----------------|-----------|-----------|
 | Formula | `ivreg2 y x (endo = z)` | `y ~ x | endo | z` | R convention; each variable listed once |
 | Numerical method | Cross-products via Mata | QR-based regression via `lm.fit` | Better conditioning for core estimation |
-| Diagnostics | Some computed at post-estimation | All computed at estimation time | Stored in `fit$diagnostics`; headline tests also in `glance()` |
+| Diagnostics | Some computed at post-estimation | All computed at estimation time | Returned as a tibble by `diagnostics()`; headline tests also in `glance()` |
 | Factor variables | `i.` prefix syntax | R `model.matrix()` / contrasts | R convention |
 | Time-series | `tsset` declares time/panel | `tvar=` / `ivar=` arguments | R has no `tsset`; explicit args |
 | CUE optimizer | Mata `optimize()` | R `optim()` (BFGS + Nelder-Mead) | Different optimizer, same objective |
