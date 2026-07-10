@@ -315,7 +315,7 @@ glance(fit_iv)
 diagnostics(fit_iv)
 ```
 
-The `test` column holds stable keys, so pulling one test out for a table or a threshold comparison is a one-line `filter(test == "weak_id")`. Tests you request through `endog`, `orthog`, or `redundant` appear as additional rows.
+The `test` column holds stable keys, so pulling one test out for a table or a threshold comparison is a one-line `filter(test == "weak_id")`. Tests you request through `endog`, `orthog`, or `redundant` --- Stata's `endog()`, `orthog()`, and `redundant()` options --- appear as additional rows.
 
 ### Augmented data
 
