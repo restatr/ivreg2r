@@ -557,16 +557,47 @@ terms.ivreg2 <- function(x, component = c("regressors", "instruments", "full"), 
 # --------------------------------------------------------------------------
 # model.matrix.ivreg2
 # --------------------------------------------------------------------------
+
+#' Re-apply estimation's FWL partialling to reconstructed matrices
+#'
+#' Reproduces the projection `ivreg2()` ran so that matrices rebuilt from the
+#' model frame match the post-partialling matrices stored when `x = TRUE`.
+#' The FWL residuals are invariant to a positive rescaling of the weights, so
+#' the raw weights stored on the object reproduce estimation's projection even
+#' though estimation used normalized weights.
+#'
+#' @param object An `ivreg2` object recording a partial specification.
+#' @param X Reconstructed pre-partialling regressor matrix (with an `assign`
+#'   attribute and an `(Intercept)` column when the model has one).
+#' @param Z Reconstructed pre-partialling instrument matrix, or `NULL`.
+#' @return A list with post-partialling `X` and `Z`.
+#' @keywords internal
+.reapply_partial <- function(object, X, Z) {
+  term_labels <- attr(object$terms$regressors, "term.labels")
+  partial_colnames <- .expand_terms_to_colnames(
+    object$partial_names, term_labels, colnames(X), attr(X, "assign")
+  )
+  if (isTRUE(object$partialcons)) {
+    partial_colnames <- c("(Intercept)", partial_colnames)
+  }
+  # .partial_out projects y jointly with X and Z; supply a zero placeholder y
+  # since only the projected X and Z are returned to the caller.
+  parsed <- list(y = numeric(nrow(X)), X = X, Z = Z,
+                 weights = object$weights, K1 = 0L)
+  projected <- .partial_out(parsed, partial_colnames, object$partialcons)
+  list(X = projected$X, Z = projected$Z)
+}
+
+
 #' Extract design matrices from an ivreg2 model
 #'
 #' Returns the regressor matrix (X), instrument matrix (Z), or projected
-#' regressors (X_hat = P_Z X). Matrices are retrieved from the stored
-#' `x` component if available (when `ivreg2(..., x = TRUE)` was used),
-#' otherwise reconstructed from the model frame.
-#'
-#' For models estimated with `partial`, the stored matrices (when
-#' `x = TRUE`) are the post-partialling matrices. Reconstruction from the
-#' model frame returns pre-partialling matrices.
+#' regressors (X_hat = P_Z X), as used in estimation. For models estimated
+#' with `partial`, these are the post-partialling matrices that `coef()`,
+#' `residuals()`, and `vcov()` correspond to. The returned matrices do not
+#' depend on whether the model was fitted with `x = TRUE`: when the matrices
+#' were not stored, they are reconstructed from the model frame and the same
+#' partialling projection is re-applied.
 #'
 #' @param object An object of class `"ivreg2"`.
 #' @param component Character: which matrix to return. `"regressors"`
@@ -616,6 +647,13 @@ model.matrix.ivreg2 <- function(object,
       Z <- cbind(exog_mm, excl_mm)
     } else {
       Z <- NULL
+    }
+    # Reconstruction yields pre-partialling matrices; re-apply estimation's
+    # FWL projection so the result matches the stored post-partialling matrices.
+    if (object$partial_ct > 0L) {
+      reprojected <- .reapply_partial(object, X, Z)
+      X <- reprojected$X
+      Z <- reprojected$Z
     }
   } else {
     stop("There is not enough information in the fitted model to return the ",

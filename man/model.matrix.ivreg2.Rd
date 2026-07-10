@@ -26,14 +26,12 @@ for an OLS model.
 }
 \description{
 Returns the regressor matrix (X), instrument matrix (Z), or projected
-regressors (X_hat = P_Z X). Matrices are retrieved from the stored
-\code{x} component if available (when \code{ivreg2(..., x = TRUE)} was used),
-otherwise reconstructed from the model frame.
-}
-\details{
-For models estimated with \code{partial}, the stored matrices (when
-\code{x = TRUE}) are the post-partialling matrices. Reconstruction from the
-model frame returns pre-partialling matrices.
+regressors (X_hat = P_Z X), as used in estimation. For models estimated
+with \code{partial}, these are the post-partialling matrices that \code{coef()},
+\code{residuals()}, and \code{vcov()} correspond to. The returned matrices do not
+depend on whether the model was fitted with \code{x = TRUE}: when the matrices
+were not stored, they are reconstructed from the model frame and the same
+partialling projection is re-applied.
 }
 \seealso{
 \code{\link[=ivreg2]{ivreg2()}}

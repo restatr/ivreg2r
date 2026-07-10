@@ -483,3 +483,64 @@ test_that("partial + sdofminus stack correctly", {
   # sdofminus = 2 (user) + 7 (partial_ct) = 9
   expect_equal(fit$sdofminus, 9L)
 })
+
+
+# ============================================================================
+# model.matrix() storage independence (x = TRUE vs reconstruction)
+#
+# model.matrix() must return the post-partialling matrices that coef(),
+# residuals(), and vcov() correspond to, regardless of whether the fit stored
+# its design matrices (x = TRUE) or must rebuild them from the model frame.
+# ============================================================================
+
+# Assert two fits of the same specification (one with stored matrices, one
+# rebuilt from the model frame) return the same model.matrix() for all three
+# components. The stored (x = TRUE) matrices carry no `assign` attribute, while
+# reconstruction inherits one from model.matrix(); this bookkeeping attribute
+# is not part of the statistical object, so it is ignored while values and
+# dimnames are compared.
+expect_model_matrix_equal <- function(fit_stored, fit_rebuilt) {
+  for (component in c("regressors", "instruments", "projected")) {
+    expect_equal(
+      model.matrix(fit_rebuilt, component = component),
+      model.matrix(fit_stored, component = component),
+      tolerance = 1e-10,
+      ignore_attr = "assign",
+      info = paste("component:", component)
+    )
+  }
+}
+
+test_that("model.matrix() is storage-independent for a partialled IV model", {
+  f <- lwage ~ exper + expersq | educ | nearc4
+  expect_model_matrix_equal(
+    ivreg2(f, data = card, partial = "exper", x = TRUE),
+    ivreg2(f, data = card, partial = "exper", x = FALSE, model = TRUE)
+  )
+})
+
+test_that("model.matrix() is storage-independent for partial = '_cons'", {
+  f <- lwage ~ exper + expersq | educ | nearc4
+  expect_model_matrix_equal(
+    ivreg2(f, data = card, partial = "_cons", x = TRUE),
+    ivreg2(f, data = card, partial = "_cons", x = FALSE, model = TRUE)
+  )
+})
+
+test_that("model.matrix() is storage-independent for a weighted partialled model", {
+  mm_wt <- rep_len(c(0.7, 1.3, 1.9), nrow(card))
+  f <- lwage ~ exper + expersq | educ | nearc4
+  expect_model_matrix_equal(
+    ivreg2(f, data = card, partial = "exper", weights = mm_wt, x = TRUE),
+    ivreg2(f, data = card, partial = "exper", weights = mm_wt,
+           x = FALSE, model = TRUE)
+  )
+})
+
+test_that("model.matrix() is storage-independent for a plain (non-partialled) IV model", {
+  f <- lwage ~ exper + expersq | educ | nearc4
+  expect_model_matrix_equal(
+    ivreg2(f, data = card, x = TRUE),
+    ivreg2(f, data = card, x = FALSE, model = TRUE)
+  )
+})
