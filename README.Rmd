@@ -43,12 +43,6 @@ fit <- ivreg2(lwage ~ exper + expersq + black + smsa + south + smsa66 +
                 reg662 + reg663 + reg664 + reg665 + reg666 + reg667 +
                 reg668 + reg669 | educ | nearc2 + nearc4,
               data = card, vcov = "robust", small = TRUE)
-summary(fit)
-```
-
-Extract results programmatically with broom:
-
-```{r broom}
 tidy(fit)
 ```
 
@@ -81,6 +75,14 @@ Anderson-Rubin, Stock-Wright S, orthogonality, redundancy
 
 **Integration:** `tidy()`, `glance()`, `augment()` via
 [broom](https://broom.tidymodels.org/)
+
+## Full output
+
+`summary()` prints the complete `ivreg2` output, including the automatic diagnostics described above, for the model fit in the example:
+
+```{r summary}
+summary(fit)
+```
 
 ## Validation
 

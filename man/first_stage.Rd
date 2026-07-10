@@ -19,8 +19,29 @@ A named list of \code{ivreg2_first_stage} objects.
 }
 \description{
 Returns a named list of \code{ivreg2_first_stage} objects, one per endogenous
-variable. Each object supports \code{\link[=coef]{coef()}}, \code{\link[=vcov]{vcov()}}, \code{\link[=residuals]{residuals()}},
-\code{\link[=fitted]{fitted()}}, \code{\link[=summary]{summary()}}, \code{\link[=tidy]{tidy()}}, and \code{\link[=glance]{glance()}}.
+variable. Each \code{ivreg2_first_stage} object supports the following
+methods:
+}
+\details{
+\describe{
+\item{\code{\link[=coef]{coef()}}}{First-stage coefficient vector.}
+\item{\code{\link[=vcov]{vcov()}}}{First-stage variance-covariance matrix.}
+\item{\code{\link[=residuals]{residuals()}}}{First-stage residuals.}
+\item{\code{\link[=fitted]{fitted()}}}{First-stage fitted values.}
+\item{\code{\link[=nobs]{nobs()}}}{Number of observations used in the first stage.}
+\item{\code{\link[=confint]{confint()}}}{Confidence intervals for the first-stage
+coefficients.}
+\item{\code{\link[=print]{print()}}}{Compact one-line-per-coefficient display.}
+\item{\code{\link[=summary]{summary()}}}{Full first-stage regression table: coefficients,
+standard errors, t-values, p-values, the first-stage F-statistic, and
+the partial R-squared (its \code{print()} method renders the table).}
+\item{\code{\link[=tidy]{tidy()}}}{Broom-style tibble with one row per coefficient
+(\code{term}, \code{estimate}, \code{std.error}, \code{statistic}, \code{p.value}, and,
+optionally, confidence limits).}
+\item{\code{\link[=glance]{glance()}}}{Broom-style one-row tibble of first-stage fit
+statistics (sigma, degrees of freedom, F-statistic, partial
+R-squared, and related diagnostics).}
+}
 }
 \examples{
 # Mirrors the Stata `ivreg2` help-file example at line 1325, which

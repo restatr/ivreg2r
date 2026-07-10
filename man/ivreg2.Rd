@@ -86,10 +86,12 @@ and has no analogue of \link{na.exclude}.}
 \item{vcov}{Character: covariance type. One of \code{"iid"} (classical),
 \code{"robust"} (White heteroskedasticity-robust), \code{"HAC"}
 (heteroskedasticity and autocorrelation consistent), or \code{"AC"}
-(autocorrelation consistent). Use \code{small = TRUE} to apply
-finite-sample corrections. To match Stata's \verb{ivreg2, robust}:
-use \code{vcov = "robust"}. To match Stata's \verb{ivreg2, robust small}:
-use \verb{vcov = "robust", small = TRUE}.}
+(autocorrelation consistent). Matching is case-insensitive (\code{"hac"},
+\code{"Hac"}, and \code{"HAC"} are all accepted), but the value is always
+normalized to and printed as the canonical spelling shown above. Use
+\code{small = TRUE} to apply finite-sample corrections. To match Stata's
+\verb{ivreg2, robust}: use \code{vcov = "robust"}. To match Stata's
+\verb{ivreg2, robust small}: use \verb{vcov = "robust", small = TRUE}.}
 
 \item{clusters}{One-sided formula specifying one or two cluster variables
 (e.g. \code{~ firmid} for one-way, \code{~ firmid + year} for two-way).
@@ -163,10 +165,12 @@ Must be non-negative. Cannot be combined with \code{method = "liml"} or
 \code{fuller}.}
 
 \item{fuller}{Numeric scalar: Fuller (1977) modification parameter.
-Must be positive. When supplied, \code{method} is automatically set to
-\code{"liml"} and \code{k = lambda - fuller / (N - L)}. \code{fuller = 1} gives the
-bias-corrected LIML estimator; \code{fuller = 4} targets MSE. Cannot be
-combined with \code{kclass}.}
+Non-negative. \code{0} (the default) applies no Fuller adjustment; a
+positive value activates the Fuller-modified LIML estimator, which
+automatically sets \code{method} to \code{"liml"} and
+\code{k = lambda - fuller / (N - L)}. \code{fuller = 1} gives the bias-corrected
+LIML estimator; \code{fuller = 4} targets MSE. Cannot be combined with
+\code{kclass}.}
 
 \item{coviv}{Logical: if \code{TRUE}, use the 2SLS bread \verb{(X_hat'X_hat)^\{-1\}}
 instead of the k-class bread for VCV computation in LIML/k-class
@@ -351,7 +355,16 @@ supplied S). Equivalent to Stata's \code{psd0} and \code{psda} options.}
 Econometrica) panel-robust VCE. Requires panel data (\code{ivar}).
 Incompatible with clustering, HAC kernels, kiefer, dkraay,
 fweights, and iweights. Forces \code{vcov = "robust"} automatically.
-Equivalent to Stata's \code{sw} option (labeled "BETA VERSION" in Stata).}
+Equivalent to Stata's \code{sw} option (labeled "BETA VERSION" in Stata).
+
+\strong{Precondition:} the Stock-Watson (2008) correction is derived for a
+within-transformed (fixed-effects) panel regression with fixed \code{T} and
+large \code{N}. \code{ivreg2()} does not perform the within transformation for
+you: within-transform the data yourself (demean every variable by
+panel unit) before fitting, and pass \code{dofminus} equal to the number of
+panel units, which charges the absorbed unit means to the degrees of
+freedom. See the worked example in the "Fixed-effects panels: the
+Stock-Watson correction" section of \code{vignette("time-series-gmm")}.}
 
 \item{reduced_form}{Character: what reduced-form output to store.
 \code{"none"} (default) stores nothing. \code{"rf"} stores the y ~ Z regression

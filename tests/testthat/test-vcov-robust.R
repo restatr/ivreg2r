@@ -163,6 +163,59 @@ test_that("vcov = NA errors cleanly instead of crashing the guard", {
 })
 
 # ============================================================================
+# vcov matching is case-insensitive (mixed case accepted, canonical spelling
+# stored and used internally)
+# ============================================================================
+
+test_that("vcov = 'IID' and 'Robust' are accepted case-insensitively", {
+  fit_iid_lower <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "iid")
+  fit_iid_upper <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "IID")
+  expect_identical(fit_iid_upper$vcov_type, fit_iid_lower$vcov_type)
+  expect_equal(fit_iid_upper$vcov, fit_iid_lower$vcov)
+
+  fit_robust_lower <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "robust")
+  fit_robust_mixed <- ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "Robust")
+  expect_identical(fit_robust_mixed$vcov_type, fit_robust_lower$vcov_type)
+  expect_equal(fit_robust_mixed$vcov, fit_robust_lower$vcov)
+})
+
+test_that("vcov = 'HAC' and 'hac' fit identically (case-insensitive match)", {
+  mtcars_t <- mtcars
+  mtcars_t$time <- seq_len(nrow(mtcars_t))
+
+  fit_upper <- ivreg2(mpg ~ wt + hp, data = mtcars_t, vcov = "HAC",
+                      kernel = "bartlett", bw = 2, tvar = "time")
+  fit_lower <- ivreg2(mpg ~ wt + hp, data = mtcars_t, vcov = "hac",
+                      kernel = "bartlett", bw = 2, tvar = "time")
+
+  expect_identical(fit_lower$vcov_type, "HAC")
+  expect_identical(fit_upper$vcov_type, fit_lower$vcov_type)
+  expect_equal(coef(fit_upper), coef(fit_lower))
+  expect_equal(fit_upper$vcov, fit_lower$vcov)
+})
+
+test_that("vcov = 'ac' matches 'AC' (case-insensitive match)", {
+  mtcars_t <- mtcars
+  mtcars_t$time <- seq_len(nrow(mtcars_t))
+
+  fit_upper <- ivreg2(mpg ~ wt + hp, data = mtcars_t, vcov = "AC",
+                      kernel = "bartlett", bw = 2, tvar = "time")
+  fit_lower <- ivreg2(mpg ~ wt + hp, data = mtcars_t, vcov = "ac",
+                      kernel = "bartlett", bw = 2, tvar = "time")
+
+  expect_identical(fit_lower$vcov_type, "AC")
+  expect_equal(fit_upper$vcov, fit_lower$vcov)
+})
+
+test_that("lowercase 'hc0' also gets the robust redirect, not the generic error", {
+  expect_error(
+    ivreg2(mpg ~ wt + hp, data = mtcars, vcov = "hc0"),
+    'Use vcov = "robust" instead',
+    fixed = TRUE
+  )
+})
+
+# ============================================================================
 # VCV matrix is symmetric
 # ============================================================================
 

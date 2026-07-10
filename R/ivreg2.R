@@ -44,6 +44,16 @@
          'any `vcov`. With `clusters` supplied, the default vcov = "iid" ',
          'already gives cluster-robust standard errors.', call. = FALSE)
   }
+  # Match case-insensitively (so "hac", "Hac", "IID", "Robust" are all
+  # accepted), then normalize to the canonical internal spelling used
+  # throughout the rest of the pipeline and in printed output. An
+  # unrecognized value is left untouched so the error below echoes exactly
+  # what the user typed.
+  vcov_canonical <- c(iid = "iid", robust = "robust", hac = "HAC", ac = "AC")
+  vcov_matched <- vcov_canonical[tolower(vcov)]
+  if (!is.na(vcov_matched)) {
+    vcov <- unname(vcov_matched)
+  }
   valid_vcov <- c("iid", "robust", "HAC", "AC")
   if (!vcov %in% valid_vcov) {
     stop('vcov = "', vcov, '" is not supported. ',
@@ -2104,10 +2114,12 @@
 #' @param vcov Character: covariance type. One of `"iid"` (classical),
 #'   `"robust"` (White heteroskedasticity-robust), `"HAC"`
 #'   (heteroskedasticity and autocorrelation consistent), or `"AC"`
-#'   (autocorrelation consistent). Use `small = TRUE` to apply
-#'   finite-sample corrections. To match Stata's `ivreg2, robust`:
-#'   use `vcov = "robust"`. To match Stata's `ivreg2, robust small`:
-#'   use `vcov = "robust", small = TRUE`.
+#'   (autocorrelation consistent). Matching is case-insensitive (`"hac"`,
+#'   `"Hac"`, and `"HAC"` are all accepted), but the value is always
+#'   normalized to and printed as the canonical spelling shown above. Use
+#'   `small = TRUE` to apply finite-sample corrections. To match Stata's
+#'   `ivreg2, robust`: use `vcov = "robust"`. To match Stata's
+#'   `ivreg2, robust small`: use `vcov = "robust", small = TRUE`.
 #' @param clusters One-sided formula specifying one or two cluster variables
 #'   (e.g. `~ firmid` for one-way, `~ firmid + year` for two-way).
 #'   Two-way clustering uses the Cameron-Gelbach-Miller (2006) formula.
@@ -2202,10 +2214,12 @@
 #'   Must be non-negative. Cannot be combined with `method = "liml"` or
 #'   `fuller`.
 #' @param fuller Numeric scalar: Fuller (1977) modification parameter.
-#'   Must be positive. When supplied, `method` is automatically set to
-#'   `"liml"` and `k = lambda - fuller / (N - L)`. `fuller = 1` gives the
-#'   bias-corrected LIML estimator; `fuller = 4` targets MSE. Cannot be
-#'   combined with `kclass`.
+#'   Non-negative. `0` (the default) applies no Fuller adjustment; a
+#'   positive value activates the Fuller-modified LIML estimator, which
+#'   automatically sets `method` to `"liml"` and
+#'   `k = lambda - fuller / (N - L)`. `fuller = 1` gives the bias-corrected
+#'   LIML estimator; `fuller = 4` targets MSE. Cannot be combined with
+#'   `kclass`.
 #' @param coviv Logical: if `TRUE`, use the 2SLS bread `(X_hat'X_hat)^{-1}`
 #'   instead of the k-class bread for VCV computation in LIML/k-class
 #'   estimation. This gives the "COVIV" (covariance at the IV estimates)
@@ -2341,6 +2355,15 @@
 #'   Incompatible with clustering, HAC kernels, kiefer, dkraay,
 #'   fweights, and iweights. Forces `vcov = "robust"` automatically.
 #'   Equivalent to Stata's `sw` option (labeled "BETA VERSION" in Stata).
+#'
+#'   **Precondition:** the Stock-Watson (2008) correction is derived for a
+#'   within-transformed (fixed-effects) panel regression with fixed `T` and
+#'   large `N`. `ivreg2()` does not perform the within transformation for
+#'   you: within-transform the data yourself (demean every variable by
+#'   panel unit) before fitting, and pass `dofminus` equal to the number of
+#'   panel units, which charges the absorbed unit means to the degrees of
+#'   freedom. See the worked example in the "Fixed-effects panels: the
+#'   Stock-Watson correction" section of `vignette("time-series-gmm")`.
 #' @param reduced_form Character: what reduced-form output to store.
 #'   `"none"` (default) stores nothing. `"rf"` stores the y ~ Z regression
 #'   (equivalent to Stata's `saverf`; Stata's `rf` option *displays* the

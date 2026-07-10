@@ -13,8 +13,28 @@
 #' Extract first-stage regression objects
 #'
 #' Returns a named list of `ivreg2_first_stage` objects, one per endogenous
-#' variable. Each object supports [coef()], [vcov()], [residuals()],
-#' [fitted()], [summary()], [tidy()], and [glance()].
+#' variable. Each `ivreg2_first_stage` object supports the following
+#' methods:
+#'
+#' \describe{
+#'   \item{[coef()]}{First-stage coefficient vector.}
+#'   \item{[vcov()]}{First-stage variance-covariance matrix.}
+#'   \item{[residuals()]}{First-stage residuals.}
+#'   \item{[fitted()]}{First-stage fitted values.}
+#'   \item{[nobs()]}{Number of observations used in the first stage.}
+#'   \item{[confint()]}{Confidence intervals for the first-stage
+#'     coefficients.}
+#'   \item{[print()]}{Compact one-line-per-coefficient display.}
+#'   \item{[summary()]}{Full first-stage regression table: coefficients,
+#'     standard errors, t-values, p-values, the first-stage F-statistic, and
+#'     the partial R-squared (its `print()` method renders the table).}
+#'   \item{[tidy()]}{Broom-style tibble with one row per coefficient
+#'     (`term`, `estimate`, `std.error`, `statistic`, `p.value`, and,
+#'     optionally, confidence limits).}
+#'   \item{[glance()]}{Broom-style one-row tibble of first-stage fit
+#'     statistics (sigma, degrees of freedom, F-statistic, partial
+#'     R-squared, and related diagnostics).}
+#' }
 #'
 #' @param x A fitted model object.
 #' @param ... Additional arguments (ignored).

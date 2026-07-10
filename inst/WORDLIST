@@ -36,6 +36,7 @@ DK
 dkraay
 DoF
 dofminus
+doi
 Driscoll
 Econometrica
 egmm
@@ -56,6 +57,7 @@ fixest's
 fn
 Frisch
 fweight
+fweighted
 fweights
 FWL
 Gelbach
@@ -105,6 +107,7 @@ LIML
 LIML's
 linearized
 livreg
+LLM
 lm
 LM
 Lovell
@@ -163,6 +166,8 @@ reimplementation
 resid
 residualize
 Residualize
+residualized
+restatr
 REStud
 rf
 rk
@@ -180,6 +185,7 @@ shifter
 SLS
 smatrix
 SMSA
+SSC
 Staiger
 Stata
 Stata's
@@ -189,6 +195,7 @@ sw
 Swidinsky
 symmetrized
 tdelta
+testthat
 th
 tibble
 tidyverse
@@ -202,6 +209,7 @@ underid
 underidentification
 Underidentification
 underidentified
+uninstrumented
 unrejected
 Vanderkamp
 varlist

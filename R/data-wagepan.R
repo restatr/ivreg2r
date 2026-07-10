@@ -2,8 +2,15 @@
 #'
 #' Balanced panel data from the National Longitudinal Survey of Youth (NLSY),
 #' 1980--1987. Contains 4,360 observations on 545 young men observed over 8
-#' years. Useful for demonstrating panel methods, including two-way clustering
-#' by individual and year.
+#' years (the panel is balanced: every man contributes exactly one
+#' observation per year). Useful for demonstrating panel methods, including
+#' two-way clustering by individual and year.
+#'
+#' The bundled data are in raw levels, not within-transformed. Fixed-effects
+#' use (e.g. the Stock-Watson panel-robust VCE, `sw = TRUE`) requires
+#' demeaning each variable by panel unit before fitting; see the worked
+#' example in the "Fixed-effects panels: the Stock-Watson correction"
+#' section of `vignette("time-series-gmm")`.
 #'
 #' @format A data frame with 4,360 observations and 11 variables:
 #' \describe{
