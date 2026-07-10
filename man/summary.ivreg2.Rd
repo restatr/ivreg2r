@@ -26,6 +26,7 @@ here; \link{ivreg2r-conventions} for the statistical conventions.
 Other ivreg2 methods:
 \code{\link[=coef.ivreg2]{coef.ivreg2()}},
 \code{\link[=confint.ivreg2]{confint.ivreg2()}},
+\code{\link[=diagnostics]{diagnostics()}},
 \code{\link[=first_stage]{first_stage()}},
 \code{\link[=fitted.ivreg2]{fitted.ivreg2()}},
 \code{\link[=formula.ivreg2]{formula.ivreg2()}},

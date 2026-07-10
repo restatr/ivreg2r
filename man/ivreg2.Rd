@@ -517,7 +517,7 @@ summary(fit_liml)
 fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
                       age + kidslt6 + kidsge6, data = mroz_work,
                       endog = "educ")
-fit_endog$diagnostics$endogeneity
+diagnostics(fit_endog)
 
 # --- Clustering ---
 # Griliches (1976) wage equation, cluster on year.
@@ -558,6 +558,7 @@ The vignettes \code{vignette("introduction", "ivreg2r")},
 Other ivreg2 methods:
 \code{\link[=coef.ivreg2]{coef.ivreg2()}},
 \code{\link[=confint.ivreg2]{confint.ivreg2()}},
+\code{\link[=diagnostics]{diagnostics()}},
 \code{\link[=first_stage]{first_stage()}},
 \code{\link[=fitted.ivreg2]{fitted.ivreg2()}},
 \code{\link[=formula.ivreg2]{formula.ivreg2()}},

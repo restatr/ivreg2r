@@ -10,6 +10,7 @@ reference:
   - ivreg2
   - summary.ivreg2
   - first_stage
+  - diagnostics
 - title: Methods
   desc: S3 methods for fitted `ivreg2` objects.
   contents:

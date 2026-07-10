@@ -45,6 +45,7 @@ c(kp_rk_wald_F = fit$diagnostics$weak_id_robust$stat,
 Other ivreg2 methods:
 \code{\link[=coef.ivreg2]{coef.ivreg2()}},
 \code{\link[=confint.ivreg2]{confint.ivreg2()}},
+\code{\link[=diagnostics]{diagnostics()}},
 \code{\link[=fitted.ivreg2]{fitted.ivreg2()}},
 \code{\link[=formula.ivreg2]{formula.ivreg2()}},
 \code{\link[=ivreg2]{ivreg2()}},

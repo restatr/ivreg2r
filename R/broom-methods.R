@@ -159,6 +159,10 @@ tidy.ivreg2 <- function(x, conf.int = TRUE, conf.level = 0.95,
 #' Set \code{diagnostics = FALSE} for a compact goodness-of-fit summary
 #' without the IV test columns.
 #'
+#' For the full set of computed tests — including Stock-Yogo critical values,
+#' Anderson-Rubin, Stock-Wright, endogeneity, orthogonality, and redundancy —
+#' beyond these six headline columns, see \code{\link{diagnostics}()}.
+#'
 #' @examples
 #' data(mroz)
 #' mroz_work <- subset(mroz, inlf == 1)

@@ -25,6 +25,7 @@ aligns with the original data frame (matching base R's \code{fitted.lm}).
 Other ivreg2 methods:
 \code{\link[=coef.ivreg2]{coef.ivreg2()}},
 \code{\link[=confint.ivreg2]{confint.ivreg2()}},
+\code{\link[=diagnostics]{diagnostics()}},
 \code{\link[=first_stage]{first_stage()}},
 \code{\link[=formula.ivreg2]{formula.ivreg2()}},
 \code{\link[=ivreg2]{ivreg2()}},

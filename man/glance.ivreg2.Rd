@@ -58,6 +58,10 @@ Kleibergen-Paap F).
 
 Set \code{diagnostics = FALSE} for a compact goodness-of-fit summary
 without the IV test columns.
+
+For the full set of computed tests — including Stock-Yogo critical values,
+Anderson-Rubin, Stock-Wright, endogeneity, orthogonality, and redundancy —
+beyond these six headline columns, see \code{\link{diagnostics}()}.
 }
 \examples{
 data(mroz)
