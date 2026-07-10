@@ -505,7 +505,7 @@ all.equal(vcov(fit_dk), vcov(fit_dk_ck))
 Even $`T = 20`$ is not very large, so Driscoll-Kraay results on panels
 of this length should be read with caution.
 
-### Large N, large T: the NLS young-women panel
+### Large N, moderate T: the NLS young-women panel
 
 Two-way cluster-plus-kernel accounts for both within-panel correlation
 (clustering on the unit) and autocorrelated cross-panel shocks (a kernel
@@ -559,7 +559,9 @@ Cameron, Gelbach & Miller (2011). With the truncated kernel shown here,
 this construction is exactly Thompson’s (2011) estimator: two-way
 cluster-plus-kernel with a truncated kernel whose bandwidth is the
 number of periods after which the common cross-panel shocks can be
-ignored.
+ignored. With only 15 survey years the time dimension is modest for the
+large-$`T`$ side of this asymptotics, so the kernel term should be read
+with the same caution as Driscoll-Kraay above.
 
 ### Fixed-effects panels: the Stock-Watson correction
 
@@ -569,38 +571,67 @@ corrects the degrees-of-freedom bias of the usual cluster-robust
 estimator when $`T`$ is fixed and $`N`$ is large. Request it with
 `sw = TRUE` and an `ivar`. Because this regime is $`N \to \infty`$ with
 fixed $`T`$, a large-$`N`$, short-$`T`$ panel is the appropriate home;
-we use `wagepan` (545 men over 8 years):
+we use `wagepan` (545 men over 8 years, 1980–1987). The correction is
+defined for the within-transformed regression, so we first subtract each
+man’s own mean from the dependent variable and from every regressor —
+the within transformation that Stata’s `xtreg, fe` and `xtivreg2, fe`
+apply internally — and then regress the demeaned outcome on the demeaned
+regressors:
 
 ``` r
 
-fit_sw <- ivreg2(lwage ~ exper + expersq + married + union,
-                 data = wagepan, sw = TRUE, ivar = "nr", tvar = "year")
+wagepan_fe <- wagepan |>
+  group_by(nr) |>
+  mutate(lwage_dm = lwage - mean(lwage),
+         expersq_dm = expersq - mean(expersq),
+         married_dm = married - mean(married),
+         union_dm = union - mean(union)) |>
+  ungroup()
+
+fit_sw <- ivreg2(lwage_dm ~ 0 + expersq_dm + married_dm + union_dm,
+                 data = wagepan_fe, sw = TRUE, ivar = "nr", tvar = "year",
+                 dofminus = 545)
 summary(fit_sw)
 #> 
 #> OLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = lwage ~ exper + expersq + married + union, data = wagepan, 
-#>     tvar = "year", ivar = "nr", sw = TRUE)
+#> ivreg2(formula = lwage_dm ~ 0 + expersq_dm + married_dm + union_dm, 
+#>     data = wagepan_fe, dofminus = 545, tvar = "year", ivar = "nr", 
+#>     sw = TRUE)
 #> 
 #> Observations: 4,360 
 #> VCV type:     Stock-Watson heteroskedastic-robust 
+#> dofminus:     545 
 #> 
 #> Coefficients:
-#>               Estimate Std. Error z value Pr(>|z|)    
-#> (Intercept)  1.1177244  0.0376554  29.683   <2e-16 ***
-#> exper        0.1140221  0.0107484  10.608   <2e-16 ***
-#> expersq     -0.0063520  0.0006866  -9.251   <2e-16 ***
-#> married      0.1584604  0.0168736   9.391   <2e-16 ***
-#> union        0.1612066  0.0180438   8.934   <2e-16 ***
+#>             Estimate Std. Error z value Pr(>|z|)    
+#> expersq_dm 0.0036991  0.0001874  19.742  < 2e-16 ***
+#> married_dm 0.1073429  0.0184377   5.822 5.82e-09 ***
+#> union_dm   0.0827625  0.0201771   4.102 4.10e-05 ***
 #> ---
 #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 #> ---
-#> R-squared:      0.0925 
-#> Adj. R-squared: 0.0917 
-#> Wald chi2(4):  99.2 (p < 2.2e-16)
-#> Root MSE:       0.5073
+#> R-squared:      0.1365 
+#> Adj. R-squared: 0.0124 
+#> Wald chi2(3):  188.0 (p < 2.2e-16)
+#> Root MSE:       0.3598
 ```
+
+The `~ 0 +` in the formula is Stata’s `noconstant`: the within
+transformation has already removed every man’s mean, so no constant
+remains to estimate. The `dofminus = 545` argument is Stata’s
+`dofminus()`, which charges the 545 absorbed person means to the
+residual degrees of freedom; without it the variance would treat the
+demeaned data as though no means had been estimated and would understate
+the standard errors. Experience itself (`exper`) is deliberately absent.
+Within a man it advances one year per calendar year, so after demeaning
+its variation is a common time trend shared by everyone observed in the
+same calendar year. The classic `wagepan` equation (Wooldridge) includes
+year dummies alongside the person effects, and the person effects plus
+year dummies absorb `exper` exactly, so that specification must drop it;
+we keep its conventional regressor set — `expersq`, `married`, and
+`union` — here as well.
 
 The `sw` option forces robust standard errors and is incompatible with
 clustering, kernels, Kiefer, and Driscoll-Kraay. It appears in neither
@@ -762,7 +793,7 @@ summary(fit_cue)
 #> 
 #> Coefficients:
 #>             Estimate Std. Error z value Pr(>|z|)
-#> (Intercept)  0.29785    0.38046   0.783    0.434
+#> (Intercept)  0.29784    0.38046   0.783    0.434
 #> UR          -0.04831    0.06447  -0.749    0.454
 #> ---
 #> R-squared:      0.0901 
@@ -1063,7 +1094,7 @@ fit_psda <- ivreg2(psd_formula, data = wagepan, dkraay = 2,
 #> Warning: The covariance matrix was not positive semidefinite; 1 negative
 #> eigenvalue corrected via the 'psda' method.
 min(eigen(fit_psda$S, symmetric = TRUE)$values)
-#> [1] 9.457119e-14
+#> [1] 5.038001e-14
 ```
 
 The correction is applied to `S` before the coefficient covariance is

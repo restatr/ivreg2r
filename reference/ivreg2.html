@@ -148,10 +148,12 @@ and has no analogue of <a href="https://rdrr.io/r/stats/na.fail.html" class="ext
 <dd><p>Character: covariance type. One of <code>"iid"</code> (classical),
 <code>"robust"</code> (White heteroskedasticity-robust), <code>"HAC"</code>
 (heteroskedasticity and autocorrelation consistent), or <code>"AC"</code>
-(autocorrelation consistent). Use <code>small = TRUE</code> to apply
-finite-sample corrections. To match Stata's <code>ivreg2, robust</code>:
-use <code>vcov = "robust"</code>. To match Stata's <code>ivreg2, robust small</code>:
-use <code>vcov = "robust", small = TRUE</code>.</p></dd>
+(autocorrelation consistent). Matching is case-insensitive (<code>"hac"</code>,
+<code>"Hac"</code>, and <code>"HAC"</code> are all accepted), but the value is always
+normalized to and printed as the canonical spelling shown above. Use
+<code>small = TRUE</code> to apply finite-sample corrections. To match Stata's
+<code>ivreg2, robust</code>: use <code>vcov = "robust"</code>. To match Stata's
+<code>ivreg2, robust small</code>: use <code>vcov = "robust", small = TRUE</code>.</p></dd>
 
 
 <dt id="arg-clusters">clusters<a class="anchor" aria-label="anchor" href="#arg-clusters"></a></dt>
@@ -237,10 +239,12 @@ Must be non-negative. Cannot be combined with <code>method = "liml"</code> or
 
 <dt id="arg-fuller">fuller<a class="anchor" aria-label="anchor" href="#arg-fuller"></a></dt>
 <dd><p>Numeric scalar: Fuller (1977) modification parameter.
-Must be positive. When supplied, <code>method</code> is automatically set to
-<code>"liml"</code> and <code>k = lambda - fuller / (N - L)</code>. <code>fuller = 1</code> gives the
-bias-corrected LIML estimator; <code>fuller = 4</code> targets MSE. Cannot be
-combined with <code>kclass</code>.</p></dd>
+Non-negative. <code>0</code> (the default) applies no Fuller adjustment; a
+positive value activates the Fuller-modified LIML estimator, which
+automatically sets <code>method</code> to <code>"liml"</code> and
+<code>k = lambda - fuller / (N - L)</code>. <code>fuller = 1</code> gives the bias-corrected
+LIML estimator; <code>fuller = 4</code> targets MSE. Cannot be combined with
+<code>kclass</code>.</p></dd>
 
 
 <dt id="arg-coviv">coviv<a class="anchor" aria-label="anchor" href="#arg-coviv"></a></dt>
@@ -452,7 +456,15 @@ supplied S). Equivalent to Stata's <code>psd0</code> and <code>psda</code> optio
 Econometrica) panel-robust VCE. Requires panel data (<code>ivar</code>).
 Incompatible with clustering, HAC kernels, kiefer, dkraay,
 fweights, and iweights. Forces <code>vcov = "robust"</code> automatically.
-Equivalent to Stata's <code>sw</code> option (labeled "BETA VERSION" in Stata).</p></dd>
+Equivalent to Stata's <code>sw</code> option (labeled "BETA VERSION" in Stata).</p>
+<p><strong>Precondition:</strong> the Stock-Watson (2008) correction is derived for a
+within-transformed (fixed-effects) panel regression with fixed <code>T</code> and
+large <code>N</code>. <code>ivreg2()</code> does not perform the within transformation for
+you: within-transform the data yourself (demean every variable by
+panel unit) before fitting, and pass <code>dofminus</code> equal to the number of
+panel units, which charges the absorbed unit means to the degrees of
+freedom. See the worked example in the "Fixed-effects panels: the
+Stock-Watson correction" section of <code><a href="../articles/time-series-gmm.html">vignette("time-series-gmm")</a></code>.</p></dd>
 
 
 <dt id="arg-reduced-form">reduced_form<a class="anchor" aria-label="anchor" href="#arg-reduced-form"></a></dt>
@@ -473,9 +485,9 @@ reports that the request was ignored.</p></dd>
 <dt id="arg-first-stage">first_stage<a class="anchor" aria-label="anchor" href="#arg-first-stage"></a></dt>
 <dd><p>Logical: if <code>TRUE</code>, store extractable first-stage
 regression objects on the fitted model. Access them via
-<code><a href="first_stage.html">first_stage()</a></code>. Each object supports <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov()</a></code>,
-<code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>. Equivalent to Stata's
-<code>savefirst</code> option. Default <code>FALSE</code>. On a model with no endogenous
+<code><a href="first_stage.html">first_stage()</a></code>; see <code><a href="first_stage.html">first_stage()</a></code> for the full list of supported
+S3 methods (<code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code>, <code><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov()</a></code>, <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>, <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>,
+and others). Equivalent to Stata's <code>savefirst</code> option. Default <code>FALSE</code>. On a model with no endogenous
 regressors (a one-part OLS formula, or the IV form
 <code>y ~ exog | 0 | instruments</code>), nothing is stored and a warning reports
 that the request was ignored.</p></dd>

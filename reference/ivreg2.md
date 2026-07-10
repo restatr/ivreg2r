@@ -107,9 +107,12 @@ ivreg2(
   Character: covariance type. One of `"iid"` (classical), `"robust"`
   (White heteroskedasticity-robust), `"HAC"` (heteroskedasticity and
   autocorrelation consistent), or `"AC"` (autocorrelation consistent).
-  Use `small = TRUE` to apply finite-sample corrections. To match
-  Stata's `ivreg2, robust`: use `vcov = "robust"`. To match Stata's
-  `ivreg2, robust small`: use `vcov = "robust", small = TRUE`.
+  Matching is case-insensitive (`"hac"`, `"Hac"`, and `"HAC"` are all
+  accepted), but the value is always normalized to and printed as the
+  canonical spelling shown above. Use `small = TRUE` to apply
+  finite-sample corrections. To match Stata's `ivreg2, robust`: use
+  `vcov = "robust"`. To match Stata's `ivreg2, robust small`: use
+  `vcov = "robust", small = TRUE`.
 
 - clusters:
 
@@ -195,11 +198,12 @@ ivreg2(
 
 - fuller:
 
-  Numeric scalar: Fuller (1977) modification parameter. Must be
-  positive. When supplied, `method` is automatically set to `"liml"` and
-  `k = lambda - fuller / (N - L)`. `fuller = 1` gives the bias-corrected
-  LIML estimator; `fuller = 4` targets MSE. Cannot be combined with
-  `kclass`.
+  Numeric scalar: Fuller (1977) modification parameter. Non-negative.
+  `0` (the default) applies no Fuller adjustment; a positive value
+  activates the Fuller-modified LIML estimator, which automatically sets
+  `method` to `"liml"` and `k = lambda - fuller / (N - L)`. `fuller = 1`
+  gives the bias-corrected LIML estimator; `fuller = 4` targets MSE.
+  Cannot be combined with `kclass`.
 
 - coviv:
 
@@ -429,6 +433,16 @@ ivreg2(
   Forces `vcov = "robust"` automatically. Equivalent to Stata's `sw`
   option (labeled "BETA VERSION" in Stata).
 
+  **Precondition:** the Stock-Watson (2008) correction is derived for a
+  within-transformed (fixed-effects) panel regression with fixed `T` and
+  large `N`. `ivreg2()` does not perform the within transformation for
+  you: within-transform the data yourself (demean every variable by
+  panel unit) before fitting, and pass `dofminus` equal to the number of
+  panel units, which charges the absorbed unit means to the degrees of
+  freedom. See the worked example in the "Fixed-effects panels: the
+  Stock-Watson correction" section of
+  [`vignette("time-series-gmm")`](https://restatr.com/ivreg2r/articles/time-series-gmm.md).
+
 - reduced_form:
 
   Character: what reduced-form output to store. `"none"` (default)
@@ -448,16 +462,19 @@ ivreg2(
 
   Logical: if `TRUE`, store extractable first-stage regression objects
   on the fitted model. Access them via
-  [`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md).
-  Each object supports [`coef()`](https://rdrr.io/r/stats/coef.html),
+  [`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md);
+  see
+  [`first_stage()`](https://restatr.com/ivreg2r/reference/first_stage.md)
+  for the full list of supported S3 methods
+  ([`coef()`](https://rdrr.io/r/stats/coef.html),
   [`vcov()`](https://rdrr.io/r/stats/vcov.html),
   [`summary()`](https://rdrr.io/r/base/summary.html),
-  [`tidy()`](https://generics.r-lib.org/reference/tidy.html), and
-  [`glance()`](https://generics.r-lib.org/reference/glance.html).
-  Equivalent to Stata's `savefirst` option. Default `FALSE`. On a model
-  with no endogenous regressors (a one-part OLS formula, or the IV form
-  `y ~ exog | 0 | instruments`), nothing is stored and a warning reports
-  that the request was ignored.
+  [`tidy()`](https://generics.r-lib.org/reference/tidy.html),
+  [`glance()`](https://generics.r-lib.org/reference/glance.html), and
+  others). Equivalent to Stata's `savefirst` option. Default `FALSE`. On
+  a model with no endogenous regressors (a one-part OLS formula, or the
+  IV form `y ~ exog | 0 | instruments`), nothing is stored and a warning
+  reports that the request was ignored.
 
 - model:
 

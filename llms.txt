@@ -24,6 +24,70 @@ fit <- ivreg2(lwage ~ exper + expersq + black + smsa + south + smsa66 +
                 reg662 + reg663 + reg664 + reg665 + reg666 + reg667 +
                 reg668 + reg669 | educ | nearc2 + nearc4,
               data = card, vcov = "robust", small = TRUE)
+tidy(fit)
+#> # A tibble: 16 × 7
+#>    term        estimate std.error statistic  p.value conf.low conf.high
+#>    <chr>          <dbl>     <dbl>     <dbl>    <dbl>    <dbl>     <dbl>
+#>  1 (Intercept)  3.24     0.884        3.66  2.56e- 4  1.50      4.97   
+#>  2 educ         0.157    0.0526       2.99  2.83e- 3  0.0540    0.260  
+#>  3 exper        0.119    0.0230       5.18  2.41e- 7  0.0738    0.164  
+#>  4 expersq     -0.00236  0.000368    -6.40  1.83e-10 -0.00308  -0.00163
+#>  5 black       -0.123    0.0516      -2.39  1.70e- 2 -0.225    -0.0220 
+#>  6 smsa         0.101    0.0314       3.20  1.37e- 3  0.0391    0.162  
+#>  7 south       -0.143    0.0303      -4.73  2.34e- 6 -0.203    -0.0838 
+#>  8 smsa66       0.0151   0.0212       0.712 4.77e- 1 -0.0264    0.0566 
+#>  9 reg662       0.103    0.0379       2.71  6.79e- 3  0.0284    0.177  
+#> 10 reg663       0.150    0.0371       4.04  5.51e- 5  0.0771    0.223  
+#> 11 reg664       0.0476   0.0457       1.04  2.98e- 1 -0.0420    0.137  
+#> 12 reg665       0.154    0.0509       3.03  2.44e- 3  0.0546    0.254  
+#> 13 reg666       0.173    0.0535       3.23  1.25e- 3  0.0680    0.278  
+#> 14 reg667       0.142    0.0524       2.71  6.75e- 3  0.0393    0.245  
+#> 15 reg668      -0.0951   0.0588      -1.62  1.06e- 1 -0.210     0.0201 
+#> 16 reg669       0.103    0.0427       2.41  1.59e- 2  0.0193    0.187
+```
+
+## Formula syntax
+
+Three-part formula: `y ~ exogenous | endogenous | excluded_instruments`.
+Each variable appears once; exogenous regressors are automatically
+included as instruments.
+
+| Part    | Contents              | Example                                |
+|---------|-----------------------|----------------------------------------|
+| LHS     | Dependent variable    | `lwage`                                |
+| 1st RHS | Exogenous regressors  | `exper + expersq + black + smsa + ...` |
+| 2nd RHS | Endogenous regressors | `educ`                                 |
+| 3rd RHS | Excluded instruments  | `nearc2 + nearc4`                      |
+
+A one-part formula (`y ~ x1 + x2`) estimates OLS.
+
+## Features
+
+**Estimators:** OLS, 2SLS, LIML, Fuller, k-class, two-step efficient
+GMM, CUE
+
+**Standard errors:** classical, robust, one- and two-way clustering,
+HAC/AC (8 kernels), Kiefer, Driscoll-Kraay, cluster+kernel
+
+**Diagnostics:** weak identification (Kleibergen-Paap rk, Cragg-Donald,
+Stock-Yogo critical values), underidentification, overidentification
+(Sargan, Hansen J), endogeneity, first-stage F/partial R-squared,
+Anderson-Rubin, Stock-Wright S, orthogonality, redundancy
+
+**Integration:**
+[`tidy()`](https://generics.r-lib.org/reference/tidy.html),
+[`glance()`](https://generics.r-lib.org/reference/glance.html),
+[`augment()`](https://generics.r-lib.org/reference/augment.html) via
+[broom](https://broom.tidymodels.org/)
+
+## Full output
+
+[`summary()`](https://rdrr.io/r/base/summary.html) prints the complete
+`ivreg2` output, including the automatic diagnostics described above,
+for the model fit in the example:
+
+``` r
+
 summary(fit)
 #> 
 #> 2SLS Estimation
@@ -97,66 +161,6 @@ summary(fit)
 #> Included instruments:  exper, expersq, black, smsa, south, smsa66, reg662, reg663, reg664, reg665, reg666, reg667, reg668, reg669 
 #> Excluded instruments:  nearc2, nearc4
 ```
-
-Extract results programmatically with broom:
-
-``` r
-
-tidy(fit)
-#> # A tibble: 16 × 7
-#>    term        estimate std.error statistic  p.value conf.low conf.high
-#>    <chr>          <dbl>     <dbl>     <dbl>    <dbl>    <dbl>     <dbl>
-#>  1 (Intercept)  3.24     0.884        3.66  2.56e- 4  1.50      4.97   
-#>  2 educ         0.157    0.0526       2.99  2.83e- 3  0.0540    0.260  
-#>  3 exper        0.119    0.0230       5.18  2.41e- 7  0.0738    0.164  
-#>  4 expersq     -0.00236  0.000368    -6.40  1.83e-10 -0.00308  -0.00163
-#>  5 black       -0.123    0.0516      -2.39  1.70e- 2 -0.225    -0.0220 
-#>  6 smsa         0.101    0.0314       3.20  1.37e- 3  0.0391    0.162  
-#>  7 south       -0.143    0.0303      -4.73  2.34e- 6 -0.203    -0.0838 
-#>  8 smsa66       0.0151   0.0212       0.712 4.77e- 1 -0.0264    0.0566 
-#>  9 reg662       0.103    0.0379       2.71  6.79e- 3  0.0284    0.177  
-#> 10 reg663       0.150    0.0371       4.04  5.51e- 5  0.0771    0.223  
-#> 11 reg664       0.0476   0.0457       1.04  2.98e- 1 -0.0420    0.137  
-#> 12 reg665       0.154    0.0509       3.03  2.44e- 3  0.0546    0.254  
-#> 13 reg666       0.173    0.0535       3.23  1.25e- 3  0.0680    0.278  
-#> 14 reg667       0.142    0.0524       2.71  6.75e- 3  0.0393    0.245  
-#> 15 reg668      -0.0951   0.0588      -1.62  1.06e- 1 -0.210     0.0201 
-#> 16 reg669       0.103    0.0427       2.41  1.59e- 2  0.0193    0.187
-```
-
-## Formula syntax
-
-Three-part formula: `y ~ exogenous | endogenous | excluded_instruments`.
-Each variable appears once; exogenous regressors are automatically
-included as instruments.
-
-| Part    | Contents              | Example                                |
-|---------|-----------------------|----------------------------------------|
-| LHS     | Dependent variable    | `lwage`                                |
-| 1st RHS | Exogenous regressors  | `exper + expersq + black + smsa + ...` |
-| 2nd RHS | Endogenous regressors | `educ`                                 |
-| 3rd RHS | Excluded instruments  | `nearc2 + nearc4`                      |
-
-A one-part formula (`y ~ x1 + x2`) estimates OLS.
-
-## Features
-
-**Estimators:** OLS, 2SLS, LIML, Fuller, k-class, two-step efficient
-GMM, CUE
-
-**Standard errors:** classical, robust, one- and two-way clustering,
-HAC/AC (8 kernels), Kiefer, Driscoll-Kraay, cluster+kernel
-
-**Diagnostics:** weak identification (Kleibergen-Paap rk, Cragg-Donald,
-Stock-Yogo critical values), underidentification, overidentification
-(Sargan, Hansen J), endogeneity, first-stage F/partial R-squared,
-Anderson-Rubin, Stock-Wright S, orthogonality, redundancy
-
-**Integration:**
-[`tidy()`](https://generics.r-lib.org/reference/tidy.html),
-[`glance()`](https://generics.r-lib.org/reference/glance.html),
-[`augment()`](https://generics.r-lib.org/reference/augment.html) via
-[broom](https://broom.tidymodels.org/)
 
 ## Validation
 

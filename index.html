@@ -82,7 +82,81 @@
 <span>                <span class="va">reg662</span> <span class="op">+</span> <span class="va">reg663</span> <span class="op">+</span> <span class="va">reg664</span> <span class="op">+</span> <span class="va">reg665</span> <span class="op">+</span> <span class="va">reg666</span> <span class="op">+</span> <span class="va">reg667</span> <span class="op">+</span></span>
 <span>                <span class="va">reg668</span> <span class="op">+</span> <span class="va">reg669</span> <span class="op">|</span> <span class="va">educ</span> <span class="op">|</span> <span class="va">nearc2</span> <span class="op">+</span> <span class="va">nearc4</span>,</span>
 <span>              data <span class="op">=</span> <span class="va">card</span>, vcov <span class="op">=</span> <span class="st">"robust"</span>, small <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 16 × 7</span></span>
+<span><span class="co">#&gt;    term        estimate std.error statistic  p.value conf.low conf.high</span></span>
+<span><span class="co">#&gt;    &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt;  1 (Intercept)  3.24     0.884        3.66  2.56e- 4  1.50      4.97   </span></span>
+<span><span class="co">#&gt;  2 educ         0.157    0.0526       2.99  2.83e- 3  0.0540    0.260  </span></span>
+<span><span class="co">#&gt;  3 exper        0.119    0.0230       5.18  2.41e- 7  0.0738    0.164  </span></span>
+<span><span class="co">#&gt;  4 expersq     -0.00236  0.000368    -6.40  1.83e-10 -0.00308  -0.00163</span></span>
+<span><span class="co">#&gt;  5 black       -0.123    0.0516      -2.39  1.70e- 2 -0.225    -0.0220 </span></span>
+<span><span class="co">#&gt;  6 smsa         0.101    0.0314       3.20  1.37e- 3  0.0391    0.162  </span></span>
+<span><span class="co">#&gt;  7 south       -0.143    0.0303      -4.73  2.34e- 6 -0.203    -0.0838 </span></span>
+<span><span class="co">#&gt;  8 smsa66       0.0151   0.0212       0.712 4.77e- 1 -0.0264    0.0566 </span></span>
+<span><span class="co">#&gt;  9 reg662       0.103    0.0379       2.71  6.79e- 3  0.0284    0.177  </span></span>
+<span><span class="co">#&gt; 10 reg663       0.150    0.0371       4.04  5.51e- 5  0.0771    0.223  </span></span>
+<span><span class="co">#&gt; 11 reg664       0.0476   0.0457       1.04  2.98e- 1 -0.0420    0.137  </span></span>
+<span><span class="co">#&gt; 12 reg665       0.154    0.0509       3.03  2.44e- 3  0.0546    0.254  </span></span>
+<span><span class="co">#&gt; 13 reg666       0.173    0.0535       3.23  1.25e- 3  0.0680    0.278  </span></span>
+<span><span class="co">#&gt; 14 reg667       0.142    0.0524       2.71  6.75e- 3  0.0393    0.245  </span></span>
+<span><span class="co">#&gt; 15 reg668      -0.0951   0.0588      -1.62  1.06e- 1 -0.210     0.0201 </span></span>
+<span><span class="co">#&gt; 16 reg669       0.103    0.0427       2.41  1.59e- 2  0.0193    0.187</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="formula-syntax">Formula syntax<a class="anchor" aria-label="anchor" href="#formula-syntax"></a>
+</h2>
+<p>Three-part formula: <code>y ~ exogenous | endogenous | excluded_instruments</code>. Each variable appears once; exogenous regressors are automatically included as instruments.</p>
+<table class="table">
+<colgroup>
+<col width="12%">
+<col width="31%">
+<col width="55%">
+</colgroup>
+<thead><tr>
+<th>Part</th>
+<th>Contents</th>
+<th>Example</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>LHS</td>
+<td>Dependent variable</td>
+<td><code>lwage</code></td>
+</tr>
+<tr>
+<td>1st RHS</td>
+<td>Exogenous regressors</td>
+<td><code>exper + expersq + black + smsa + ...</code></td>
+</tr>
+<tr>
+<td>2nd RHS</td>
+<td>Endogenous regressors</td>
+<td><code>educ</code></td>
+</tr>
+<tr>
+<td>3rd RHS</td>
+<td>Excluded instruments</td>
+<td><code>nearc2 + nearc4</code></td>
+</tr>
+</tbody>
+</table>
+<p>A one-part formula (<code>y ~ x1 + x2</code>) estimates OLS.</p>
+</div>
+<div class="section level2">
+<h2 id="features">Features<a class="anchor" aria-label="anchor" href="#features"></a>
+</h2>
+<p><strong>Estimators:</strong> OLS, 2SLS, LIML, Fuller, k-class, two-step efficient GMM, CUE</p>
+<p><strong>Standard errors:</strong> classical, robust, one- and two-way clustering, HAC/AC (8 kernels), Kiefer, Driscoll-Kraay, cluster+kernel</p>
+<p><strong>Diagnostics:</strong> weak identification (Kleibergen-Paap rk, Cragg-Donald, Stock-Yogo critical values), underidentification, overidentification (Sargan, Hansen J), endogeneity, first-stage F/partial R-squared, Anderson-Rubin, Stock-Wright S, orthogonality, redundancy</p>
+<p><strong>Integration:</strong> <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>, <code><a href="https://generics.r-lib.org/reference/augment.html" class="external-link">augment()</a></code> via <a href="https://broom.tidymodels.org/" class="external-link">broom</a></p>
+</div>
+<div class="section level2">
+<h2 id="full-output">Full output<a class="anchor" aria-label="anchor" href="#full-output"></a>
+</h2>
+<p><code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> prints the complete <code>ivreg2</code> output, including the automatic diagnostics described above, for the model fit in the example:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; 2SLS Estimation</span></span>
 <span><span class="co">#&gt; </span></span>
@@ -154,76 +228,6 @@
 <span><span class="co">#&gt; Instrumented:          educ </span></span>
 <span><span class="co">#&gt; Included instruments:  exper, expersq, black, smsa, south, smsa66, reg662, reg663, reg664, reg665, reg666, reg667, reg668, reg669 </span></span>
 <span><span class="co">#&gt; Excluded instruments:  nearc2, nearc4</span></span></code></pre></div>
-<p>Extract results programmatically with broom:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="co">#&gt; # A tibble: 16 × 7</span></span>
-<span><span class="co">#&gt;    term        estimate std.error statistic  p.value conf.low conf.high</span></span>
-<span><span class="co">#&gt;    &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;</span></span>
-<span><span class="co">#&gt;  1 (Intercept)  3.24     0.884        3.66  2.56e- 4  1.50      4.97   </span></span>
-<span><span class="co">#&gt;  2 educ         0.157    0.0526       2.99  2.83e- 3  0.0540    0.260  </span></span>
-<span><span class="co">#&gt;  3 exper        0.119    0.0230       5.18  2.41e- 7  0.0738    0.164  </span></span>
-<span><span class="co">#&gt;  4 expersq     -0.00236  0.000368    -6.40  1.83e-10 -0.00308  -0.00163</span></span>
-<span><span class="co">#&gt;  5 black       -0.123    0.0516      -2.39  1.70e- 2 -0.225    -0.0220 </span></span>
-<span><span class="co">#&gt;  6 smsa         0.101    0.0314       3.20  1.37e- 3  0.0391    0.162  </span></span>
-<span><span class="co">#&gt;  7 south       -0.143    0.0303      -4.73  2.34e- 6 -0.203    -0.0838 </span></span>
-<span><span class="co">#&gt;  8 smsa66       0.0151   0.0212       0.712 4.77e- 1 -0.0264    0.0566 </span></span>
-<span><span class="co">#&gt;  9 reg662       0.103    0.0379       2.71  6.79e- 3  0.0284    0.177  </span></span>
-<span><span class="co">#&gt; 10 reg663       0.150    0.0371       4.04  5.51e- 5  0.0771    0.223  </span></span>
-<span><span class="co">#&gt; 11 reg664       0.0476   0.0457       1.04  2.98e- 1 -0.0420    0.137  </span></span>
-<span><span class="co">#&gt; 12 reg665       0.154    0.0509       3.03  2.44e- 3  0.0546    0.254  </span></span>
-<span><span class="co">#&gt; 13 reg666       0.173    0.0535       3.23  1.25e- 3  0.0680    0.278  </span></span>
-<span><span class="co">#&gt; 14 reg667       0.142    0.0524       2.71  6.75e- 3  0.0393    0.245  </span></span>
-<span><span class="co">#&gt; 15 reg668      -0.0951   0.0588      -1.62  1.06e- 1 -0.210     0.0201 </span></span>
-<span><span class="co">#&gt; 16 reg669       0.103    0.0427       2.41  1.59e- 2  0.0193    0.187</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="formula-syntax">Formula syntax<a class="anchor" aria-label="anchor" href="#formula-syntax"></a>
-</h2>
-<p>Three-part formula: <code>y ~ exogenous | endogenous | excluded_instruments</code>. Each variable appears once; exogenous regressors are automatically included as instruments.</p>
-<table class="table">
-<colgroup>
-<col width="12%">
-<col width="31%">
-<col width="55%">
-</colgroup>
-<thead><tr>
-<th>Part</th>
-<th>Contents</th>
-<th>Example</th>
-</tr></thead>
-<tbody>
-<tr>
-<td>LHS</td>
-<td>Dependent variable</td>
-<td><code>lwage</code></td>
-</tr>
-<tr>
-<td>1st RHS</td>
-<td>Exogenous regressors</td>
-<td><code>exper + expersq + black + smsa + ...</code></td>
-</tr>
-<tr>
-<td>2nd RHS</td>
-<td>Endogenous regressors</td>
-<td><code>educ</code></td>
-</tr>
-<tr>
-<td>3rd RHS</td>
-<td>Excluded instruments</td>
-<td><code>nearc2 + nearc4</code></td>
-</tr>
-</tbody>
-</table>
-<p>A one-part formula (<code>y ~ x1 + x2</code>) estimates OLS.</p>
-</div>
-<div class="section level2">
-<h2 id="features">Features<a class="anchor" aria-label="anchor" href="#features"></a>
-</h2>
-<p><strong>Estimators:</strong> OLS, 2SLS, LIML, Fuller, k-class, two-step efficient GMM, CUE</p>
-<p><strong>Standard errors:</strong> classical, robust, one- and two-way clustering, HAC/AC (8 kernels), Kiefer, Driscoll-Kraay, cluster+kernel</p>
-<p><strong>Diagnostics:</strong> weak identification (Kleibergen-Paap rk, Cragg-Donald, Stock-Yogo critical values), underidentification, overidentification (Sargan, Hansen J), endogeneity, first-stage F/partial R-squared, Anderson-Rubin, Stock-Wright S, orthogonality, redundancy</p>
-<p><strong>Integration:</strong> <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code>, <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>, <code><a href="https://generics.r-lib.org/reference/augment.html" class="external-link">augment()</a></code> via <a href="https://broom.tidymodels.org/" class="external-link">broom</a></p>
 </div>
 <div class="section level2">
 <h2 id="validation">Validation<a class="anchor" aria-label="anchor" href="#validation"></a>

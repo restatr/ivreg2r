@@ -105,10 +105,11 @@ for the endogeneity, orthogonality, and redundancy rows.</p></dd>
 
 
 </dl><p>Rows appear only for the tests actually computed on the model: an IV
-fit reports underidentification, weak identification, and
-overidentification by default, while <code>endog =</code>, <code>orthog =</code>, and
-<code>redundant =</code> add the corresponding endogeneity, orthogonality, and
-redundancy rows.
+fit reports underidentification, weak identification,
+overidentification, and — for every endogenous regressor, unless
+narrowed to a subset via <code>endog =</code> — the endogeneity test by default,
+while <code>orthog =</code> and <code>redundant =</code> add the corresponding orthogonality
+and redundancy rows only when the user requests them.
 The Stock-Yogo rows (keys of the form <code>"sy_iv_size_10"</code>) report critical
 values, not test statistics, so their <code>p_value</code> is always <code>NA</code>. An OLS
 fit (single-part formula) has no diagnostics at all and returns a

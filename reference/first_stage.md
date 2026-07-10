@@ -1,14 +1,8 @@
 # Extract first-stage regression objects
 
 Returns a named list of `ivreg2_first_stage` objects, one per endogenous
-variable. Each object supports
-[`coef()`](https://rdrr.io/r/stats/coef.html),
-[`vcov()`](https://rdrr.io/r/stats/vcov.html),
-[`residuals()`](https://rdrr.io/r/stats/residuals.html),
-[`fitted()`](https://rdrr.io/r/stats/fitted.values.html),
-[`summary()`](https://rdrr.io/r/base/summary.html),
-[`tidy()`](https://generics.r-lib.org/reference/tidy.html), and
-[`glance()`](https://generics.r-lib.org/reference/glance.html).
+variable. Each `ivreg2_first_stage` object supports the following
+methods:
 
 ## Usage
 
@@ -32,6 +26,55 @@ first_stage(x, ...)
 ## Value
 
 A named list of `ivreg2_first_stage` objects.
+
+## Details
+
+- [`coef()`](https://rdrr.io/r/stats/coef.html):
+
+  First-stage coefficient vector.
+
+- [`vcov()`](https://rdrr.io/r/stats/vcov.html):
+
+  First-stage variance-covariance matrix.
+
+- [`residuals()`](https://rdrr.io/r/stats/residuals.html):
+
+  First-stage residuals.
+
+- [`fitted()`](https://rdrr.io/r/stats/fitted.values.html):
+
+  First-stage fitted values.
+
+- [`nobs()`](https://rdrr.io/r/stats/nobs.html):
+
+  Number of observations used in the first stage.
+
+- [`confint()`](https://rdrr.io/r/stats/confint.html):
+
+  Confidence intervals for the first-stage coefficients.
+
+- [`print()`](https://rdrr.io/r/base/print.html):
+
+  Compact one-line-per-coefficient display.
+
+- [`summary()`](https://rdrr.io/r/base/summary.html):
+
+  Full first-stage regression table: coefficients, standard errors,
+  t-values, p-values, the first-stage F-statistic, and the partial
+  R-squared (its [`print()`](https://rdrr.io/r/base/print.html) method
+  renders the table).
+
+- [`tidy()`](https://generics.r-lib.org/reference/tidy.html):
+
+  Broom-style tibble with one row per coefficient (`term`, `estimate`,
+  `std.error`, `statistic`, `p.value`, and, optionally, confidence
+  limits).
+
+- [`glance()`](https://generics.r-lib.org/reference/glance.html):
+
+  Broom-style one-row tibble of first-stage fit statistics (sigma,
+  degrees of freedom, F-statistic, partial R-squared, and related
+  diagnostics).
 
 ## See also
 

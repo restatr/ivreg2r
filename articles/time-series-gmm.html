@@ -604,7 +604,7 @@ is not very large, so Driscoll-Kraay results on panels of this length
 should be read with caution.</p>
 </div>
 <div class="section level3">
-<h3 id="large-n-large-t-the-nls-young-women-panel">Large N, large T: the NLS young-women panel<a class="anchor" aria-label="anchor" href="#large-n-large-t-the-nls-young-women-panel"></a>
+<h3 id="large-n-moderate-t-the-nls-young-women-panel">Large N, moderate T: the NLS young-women panel<a class="anchor" aria-label="anchor" href="#large-n-moderate-t-the-nls-young-women-panel"></a>
 </h3>
 <p>Two-way cluster-plus-kernel accounts for both within-panel
 correlation (clustering on the unit) and autocorrelated cross-panel
@@ -656,7 +656,10 @@ Cameron, Gelbach &amp; Miller (2011). With the truncated kernel shown
 here, this construction is exactly Thompson’s (2011) estimator: two-way
 cluster-plus-kernel with a truncated kernel whose bandwidth is the
 number of periods after which the common cross-panel shocks can be
-ignored.</p>
+ignored. With only 15 survey years the time dimension is modest for the
+large-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+side of this asymptotics, so the kernel term should be read with the
+same caution as Driscoll-Kraay above.</p>
 </div>
 <div class="section level3">
 <h3 id="fixed-effects-panels-the-stock-watson-correction">Fixed-effects panels: the Stock-Watson correction<a class="anchor" aria-label="anchor" href="#fixed-effects-panels-the-stock-watson-correction"></a>
@@ -677,35 +680,65 @@ a
 large-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>N</mi><annotation encoding="application/x-tex">N</annotation></semantics></math>,
 short-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
 panel is the appropriate home; we use <code>wagepan</code> (545 men over
-8 years):</p>
+8 years, 1980–1987). The correction is defined for the
+within-transformed regression, so we first subtract each man’s own mean
+from the dependent variable and from every regressor — the within
+transformation that Stata’s <code>xtreg, fe</code> and
+<code>xtivreg2, fe</code> apply internally — and then regress the
+demeaned outcome on the demeaned regressors:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_sw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage</span> <span class="op">~</span> <span class="va">exper</span> <span class="op">+</span> <span class="va">expersq</span> <span class="op">+</span> <span class="va">married</span> <span class="op">+</span> <span class="va">union</span>,</span>
-<span>                 data <span class="op">=</span> <span class="va">wagepan</span>, sw <span class="op">=</span> <span class="cn">TRUE</span>, ivar <span class="op">=</span> <span class="st">"nr"</span>, tvar <span class="op">=</span> <span class="st">"year"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">wagepan_fe</span> <span class="op">&lt;-</span> <span class="va">wagepan</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">nr</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>lwage_dm <span class="op">=</span> <span class="va">lwage</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">lwage</span><span class="op">)</span>,</span>
+<span>         expersq_dm <span class="op">=</span> <span class="va">expersq</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">expersq</span><span class="op">)</span>,</span>
+<span>         married_dm <span class="op">=</span> <span class="va">married</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">married</span><span class="op">)</span>,</span>
+<span>         union_dm <span class="op">=</span> <span class="va">union</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">union</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_sw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage_dm</span> <span class="op">~</span> <span class="fl">0</span> <span class="op">+</span> <span class="va">expersq_dm</span> <span class="op">+</span> <span class="va">married_dm</span> <span class="op">+</span> <span class="va">union_dm</span>,</span>
+<span>                 data <span class="op">=</span> <span class="va">wagepan_fe</span>, sw <span class="op">=</span> <span class="cn">TRUE</span>, ivar <span class="op">=</span> <span class="st">"nr"</span>, tvar <span class="op">=</span> <span class="st">"year"</span>,</span>
+<span>                 dofminus <span class="op">=</span> <span class="fl">545</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_sw</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; OLS Estimation</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
-<span><span class="co">#&gt; ivreg2(formula = lwage ~ exper + expersq + married + union, data = wagepan, </span></span>
-<span><span class="co">#&gt;     tvar = "year", ivar = "nr", sw = TRUE)</span></span>
+<span><span class="co">#&gt; ivreg2(formula = lwage_dm ~ 0 + expersq_dm + married_dm + union_dm, </span></span>
+<span><span class="co">#&gt;     data = wagepan_fe, dofminus = 545, tvar = "year", ivar = "nr", </span></span>
+<span><span class="co">#&gt;     sw = TRUE)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Observations: 4,360 </span></span>
 <span><span class="co">#&gt; VCV type:     Stock-Watson heteroskedastic-robust </span></span>
+<span><span class="co">#&gt; dofminus:     545 </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Coefficients:</span></span>
-<span><span class="co">#&gt;               Estimate Std. Error z value Pr(&gt;|z|)    </span></span>
-<span><span class="co">#&gt; (Intercept)  1.1177244  0.0376554  29.683   &lt;2e-16 ***</span></span>
-<span><span class="co">#&gt; exper        0.1140221  0.0107484  10.608   &lt;2e-16 ***</span></span>
-<span><span class="co">#&gt; expersq     -0.0063520  0.0006866  -9.251   &lt;2e-16 ***</span></span>
-<span><span class="co">#&gt; married      0.1584604  0.0168736   9.391   &lt;2e-16 ***</span></span>
-<span><span class="co">#&gt; union        0.1612066  0.0180438   8.934   &lt;2e-16 ***</span></span>
+<span><span class="co">#&gt;             Estimate Std. Error z value Pr(&gt;|z|)    </span></span>
+<span><span class="co">#&gt; expersq_dm 0.0036991  0.0001874  19.742  &lt; 2e-16 ***</span></span>
+<span><span class="co">#&gt; married_dm 0.1073429  0.0184377   5.822 5.82e-09 ***</span></span>
+<span><span class="co">#&gt; union_dm   0.0827625  0.0201771   4.102 4.10e-05 ***</span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</span></span>
 <span><span class="co">#&gt; ---</span></span>
-<span><span class="co">#&gt; R-squared:      0.0925 </span></span>
-<span><span class="co">#&gt; Adj. R-squared: 0.0917 </span></span>
-<span><span class="co">#&gt; Wald chi2(4):  99.2 (p &lt; 2.2e-16)</span></span>
-<span><span class="co">#&gt; Root MSE:       0.5073</span></span></code></pre></div>
+<span><span class="co">#&gt; R-squared:      0.1365 </span></span>
+<span><span class="co">#&gt; Adj. R-squared: 0.0124 </span></span>
+<span><span class="co">#&gt; Wald chi2(3):  188.0 (p &lt; 2.2e-16)</span></span>
+<span><span class="co">#&gt; Root MSE:       0.3598</span></span></code></pre></div>
+<p>The <code>~ 0 +</code> in the formula is Stata’s
+<code>noconstant</code>: the within transformation has already removed
+every man’s mean, so no constant remains to estimate. The
+<code>dofminus = 545</code> argument is Stata’s <code>dofminus()</code>,
+which charges the 545 absorbed person means to the residual degrees of
+freedom; without it the variance would treat the demeaned data as though
+no means had been estimated and would understate the standard errors.
+Experience itself (<code>exper</code>) is deliberately absent. Within a
+man it advances one year per calendar year, so after demeaning its
+variation is a common time trend shared by everyone observed in the same
+calendar year. The classic <code>wagepan</code> equation (Wooldridge)
+includes year dummies alongside the person effects, and the person
+effects plus year dummies absorb <code>exper</code> exactly, so that
+specification must drop it; we keep its conventional regressor set —
+<code>expersq</code>, <code>married</code>, and <code>union</code> —
+here as well.</p>
 <p>The <code>sw</code> option forces robust standard errors and is
 incompatible with clustering, kernels, Kiefer, and Driscoll-Kraay. It
 appears in neither the help file nor the Baum, Schaffer &amp; Stillman
@@ -900,7 +933,7 @@ errors. Continuing the same equation:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Coefficients:</span></span>
 <span><span class="co">#&gt;             Estimate Std. Error z value Pr(&gt;|z|)</span></span>
-<span><span class="co">#&gt; (Intercept)  0.29785    0.38046   0.783    0.434</span></span>
+<span><span class="co">#&gt; (Intercept)  0.29784    0.38046   0.783    0.434</span></span>
 <span><span class="co">#&gt; UR          -0.04831    0.06447  -0.749    0.454</span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; R-squared:      0.0901 </span></span>
@@ -1180,7 +1213,7 @@ correction silently:</p>
 <span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 1 negative</span></span>
 <span><span class="co">#&gt; eigenvalue corrected via the 'psda' method.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen</a></span><span class="op">(</span><span class="va">fit_psda</span><span class="op">$</span><span class="va">S</span>, symmetric <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">values</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 9.457119e-14</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 5.038001e-14</span></span></code></pre></div>
 <p>The correction is applied to <code>S</code> before the coefficient
 covariance is assembled from it, exactly as in Stata, so the standard
 errors change while the coefficients do not:</p>
