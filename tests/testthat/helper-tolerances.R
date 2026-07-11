@@ -43,11 +43,9 @@ muffle_rank_warnings <- function(expr) {
   )
 }
 
-# Worst observed values below are from the post-parscale audit at the CUE
-# closeout (2026-07-06, 2022 comparisons across 36 configs; same day as, and
-# superseding, the end-of-grind re-audit — the CUE optimizer's parscale
-# scaling tightened every optimizer-endpoint cell except ab_cue cl ys,
-# which moved 7.6e-7 -> 9.0e-7, still the overall worst coef).
+# Worst observed values below are from the standing tolerance audit (2,022
+# comparisons across 36 configs; remeasure via
+# `Rscript pkg/tests/audit-tolerances.R` from the repo root).
 # Keep in sync: the tolerance table below is quoted in CLAUDE.md ("Testing
 # Tolerances") and in the public validation article
 # (vignettes/articles/validation.Rmd) — update all three together.
@@ -59,23 +57,33 @@ stata_tol <- list(
   pval = 1e-4    # p-values (absolute) — worst observed: 2.5e-7
 )
 
-# The per-file exception tolerances (cue 5e-6, center 2e-5, dofminus 1e-5)
-# were retired at the end-of-grind re-audit (2026-07-06): every binding case
-# lived on fixture cells deleted in the Tranche 3 re-base (the card CUE and
-# CUE+center cells, the M=2 card cluster dofminus cells, the card-era
-# LIML+cluster cells). Two documented per-site overrides remain, with their
-# rationale at the call sites:
-#
-#   test-ts-operators.R / test-cue.R: klein CUE coef/se/vcov + CUE=LIML
-#     identity = 1e-5 (cross-platform CUE optimizer-endpoint noise on the
-#     N=21 klein model; the pre-parscale 1e-4 override was retired to
-#     standard at the 2026-07-06 CUE closeout on macOS evidence of 1.2e-7,
-#     then the first cross-platform CI cycle breached 1e-6 marginally on
-#     Windows — 1e-5 is ~10x the measured worst and 10x tighter than the
-#     old 1e-4)
-#   test-user-matrices.R: wmatrix-vs-standard GMM fit comparison, vcov = 1e-5
-#     (R-internal fit-vs-fit identity, not Stata parity)
-#
-# Run `Rscript pkg/tests/audit-tolerances.R` to measure actual discrepancies.
-# Escalation rule: a breach of the standard tolerances is investigate-first;
-# never widen a tolerance without a root cause.
+# --- Documented tolerance overrides -----------------------------------------
+# Every tolerance literal looser than standard_tol_ceiling must have a row
+# here and a root-cause comment at its call site. test-tolerance-policy.R
+# enforces this mechanically: each row must match the exact number of
+# occurrences of that (file, value) pair, so this inventory can neither
+# under- nor over-claim. Counts are per literal, not per line (one call can
+# carry two tolerance arguments). To add an override: find the root cause,
+# comment the call site, then add the row. Escalation rule: a breach of the
+# standard tolerances is investigate-first; never widen a tolerance without a
+# root cause. Known limitation, accepted: a loose tolerance passed through a
+# local variable escapes the scan; don't do that.
+# NOTE: this file is also source()d by pkg/tests/audit-tolerances.R — keep it
+# free of top-level testthat calls.
+standard_tol_ceiling <- 1e-6  # at or below this is standard-or-tighter for every class
+
+tolerance_overrides <- data.frame(
+  file = c("test-ts-operators.R",
+           "test-cue.R",
+           "test-user-matrices.R",
+           "test-gmm2s.R"),
+  value = c(1e-5, 1e-5, 1e-5, 1e-4),
+  count = c(3L, 1L, 1L, 1L),
+  reason = c(
+    "klein CUE coef/se + CUE=LIML identity: cross-platform optimizer-endpoint noise on the N=21 model; ~10x the measured cross-platform worst",
+    "klein CUE vcov: same optimizer-endpoint noise, quadratic in the coefficient gap",
+    "wmatrix-vs-standard just-identified GMM fit-vs-fit identity: different first-step W perturbs step-2 residuals; the VCV squares the gap",
+    "inverted assertion (expect_false(all.equal)): looseness strengthens the claim that GMM2S and 2SLS coefficients differ"
+  ),
+  stringsAsFactors = FALSE
+)

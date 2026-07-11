@@ -49,7 +49,9 @@ test_that("GMM2S robust coefficients differ from 2SLS", {
   fit_gmm <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                     data = card, method = "gmm2s", vcov = "robust")
 
-  # Coefficients should differ for overidentified + heteroskedastic
+  # Coefficients should differ for overidentified + heteroskedastic.
+  # Inverted assertion: the loose 1e-4 strengthens the claim (the estimates
+  # differ by MORE than 1e-4), so it is allow-listed in tolerance_overrides.
   expect_false(isTRUE(all.equal(coef(fit_2sls)["educ"],
                                 coef(fit_gmm)["educ"],
                                 tolerance = 1e-4)))
