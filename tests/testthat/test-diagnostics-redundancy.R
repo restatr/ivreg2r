@@ -181,6 +181,10 @@ redundancy_cells <- list(
        fixture = "gril_red_redundancy_mrt_robust.csv",
        fit_args = list(gril_weak_formula, data = griliches, vcov = "robust",
                        redundant = "mrt")),
+  list(name = "gril_red mrt robust + center (center is a no-op on redstat)",
+       fixture = "gril_red_redundancy_mrt_robust_center.csv",
+       fit_args = list(gril_weak_formula, data = griliches, vcov = "robust",
+                       redundant = "mrt", center = TRUE)),
   list(name = "gril_red mrt iid",
        fixture = "gril_red_redundancy_mrt_iid.csv",
        fit_args = list(gril_weak_formula, data = griliches, redundant = "mrt")),
@@ -250,6 +254,22 @@ test_that("gmm2s redundancy equals 2SLS redundancy (robust)", {
                fit_2sls$diagnostics$redundancy$p)
   expect_identical(fit_gmm2s$diagnostics$redundancy$df,
                    fit_2sls$diagnostics$redundancy$df)
+})
+
+test_that("center does not change the redundancy statistic", {
+  # Stata's ranktest never receives centering for the redundancy call
+  # (ivreg2.ado:1753-1764), so the KP omega behind e(redstat) is always
+  # uncentered -- center = TRUE must be a complete no-op on this stat.
+  fit_no <- ivreg2(gril_weak_formula, data = griliches, vcov = "robust",
+                   redundant = "mrt", center = FALSE)
+  fit_yes <- ivreg2(gril_weak_formula, data = griliches, vcov = "robust",
+                    redundant = "mrt", center = TRUE)
+  expect_equal(fit_yes$diagnostics$redundancy$stat,
+               fit_no$diagnostics$redundancy$stat, tolerance = 1e-12)
+  expect_equal(fit_yes$diagnostics$redundancy$p,
+               fit_no$diagnostics$redundancy$p, tolerance = 1e-12)
+  expect_identical(fit_yes$diagnostics$redundancy$df,
+                    fit_no$diagnostics$redundancy$df)
 })
 
 test_that("testing all excluded instruments makes redundancy coincide with underid (K1=1)", {

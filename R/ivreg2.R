@@ -1933,6 +1933,11 @@
         redundant, parsed$excluded_names, parsed$excluded_colnames,
         parsed$excluded_assign
       )
+      # Stata's ranktest never receives centering (ivreg2.ado:1753-1764), so
+      # the redundancy test's KP omega is always uncentered, matching the
+      # underid/weak-id treatment at .compute_id_tests() above -- `center`
+      # is deliberately not forwarded here and the function default (FALSE)
+      # governs.
       diagnostics$redundancy <- .compute_redundancy_test(
         X = parsed$X, Z = parsed$Z,
         weights = parsed$weights, cluster_vec = cluster_vec,
@@ -1942,8 +1947,7 @@
         excluded_colnames = parsed$excluded_colnames,
         redundant_vars = redundant_cols, dofminus = dofminus,
         weight_type = weight_type,
-        kernel = kernel, bw = bw, time_index = time_index,
-        center = center
+        kernel = kernel, bw = bw, time_index = time_index
       )
     }
 
@@ -2335,6 +2339,12 @@
 #'   S matrix from the restricted model *without* centering, even when
 #'   `center = TRUE`. This matches Stata's `ivreg2`, where `center` is not
 #'   forwarded to the recursive call for the endogeneity test.
+#'
+#'   The Kleibergen-Paap identification statistics (underidentification,
+#'   weak identification) and the instrument redundancy test are likewise
+#'   always computed *without* centering, regardless of `center`. This
+#'   matches Stata, whose `ranktest` calls (underid, weak-id, and
+#'   redundancy) never receive the `center` option.
 #' @param psd Character or NULL: PSD correction for the moment covariance
 #'   matrix S. `NULL` (default) applies no correction. `"psd0"` zeroes
 #'   negative eigenvalues (Politis 2007). `"psda"` replaces negative

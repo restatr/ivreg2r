@@ -113,6 +113,11 @@ display _newline(2) "=== griliches redundant(mrt), robust (BSS 2007 p. 493 ancho
 ivreg2 lw s expr tenure rns smsa _I* (iq=age mrt), robust redundant(mrt)
 save_redundancy_results, prefix(gril_red) suffix(mrt_robust) outdir(`outdir')
 
+// --- D5a: same model + center -- Stata's ranktest never receives centering (ivreg2.ado:1753-1764), so this cell should be byte-identical to mrt_robust above; pins the R-side no-op of `center` on the redundancy stat ---
+display _newline(2) "=== griliches redundant(mrt), robust, center ==="
+ivreg2 lw s expr tenure rns smsa _I* (iq=age mrt), robust center redundant(mrt)
+save_redundancy_results, prefix(gril_red) suffix(mrt_robust_center) outdir(`outdir')
+
 // --- D5a: BSS command minus robust -- IID canonical-correlations path ---
 display _newline(2) "=== griliches redundant(mrt), IID ==="
 ivreg2 lw s expr tenure rns smsa _I* (iq=age mrt), redundant(mrt)

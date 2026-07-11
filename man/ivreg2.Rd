@@ -334,7 +334,13 @@ diagnostic tests that use the main model's S matrix (overidentification,
 orthogonality). However, the endogeneity test (\code{endog}) computes its own
 S matrix from the restricted model \emph{without} centering, even when
 \code{center = TRUE}. This matches Stata's \code{ivreg2}, where \code{center} is not
-forwarded to the recursive call for the endogeneity test.}
+forwarded to the recursive call for the endogeneity test.
+
+The Kleibergen-Paap identification statistics (underidentification,
+weak identification) and the instrument redundancy test are likewise
+always computed \emph{without} centering, regardless of \code{center}. This
+matches Stata, whose \code{ranktest} calls (underid, weak-id, and
+redundancy) never receive the \code{center} option.}
 
 \item{psd}{Character or NULL: PSD correction for the moment covariance
 matrix S. \code{NULL} (default) applies no correction. \code{"psd0"} zeroes
