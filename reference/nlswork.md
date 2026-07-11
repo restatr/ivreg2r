@@ -108,6 +108,8 @@ Women, 14–24 years old in 1968. Center for Human Resource Research.
 
 Distributed via Stata's `webuse nlswork`.
 
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## Details
 
 `race` is coded 1 = White, 2 = Black, 3 = Other (faithful to the

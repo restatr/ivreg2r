@@ -3,7 +3,7 @@
 U.S. macroeconomic time series (1948–1996) with inflation and
 unemployment rates plus lags and first differences. This is the same
 dataset used in Stata's `ivreg2` help file for HAC and AC examples,
-originally from Wooldridge (2019).
+originally from Wooldridge (2020).
 
 ## Usage
 
@@ -62,7 +62,12 @@ A data frame with 49 observations and 11 variables:
 ## Source
 
 Wooldridge, J.M. (2020). *Introductory Econometrics: A Modern Approach*,
-7th ed. Cengage Learning.
+7th ed. Cengage Learning. The underlying series are from the *Economic
+Report of the President* (a U.S. government work).
+
+Downloaded from <http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta>.
+
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
 
 ## See also
 

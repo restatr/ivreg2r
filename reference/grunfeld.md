@@ -52,6 +52,8 @@ Economic Review*, 11(4), 404–417.
 
 Distributed via Stata's `webuse grunfeld`.
 
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## See also
 
 Other ivreg2r datasets:

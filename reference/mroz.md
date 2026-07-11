@@ -111,6 +111,10 @@ Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married
 Women's Hours of Work to Economic and Statistical Assumptions."
 *Econometrica*, 55(4), 765–799.
 
+Obtained from Stata's `bcuse` archive (Boston College), `bcuse mroz`.
+
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## See also
 
 Other ivreg2r datasets:

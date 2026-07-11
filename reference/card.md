@@ -155,6 +155,10 @@ Estimate the Return to Schooling." In L.N. Christofides, E.K. Grant, and
 R. Swidinsky (Eds.), *Aspects of Labour Market Behaviour: Essays in
 Honour of John Vanderkamp*. University of Toronto Press.
 
+Obtained from Stata's `bcuse` archive (Boston College), `bcuse card`.
+
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## See also
 
 Other ivreg2r datasets:

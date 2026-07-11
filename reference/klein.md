@@ -74,6 +74,8 @@ Klein, L.R. (1950). *Economic Fluctuations in the United States,
 
 Distributed via Stata's `webuse klein`.
 
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## Details
 
 **Two columns both encode "year" – do not confuse them.** `yr` is the

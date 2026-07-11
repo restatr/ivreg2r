@@ -70,6 +70,8 @@ demand. *Review of Economics and Statistics*, 82(1), 117–126.
 
 Distributed via R package `plm`, `data(Cigar)`.
 
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## Details
 
 `price` and `ndi` are nominal; deflate by `cpi` for real terms.

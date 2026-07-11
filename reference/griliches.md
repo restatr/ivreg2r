@@ -104,6 +104,8 @@ Economy*, 84(4), S69–S85.
 
 Downloaded from <http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta>.
 
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## Details
 
 Two cross-sections are pooled (survey years 66–73 and 80). The Baum,

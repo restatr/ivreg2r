@@ -6,6 +6,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Instrumental Variables Estimation with ivreg2r • ivreg2r</title>
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link rel="icon" sizes="any" href="../favicon.ico">
+<link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
@@ -516,8 +521,9 @@ it automatically for all endogenous regressors; use the
 <p>The Anderson-Rubin (1949) test provides inference on the endogenous
 regressors that remains valid even when instruments are weak. Unlike the
 standard Wald or t-test on 2SLS coefficients — which can be severely
-distorted by weak instruments — the AR test has correct size regardless
-of instrument strength.</p>
+distorted by weak instruments — the AR test controls size whether
+instruments are strong or weak, under the model’s maintained error
+assumptions.</p>
 <p>The null hypothesis is that the coefficients on the endogenous
 regressors are jointly zero <em>and</em> the overidentifying
 restrictions hold. When the model is overidentified, rejection could

@@ -433,8 +433,9 @@ regressors; use the `endog` argument to test a specific subset (e.g.,
 The Anderson-Rubin (1949) test provides inference on the endogenous
 regressors that remains valid even when instruments are weak. Unlike the
 standard Wald or t-test on 2SLS coefficients — which can be severely
-distorted by weak instruments — the AR test has correct size regardless
-of instrument strength.
+distorted by weak instruments — the AR test controls size whether
+instruments are strong or weak, under the model’s maintained error
+assumptions.
 
 The null hypothesis is that the coefficients on the endogenous
 regressors are jointly zero *and* the overidentifying restrictions hold.

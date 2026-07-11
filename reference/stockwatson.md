@@ -93,6 +93,8 @@ Addison-Wesley.
 Downloaded from
 <http://fmwww.bc.edu/ec-p/data/stockwatson/macrodat.dta>.
 
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## Details
 
 The derived variables `inf`, `ggdp`, `dinf`, and the lagged instrument

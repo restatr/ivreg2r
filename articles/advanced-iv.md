@@ -485,7 +485,7 @@ fit_k_coviv <- ivreg2(klein_form, data = klein, tvar = "yr",
                       method = "liml", coviv = TRUE)
 fit_k_cue   <- ivreg2(klein_form, data = klein, tvar = "yr", method = "cue")
 max(abs(coef(fit_k_coviv) - coef(fit_k_cue)))
-#> [1] 7.415976e-07
+#> [1] 1.077372e-06
 ```
 
 On this tiny (N = 21) problem the two agree to optimizer tolerance: the
@@ -701,10 +701,10 @@ statistic tests the same null, and under it both are chi-squared with
 `L1` degrees of freedom, where `L1` is the number of excluded
 instruments: Anderson-Rubin is the Wald form of the test and S is the LM
 / GMM-distance form (Baum, Schaffer & Stillman, 2007, pp. 491–492).
-Unlike Wald tests on 2SLS coefficients, both keep correct size even when
-instruments are weak. The S statistic is the value of the CUE objective
-with the exogenous regressors partialled out, and it is computed for
-every IV model:
+Unlike Wald tests on 2SLS coefficients, both control size under their
+maintained assumptions even when instruments are weak. The S statistic
+is the value of the CUE objective with the exogenous regressors
+partialled out, and it is computed for every IV model:
 
 ``` r
 
@@ -806,12 +806,13 @@ i.i.d. errors, so under a robust variance they apply to the rk statistic
 only with caution, or give way to the Staiger-Stock rule of thumb that
 the first-stage F should exceed 10 (Baum, Schaffer & Stillman, 2007,
 p. 490). With instruments this weak, the Stock-Wright S and
-Anderson-Rubin tests provide size-correct inference where 2SLS Wald
-tests do not. These robust tests keep correct size but lose power as
-instruments weaken (Baum, Schaffer & Stillman, 2007, p. 491), and
-because the null is joint, a rejection can reflect either nonzero
-coefficients on the endogenous regressors or failure of the
-overidentifying restrictions — the test cannot say which.
+Anderson-Rubin tests remain valid where conventional 2SLS Wald inference
+rests on a strong-identification approximation that has failed. These
+robust tests keep correct size but lose power as instruments weaken
+(Baum, Schaffer & Stillman, 2007, p. 491), and because the null is
+joint, a rejection can reflect either nonzero coefficients on the
+endogenous regressors or failure of the overidentifying restrictions —
+the test cannot say which.
 
 ### Redundant instruments
 

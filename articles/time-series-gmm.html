@@ -6,6 +6,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Time Series IV, Panel VCE, and GMM • ivreg2r</title>
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link rel="icon" sizes="any" href="../favicon.ico">
+<link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
@@ -937,7 +942,7 @@ errors. Continuing the same equation:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Coefficients:</span></span>
 <span><span class="co">#&gt;             Estimate Std. Error z value Pr(&gt;|z|)</span></span>
-<span><span class="co">#&gt; (Intercept)  0.29785    0.38046   0.783    0.434</span></span>
+<span><span class="co">#&gt; (Intercept)  0.29784    0.38046   0.783    0.434</span></span>
 <span><span class="co">#&gt; UR          -0.04831    0.06447  -0.749    0.454</span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; R-squared:      0.0901 </span></span>
@@ -1220,7 +1225,7 @@ correction silently:</p>
 <span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 1 negative</span></span>
 <span><span class="co">#&gt; eigenvalue corrected via the 'psda' method.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen</a></span><span class="op">(</span><span class="va">fit_psda</span><span class="op">$</span><span class="va">S</span>, symmetric <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">values</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 9.457119e-14</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 5.038001e-14</span></span></code></pre></div>
 <p>The correction is applied to <code>S</code> before the coefficient
 covariance is assembled from it, exactly as in Stata, so the standard
 errors change while the coefficients do not:</p>

@@ -91,6 +91,8 @@ data: Monte Carlo evidence and an application to employment equations.
 
 Downloaded from <http://fmwww.bc.edu/ec-p/data/macro/abdata.dta>.
 
+Redistribution basis: `system.file("COPYRIGHTS", package = "ivreg2r")`.
+
 ## Details
 
 `n`, `w`, `k`, and `ys` are natural logs of `emp`, `wage`, `cap`, and

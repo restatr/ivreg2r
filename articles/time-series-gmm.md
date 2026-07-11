@@ -796,7 +796,7 @@ summary(fit_cue)
 #> 
 #> Coefficients:
 #>             Estimate Std. Error z value Pr(>|z|)
-#> (Intercept)  0.29785    0.38046   0.783    0.434
+#> (Intercept)  0.29784    0.38046   0.783    0.434
 #> UR          -0.04831    0.06447  -0.749    0.454
 #> ---
 #> R-squared:      0.0901 
@@ -1100,7 +1100,7 @@ fit_psda <- ivreg2(psd_formula, data = wagepan, dkraay = 2,
 #> Warning: The covariance matrix was not positive semidefinite; 1 negative
 #> eigenvalue corrected via the 'psda' method.
 min(eigen(fit_psda$S, symmetric = TRUE)$values)
-#> [1] 9.457119e-14
+#> [1] 5.038001e-14
 ```
 
 The correction is applied to `S` before the coefficient covariance is
