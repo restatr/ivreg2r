@@ -418,3 +418,23 @@ test_that("Cragg-Donald F present alongside KP stats sim_no_constant (HC1)", {
   expect_equal(fit$diagnostics$weak_id$stat, fixture$cdf,
                tolerance = stata_tol$stat)
 })
+
+
+test_that("center does not change the KP identification statistics", {
+  # Stata's ranktest never receives centering for the underid or weak-id
+  # calls (ivreg2.ado:1639-1650, 1699-1711), so the KP omega behind both
+  # statistics is always uncentered -- center = TRUE must be a complete
+  # no-op here, exactly as for the redundancy statistic
+  # (test-diagnostics-redundancy.R). Tripwire: fails if center forwarding
+  # is ever reintroduced at the .compute_id_tests() call site.
+  data(card)
+  f <- lwage ~ exper + expersq + black + smsa + south | educ | nearc4 + nearc2
+  fit_no <- ivreg2(f, data = card, vcov = "robust", center = FALSE)
+  fit_yes <- ivreg2(f, data = card, vcov = "robust", center = TRUE)
+  expect_equal(fit_yes$diagnostics$underid$stat,
+               fit_no$diagnostics$underid$stat, tolerance = 1e-12)
+  expect_equal(fit_yes$diagnostics$underid$p,
+               fit_no$diagnostics$underid$p, tolerance = 1e-12)
+  expect_equal(fit_yes$diagnostics$weak_id_robust$stat,
+               fit_no$diagnostics$weak_id_robust$stat, tolerance = 1e-12)
+})
