@@ -464,11 +464,14 @@ test_that("CUE b0 + partial works (b0 validated after partialling)", {
   fit_cue <- ivreg2(
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
     data = card, method = "cue", partial = "smsa", b0 = b0_vec)
-  # CUE + IID should match LIML
+  # b0 fixes the coefficient vector (the fit evaluates the CUE objective at
+  # b0 rather than re-estimating), so coef(fit_cue) echoes b0_vec exactly.
+  # The substance of this test is that the fit succeeds and the echo is
+  # bit-identical after partialling reorders/drops columns.
   for (nm in names(b0_vec)) {
     expect_equal(unname(coef(fit_cue)[nm]), unname(coef(fit_liml)[nm]),
-                 tolerance = 1e-4,
-                 info = paste("b0+partial CUE vs LIML:", nm))
+                 tolerance = 0,
+                 info = paste("b0+partial CUE echoes b0:", nm))
   }
 })
 

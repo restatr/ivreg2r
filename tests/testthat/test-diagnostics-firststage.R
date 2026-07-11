@@ -58,10 +58,13 @@ test_that("multi-endo first_stage has correct names", {
   expect_named(fit$first_stage, c("w", "k", "ys"))
 })
 
-test_that("K1=1: shea_partial_r2 approx equals partial_r2", {
+test_that("K1=1: shea_partial_r2 equals partial_r2", {
+  # With one endogenous regressor Shea's partial R2 reduces algebraically to
+  # the ordinary partial R2; the two code paths agree to ~1e-14 (measured),
+  # so 1e-11 leaves two decades of headroom.
   fit <- ivreg2(mroz_formula, data = mroz)
   fs <- fit$first_stage$educ
-  expect_equal(fs$shea_partial_r2, fs$partial_r2, tolerance = 1e-4)
+  expect_equal(fs$shea_partial_r2, fs$partial_r2, tolerance = 1e-11)
 })
 
 test_that("small does not change first-stage F-stat (IID)", {
