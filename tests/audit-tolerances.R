@@ -7,6 +7,9 @@
 #
 # Output: a table of worst-case relative errors by category, flagging
 # any values within 5x of their tolerance threshold.
+#
+# Dev-only script: requires devtools (undeclared on purpose — this file is
+# .Rbuildignore'd and never reaches the CRAN tarball).
 
 suppressPackageStartupMessages({
   devtools::load_all("pkg", quiet = TRUE)
@@ -18,8 +21,14 @@ if (!dir.exists(fixture_dir)) {
 }
 stopifnot(dir.exists(fixture_dir))
 
-# --- Standard tolerances (from helper-tolerances.R) ---
-STANDARD_TOL <- list(coef = 1e-6, se = 1e-6, vcov = 1e-6, stat = 1e-4, pval = 1e-4)
+# --- Standard tolerances: single source of truth is helper-tolerances.R ---
+helper_tol_path <- file.path("pkg", "tests", "testthat", "helper-tolerances.R")
+if (!file.exists(helper_tol_path)) {
+  helper_tol_path <- file.path("tests", "testthat", "helper-tolerances.R")
+}
+stopifnot(file.exists(helper_tol_path))
+source(helper_tol_path)  # defines stata_tol (and the override allow-list)
+STANDARD_TOL <- stata_tol
 
 # --- Helpers ---
 
