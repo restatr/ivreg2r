@@ -431,7 +431,12 @@ diagnostic tests that use the main model's S matrix (overidentification,
 orthogonality). However, the endogeneity test (<code>endog</code>) computes its own
 S matrix from the restricted model <em>without</em> centering, even when
 <code>center = TRUE</code>. This matches Stata's <code>ivreg2</code>, where <code>center</code> is not
-forwarded to the recursive call for the endogeneity test.</p></dd>
+forwarded to the recursive call for the endogeneity test.</p>
+<p>The Kleibergen-Paap identification statistics (underidentification,
+weak identification) and the instrument redundancy test are likewise
+always computed <em>without</em> centering, regardless of <code>center</code>. This
+matches Stata, whose <code>ranktest</code> calls (underid, weak-id, and
+redundancy) never receive the <code>center</code> option.</p></dd>
 
 
 <dt id="arg-psd">psd<a class="anchor" aria-label="anchor" href="#arg-psd"></a></dt>

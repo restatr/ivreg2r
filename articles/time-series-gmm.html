@@ -933,7 +933,7 @@ errors. Continuing the same equation:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Coefficients:</span></span>
 <span><span class="co">#&gt;             Estimate Std. Error z value Pr(&gt;|z|)</span></span>
-<span><span class="co">#&gt; (Intercept)  0.29784    0.38046   0.783    0.434</span></span>
+<span><span class="co">#&gt; (Intercept)  0.29785    0.38046   0.783    0.434</span></span>
 <span><span class="co">#&gt; UR          -0.04831    0.06447  -0.749    0.454</span></span>
 <span><span class="co">#&gt; ---</span></span>
 <span><span class="co">#&gt; R-squared:      0.0901 </span></span>
@@ -1213,7 +1213,7 @@ correction silently:</p>
 <span><span class="co">#&gt; Warning: The covariance matrix was not positive semidefinite; 1 negative</span></span>
 <span><span class="co">#&gt; eigenvalue corrected via the 'psda' method.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen</a></span><span class="op">(</span><span class="va">fit_psda</span><span class="op">$</span><span class="va">S</span>, symmetric <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">values</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 5.038001e-14</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 9.457119e-14</span></span></code></pre></div>
 <p>The correction is applied to <code>S</code> before the coefficient
 covariance is assembled from it, exactly as in Stata, so the standard
 errors change while the coefficients do not:</p>

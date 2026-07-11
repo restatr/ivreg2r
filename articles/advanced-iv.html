@@ -529,7 +529,7 @@ tolerance rather than exactly:</p>
 <span>                      method <span class="op">=</span> <span class="st">"liml"</span>, coviv <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">fit_k_cue</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">klein_form</span>, data <span class="op">=</span> <span class="va">klein</span>, tvar <span class="op">=</span> <span class="st">"yr"</span>, method <span class="op">=</span> <span class="st">"cue"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_k_coviv</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_k_cue</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1.077372e-06</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 7.415976e-07</span></span></code></pre></div>
 <p>On this tiny (N = 21) problem the two agree to optimizer tolerance:
 the small gap printed above is the optimizer’s endpoint, not a
 difference in the estimators, and its exact size depends on where the
@@ -1381,7 +1381,7 @@ objects work with it directly.</p>
 </tr>
 <tr class="odd">
 <td>underid_p</td>
-<td>0.00505230978693382</td>
+<td>0.00505230978693386</td>
 </tr>
 <tr class="even">
 <td>overid_stat</td>
@@ -1590,7 +1590,7 @@ of exponentiating estimates and confidence bounds while leaving
 </tr>
 <tr class="odd">
 <td>underid_p</td>
-<td>0.00505230978693382</td>
+<td>0.00505230978693386</td>
 </tr>
 <tr class="even">
 <td>overid_stat</td>

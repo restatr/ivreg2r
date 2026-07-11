@@ -485,7 +485,7 @@ fit_k_coviv <- ivreg2(klein_form, data = klein, tvar = "yr",
                       method = "liml", coviv = TRUE)
 fit_k_cue   <- ivreg2(klein_form, data = klein, tvar = "yr", method = "cue")
 max(abs(coef(fit_k_coviv) - coef(fit_k_cue)))
-#> [1] 1.077372e-06
+#> [1] 7.415976e-07
 ```
 
 On this tiny (N = 21) problem the two agree to optimizer tolerance: the

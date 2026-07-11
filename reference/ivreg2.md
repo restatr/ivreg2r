@@ -408,6 +408,12 @@ ivreg2(
   `ivreg2`, where `center` is not forwarded to the recursive call for
   the endogeneity test.
 
+  The Kleibergen-Paap identification statistics (underidentification,
+  weak identification) and the instrument redundancy test are likewise
+  always computed *without* centering, regardless of `center`. This
+  matches Stata, whose `ranktest` calls (underid, weak-id, and
+  redundancy) never receive the `center` option.
+
 - psd:
 
   Character or NULL: PSD correction for the moment covariance matrix S.
