@@ -16,7 +16,7 @@
 #' @return A named list with: `coefficients`, `residuals`, `fitted.values`,
 #'   `vcov`, `sigma`, `df.residual`, `rank`, `r.squared`, `adj.r.squared`,
 #'   `rss`, `bread`.
-#' @keywords internal
+#' @noRd
 .fit_ols <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L) {
   y <- parsed$y
   X <- parsed$X

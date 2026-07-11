@@ -18,7 +18,7 @@
 #' @param psd Character: `"psd0"` or `"psda"`, or `NULL` (no correction).
 #' @return Corrected symmetric matrix (or `mat` unchanged if `psd` is `NULL`
 #'   or no negative eigenvalues are found).
-#' @keywords internal
+#' @noRd
 .psd_correct <- function(mat, psd) {
   if (is.null(psd)) return(mat)
   eig <- eigen(mat, symmetric = TRUE)
@@ -77,7 +77,7 @@
 #'   `(N-1)/(N-K-sdofminus) * M/(M-1)`; `FALSE` for the robust-family factor
 #'   `(N-dofminus)/(N-K-dofminus-sdofminus)`.
 #' @return K x K variance-covariance matrix.
-#' @keywords internal
+#' @noRd
 .vcov_from_omega <- function(bread, A, omega, N, K, M = NULL, small = FALSE,
                              dofminus = 0L, sdofminus = 0L, cluster = FALSE) {
   meat <- if (is.null(A)) omega else crossprod(A, omega %*% A)
@@ -114,7 +114,7 @@
 #'   before computing the outer product. The mean computation depends on
 #'   weight type, matching Stata's `m_omega()` (livreg2.do lines 179-188).
 #' @return K x K symmetric meat matrix.
-#' @keywords internal
+#' @noRd
 .hc_meat <- function(basis, resid, weights = NULL, weight_type = "aweight",
                      center = FALSE) {
   if (!center) {
@@ -165,7 +165,7 @@
 #' @param center Logical: if `TRUE`, center scores by subtracting their mean.
 #' @param weight_type Character: `"aweight"`, `"fweight"`, or `"pweight"`.
 #' @return N x K score matrix.
-#' @keywords internal
+#' @noRd
 .cl_scores <- function(basis, resid, weights = NULL,
                        center = FALSE, weight_type = "aweight") {
   scores <- if (is.null(weights)) basis * resid else weights * basis * resid
@@ -206,7 +206,7 @@
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return K x K variance-covariance matrix.
-#' @keywords internal
+#' @noRd
 .compute_hc_vcov <- function(bread, X_hat, resid, N, K,
                               small = FALSE, dofminus = 0L, sdofminus = 0L,
                               weights = NULL, weight_type = "aweight",
@@ -245,7 +245,7 @@
 #' @param cluster_vec Length-N vector (one-way) or list of 2 vectors (two-way)
 #'   of cluster identifiers.
 #' @return P x P symmetric meat matrix (unscaled).
-#' @keywords internal
+#' @noRd
 .cluster_meat <- function(scores, cluster_vec) {
   if (is.list(cluster_vec)) {
     int_vec <- interaction(cluster_vec[[1]], cluster_vec[[2]], drop = TRUE)
@@ -284,7 +284,7 @@
 #'   Note: dofminus does NOT appear in cluster VCV scaling (Stata convention).
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return K x K variance-covariance matrix.
-#' @keywords internal
+#' @noRd
 .compute_cl_vcov <- function(bread, X_hat, resid, cluster_vec, N, K, M, small,
                               dofminus = 0L, sdofminus = 0L,
                               weights = NULL,

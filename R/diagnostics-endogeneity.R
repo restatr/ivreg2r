@@ -37,7 +37,7 @@
 #'   sigma-squared `e'e/(N-dofminus)` for both models. No small-sample
 #'   correction is applied even when \code{small = TRUE}. This matches
 #'   Stata's \code{ivreg2}.
-#' @keywords internal
+#' @noRd
 .compute_endogeneity_test <- function(Z, X, y, residuals, rss, weights,
                                       cluster_vec, vcov_type, N, K, L,
                                       K1, endo_names, endog_vars,

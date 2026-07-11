@@ -32,7 +32,7 @@
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return Named list: `f_stat`, `f_p`, `f_df1`, `f_df2`, `chi2_stat`,
 #'   `chi2_p`, `chi2_df`.
-#' @keywords internal
+#' @noRd
 .compute_anderson_rubin <- function(Z, X, y, weights, cluster_vec,
                                      vcov_type, N, K, L, K1, L1, M,
                                      endo_names, excluded_names,

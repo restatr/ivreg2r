@@ -31,7 +31,7 @@
 #'     \item{panel_info}{List of per-panel start/end indices in sorted data,
 #'       or NULL for pure time series.}
 #'   }
-#' @keywords internal
+#' @noRd
 .build_time_index <- function(tvar_vec, ivar_vec = NULL) {
   N <- length(tvar_vec)
 
@@ -133,7 +133,7 @@
 #' @param tau Integer lag (positive).
 #' @return Two-column integer matrix `[i_now, i_lag]` with row indices into
 #'   the **sorted** data. Zero rows if no matches exist.
-#' @keywords internal
+#' @noRd
 .lag_pairs <- function(time_index, tau) {
   tvar <- time_index$tvar_sorted
   tdelta <- time_index$tdelta
@@ -194,7 +194,7 @@
 #' @param weights Normalized weights (sorted) or NULL.
 #' @param weight_type Character: `"aweight"` or `"pweight"` (fweight blocked).
 #' @return P x P symmetric meat matrix (unscaled).
-#' @keywords internal
+#' @noRd
 .hac_meat <- function(basis, resid, time_index, kernel, bw,
                       weights = NULL, weight_type = "aweight",
                       center = FALSE) {
@@ -287,7 +287,7 @@
 #' @param weights Normalized weights (sorted) or NULL. For the KP path,
 #'   weights are already incorporated into the scores.
 #' @return P x P symmetric meat matrix (unscaled).
-#' @keywords internal
+#' @noRd
 .hac_scores_meat <- function(scores, time_index, kernel, bw,
                              weights = NULL) {
   P <- ncol(scores)
@@ -351,7 +351,7 @@
 #' @param weight_type Character: weight type.
 #' @param ZwZ P x P precomputed instrument cross-product `Z'WZ`.
 #' @return P x P matrix `shat / N` (normalized).
-#' @keywords internal
+#' @noRd
 .ac_meat <- function(basis, resid, time_index, kernel, bw,
                      N, dofminus, weights = NULL,
                      weight_type = "aweight", ZwZ) {
@@ -440,7 +440,7 @@
 #' @param weights Normalized weights (sorted) or NULL.
 #' @param weight_type Character: weight type.
 #' @return K x K variance-covariance matrix.
-#' @keywords internal
+#' @noRd
 .compute_hac_vcov <- function(bread, X_hat, resid, time_index, kernel, bw,
                               N, K, dofminus = 0L, sdofminus = 0L,
                               small = FALSE,
@@ -484,7 +484,7 @@
 #' @param weights Normalized weights (sorted) or NULL.
 #' @param weight_type Character: weight type.
 #' @return K x K variance-covariance matrix.
-#' @keywords internal
+#' @noRd
 .compute_ac_vcov <- function(bread, X_hat, resid, time_index, kernel, bw,
                              N, K, dofminus = 0L, sdofminus = 0L,
                              small = FALSE,
@@ -533,7 +533,7 @@
 #' @param weights Normalized weights (sorted) or NULL.
 #' @param weight_type Character: `"aweight"` or `"pweight"`.
 #' @return P x P symmetric meat matrix (unscaled).
-#' @keywords internal
+#' @noRd
 .cluster_kernel_meat <- function(basis, resid, time_index, kernel, bw,
                                   weights = NULL, weight_type = "aweight",
                                   center = FALSE) {
@@ -601,7 +601,7 @@
 #' @param kernel Canonical kernel name.
 #' @param bw Numeric bandwidth.
 #' @return P x P symmetric meat matrix (unscaled).
-#' @keywords internal
+#' @noRd
 .cluster_kernel_scores_meat <- function(scores, time_index, kernel, bw) {
   tvar_sorted <- time_index$tvar_sorted
   time_scores <- rowsum(scores, tvar_sorted, reorder = FALSE)
@@ -668,7 +668,7 @@
 #' @param weight_type Character: weight type.
 #' @param is_twoway Logical: TRUE for Thompson, FALSE for DK.
 #' @return K x K variance-covariance matrix.
-#' @keywords internal
+#' @noRd
 .compute_cluster_kernel_vcov <- function(bread, X_hat, resid,
                                           cluster_vec, time_index,
                                           kernel, bw,

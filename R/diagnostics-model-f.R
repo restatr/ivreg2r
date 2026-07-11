@@ -31,7 +31,7 @@
 #'   statistic. For non-IID VCE types, the underlying Wald chi-squared is
 #'   converted to F using VCE-branch-specific degrees of freedom adjustments.
 #'   This matches Stata's \code{ivreg2} behavior.
-#' @keywords internal
+#' @noRd
 .compute_model_f <- function(coefficients, vcov, N, K,
                               has_intercept, vcov_type, small,
                               M = NULL, dofminus = 0L, sdofminus = 0L) {
@@ -147,7 +147,7 @@
 #'
 #' @param V Symmetric positive definite covariance matrix.
 #' @return Logical scalar: `TRUE` when `V` is numerically singular.
-#' @keywords internal
+#' @noRd
 .is_badly_conditioned_vcov <- function(V) {
   C <- tryCatch(stats::cov2cor(V), warning = function(w) V, error = function(e) V)
   rc <- rcond(C)
@@ -170,7 +170,7 @@
 #'
 #' @param A Symmetric n x n matrix (typically a VCV submatrix).
 #' @return The generalized inverse matrix, or `NULL` if no pivots succeed.
-#' @keywords internal
+#' @noRd
 .syminv_sweep <- function(A) {
   n <- nrow(A)
   # Augmented matrix [A | I] — Gauss-Jordan on left half, inverse in right

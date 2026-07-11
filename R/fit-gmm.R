@@ -47,7 +47,7 @@
 #'   `vcov`, `sigma`, `df.residual`, `rank`, `r.squared`, `adj.r.squared`,
 #'   `rss`, `r2u`, `r2c`, `mss`, `bread`, `bread_gmm`, `X_hat`,
 #'   `j_stat`, `j_df`, `j_p`, `omega`, `method`.
-#' @keywords internal
+#' @noRd
 .fit_gmm2s <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L,
                        omega_fn, omega_rank_bound = Inf) {
   y <- parsed$y
@@ -220,7 +220,7 @@
 #' @param parsed A `parsed_formula` object from `.parse_formula()`.
 #' @param W L x L user-supplied weighting matrix.
 #' @return Numeric vector of residuals from the W-weighted first step.
-#' @keywords internal
+#' @noRd
 .wmatrix_first_step_resid <- function(parsed, W) {
   X <- parsed$X
   Z <- parsed$Z
@@ -275,7 +275,7 @@
 #'   the L x L moment covariance matrix Omega.
 #' @return A named list with the same fields as `.fit_gmm2s()` plus `method =
 #'   "gmmw"`.
-#' @keywords internal
+#' @noRd
 .fit_gmm_wmatrix <- function(parsed, small = FALSE, dofminus = 0L,
                               sdofminus = 0L, W, omega_fn,
                               omega_rank_bound = Inf) {
@@ -490,7 +490,7 @@
 #'   line 6596).
 #' @return A named list with the same fields as `.fit_gmm2s()` plus
 #'   `convergence` (integer) and `cue_message` (string). `method = "cue"`.
-#' @keywords internal
+#' @noRd
 .fit_cue <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L,
                      omega_fn, b0 = NULL, iid = TRUE,
                      omega_rank_bound = Inf) {

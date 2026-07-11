@@ -26,7 +26,7 @@
 #'   `rss`, `r2u`, `r2c`, `mss`, `bread`, `bread_kclass`, `X_hat`, `proj_coef`,
 #'   `lambda`,
 #'   `kclass_value`, `method`, `fuller_param`.
-#' @keywords internal
+#' @noRd
 .fit_kclass <- function(parsed, method = "liml", kclass = NULL, fuller = 0,
                         small = FALSE, dofminus = 0L, sdofminus = 0L) {
   y <- parsed$y
@@ -244,7 +244,7 @@
 #' @param parsed Parsed formula object (for endo_names, excluded_names).
 #' @param w Weight vector (NULL for unweighted).
 #' @return Numeric scalar: LIML eigenvalue lambda.
-#' @keywords internal
+#' @noRd
 .compute_liml_lambda <- function(y, X, Z, parsed, w) {
   # Y = [y, X1] where X1 = endogenous regressor columns
   endo_cols <- match(parsed$endo_colnames, colnames(X))

@@ -78,7 +78,7 @@ NULL
 #' @param x List with `X` and `Z` matrices (or NULL if `x = FALSE`).
 #' @param y Response vector (or NULL if `y = FALSE`).
 #' @return An object of class `"ivreg2"`.
-#' @keywords internal
+#' @noRd
 .new_ivreg2 <- function(coefficients, residuals, fitted.values, vcov, sigma,
                          df.residual, rank, r.squared, adj.r.squared, rss,
                          r2u, r2c, mss,
@@ -571,7 +571,7 @@ terms.ivreg2 <- function(x, component = c("regressors", "instruments", "full"), 
 #'   attribute and an `(Intercept)` column when the model has one).
 #' @param Z Reconstructed pre-partialling instrument matrix, or `NULL`.
 #' @return A list with post-partialling `X` and `Z`.
-#' @keywords internal
+#' @noRd
 .reapply_partial <- function(object, X, Z) {
   term_labels <- attr(object$terms$regressors, "term.labels")
   partial_colnames <- .expand_terms_to_colnames(

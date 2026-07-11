@@ -21,7 +21,7 @@
 #'   `vcov`, `sigma`, `df.residual`, `rank`, `r.squared`, `adj.r.squared`,
 #'   `rss`, `bread`, `X_hat`, `proj_coef` (the L x K first-stage coefficient
 #'   matrix A with `X_hat = Z %*% A`, used for psd-corrected VCV assembly).
-#' @keywords internal
+#' @noRd
 .fit_2sls <- function(parsed, small = FALSE, dofminus = 0L, sdofminus = 0L) {
   y <- parsed$y
   X <- parsed$X

@@ -39,7 +39,7 @@
 #'   plus SW/AP diagnostics: `sw_f`, `sw_f_p`, `sw_f_df1`, `sw_f_df2`,
 #'   `sw_chi2`, `sw_chi2_p`, `sw_partial_r2`, `ap_f`, `ap_f_p`, `ap_f_df1`,
 #'   `ap_f_df2`, `ap_chi2`, `ap_chi2_p`, `ap_partial_r2`.
-#' @keywords internal
+#' @noRd
 .compute_first_stage <- function(X, Z, weights, cluster_vec,
                                   vcov_type, endo_names, excluded_names,
                                   N, K, L, K1, L1, M,

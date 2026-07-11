@@ -21,7 +21,7 @@
 #'
 #' @param kernel Character string: kernel name or abbreviation.
 #' @return Canonical kernel name string.
-#' @keywords internal
+#' @noRd
 .validate_kernel <- function(kernel) {
   if (!is.character(kernel) || length(kernel) != 1L || is.na(kernel)) {
     stop("invalid kernel: must be a single character string", call. = FALSE)
@@ -70,7 +70,7 @@
 #'
 #' @param kernel Canonical kernel name (from `.validate_kernel()`).
 #' @return `"lag"` or `"spectral"`.
-#' @keywords internal
+#' @noRd
 .kernel_type <- function(kernel) {
   switch(kernel,
     "Bartlett"           = "lag",
@@ -96,7 +96,7 @@
 #'
 #' @param kernel Canonical kernel name.
 #' @return Logical scalar.
-#' @keywords internal
+#' @noRd
 .kernel_supports_auto_bw <- function(kernel) {
   kernel %in% c("Bartlett", "Parzen", "Quadratic Spectral")
 }
@@ -113,7 +113,7 @@
 #' @param kernel Canonical kernel name (from `.validate_kernel()`).
 #' @return `bw` (invisibly), after validation. Issues warning for bw=1 with
 #'   kernels where this means zero lags.
-#' @keywords internal
+#' @noRd
 .validate_bandwidth <- function(bw, kernel) {
   if (is.character(bw)) {
     if (length(bw) != 1L || tolower(bw) != "auto") {
@@ -157,7 +157,7 @@
 #' @param bw Numeric scalar bandwidth (> 0).
 #' @param kernel Canonical kernel name (from `.validate_kernel()`).
 #' @return Numeric vector of kernel weights, same length as `tau`.
-#' @keywords internal
+#' @noRd
 .kernel_weights <- function(tau, bw, kernel) {
   x <- tau / bw
 
@@ -257,7 +257,7 @@
 #'   denominator, matching Stata's `nobs`).
 #' @return Numeric scalar: selected bandwidth (>= 1). Integer for
 #'   Bartlett/Parzen, possibly fractional for Quadratic Spectral.
-#' @keywords internal
+#' @noRd
 .auto_bandwidth <- function(resid, Z, time_index, kernel, has_intercept, N) {
 
   # --- Kernel-specific constants (Newey-West 1994, Table II) ---

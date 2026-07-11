@@ -28,7 +28,7 @@
 #' @return P x P symmetric meat matrix (already normalized by
 #'   `1/(N - N_panels)`), or a zero matrix with a warning if all panels
 #'   have T <= 2.
-#' @keywords internal
+#' @noRd
 .sw_meat <- function(basis, resid, ivar_vec, N, weights = NULL,
                      weight_type = "aweight", center = FALSE,
                      eZmean = NULL) {
@@ -108,7 +108,7 @@
 #' @param center Logical.
 #' @param eZmean_i,eZmean_j P-vectors or NULL.
 #' @return P x P matrix (already normalized by `1/(N - N_panels)`).
-#' @keywords internal
+#' @noRd
 .sw_cross_meat <- function(basis, resid_i, resid_j, panels, N,
                             weights = NULL, weight_type = "aweight",
                             center = FALSE, eZmean_i = NULL,
@@ -182,7 +182,7 @@
 #' @param weights Normalized weights or NULL.
 #' @param weight_type Character.
 #' @return P-vector of score means.
-#' @keywords internal
+#' @noRd
 .sw_eZmean <- function(basis, resid, N, weights = NULL,
                        weight_type = "aweight") {
   g <- basis * resid  # N x P unweighted scores
@@ -216,7 +216,7 @@
 #' @param weight_type Character.
 #' @param center Logical.
 #' @return K x K variance-covariance matrix.
-#' @keywords internal
+#' @noRd
 .compute_sw_vcov <- function(bread, X_hat, resid, ivar_vec, N, K,
                               small = FALSE, dofminus = 0L, sdofminus = 0L,
                               weights = NULL, weight_type = "aweight",

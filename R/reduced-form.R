@@ -35,7 +35,7 @@
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return A list with `mode` and per-equation (rf) or multi-equation (system)
 #'   regression results.
-#' @keywords internal
+#' @noRd
 .compute_reduced_form <- function(mode, Z, X, y, weights, cluster_vec,
                                    vcov_type, N, K, L, K1, L1, M,
                                    endo_names, excluded_names,

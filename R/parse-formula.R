@@ -17,7 +17,7 @@ NULL
 #' @param tvar,ivar Optional time/panel variable names (single character),
 #'   required when the formula contains time-series operators `l()`/`d()`.
 #' @return A named list; see Details.
-#' @keywords internal
+#' @noRd
 .parse_formula <- function(formula, data, weights = NULL, subset = NULL,
                            na.action = na.omit, tvar = NULL, ivar = NULL) {
 
@@ -489,7 +489,7 @@ NULL
 #'
 #' @param formula A `Formula` object.
 #' @return Integer: 1 (OLS) or 3 (IV). Stops on invalid counts.
-#' @keywords internal
+#' @noRd
 .check_formula_parts <- function(formula) {
   n_rhs <- length(formula)[2L]
   if (n_rhs == 2L) {
@@ -539,7 +539,7 @@ NULL
 #'   `.check_formula_parts()`).
 #' @param n_rhs Integer: number of RHS parts (1 or 3).
 #' @return Invisible `NULL`. Stops if any part contains an `offset()` term.
-#' @keywords internal
+#' @noRd
 .check_no_offset <- function(formula, n_rhs) {
   for (i in seq_len(n_rhs)) {
     mt <- terms(formula, rhs = i)
@@ -560,7 +560,7 @@ NULL
 #'
 #' @param formula A 3-part `Formula` object.
 #' @return Invisible `NULL`. Stops with an error naming all duplicates.
-#' @keywords internal
+#' @noRd
 .check_duplicates <- function(formula) {
   vars1 <- .dup_check_keys(formula, rhs = 1L)
   vars2 <- .dup_check_keys(formula, rhs = 2L)
@@ -592,7 +592,7 @@ NULL
 #' @param formula A 3-part `Formula` object.
 #' @param rhs Which part.
 #' @return Character vector of keys.
-#' @keywords internal
+#' @noRd
 .dup_check_keys <- function(formula, rhs) {
   part <- formula(formula, lhs = 0L, rhs = rhs)
   if (!.has_ts_operators(part)) {
@@ -622,7 +622,7 @@ NULL
 #' @param mat A numeric matrix.
 #' @param label `"regressor"` or `"instrument"` (for messaging).
 #' @return A list with `matrix` (cleaned), `dropped` (character names), `rank`.
-#' @keywords internal
+#' @noRd
 .detect_collinearity <- function(mat, label = "column") {
   if (ncol(mat) == 0L) {
     return(list(matrix = mat, dropped = character(0L), rank = 0L))
@@ -653,14 +653,14 @@ NULL
 # --------------------------------------------------------------------------
 
 #' Strip the intercept column from a model matrix
-#' @keywords internal
+#' @noRd
 .strip_intercept <- function(mat) {
   icept <- which(colnames(mat) == "(Intercept)")
   if (length(icept) > 0L) mat[, -icept, drop = FALSE] else mat
 }
 
 #' Extract original variable names from a terms object
-#' @keywords internal
+#' @noRd
 .varnames_from_terms <- function(mt) {
   attr(mt, "term.labels")
 }
@@ -679,7 +679,7 @@ NULL
 #' @param assign Integer vector mapping each column to its term index in
 #'   `all_term_labels`.
 #' @return Character vector of column names corresponding to the given terms.
-#' @keywords internal
+#' @noRd
 .expand_terms_to_colnames <- function(term_labels, all_term_labels,
                                        all_colnames, assign) {
   term_idx <- match(term_labels, all_term_labels)

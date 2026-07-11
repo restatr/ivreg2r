@@ -28,7 +28,7 @@
 #'   `non_psd` (logical: a non-noise negative eigenvalue was present), and
 #'   `most_negative` (the smallest eigenvalue before clamping, or 0 if none
 #'   were negative) for use in a caller's warning message.
-#' @keywords internal
+#' @noRd
 .clamp_psd_eigenvalues <- function(d) {
   neg <- d < 0
   if (!any(neg)) {
@@ -53,7 +53,7 @@
 #'
 #' @param A Symmetric matrix.
 #' @return Symmetric square root matrix.
-#' @keywords internal
+#' @noRd
 .sym_sqrt <- function(A) {
   eig <- eigen(A, symmetric = TRUE)
   cl <- .clamp_psd_eigenvalues(eig$values)
@@ -83,7 +83,7 @@
 #' @param X2 N x K2 exogenous regressor matrix (including intercept).
 #' @param weights Normalized weights (sum to N), or NULL.
 #' @return List with `X1_perp` and `Z1_perp`.
-#' @keywords internal
+#' @noRd
 .partial_fwl <- function(X1, Z1, X2, weights) {
   # Nothing to partial out: matches ranktest.ado's no-transformation branch
   # (lines 1136-1138), reached when partial() is empty and nocons is set --
@@ -119,7 +119,7 @@
 #' @param weights Normalized weights or NULL.
 #' @return List with theta, U, cc, V, eval, pihat, irQyy, irQzz,
 #'   or NULL if Cholesky fails.
-#' @keywords internal
+#' @noRd
 .canonical_correlations <- function(X1_perp, Z1_perp, N, K1, L1, weights) {
   # Cross-products (weighted if needed)
   if (is.null(weights)) {
@@ -193,7 +193,7 @@
 #' @param K1 Number of endogenous regressors.
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with stat, p, df, test_name.
-#' @keywords internal
+#' @noRd
 .anderson_lm_test <- function(cc_result, N, L1, K1, dofminus = 0L) {
   df <- as.integer(L1 - K1 + 1L)
   stat <- (N - dofminus) * min(cc_result$eval)
@@ -219,7 +219,7 @@
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return Named list with stat, test_name.
-#' @keywords internal
+#' @noRd
 .cragg_donald_f <- function(cc_result, N, L, L1, dofminus = 0L,
                              sdofminus = 0L) {
   min_eval <- min(cc_result$eval)
@@ -247,7 +247,7 @@
 #' @param K1 Number of endogenous regressors.
 #' @param L1 Number of excluded instruments.
 #' @return `(K1*L1) x (K1*L1)` symmetric matrix.
-#' @keywords internal
+#' @noRd
 .kp_omega <- function(Z1_perp, V_hat, weights, cluster_vec, N, K1, L1,
                        weight_type = "aweight",
                        kernel = NULL, bw = NULL, time_index = NULL,
@@ -330,7 +330,7 @@
 #' @param K1 Number of endogenous regressors.
 #' @param L1 Number of excluded instruments.
 #' @return Named list with chi2, df.
-#' @keywords internal
+#' @noRd
 .kp_rk_stat <- function(cc_result, shat0, N, K1, L1) {
   U <- cc_result$U        # L1 x L1
   V <- cc_result$V        # K1 x K1
@@ -429,7 +429,7 @@
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @param sdofminus Integer: small-sample DoF adjustment (default 0).
 #' @return List with underid, weak_id, weak_id_robust (or NULL).
-#' @keywords internal
+#' @noRd
 .compute_id_tests <- function(X, Z, y, residuals, weights, cluster_vec,
                               vcov_type, N, K, L, K1, L1, M = NULL,
                               endo_names, excluded_names, has_intercept,

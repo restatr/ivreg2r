@@ -33,7 +33,7 @@
 #' @param j_full The full model's own overidentification statistic (Stata's `e(j)`/`e(sargan)`), or NULL. Stata computes the C-statistic as `cstat = j - cj` (ivreg2.ado:1547) where `j` is the main model's reported statistic, not a re-minimization of the fixed-S quadratic; the two coincide for 2SLS/GMM2S but differ for CUE (optimum of the self-consistent objective) and LIML (Sargan at the LIML estimate), since the recursive orthog call forwards `gmm2s` but not `cue`/`liml` (ado:1521-1538). When non-NULL and finite, used as J_full directly.
 #' @return Named list with `stat`, `p`, `df`, `test_name`, `tested_vars`,
 #'   or NULL if this is not an IV model or orthog_vars is NULL.
-#' @keywords internal
+#' @noRd
 .compute_orthog_test <- function(Z, X, y, residuals, rss, weights,
                                   cluster_vec, vcov_type, N, K, L,
                                   orthog_vars, dofminus = 0L,

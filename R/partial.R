@@ -22,7 +22,7 @@
 #'   - `y`, `X`, `Z` projected onto M_P
 #'   - Partialled columns removed from X and Z
 #'   - `has_intercept` set to FALSE (intercept absorbed)
-#' @keywords internal
+#' @noRd
 .partial_out <- function(parsed, partial_colnames, partialcons) {
   y <- parsed$y
   X <- parsed$X

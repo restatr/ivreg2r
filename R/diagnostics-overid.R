@@ -9,7 +9,7 @@
 #' @param A Symmetric positive-definite matrix.
 #' @param b Right-hand side vector or matrix.
 #' @return Solution x such that A x = b.
-#' @keywords internal
+#' @noRd
 .chol_solve <- function(A, b) {
   R <- tryCatch(chol(A), error = function(e) NULL)
   if (!is.null(R)) {
@@ -55,7 +55,7 @@
 #' @param bw Numeric bandwidth, or NULL.
 #' @param time_index List from `.build_time_index()`, or NULL.
 #' @return L x L symmetric matrix S (psd-corrected when `psd` is set).
-#' @keywords internal
+#' @noRd
 .compute_moment_cov <- function(Z, residuals, weights, cluster_vec, N, iid,
                                 dofminus = 0L, weight_type = "aweight",
                                 kernel = NULL, bw = NULL, time_index = NULL,
@@ -98,7 +98,7 @@
 #'
 #' @inheritParams .compute_moment_cov
 #' @return L x L symmetric matrix Omega.
-#' @keywords internal
+#' @noRd
 .compute_omega <- function(Z, residuals, weights, cluster_vec, N,
                             dofminus = 0L, weight_type = "aweight",
                             kernel = NULL, bw = NULL, time_index = NULL,
@@ -211,7 +211,7 @@
 #'   refinement applies only when NULL.
 #' @return Numeric rank bound (M, or M - 1 for unweighted centered), or
 #'   `Inf` when no structural bound applies.
-#' @keywords internal
+#' @noRd
 .cluster_rank_bound <- function(cluster_vec, kernel, center = FALSE,
                                 weights = NULL) {
   if (is.null(cluster_vec) || !is.null(kernel) || is.list(cluster_vec)) {
@@ -238,7 +238,7 @@
 #' @param weights Normalized weights or NULL.
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with `stat`, `p`, `df`, `test_name`.
-#' @keywords internal
+#' @noRd
 .sargan_test <- function(Z, residuals, rss, N, overid_df, weights,
                           dofminus = 0L) {
   sigma_sq <- rss / (N - dofminus)  # large-sample with dofminus adjustment
@@ -281,7 +281,7 @@
 #'   consulting the platform-dependent numeric checks.
 #' @return Scalar J statistic, or `NA_real_` if Omega is rank-deficient
 #'   or the GMM Hessian is singular.
-#' @keywords internal
+#' @noRd
 .compute_j_with_omega <- function(Z, X, y, Omega, weights, N,
                                   rank_bound = Inf) {
   L <- ncol(Z)
@@ -373,7 +373,7 @@
 #' @param overid_df Degrees of freedom (L - K).
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with `stat`, `p`, `df`, `test_name`.
-#' @keywords internal
+#' @noRd
 .hansen_j_test <- function(Z, X, y, residuals, weights, cluster_vec,
                            N, K, L, overid_df, dofminus = 0L,
                            weight_type = "aweight",
@@ -429,7 +429,7 @@
 #' @param endo_names Character vector of endogenous variable names.
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with `stat`, `p`, `df`.
-#' @keywords internal
+#' @noRd
 .compute_stock_wright <- function(Z, X, y, weights, cluster_vec,
                                    vcov_type, N, K1, L1,
                                    endo_names, dofminus = 0L,
@@ -549,7 +549,7 @@
 #' @note The Sargan statistic is normalized by the large-sample sigma-squared
 #'   `e'e/(N-dofminus)`. No small-sample correction is applied even when
 #'   \code{small = TRUE}. This matches Stata's \code{ivreg2}.
-#' @keywords internal
+#' @noRd
 .compute_overid_test <- function(Z, X, y, residuals, rss, weights,
                                  cluster_vec, vcov_type, is_iv,
                                  N, K, L, overid_df, dofminus = 0L,
@@ -622,7 +622,7 @@
 #' @param dofminus Integer: large-sample DoF adjustment (default 0).
 #' @return Named list with `lr_stat`, `lr_p`, `lin_stat`, `lin_p`, `df`,
 #'   or a zero-stat placeholder when exactly identified (df == 0).
-#' @keywords internal
+#' @noRd
 .compute_ar_liml_overid <- function(lambda, N, overid_df, dofminus = 0L) {
   if (overid_df == 0L) {
     return(list(lr_stat = 0, lr_p = NA_real_,

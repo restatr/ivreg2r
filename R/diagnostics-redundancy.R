@@ -40,7 +40,7 @@
 #' @param time_index Time index list or NULL.
 #' @param center Logical: center scores (default FALSE).
 #' @return Named list with `stat`, `p`, `df`, `test_name`, `tested_vars`.
-#' @keywords internal
+#' @noRd
 .compute_redundancy_test <- function(X, Z, weights, cluster_vec, vcov_type,
                                       N, K1, endo_colnames, excluded_colnames,
                                       redundant_vars, dofminus = 0L,
