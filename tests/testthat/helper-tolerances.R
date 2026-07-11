@@ -70,7 +70,11 @@ stata_tol <- list(
 # local variable escapes the scan; don't do that.
 # NOTE: this file is also source()d by pkg/tests/audit-tolerances.R — keep it
 # free of top-level testthat calls.
-standard_tol_ceiling <- 1e-6  # at or below this is standard-or-tighter for every class
+# The ceiling is the tightest standard class (coef/se/vcov). Literals at the
+# stat/pval standard (1e-4) still trip the gate on purpose: standard
+# tolerances must be spelled stata_tol$stat / stata_tol$pval, never as bare
+# literals.
+standard_tol_ceiling <- max(stata_tol$coef, stata_tol$se, stata_tol$vcov)
 
 tolerance_overrides <- data.frame(
   file = c("test-ts-operators.R",
@@ -84,6 +88,5 @@ tolerance_overrides <- data.frame(
     "klein CUE vcov: same optimizer-endpoint noise, quadratic in the coefficient gap",
     "wmatrix-vs-standard just-identified GMM fit-vs-fit identity: different first-step W perturbs step-2 residuals; the VCV squares the gap",
     "inverted assertion (expect_false(all.equal)): looseness strengthens the claim that GMM2S and 2SLS coefficients differ"
-  ),
-  stringsAsFactors = FALSE
+  )
 )

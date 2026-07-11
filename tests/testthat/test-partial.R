@@ -461,18 +461,17 @@ test_that("CUE b0 + partial works (b0 validated after partialling)", {
     lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
     data = card, method = "liml", partial = "smsa")
   b0_vec <- coef(fit_liml)
-  fit_cue <- ivreg2(
-    lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
-    data = card, method = "cue", partial = "smsa", b0 = b0_vec)
+  # The regression under test is that this fit does not throw the
+  # pre-partial-K dimension-mismatch error.
+  expect_no_error(
+    fit_cue <- ivreg2(
+      lwage ~ exper + expersq + black + south + smsa | educ | nearc2 + nearc4,
+      data = card, method = "cue", partial = "smsa", b0 = b0_vec)
+  )
   # b0 fixes the coefficient vector (the fit evaluates the CUE objective at
-  # b0 rather than re-estimating), so coef(fit_cue) echoes b0_vec exactly.
-  # The substance of this test is that the fit succeeds and the echo is
-  # bit-identical after partialling reorders/drops columns.
-  for (nm in names(b0_vec)) {
-    expect_equal(unname(coef(fit_cue)[nm]), unname(coef(fit_liml)[nm]),
-                 tolerance = 0,
-                 info = paste("b0+partial CUE echoes b0:", nm))
-  }
+  # b0 rather than re-estimating), so coef(fit_cue) must echo b0_vec
+  # bit-identically after partialling reorders/drops columns.
+  expect_equal(coef(fit_cue)[names(b0_vec)], b0_vec, tolerance = 0)
 })
 
 

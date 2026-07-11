@@ -2,11 +2,18 @@
 # the test sources that is looser than standard_tol_ceiling must be an
 # allow-listed override in helper-tolerances.R (tolerance_overrides), with a
 # root-cause comment at the call site. Parser-based so that comments and
-# strings mentioning tolerances are ignored.
+# strings mentioning tolerances are ignored. Deliberate consequence: a
+# literal 1e-4 on a stat/pval comparison is flagged even though it equals
+# stata_tol$stat — standard tolerances must be spelled stata_tol$..., which
+# the scanner skips (symbolic, not a literal). If a comparison helper gains
+# a new tolerance-like parameter, add its name to arg_names below.
 
 scan_tolerance_literals <- function(path) {
   pd <- utils::getParseData(parse(path, keep.source = TRUE))
-  toks <- pd[pd$terminal, c("line1", "col1", "token", "text")]
+  # drop COMMENT tokens so an inline comment between "=" and the number
+  # cannot break the name/EQ/NUM adjacency
+  toks <- pd[pd$terminal & pd$token != "COMMENT",
+             c("line1", "col1", "token", "text")]
   toks <- toks[order(toks$line1, toks$col1), ]
   arg_names <- c("tolerance", "tol", "tol_coef", "tol_se", "tol_stat",
                  "tol_pval")
@@ -18,7 +25,8 @@ scan_tolerance_literals <- function(path) {
   if (length(i) == 0L) return(NULL)
   data.frame(file = basename(path),
              line = toks$line1[i + 2L],
-             value = as.numeric(toks$text[i + 2L]))
+             # strip the suffix of integer literals like 0L before coercing
+             value = as.numeric(sub("L$", "", toks$text[i + 2L])))
 }
 
 test_that("every looser-than-standard tolerance literal is allow-listed", {
@@ -28,6 +36,10 @@ test_that("every looser-than-standard tolerance literal is allow-listed", {
   skip_if(length(files) == 0L, "test sources not visible to the scanner")
 
   hits <- do.call(rbind, lapply(files, scan_tolerance_literals))
+  if (is.null(hits)) {
+    hits <- data.frame(file = character(), line = integer(),
+                       value = numeric())
+  }
   loose <- hits[hits$value > standard_tol_ceiling, , drop = FALSE]
 
   if (nrow(loose) == 0L) {
