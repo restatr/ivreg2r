@@ -133,6 +133,21 @@ test_that("a robust fit without psd carries no psd note", {
   expect_null(fit$diagnostics$redundancy$note)
 })
 
+test_that("psd on an iid fit carries no psd note (inert under iid, ruling R5)", {
+  # Under vcov = "iid" (the default), psd already reaches the stored $S,
+  # which is PSD by construction, so the correction cannot change the
+  # identification/redundancy statistics -- the note-block trigger is
+  # deliberately narrowed to robust-family VCE (see ivreg2.R, planning/31 R2).
+  fit <- ivreg2(lwage ~ exper + expersq + black + south | educ |
+                  nearc4 + nearc2, data = card,
+                psd = "psd0", redundant = "nearc2")
+
+  expect_null(fit$diagnostics$underid$note)
+  expect_null(fit$diagnostics$weak_id$note)
+  expect_null(fit$diagnostics$redundancy$note)
+  expect_true(all(is.na(diagnostics(fit)$note)))
+})
+
 
 # ============================================================================
 # Trigger 5: method = "cue"/"liml" -> endogeneity + orthogonality notes

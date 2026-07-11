@@ -43,7 +43,9 @@
 #' @section Small-sample correction: the first-stage F-statistic (surfaced
 #'   via `glance()` and `summary()` on each `ivreg2_first_stage` object)
 #'   always uses small-sample degrees of freedom, regardless of the main
-#'   model's `small` argument. This matches Stata's `ivreg2`.
+#'   model's `small` argument. This matches Stata's `ivreg2`. See
+#'   [ivreg2r-conventions] for the full statement of which corrections
+#'   `small` controls.
 #'
 #' @examples
 #' # Mirrors the Stata `ivreg2` help-file example at line 1325, which

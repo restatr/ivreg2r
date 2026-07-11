@@ -46,7 +46,11 @@
 #'       tests (`ranktest` never receives it); `center` on the endogeneity
 #'       test; and `method = "cue"` (or `"liml"`, for orthogonality) on the
 #'       endogeneity and orthogonality C-statistics, which come from a
-#'       recursive re-estimation that does not use those estimators.}
+#'       recursive re-estimation that does not use those estimators. When
+#'       more than one disclosure applies to the same test, the note column
+#'       joins the sentences with a space; each note is a complete sentence,
+#'       so splitting on sentence boundaries recovers the individual
+#'       disclosures programmatically.}
 #'   }
 #'
 #'   Rows appear only for the tests actually computed on the model: an IV
@@ -71,7 +75,9 @@
 #'   small-sample corrected, regardless of the main model's `small` argument.
 #'   The first-stage F-statistics are always small-sample corrected,
 #'   regardless of `small`; they are not columns of this tibble but are
-#'   reached via [first_stage()]. All three match Stata's `ivreg2`.
+#'   reached via [first_stage()]. All three match Stata's `ivreg2`. See
+#'   [ivreg2r-conventions] for the full statement of which corrections
+#'   `small` controls.
 #'
 #' @examples
 #' data(card)

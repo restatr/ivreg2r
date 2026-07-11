@@ -42,7 +42,11 @@ structure is dropped); \code{psd} on the identification and redundancy
 tests (\code{ranktest} never receives it); \code{center} on the endogeneity
 test; and \code{method = "cue"} (or \code{"liml"}, for orthogonality) on the
 endogeneity and orthogonality C-statistics, which come from a
-recursive re-estimation that does not use those estimators.}
+recursive re-estimation that does not use those estimators. When
+more than one disclosure applies to the same test, the note column
+joins the sentences with a space; each note is a complete sentence,
+so splitting on sentence boundaries recovers the individual
+disclosures programmatically.}
 }
 
 Rows appear only for the tests actually computed on the model: an IV
@@ -74,7 +78,9 @@ any other tidyverse output instead of navigated as a nested list
 small-sample corrected, regardless of the main model's \code{small} argument.
 The first-stage F-statistics are always small-sample corrected,
 regardless of \code{small}; they are not columns of this tibble but are
-reached via \code{\link[=first_stage]{first_stage()}}. All three match Stata's \code{ivreg2}.
+reached via \code{\link[=first_stage]{first_stage()}}. All three match Stata's \code{ivreg2}. See
+\link{ivreg2r-conventions} for the full statement of which corrections
+\code{small} controls.
 }
 
 \examples{

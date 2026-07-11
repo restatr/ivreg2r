@@ -47,7 +47,9 @@ R-squared, and related diagnostics).}
  the first-stage F-statistic (surfaced
 via \code{glance()} and \code{summary()} on each \code{ivreg2_first_stage} object)
 always uses small-sample degrees of freedom, regardless of the main
-model's \code{small} argument. This matches Stata's \code{ivreg2}.
+model's \code{small} argument. This matches Stata's \code{ivreg2}. See
+\link{ivreg2r-conventions} for the full statement of which corrections
+\code{small} controls.
 }
 
 \examples{

@@ -413,7 +413,8 @@ reports that the request was ignored.
 \strong{Note:} the reduced-form variance-covariance matrix always applies
 OLS-style small-sample degrees-of-freedom scaling, regardless of the
 main model's \code{small} argument. This matches Stata's \code{ivreg2}
-(ivreg2.ado:3091-3097).}
+(ivreg2.ado:3091-3097). See \link{ivreg2r-conventions} for the full statement
+of which corrections \code{small} controls.}
 
 \item{first_stage}{Logical: if \code{TRUE}, store extractable first-stage
 regression objects on the fitted model. Access them via

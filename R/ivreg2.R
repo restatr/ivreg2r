@@ -210,12 +210,10 @@
   # "AC" to "HAC".
   if (weight_type == "pweight" && is.null(clusters)) {
     if (vcov == "iid") {
-      warning('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".',
-              call. = FALSE)
+      .warn_vce_promotion("pweight", "iid", "robust")
       vcov <- "robust"
     } else if (vcov == "AC") {
-      warning('pweight implies robust VCE; overriding vcov = "AC" to vcov = "HAC".',
-              call. = FALSE)
+      .warn_vce_promotion("pweight", "AC", "HAC")
       vcov <- "HAC"
     }
   }
@@ -326,8 +324,7 @@
     }
     # SW forces robust VCE (Stata ivreg2.ado line 3758)
     if (vcov == "iid") {
-      warning('sw implies robust VCE; overriding vcov = "iid" to vcov = "robust".',
-              call. = FALSE)
+      .warn_vce_promotion("sw", "iid", "robust")
       vcov <- "robust"
     }
   }
@@ -590,7 +587,26 @@
                           "or excluded instruments)")
 .K10_MODEL_DESC <- "the model has no endogenous regressors"
 .B0_MODEL_DESC <- "b0 evaluation suppresses identification diagnostics"
-.NOID_MODEL_DESC <- "`noid = TRUE`"
+.NOID_MODEL_DESC <- "identification tests are suppressed (`noid = TRUE`)"
+
+
+#' Warn that an option forces a more general VCE, overriding the requested
+#' `vcov`.
+#'
+#' Shared by the pweight -> robust/HAC and sw -> robust promotions: both
+#' silently substitute a more general `vcov` than the user asked for, and
+#' planning/31 R4 rules that this substitution gets a fit-time `warning()`
+#' (not `message()`), so it is independently testable with
+#' `expect_warning()`.
+#' @param option Character: the option name forcing the promotion (e.g.
+#'   `"pweight"`, `"sw"`).
+#' @param from Character: the `vcov` value being overridden.
+#' @param to Character: the `vcov` value substituted for it.
+#' @noRd
+.warn_vce_promotion <- function(option, from, to) {
+  warning(option, ' implies robust VCE; overriding vcov = "', from,
+          '" to vcov = "', to, '".', call. = FALSE)
+}
 
 
 #' Stop because a cluster variable contains NA values.
@@ -1779,6 +1795,15 @@
       )
     }
 
+    # Kiefer/kernel precedence (Stata's ranktest never receives the kernel
+    # when kiefer is set — see the comment inside the id-test block below).
+    # Hoisted outside the `!noid` gate immediately below, even though only
+    # that gate's id tests consume it, because the note-block trigger further
+    # down (planning/31 R2) also reads id_kernel and runs unconditionally
+    # whenever K1 > 0 -- if noid = TRUE skipped the block that used to define
+    # id_kernel, that trigger would hit an undefined-variable error.
+    id_kernel <- if (isTRUE(kiefer)) NULL else kernel
+
     # Identification tests (D2) + Stock-Yogo critical values (D3).
     # K1 = 0 (empty-endogenous): skipped entirely, matching Stata's master
     # gate `if endo1_ct > 0 & noid==""` (ivreg2.ado:1625) — idstat/widstat
@@ -1797,7 +1822,7 @@
       } else {
         effective_vcov_type
       }
-      id_kernel <- if (isTRUE(kiefer)) NULL else kernel
+      # id_kernel is now hoisted above the `!noid` gate (see comment there).
       id_tests <- .compute_id_tests(
         X = parsed$X, Z = parsed$Z, y = parsed$y,
         residuals = fit$residuals, weights = parsed$weights,
@@ -1936,8 +1961,7 @@
     if (noid && !is.null(redundant) && length(redundant) > 0L &&
         parsed$K1 > 0L) {
       .warn_iv_request_ignored("redundant", .NOID_MODEL_DESC,
-                               paste0("it suppresses the identification-test ",
-                                      "family, including the redundancy test."))
+                               "the redundancy test is not computed.")
     }
     if (!noid && !is.null(redundant) && length(redundant) > 0L &&
         parsed$K1 > 0L) {
@@ -1970,8 +1994,27 @@
     # a `note` column and printed by summary() as a footnote. Numbers are
     # unchanged; only the note field is added. Each note text is identical
     # across the slots it touches so summary() prints it once.
-    non_bartlett_kernel <- !is.null(kernel) && kernel != "Bartlett" &&
-      !isTRUE(kiefer)
+    #
+    # Maintenance contract: these five triggers are re-derived here, post-hoc,
+    # from options and flags that were already consumed further up the
+    # pipeline, rather than being computed inside the diagnostic functions
+    # themselves. That means ANY new diagnostic path that silently drops a
+    # user option must (1) add its trigger to this block and (2) add a test
+    # to test-diag-notes.R pinning both the fires-on-trigger and
+    # absent-without-it cases -- the tests in that file are the tripwires
+    # that catch a future diagnostic silently reintroducing an undisclosed
+    # drop.
+    non_bartlett_kernel <- !is.null(id_kernel) && id_kernel != "Bartlett"
+    # Narrowed from planning/31 row 4's ruled trigger ("every psd fit") to
+    # robust-family VCE only. Under vcov = "iid", psd corrects the stored $S,
+    # which is already positive semidefinite by construction (the iid moment
+    # covariance is a scalar multiple of (Z'Z), an inner-product Gram matrix),
+    # so the correction is provably inert on this path -- ruling R5 reached
+    # the same conclusion for the psd+iid interaction generally. Noting an
+    # option that cannot possibly change the identification/redundancy
+    # statistics would disclose the non-application of an inapplicable
+    # option, not a real Stata-parity quirk, so the trigger fires only where
+    # psd could actually matter: robust, HAC, AC, or cluster VCE.
     psd_on_robust <- !is.null(psd) &&
       (sw_flag ||
          effective_vcov_type %in% c("robust", "HAC", "AC", "CL"))
@@ -2501,7 +2544,8 @@
 #'   **Note:** the reduced-form variance-covariance matrix always applies
 #'   OLS-style small-sample degrees-of-freedom scaling, regardless of the
 #'   main model's `small` argument. This matches Stata's `ivreg2`
-#'   (ivreg2.ado:3091-3097).
+#'   (ivreg2.ado:3091-3097). See [ivreg2r-conventions] for the full statement
+#'   of which corrections `small` controls.
 #' @param first_stage Logical: if `TRUE`, store extractable first-stage
 #'   regression objects on the fitted model. Access them via
 #'   [first_stage()]; see [first_stage()] for the full list of supported
