@@ -120,8 +120,11 @@ test_that("noid = TRUE + b0 works without conflict", {
 # noid + redundant: redundancy test skipped silently
 # ============================================================================
 
-test_that("noid = TRUE + redundant skips redundancy test silently", {
-  fit <- do.call(ivreg2, c(base_args, list(noid = TRUE, redundant = "nearc4")))
+test_that("noid = TRUE + redundant skips redundancy test with a warning", {
+  expect_warning(
+    fit <- do.call(ivreg2, c(base_args, list(noid = TRUE, redundant = "nearc4"))),
+    "`redundant` ignored"
+  )
   expect_null(fit$diagnostics$redundancy)
 })
 
@@ -163,15 +166,16 @@ test_that("b0 + invalid orthog still errors", {
   )
 })
 
-test_that("b0 + orthog + partial does not error (orthog suppressed by b0)", {
+test_that("b0 + orthog + partial does not error (orthog suppressed by b0, with a warning)", {
   # Regression test: partialled_out check must not fire when b0 suppresses orthog
   fit_base <- ivreg2(lwage ~ exper + expersq + black + south + smsa + smsa66 |
                        educ | nearc4 + nearc2, data = card, partial = "smsa")
   b0_vec <- coef(fit_base)
-  expect_no_error(
+  expect_warning(
     ivreg2(lwage ~ exper + expersq + black + south + smsa + smsa66 |
              educ | nearc4 + nearc2, data = card,
-           partial = "smsa", orthog = "smsa", b0 = b0_vec)
+           partial = "smsa", orthog = "smsa", b0 = b0_vec),
+    "`orthog` ignored"
   )
 })
 

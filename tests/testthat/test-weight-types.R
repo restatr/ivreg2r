@@ -49,16 +49,21 @@ test_that("fweight rejects non-positive weights", {
 test_that("pweight rejects non-positive weights", {
   d <- mtcars
   d$w <- c(-1, rep(1, nrow(d) - 1))
-  expect_error(
-    ivreg2(mpg ~ wt + hp, data = d, weights = w, weight_type = "pweight"),
-    'strictly positive'
+  # The pweight-forces-robust warning fires (vcov defaults to "iid") before
+  # the weight-positivity check errors out.
+  expect_warning(
+    expect_error(
+      ivreg2(mpg ~ wt + hp, data = d, weights = w, weight_type = "pweight"),
+      'strictly positive'
+    ),
+    'pweight implies robust VCE'
   )
 })
 
-test_that("pweight + iid overrides to HC0 with message", {
+test_that("pweight + iid overrides to HC0 with a warning", {
   d <- mtcars
   d$w <- runif(nrow(d), 1, 5)
-  expect_message(
+  expect_warning(
     fit <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
                   weight_type = "pweight", vcov = "iid"),
     'pweight implies robust VCE'
@@ -66,10 +71,10 @@ test_that("pweight + iid overrides to HC0 with message", {
   expect_equal(fit$vcov_type, "robust")
 })
 
-test_that("pweight + iid + small overrides to robust with message", {
+test_that("pweight + iid + small overrides to robust with a warning", {
   d <- mtcars
   d$w <- runif(nrow(d), 1, 5)
-  expect_message(
+  expect_warning(
     fit <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
                   weight_type = "pweight", vcov = "iid", small = TRUE),
     'pweight implies robust VCE'
@@ -77,13 +82,13 @@ test_that("pweight + iid + small overrides to robust with message", {
   expect_equal(fit$vcov_type, "robust")
 })
 
-test_that("pweight + explicit AC promotes to HAC with message (Stata parity)", {
+test_that("pweight + explicit AC promotes to HAC with a warning (Stata parity)", {
   # Stata forces robust unconditionally for [pw=] (ivreg2.ado:353-357), so
   # pw + kernel yields HAC even when the user asked for AC. Verified against
   # Stata: educ SE matches to all printed digits (2026-06-10 session).
   d <- mtcars
   d$t <- seq_len(nrow(d))
-  expect_message(
+  expect_warning(
     fit <- ivreg2(mpg ~ wt + hp, data = d, weights = disp,
                   weight_type = "pweight", vcov = "AC",
                   kernel = "bartlett", bw = 3, tvar = "t"),
@@ -92,14 +97,14 @@ test_that("pweight + explicit AC promotes to HAC with message (Stata parity)", {
   expect_equal(fit$vcov_type, "HAC")
 })
 
-test_that("pweight + kiefer yields heteroskedasticity-robust Kiefer with message", {
+test_that("pweight + kiefer yields heteroskedasticity-robust Kiefer with a warning", {
   # Stata: [pw=] + kiefer reports "robust to heteroskedasticity and
   # within-cluster autocorrelation (Kiefer)"; our equivalent is the
   # kiefer-implied AC promoted to HAC. Verified against Stata numerically.
   d <- mtcars
   d$id <- rep(1:8, each = 4)
   d$t <- rep(1:4, times = 8)
-  expect_message(
+  expect_warning(
     fit <- ivreg2(mpg ~ wt + hp, data = d, weights = disp,
                   weight_type = "pweight", kiefer = TRUE,
                   tvar = "t", ivar = "id"),
@@ -120,10 +125,11 @@ test_that("pweight + kiefer IV fit uses robust (KP) identification tests", {
   d$id2 <- ceiling(seq_len(nrow(d)) / 10)
   d$tt <- (seq_len(nrow(d)) - 1) %% 10 + 1
 
-  fit_pw <- suppressMessages(
-    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = d,
-           weights = weight, weight_type = "pweight",
-           kiefer = TRUE, tvar = "tt", ivar = "id2")
+  expect_warning(
+    fit_pw <- ivreg2(lwage ~ exper + expersq | educ | nearc4, data = d,
+                     weights = weight, weight_type = "pweight",
+                     kiefer = TRUE, tvar = "tt", ivar = "id2"),
+    'pweight implies robust VCE'
   )
   expect_match(fit_pw$diagnostics$underid$test_name, "Kleibergen-Paap")
   expect_true(is.finite(fit_pw$diagnostics$underid$stat))
@@ -133,11 +139,10 @@ test_that("pweight + kiefer IV fit uses robust (KP) identification tests", {
   # must coincide exactly with those of a plain robust pweight fit of the
   # same model (Stata's ranktest receives only the robust flag under
   # kiefer). This also rules out the NA error-fallback path, which shares
-  # the KP labels.
-  fit_rob <- suppressMessages(
-    ivreg2(lwage ~ exper + expersq | educ | nearc4, data = d,
-           weights = weight, weight_type = "pweight", vcov = "robust")
-  )
+  # the KP labels. vcov is explicit "robust" here, so pweight has nothing
+  # to override and no warning fires.
+  fit_rob <- ivreg2(lwage ~ exper + expersq | educ | nearc4, data = d,
+                    weights = weight, weight_type = "pweight", vcov = "robust")
   expect_equal(fit_pw$diagnostics$underid$stat,
                fit_rob$diagnostics$underid$stat)
   expect_equal(fit_pw$diagnostics$weak_id_robust$stat,
@@ -151,19 +156,20 @@ test_that("pweight + kiefer IV fit uses robust (KP) identification tests", {
 })
 
 test_that("pweight + cluster does not override vcov", {
-  fit <- suppressMessages(
-    ivreg2(mpg ~ wt + hp, data = mtcars, weights = disp,
-           weight_type = "pweight", clusters = ~ cyl)
-  )
+  # clusters is set, so the pweight-forces-robust branch (which requires
+  # is.null(clusters)) never runs and no warning fires.
+  fit <- ivreg2(mpg ~ wt + hp, data = mtcars, weights = disp,
+                weight_type = "pweight", clusters = ~ cyl)
   expect_equal(fit$vcov_type, "CL")
 })
 
 test_that("pweight + explicit HC0 matches pweight + iid override", {
   d <- mtcars
   d$w <- runif(nrow(d), 1, 5)
-  fit_override <- suppressMessages(
-    ivreg2(mpg ~ wt + hp, data = d, weights = w,
-           weight_type = "pweight", vcov = "iid")
+  expect_warning(
+    fit_override <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
+                           weight_type = "pweight", vcov = "iid"),
+    'pweight implies robust VCE'
   )
   fit_explicit <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
                          weight_type = "pweight", vcov = "robust")
@@ -175,9 +181,10 @@ test_that("pweight + explicit HC0 matches pweight + iid override", {
 test_that("pweight + explicit HC1 + small matches pweight + iid + small override", {
   d <- mtcars
   d$w <- runif(nrow(d), 1, 5)
-  fit_override <- suppressMessages(
-    ivreg2(mpg ~ wt + hp, data = d, weights = w,
-           weight_type = "pweight", vcov = "iid", small = TRUE)
+  expect_warning(
+    fit_override <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
+                           weight_type = "pweight", vcov = "iid", small = TRUE),
+    'pweight implies robust VCE'
   )
   fit_explicit <- ivreg2(mpg ~ wt + hp, data = d, weights = w,
                          weight_type = "pweight", vcov = "robust", small = TRUE)
@@ -186,9 +193,9 @@ test_that("pweight + explicit HC1 + small matches pweight + iid + small override
   expect_equal(fit_explicit$sigma, fit_override$sigma)
 })
 
-test_that("pweight + kernel + iid overrides to HAC (not AC)", {
+test_that("pweight + kernel + iid overrides to HAC (not AC), with a warning", {
   phil <- na.omit(ivreg2r::phillips)
-  expect_message(
+  expect_warning(
     fit <- ivreg2(cinf ~ unem, data = phil, weights = unem,
                   weight_type = "pweight", vcov = "iid",
                   kernel = "bartlett", bw = 3, tvar = "year"),
@@ -198,9 +205,9 @@ test_that("pweight + kernel + iid overrides to HAC (not AC)", {
   expect_equal(fit$vcov_type, "HAC")
 })
 
-test_that("pweight + kernel + iid + small overrides to HAC with correction", {
+test_that("pweight + kernel + iid + small overrides to HAC with correction, with a warning", {
   phil <- na.omit(ivreg2r::phillips)
-  expect_message(
+  expect_warning(
     fit <- ivreg2(cinf ~ unem, data = phil, weights = unem,
                   weight_type = "pweight", vcov = "iid",
                   kernel = "bartlett", bw = 3, tvar = "year", small = TRUE),
@@ -210,9 +217,9 @@ test_that("pweight + kernel + iid + small overrides to HAC with correction", {
   expect_true(fit$small)
 })
 
-test_that("pweight + kernel + iid + small=FALSE overrides to HAC without correction", {
+test_that("pweight + kernel + iid + small=FALSE overrides to HAC without correction, with a warning", {
   phil <- na.omit(ivreg2r::phillips)
-  expect_message(
+  expect_warning(
     fit <- ivreg2(cinf ~ unem, data = phil, weights = unem,
                   weight_type = "pweight", vcov = "iid",
                   kernel = "bartlett", bw = 3, tvar = "year", small = FALSE),
@@ -249,8 +256,9 @@ test_that("nobs() returns nrow for aweight", {
 
 test_that("nobs() returns nrow for pweight", {
   d <- data.frame(y = 1:10, x = rnorm(10), w = rep(2, 10))
-  fit <- suppressMessages(
-    ivreg2(y ~ x, data = d, weights = w, weight_type = "pweight")
+  expect_warning(
+    fit <- ivreg2(y ~ x, data = d, weights = w, weight_type = "pweight"),
+    'pweight implies robust VCE'
   )
   expect_equal(nobs(fit), 10L)
 })
@@ -504,9 +512,10 @@ test_that("weight_type is stored in fitted object", {
                   data = card_wt, weights = fwt, weight_type = "fweight")
   expect_equal(fit_f$weight_type, "fweight")
 
-  fit_p <- suppressMessages(
-    ivreg2(mpg ~ wt + hp, data = mtcars, weights = disp,
-           weight_type = "pweight")
+  expect_warning(
+    fit_p <- ivreg2(mpg ~ wt + hp, data = mtcars, weights = disp,
+                    weight_type = "pweight"),
+    'pweight implies robust VCE'
   )
   expect_equal(fit_p$weight_type, "pweight")
 })

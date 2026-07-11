@@ -215,13 +215,13 @@ wagepan_fe <- wagepan |>
 
 fit_sw <- ivreg2(lwage_dm ~ 0 + expersq_dm + married_dm + union_dm,
                  data = wagepan_fe, sw = TRUE, ivar = "nr", tvar = "year",
-                 dofminus = 545)
+                 dofminus = 545, vcov = "robust")
 summary(fit_sw)
 ```
 
 The `~ 0 +` in the formula is Stata's `noconstant`: the within transformation has already removed every man's mean, so no constant remains to estimate. The `dofminus = 545` argument is Stata's `dofminus()`, which charges the `r length(unique(wagepan$nr))` absorbed person means to the residual degrees of freedom; without it the variance would treat the demeaned data as though no means had been estimated and would understate the standard errors. Experience itself (`exper`) is deliberately absent. Within a man it advances one year per calendar year, so after demeaning its variation is a common time trend shared by everyone observed in the same calendar year. The classic `wagepan` equation (Wooldridge) includes year dummies alongside the person effects, and the person effects plus year dummies absorb `exper` exactly, so that specification must drop it; we keep its conventional regressor set — `expersq`, `married`, and `union` — here as well.
 
-The `sw` option forces robust standard errors and is incompatible with clustering, kernels, Kiefer, and Driscoll-Kraay. It appears in neither the help file nor the Baum, Schaffer & Stillman papers, and Stata's `ivreg2` labels it a beta feature; the correction itself is standard (Stock & Watson 2008). It is unrelated to the Sanderson-Windmeijer "SW" first-stage F statistic.
+The `sw` option forces robust standard errors and is incompatible with clustering, kernels, Kiefer, and Driscoll-Kraay; we pass `vcov = "robust"` explicitly above rather than relying on the automatic override (leaving `vcov` at its default `"iid"` would trigger the same forced override, with a warning noting it). It appears in neither the help file nor the Baum, Schaffer & Stillman papers, and Stata's `ivreg2` labels it a beta feature; the correction itself is standard (Stock & Watson 2008). It is unrelated to the Sanderson-Windmeijer "SW" first-stage F statistic.
 
 ### When to use which
 

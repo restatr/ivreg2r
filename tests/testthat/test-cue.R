@@ -315,6 +315,68 @@ test_that("b0 unnamed vector works in column order", {
 })
 
 # ============================================================================
+# 9b. b0 + explicit identification-diagnostic requests: dropped with a
+# warning rather than silently ignored (planning/31 row 7, ruling R3)
+# ============================================================================
+
+test_that("b0 + explicit endog warns and does not compute the endogeneity test", {
+  fit_2sls <- ivreg2(sw_formula, data = stockwatson, vcov = "robust")
+  b0_vec <- coef(fit_2sls)
+
+  expect_warning(
+    fit_b0 <- ivreg2(sw_formula, data = stockwatson, vcov = "robust",
+                     b0 = b0_vec, endog = "UR"),
+    "`endog` ignored"
+  )
+  expect_null(fit_b0$diagnostics$endogeneity)
+})
+
+test_that("b0 + explicit orthog warns and does not compute the orthogonality test", {
+  fit_2sls <- ivreg2(sw_formula, data = stockwatson, vcov = "robust")
+  b0_vec <- coef(fit_2sls)
+
+  expect_warning(
+    fit_b0 <- ivreg2(sw_formula, data = stockwatson, vcov = "robust",
+                     b0 = b0_vec, orthog = "ggdp_2"),
+    "`orthog` ignored"
+  )
+  expect_null(fit_b0$diagnostics$orthog)
+})
+
+test_that("b0 + explicit redundant warns and does not compute the redundancy test", {
+  fit_2sls <- ivreg2(sw_formula, data = stockwatson, vcov = "robust")
+  b0_vec <- coef(fit_2sls)
+
+  expect_warning(
+    fit_b0 <- ivreg2(sw_formula, data = stockwatson, vcov = "robust",
+                     b0 = b0_vec, redundant = "TBILL_1"),
+    "`redundant` ignored"
+  )
+  expect_null(fit_b0$diagnostics$redundancy)
+})
+
+test_that("b0 + explicit first_stage = TRUE warns and stores no first-stage models", {
+  fit_2sls <- ivreg2(sw_formula, data = stockwatson, vcov = "robust")
+  b0_vec <- coef(fit_2sls)
+
+  expect_warning(
+    fit_b0 <- ivreg2(sw_formula, data = stockwatson, vcov = "robust",
+                     b0 = b0_vec, first_stage = TRUE),
+    "`first_stage` ignored"
+  )
+  expect_null(fit_b0$first_stage)
+})
+
+test_that("plain b0 (no explicit identification requests) stays warning-free", {
+  fit_2sls <- ivreg2(sw_formula, data = stockwatson, vcov = "robust")
+  b0_vec <- coef(fit_2sls)
+
+  expect_no_warning(
+    ivreg2(sw_formula, data = stockwatson, vcov = "robust", b0 = b0_vec)
+  )
+})
+
+# ============================================================================
 # 10. Input validation
 # ============================================================================
 #

@@ -124,7 +124,7 @@ test_that("Griliches GMM2S aweight robust: coef, vcov, diagnostics match Stata; 
   expect_gmm_core_diagnostics(fit_aw, dx)
 
   # Stata `[aw] gmm2s robust` == `[pw] gmm2s` was verified byte-identical in the retired card fixtures (M-11 invariance rule), so the pweight variant is pinned by this direct equality plus the aweight fixture above.
-  expect_message(
+  expect_warning(
     fit_pw <- ivreg2(gril_formula, data = griliches_awt, method = "gmm2s",
                      weights = awt, weight_type = "pweight"),
     "pweight implies robust VCE"

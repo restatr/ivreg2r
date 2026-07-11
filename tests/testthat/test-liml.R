@@ -159,10 +159,11 @@ test_that("coviv must be logical", {
   )
 })
 
-test_that("coviv is silently ignored for 2SLS", {
-  expect_no_warning(
+test_that("coviv is reset with a warning for 2SLS", {
+  expect_warning(
     fit <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                  data = card, coviv = TRUE)
+                  data = card, coviv = TRUE),
+    '`coviv` is ignored'
   )
   expect_false(fit$coviv)
 })
@@ -367,9 +368,12 @@ test_that("COVIV changes VCV but not coefficients", {
   expect_false(isTRUE(all.equal(vcov(fit_no_coviv), vcov(fit_coviv))))
 })
 
-test_that("COVIV silently ignored for 2SLS: VCV equals non-COVIV", {
-  fit_coviv <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
-                      data = card, coviv = TRUE)
+test_that("COVIV reset with a warning for 2SLS: VCV equals non-COVIV", {
+  expect_warning(
+    fit_coviv <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                        data = card, coviv = TRUE),
+    '`coviv` is ignored'
+  )
   fit_plain <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                       data = card)
   expect_false(fit_coviv$coviv)
@@ -391,6 +395,33 @@ test_that("coviv is stored on the fitted object", {
   fit2 <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
                  data = card, method = "liml")
   expect_false(fit2$coviv)
+})
+
+test_that("coviv is reset with a warning for gmm2s and cue (not just 2SLS)", {
+  expect_warning(
+    fit_gmm2s <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                        data = card, vcov = "robust", method = "gmm2s", coviv = TRUE),
+    '`coviv` is ignored'
+  )
+  expect_false(fit_gmm2s$coviv)
+
+  expect_warning(
+    fit_cue <- ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+                     data = card, vcov = "robust", method = "cue", coviv = TRUE),
+    '`coviv` is ignored'
+  )
+  expect_false(fit_cue$coviv)
+})
+
+test_that("plain coviv = FALSE stays warning-free for every method", {
+  expect_no_warning(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, coviv = FALSE)
+  )
+  expect_no_warning(
+    ivreg2(lwage ~ exper + expersq + black + south | educ | nearc2 + nearc4,
+           data = card, method = "liml", coviv = TRUE)
+  )
 })
 
 

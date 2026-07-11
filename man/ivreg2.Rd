@@ -128,6 +128,9 @@ If \code{NULL} (default), no redundancy test is computed. On a model with no
 endogenous regressors (a one-part OLS formula, or the IV form
 \code{y ~ exog | 0 | instruments}), a warning reports that the test is
 skipped; Stata's \code{redundant()} is silently ignored in those cases.
+\code{noid = TRUE} and \code{b0} also suppress the redundancy test; supplying
+\code{redundant} alongside either is dropped with a warning rather than
+silently ignored.
 Equivalent to Stata's \code{redundant()} option.}
 
 \item{method}{Character: estimation method. One of \code{"2sls"} (default),
@@ -175,8 +178,10 @@ LIML estimator; \code{fuller = 4} targets MSE. Cannot be combined with
 \item{coviv}{Logical: if \code{TRUE}, use the 2SLS bread \verb{(X_hat'X_hat)^\{-1\}}
 instead of the k-class bread for VCV computation in LIML/k-class
 estimation. This gives the "COVIV" (covariance at the IV estimates)
-VCV that is robust to misspecification of the LIML model. Silently
-ignored for OLS and 2SLS. Default \code{FALSE}.}
+VCV that is robust to misspecification of the LIML model. Applies only
+to \code{method = "liml"} and \code{method = "kclass"}; for every other method
+(OLS, 2SLS, GMM2S, CUE) it is reset to \code{FALSE} with a warning.
+Default \code{FALSE}.}
 
 \item{small}{Logical: if \code{TRUE}, use small-sample corrections
 (t/F instead of z/chi-squared, \code{N-K} denominator for sigma).}
@@ -201,7 +206,7 @@ partialling out regressors. Equivalent to Stata's \code{sdofminus()} option.}
 \strong{fweight}: Integer-valued; N is redefined as \code{sum(weights)}.
 HC meat uses \code{w * e^2} (linear, not quadratic).
 
-\strong{pweight}: Normalized to sum to N. Forces robust VCE
+\strong{pweight}: Normalized to sum to N. Forces robust VCE, with a warning
 (overrides \code{vcov = "iid"} to \code{"robust"} and \code{vcov = "AC"} ---
 explicit or kiefer-implied --- to \code{"HAC"}).
 
@@ -281,7 +286,10 @@ instrument column order.}
 parameter vector without optimization. When supplied, \code{method} is
 promoted to \code{"cue"} and the J(b0) statistic is computed and stored.
 Identification diagnostics (underid, weak-id, first-stage, AR, SW,
-endogeneity, orthog) are suppressed (matching Stata's \code{b0()} option).
+endogeneity, orthog, and the redundancy test) are suppressed (matching
+Stata's \code{b0()} option); \code{reduced_form} is not suppressed. An explicit
+\code{endog}, \code{orthog}, \code{redundant}, or \code{first_stage = TRUE} request supplied
+alongside \code{b0} is dropped with a warning, rather than silently ignored.
 Length must equal the number of regressors K. Named vectors are
 reordered to match model matrix columns; unnamed vectors are used
 as-is in model matrix column order.
@@ -293,6 +301,8 @@ weak identification, and redundancy test statistics. Overidentification,
 Anderson-Rubin, Stock-Wright, endogeneity, and first-stage diagnostics
 are still computed. Default \code{FALSE}. Useful for speeding up simulation
 loops where rank-based identification tests are expensive.
+An explicit \code{redundant} request supplied alongside \code{noid = TRUE} is
+dropped with a warning, rather than silently ignored.
 Equivalent to Stata's \code{noid} option.}
 
 \item{partial}{Character vector: exogenous regressors to partial out
@@ -360,7 +370,8 @@ supplied S). Equivalent to Stata's \code{psd0} and \code{psda} options.}
 \item{sw}{Logical: if \code{TRUE}, compute the Stock-Watson (2008,
 Econometrica) panel-robust VCE. Requires panel data (\code{ivar}).
 Incompatible with clustering, HAC kernels, kiefer, dkraay,
-fweights, and iweights. Forces \code{vcov = "robust"} automatically.
+fweights, and iweights. Forces \code{vcov = "robust"} automatically, with a
+warning when \code{vcov = "iid"} is thereby overridden.
 Equivalent to Stata's \code{sw} option (labeled "BETA VERSION" in Stata).
 
 \strong{Precondition:} the Stock-Watson (2008) correction is derived for a

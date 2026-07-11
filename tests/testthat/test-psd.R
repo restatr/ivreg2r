@@ -353,9 +353,15 @@ test_that("non-binding robust path: psd inert; VCV-from-S identity holds", {
 })
 
 test_that("Stock-Watson path: psd routes through the L x L SW omega", {
-  fit_sw <- muffle_rank_warnings(
-    ivreg2(lwage ~ exper + expersq + married + union | hours | educ + black,
-           data = wagepan, sw = TRUE, ivar = "nr", psd = "psd0")
+  # sw = TRUE with the default vcov = "iid" triggers the sw-forces-robust
+  # warning (planning/31 row 14); muffle_rank_warnings still lets that
+  # warning through, so it is asserted explicitly here.
+  expect_warning(
+    fit_sw <- muffle_rank_warnings(
+      ivreg2(lwage ~ exper + expersq + married + union | hours | educ + black,
+             data = wagepan, sw = TRUE, ivar = "nr", psd = "psd0")
+    ),
+    "sw implies robust VCE"
   )
   # SW omega is per-observation scale; same uniform identity applies
   v_rebuilt <- vcov_from_stored_s(fit_sw)
@@ -482,9 +488,12 @@ test_that("binding DK + truncated psd0 + small matches Stata", {
 })
 
 test_that("Stock-Watson + psda matches Stata", {
-  fit <- ivreg2(lwage ~ exper + expersq + married + union | hours |
-                  educ + black,
-                data = wagepan, sw = TRUE, ivar = "nr", psd = "psda")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper + expersq + married + union | hours |
+                    educ + black,
+                  data = wagepan, sw = TRUE, ivar = "nr", psd = "psda"),
+    "sw implies robust VCE"
+  )
   check_psd_fixture(fit, "sw_psda")
 })
 

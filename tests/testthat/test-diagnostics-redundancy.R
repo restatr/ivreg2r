@@ -153,11 +153,15 @@ test_that("df = K1 * L_tested for multi-endo models", {
   expect_identical(fit2$diagnostics$redundancy$df, 4L)
 })
 
-test_that("redundancy suppressed by b0 (no diagnostics)", {
+test_that("redundancy suppressed by b0 (no diagnostics, with a warning)", {
   fit0 <- ivreg2(gril_weak_formula, data = griliches)
-  fit <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt",
-                b0 = rep(0, length(coef(fit0))))
-  # b0 suppresses all identification diagnostics
+  # b0 suppresses all identification diagnostics; the explicit `redundant`
+  # request is dropped with a warning rather than silently ignored.
+  expect_warning(
+    fit <- ivreg2(gril_weak_formula, data = griliches, redundant = "mrt",
+                  b0 = rep(0, length(coef(fit0)))),
+    "`redundant` ignored"
+  )
   expect_null(fit$diagnostics$redundancy)
 })
 

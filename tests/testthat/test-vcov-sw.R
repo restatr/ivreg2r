@@ -192,9 +192,18 @@ test_that("sw blocks dkraay", {
   )
 })
 
-test_that("sw forces robust VCE", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
-                sw = TRUE, ivar = "nr")
+# Every `sw = TRUE` fit below leaves `vcov` at its default `"iid"`, so each
+# one hits the sw-forces-robust promotion (planning/31 row 14, ruling R4) and
+# must assert the resulting warning explicitly (the package's zero-warnings
+# test policy).
+sw_promo_msg <- "sw implies robust VCE"
+
+test_that("sw forces robust VCE, with a warning", {
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
+                  sw = TRUE, ivar = "nr"),
+    sw_promo_msg
+  )
   expect_equal(fit$vcov_type, "robust")
 })
 
@@ -203,69 +212,102 @@ test_that("sw forces robust VCE", {
 # ============================================================================
 
 test_that("SW just-identified matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
-                sw = TRUE, ivar = "nr")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
+                  sw = TRUE, ivar = "nr"),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_justid")
 })
 
 test_that("SW just-identified + small matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
-                sw = TRUE, ivar = "nr", small = TRUE)
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
+                  sw = TRUE, ivar = "nr", small = TRUE),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_justid_small")
 })
 
 test_that("SW overidentified matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr"),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_overid")
 })
 
 test_that("SW overidentified + small matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr", small = TRUE)
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr", small = TRUE),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_overid_small")
 })
 
 test_that("SW + aweight matches Stata", {
   wagepan$aw <- wagepan$hours + 10
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                weights = aw, sw = TRUE, ivar = "nr")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  weights = aw, sw = TRUE, ivar = "nr"),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_aweight")
 })
 
 test_that("SW + LIML matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr", method = "liml")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr", method = "liml"),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_liml")
 })
 
 test_that("SW + dofminus matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr", dofminus = 1L)
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr", dofminus = 1L),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_dofminus")
 })
 
 test_that("SW + endogeneity test matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr", endog = "hours")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr", endog = "hours"),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_endog")
 })
 
 test_that("SW + center matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr", center = TRUE)
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr", center = TRUE),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_center")
 })
 
 test_that("SW + gmm2s matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr", method = "gmm2s")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr", method = "gmm2s"),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_gmm2s")
 })
 
 test_that("SW + cue matches Stata", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr", method = "cue")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr", method = "cue"),
+    sw_promo_msg
+  )
   check_sw_fixture(fit, "wp_sw_cue")
 })
 
@@ -274,9 +316,12 @@ test_that("SW + cue matches Stata", {
 # ============================================================================
 
 test_that("SW + center + system RF produces symmetric system VCV", {
-  fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                sw = TRUE, ivar = "nr", center = TRUE,
-                reduced_form = "system")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                  sw = TRUE, ivar = "nr", center = TRUE,
+                  reduced_form = "system"),
+    sw_promo_msg
+  )
   rf <- fit$reduced_form
   expect_equal(rf$mode, "system")
   # System VCV must be symmetric
@@ -288,12 +333,18 @@ test_that("SW + center + system RF produces symmetric system VCV", {
 })
 
 test_that("SW + center + system RF matches non-center up to centering effect", {
-  fit_c <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                  sw = TRUE, ivar = "nr", center = TRUE,
-                  reduced_form = "system")
-  fit_nc <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
-                   sw = TRUE, ivar = "nr", center = FALSE,
-                   reduced_form = "system")
+  expect_warning(
+    fit_c <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                    sw = TRUE, ivar = "nr", center = TRUE,
+                    reduced_form = "system"),
+    sw_promo_msg
+  )
+  expect_warning(
+    fit_nc <- ivreg2(lwage ~ exper | hours | educ + married, data = wagepan,
+                     sw = TRUE, ivar = "nr", center = FALSE,
+                     reduced_form = "system"),
+    sw_promo_msg
+  )
   # Both should produce valid system VCVs with same dimensions
   expect_equal(dim(fit_c$reduced_form$vcov), dim(fit_nc$reduced_form$vcov))
   # Coefficients identical (centering only affects VCV, not point estimates)
@@ -305,20 +356,36 @@ test_that("SW + center + system RF matches non-center up to centering effect", {
 # ============================================================================
 
 test_that("sw is stored on the return object", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
-                sw = TRUE, ivar = "nr")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
+                  sw = TRUE, ivar = "nr"),
+    sw_promo_msg
+  )
   expect_true(fit$sw)
 })
 
 test_that("sw is stored on the fitted object", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
-                sw = TRUE, ivar = "nr")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
+                  sw = TRUE, ivar = "nr"),
+    sw_promo_msg
+  )
   expect_true(fit$sw)
 })
 
 test_that("summary shows SW VCV description", {
-  fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
-                sw = TRUE, ivar = "nr")
+  expect_warning(
+    fit <- ivreg2(lwage ~ exper | hours | educ, data = wagepan,
+                  sw = TRUE, ivar = "nr"),
+    sw_promo_msg
+  )
   out <- capture.output(summary(fit))
   expect_true(any(grepl("Stock-Watson", out)))
+})
+
+test_that("sw + explicit vcov = \"robust\" is warning-free", {
+  expect_no_warning(
+    ivreg2(lwage ~ exper | hours | educ, data = wagepan,
+           sw = TRUE, ivar = "nr", vcov = "robust")
+  )
 })

@@ -246,11 +246,12 @@ For HAC, AC, Kiefer, and Driscoll-Kraay VCE options, see `vignette("time-series-
 The Card data include a genuine survey weight: `weight` is the NLS sampling weight, reflecting each respondent's probability of selection into the survey. Probability/sampling weights (equivalent to Stata's `[pw=varname]`) are specified with `weights` plus `weight_type = "pweight"`:
 
 ```{r weights}
-fit_pw <- ivreg2(iv_formula, data = card, weights = weight, weight_type = "pweight")
+fit_pw <- ivreg2(iv_formula, data = card, weights = weight, weight_type = "pweight",
+                 vcov = "robust")
 summary(fit_pw)
 ```
 
-Because pweights describe the sampling design rather than the error variance, valid standard errors must be robust: `ivreg2r` forces a robust VCE whenever `weight_type = "pweight"`, regardless of the `vcov` setting (the message above notes the override), exactly as Stata does for `[pw=]`. The weighted point estimate answers a population-level question --- what is the return to schooling in the population the NLS sample was drawn from --- whereas the unweighted fit describes the sample.
+Because pweights describe the sampling design rather than the error variance, valid standard errors must be robust: `ivreg2r` forces a robust VCE whenever `weight_type = "pweight"`, regardless of the `vcov` setting, exactly as Stata does for `[pw=]`. We pass `vcov = "robust"` explicitly above; leaving `vcov` at its default `"iid"` would trigger the same forced override, with a warning noting it. The weighted point estimate answers a population-level question --- what is the return to schooling in the population the NLS sample was drawn from --- whereas the unweighted fit describes the sample.
 
 ### Analytic weights (aweight)
 

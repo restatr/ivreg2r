@@ -210,10 +210,12 @@
   # "AC" to "HAC".
   if (weight_type == "pweight" && is.null(clusters)) {
     if (vcov == "iid") {
-      message('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".')
+      warning('pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".',
+              call. = FALSE)
       vcov <- "robust"
     } else if (vcov == "AC") {
-      message('pweight implies robust VCE; overriding vcov = "AC" to vcov = "HAC".')
+      warning('pweight implies robust VCE; overriding vcov = "AC" to vcov = "HAC".',
+              call. = FALSE)
       vcov <- "HAC"
     }
   }
@@ -324,6 +326,8 @@
     }
     # SW forces robust VCE (Stata ivreg2.ado line 3758)
     if (vcov == "iid") {
+      warning('sw implies robust VCE; overriding vcov = "iid" to vcov = "robust".',
+              call. = FALSE)
       vcov <- "robust"
     }
   }
@@ -433,12 +437,12 @@
     stop('`method = "kclass"` requires a numeric `kclass` value.',
          call. = FALSE)
   }
-  # coviv is only meaningful for LIML/kclass — silently ignored otherwise
+  # coviv is only meaningful for LIML/kclass — warn and reset otherwise
+  # (this also covers gmm2s and cue: neither is in the liml/kclass set, so
+  # a separate gmm2s-specific check is unreachable and has been removed)
   if (coviv && !method %in% c("liml", "kclass")) {
-    coviv <- FALSE
-  }
-  # GMM2S is incompatible with coviv
-  if (coviv && method == "gmm2s") {
+    warning('`coviv` is ignored: it applies only to LIML/k-class estimation ',
+            '(method = "', method, '").', call. = FALSE)
     coviv <- FALSE
   }
 
@@ -585,6 +589,8 @@
 .OLS_MODEL_DESC <- paste0("this is an OLS model (no endogenous regressors ",
                           "or excluded instruments)")
 .K10_MODEL_DESC <- "the model has no endogenous regressors"
+.B0_MODEL_DESC <- "b0 evaluation suppresses identification diagnostics"
+.NOID_MODEL_DESC <- "`noid = TRUE`"
 
 
 #' Stop because a cluster variable contains NA values.
@@ -1927,6 +1933,12 @@
       .warn_iv_request_ignored("redundant", .K10_MODEL_DESC,
                                "there is nothing to test instrument redundancy against.")
     }
+    if (noid && !is.null(redundant) && length(redundant) > 0L &&
+        parsed$K1 > 0L) {
+      .warn_iv_request_ignored("redundant", .NOID_MODEL_DESC,
+                               paste0("it suppresses the identification-test ",
+                                      "family, including the redundancy test."))
+    }
     if (!noid && !is.null(redundant) && length(redundant) > 0L &&
         parsed$K1 > 0L) {
       redundant_cols <- .expand_terms_to_colnames(
@@ -2000,6 +2012,32 @@
     diagnostics$orthog <- .attach_diag_note(
       diagnostics$orthog, method %in% c("cue", "liml"), orthog_recursive_note)
 
+    } else {
+      # b0 evaluates the CUE objective at a fixed parameter vector with no
+      # optimization, so the entire identification-diagnostics family above
+      # (underid, weak-id, first-stage, AR, Stock-Wright, endogeneity,
+      # orthog, redundancy) is not computed (Stata line 3819). reduced_form
+      # is NOT suppressed by b0 (verified empirically) so it is deliberately
+      # absent from this list — see the reduced-form gate further below.
+      # Explicit requests among these would otherwise vanish silently;
+      # warn instead, following the package's explicit-request-ignored
+      # convention (the same one used for the K1 = 0 and OLS cases).
+      if (!is.null(endog) && length(endog) > 0L) {
+        .warn_iv_request_ignored("endog", .B0_MODEL_DESC,
+                                 "the endogeneity test is not computed.")
+      }
+      if (!is.null(orthog) && length(orthog) > 0L) {
+        .warn_iv_request_ignored("orthog", .B0_MODEL_DESC,
+                                 "the orthogonality test is not computed.")
+      }
+      if (!is.null(redundant) && length(redundant) > 0L) {
+        .warn_iv_request_ignored("redundant", .B0_MODEL_DESC,
+                                 "the redundancy test is not computed.")
+      }
+      if (isTRUE(first_stage_flag)) {
+        .warn_iv_request_ignored("first_stage", .B0_MODEL_DESC,
+                                 "the first-stage regressions are not stored.")
+      }
     }  # end of if (is.null(b0)) — identification diagnostics block
   } else {
     # OLS path (one-part formula): the IV-only requests have no target here.
@@ -2204,6 +2242,9 @@
 #'   endogenous regressors (a one-part OLS formula, or the IV form
 #'   `y ~ exog | 0 | instruments`), a warning reports that the test is
 #'   skipped; Stata's `redundant()` is silently ignored in those cases.
+#'   `noid = TRUE` and `b0` also suppress the redundancy test; supplying
+#'   `redundant` alongside either is dropped with a warning rather than
+#'   silently ignored.
 #'   Equivalent to Stata's `redundant()` option.
 #' @param small Logical: if `TRUE`, use small-sample corrections
 #'   (t/F instead of z/chi-squared, `N-K` denominator for sigma).
@@ -2217,7 +2258,7 @@
 #'   **fweight**: Integer-valued; N is redefined as `sum(weights)`.
 #'   HC meat uses `w * e^2` (linear, not quadratic).
 #'
-#'   **pweight**: Normalized to sum to N. Forces robust VCE
+#'   **pweight**: Normalized to sum to N. Forces robust VCE, with a warning
 #'   (overrides `vcov = "iid"` to `"robust"` and `vcov = "AC"` ---
 #'   explicit or kiefer-implied --- to `"HAC"`).
 #'
@@ -2275,8 +2316,10 @@
 #' @param coviv Logical: if `TRUE`, use the 2SLS bread `(X_hat'X_hat)^{-1}`
 #'   instead of the k-class bread for VCV computation in LIML/k-class
 #'   estimation. This gives the "COVIV" (covariance at the IV estimates)
-#'   VCV that is robust to misspecification of the LIML model. Silently
-#'   ignored for OLS and 2SLS. Default `FALSE`.
+#'   VCV that is robust to misspecification of the LIML model. Applies only
+#'   to `method = "liml"` and `method = "kclass"`; for every other method
+#'   (OLS, 2SLS, GMM2S, CUE) it is reset to `FALSE` with a warning.
+#'   Default `FALSE`.
 #' @param kernel Character: kernel function for HAC/AC standard errors.
 #'   One of `"bartlett"`, `"parzen"`, `"truncated"`, `"tukey-hanning"`,
 #'   `"tukey-hamming"`, `"qs"` (quadratic spectral), `"daniell"`, or
@@ -2340,7 +2383,10 @@
 #'   parameter vector without optimization. When supplied, `method` is
 #'   promoted to `"cue"` and the J(b0) statistic is computed and stored.
 #'   Identification diagnostics (underid, weak-id, first-stage, AR, SW,
-#'   endogeneity, orthog) are suppressed (matching Stata's `b0()` option).
+#'   endogeneity, orthog, and the redundancy test) are suppressed (matching
+#'   Stata's `b0()` option); `reduced_form` is not suppressed. An explicit
+#'   `endog`, `orthog`, `redundant`, or `first_stage = TRUE` request supplied
+#'   alongside `b0` is dropped with a warning, rather than silently ignored.
 #'   Length must equal the number of regressors K. Named vectors are
 #'   reordered to match model matrix columns; unnamed vectors are used
 #'   as-is in model matrix column order.
@@ -2351,6 +2397,8 @@
 #'   Anderson-Rubin, Stock-Wright, endogeneity, and first-stage diagnostics
 #'   are still computed. Default `FALSE`. Useful for speeding up simulation
 #'   loops where rank-based identification tests are expensive.
+#'   An explicit `redundant` request supplied alongside `noid = TRUE` is
+#'   dropped with a warning, rather than silently ignored.
 #'   Equivalent to Stata's `noid` option.
 #' @param partial Character vector: exogenous regressors to partial out
 #'   via Frisch-Waugh-Lovell projection before estimation. Coefficients on
@@ -2411,7 +2459,8 @@
 #' @param sw Logical: if `TRUE`, compute the Stock-Watson (2008,
 #'   Econometrica) panel-robust VCE. Requires panel data (`ivar`).
 #'   Incompatible with clustering, HAC kernels, kiefer, dkraay,
-#'   fweights, and iweights. Forces `vcov = "robust"` automatically.
+#'   fweights, and iweights. Forces `vcov = "robust"` automatically, with a
+#'   warning when `vcov = "iid"` is thereby overridden.
 #'   Equivalent to Stata's `sw` option (labeled "BETA VERSION" in Stata).
 #'
 #'   **Precondition:** the Stock-Watson (2008) correction is derived for a
