@@ -676,30 +676,10 @@ ivreg2 <- function(formula, data, weights, subset, na.action = stats::na.omit,
   }
 
   # --- 5e. Compute additional stored results (R2) ---
-  # Condition numbers: Stata's cond(XX) = max(eigenvalue)/min(eigenvalue)
-  # which equals kappa(XX, exact = TRUE) in R.
-  if (is.null(parsed$weights)) {
-    XX <- crossprod(parsed$X)
-  } else {
-    XX <- crossprod(sqrt(parsed$weights) * parsed$X)
-  }
-  condxx <- kappa(XX, exact = TRUE)
-
-  if (parsed$is_iv) {
-    if (is.null(parsed$weights)) {
-      ZZ <- crossprod(parsed$Z)
-    } else {
-      ZZ <- crossprod(sqrt(parsed$weights) * parsed$Z)
-    }
-    condzz <- kappa(ZZ, exact = TRUE)
-  } else {
-    # OLS: Z = X, so condzz = condxx (matches Stata behavior)
-    condzz <- condxx
-  }
-
-  # Gaussian log-likelihood (Stata line 2009)
-  ll <- -0.5 * (parsed$N * log(2 * pi) + parsed$N * log(fit$rss / parsed$N) +
-                 parsed$N)
+  scalars <- .compute_cond_ll(parsed, fit)
+  condxx <- scalars$condxx
+  condzz <- scalars$condzz
+  ll <- scalars$ll
 
   # --- 6. Assemble return object ---
   # Determine effective method for the return object

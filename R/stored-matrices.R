@@ -123,3 +123,37 @@
 
   list(S = S, W = W)
 }
+
+#' Condition numbers of X'X and Z'Z, and the Gaussian log-likelihood.
+#'
+#' Extracted verbatim from the ivreg2() orchestrator; expressions and their
+#' order are unchanged so the stored values are bit-identical.
+#' @noRd
+.compute_cond_ll <- function(parsed, fit) {
+  # Condition numbers: Stata's cond(XX) = max(eigenvalue)/min(eigenvalue)
+  # which equals kappa(XX, exact = TRUE) in R.
+  if (is.null(parsed$weights)) {
+    XX <- crossprod(parsed$X)
+  } else {
+    XX <- crossprod(sqrt(parsed$weights) * parsed$X)
+  }
+  condxx <- kappa(XX, exact = TRUE)
+
+  if (parsed$is_iv) {
+    if (is.null(parsed$weights)) {
+      ZZ <- crossprod(parsed$Z)
+    } else {
+      ZZ <- crossprod(sqrt(parsed$weights) * parsed$Z)
+    }
+    condzz <- kappa(ZZ, exact = TRUE)
+  } else {
+    # OLS: Z = X, so condzz = condxx (matches Stata behavior)
+    condzz <- condxx
+  }
+
+  # Gaussian log-likelihood (Stata line 2009)
+  ll <- -0.5 * (parsed$N * log(2 * pi) + parsed$N * log(fit$rss / parsed$N) +
+                 parsed$N)
+
+  list(condxx = condxx, condzz = condzz, ll = ll)
+}
