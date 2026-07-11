@@ -32,6 +32,17 @@ statistic is F-distributed.}
 critical values, or an exactly identified overidentification row).}
 \item{\code{tested_vars}}{Character. The variable(s) tested; populated only
 for the endogeneity, orthogonality, and redundancy rows.}
+\item{\code{note}}{Character. A Stata-parity disclosure, or \code{NA} when none
+applies. A note appears when an explicit option the user set is
+silently not honored inside an automatically computed diagnostic,
+matching Stata's \code{ivreg2}: a non-Bartlett \code{kernel} on the
+identification and redundancy tests (Stata's \code{ranktest} hard-codes
+Bartlett); \code{kiefer} on the identification tests (the Kiefer VCE
+structure is dropped); \code{psd} on the identification and redundancy
+tests (\code{ranktest} never receives it); \code{center} on the endogeneity
+test; and \code{method = "cue"} (or \code{"liml"}, for orthogonality) on the
+endogeneity and orthogonality C-statistics, which come from a
+recursive re-estimation that does not use those estimators.}
 }
 
 Rows appear only for the tests actually computed on the model: an IV
@@ -44,6 +55,12 @@ The Stock-Yogo rows (keys of the form \code{"sy_iv_size_10"}) report critical
 values, not test statistics, so their \code{p_value} is always \code{NA}. An OLS
 fit (single-part formula) has no diagnostics at all and returns a
 zero-row tibble with the columns above.
+
+The \code{note} column is unique to this accessor: \code{tidy()} and \code{glance()}
+keep their numeric-only tidy semantics and carry no disclosure text, so
+\code{diagnostics()} is the surface that exposes a note programmatically. The
+same notes are printed by \code{summary()} as footnotes below the diagnostics
+block.
 }
 \description{
 Flattens the IV specification tests stored on a fitted model into a single

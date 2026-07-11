@@ -36,6 +36,17 @@
 #'       critical values, or an exactly identified overidentification row).}
 #'     \item{`tested_vars`}{Character. The variable(s) tested; populated only
 #'       for the endogeneity, orthogonality, and redundancy rows.}
+#'     \item{`note`}{Character. A Stata-parity disclosure, or `NA` when none
+#'       applies. A note appears when an explicit option the user set is
+#'       silently not honored inside an automatically computed diagnostic,
+#'       matching Stata's `ivreg2`: a non-Bartlett `kernel` on the
+#'       identification and redundancy tests (Stata's `ranktest` hard-codes
+#'       Bartlett); `kiefer` on the identification tests (the Kiefer VCE
+#'       structure is dropped); `psd` on the identification and redundancy
+#'       tests (`ranktest` never receives it); `center` on the endogeneity
+#'       test; and `method = "cue"` (or `"liml"`, for orthogonality) on the
+#'       endogeneity and orthogonality C-statistics, which come from a
+#'       recursive re-estimation that does not use those estimators.}
 #'   }
 #'
 #'   Rows appear only for the tests actually computed on the model: an IV
@@ -48,6 +59,12 @@
 #'   values, not test statistics, so their `p_value` is always `NA`. An OLS
 #'   fit (single-part formula) has no diagnostics at all and returns a
 #'   zero-row tibble with the columns above.
+#'
+#'   The `note` column is unique to this accessor: `tidy()` and `glance()`
+#'   keep their numeric-only tidy semantics and carry no disclosure text, so
+#'   `diagnostics()` is the surface that exposes a note programmatically. The
+#'   same notes are printed by `summary()` as footnotes below the diagnostics
+#'   block.
 #'
 #' @examples
 #' data(card)
@@ -72,14 +89,16 @@ diagnostics.ivreg2 <- function(x, ...) {
     uid <- diag$underid
     rows[[length(rows) + 1L]] <- .diag_row(
       test = "underid", test_name = uid$test_name,
-      statistic = uid$stat, df = uid$df, p_value = uid$p
+      statistic = uid$stat, df = uid$df, p_value = uid$p,
+      note = uid$note
     )
   }
 
   if (!is.null(diag$weak_id)) {
     wid <- diag$weak_id
     rows[[length(rows) + 1L]] <- .diag_row(
-      test = "weak_id", test_name = wid$test_name, statistic = wid$stat
+      test = "weak_id", test_name = wid$test_name, statistic = wid$stat,
+      note = wid$note
     )
   }
 
@@ -87,7 +106,7 @@ diagnostics.ivreg2 <- function(x, ...) {
     widr <- diag$weak_id_robust
     rows[[length(rows) + 1L]] <- .diag_row(
       test = "weak_id_robust", test_name = widr$test_name,
-      statistic = widr$stat
+      statistic = widr$stat, note = widr$note
     )
   }
 
@@ -159,7 +178,7 @@ diagnostics.ivreg2 <- function(x, ...) {
     rows[[length(rows) + 1L]] <- .diag_row(
       test = "endogeneity", test_name = endog$test_name,
       statistic = endog$stat, df = endog$df, p_value = endog$p,
-      tested_vars = endog$tested_vars
+      tested_vars = endog$tested_vars, note = endog$note
     )
   }
 
@@ -168,7 +187,7 @@ diagnostics.ivreg2 <- function(x, ...) {
     rows[[length(rows) + 1L]] <- .diag_row(
       test = "orthog", test_name = orth$test_name,
       statistic = orth$stat, df = orth$df, p_value = orth$p,
-      tested_vars = orth$tested_vars
+      tested_vars = orth$tested_vars, note = orth$note
     )
   }
 
@@ -177,7 +196,7 @@ diagnostics.ivreg2 <- function(x, ...) {
     rows[[length(rows) + 1L]] <- .diag_row(
       test = "redundancy", test_name = red$test_name,
       statistic = red$stat, df = red$df, p_value = red$p,
-      tested_vars = red$tested_vars
+      tested_vars = red$tested_vars, note = red$note
     )
   }
 
@@ -189,7 +208,8 @@ diagnostics.ivreg2 <- function(x, ...) {
       df          = integer(0),
       df2         = integer(0),
       p_value     = double(0),
-      tested_vars = character(0)
+      tested_vars = character(0),
+      note        = character(0)
     ))
   }
 
@@ -206,11 +226,16 @@ diagnostics.ivreg2 <- function(x, ...) {
 #' @noRd
 .diag_row <- function(test, test_name, statistic, df = NA_integer_,
                        df2 = NA_integer_, p_value = NA_real_,
-                       tested_vars = NA_character_) {
+                       tested_vars = NA_character_, note = NULL) {
   tested_vars_out <- if (length(tested_vars) == 1L && is.na(tested_vars)) {
     NA_character_
   } else {
     paste(tested_vars, collapse = ", ")
+  }
+  note_out <- if (is.null(note) || length(note) == 0L) {
+    NA_character_
+  } else {
+    paste(note, collapse = " ")
   }
   tibble::tibble(
     test        = test,
@@ -219,8 +244,28 @@ diagnostics.ivreg2 <- function(x, ...) {
     df          = as.integer(df),
     df2         = as.integer(df2),
     p_value     = as.double(p_value),
-    tested_vars = tested_vars_out
+    tested_vars = tested_vars_out,
+    note        = note_out
   )
+}
+
+#' Attach a Stata-quirk disclosure note to a diagnostic slot
+#'
+#' Implements the "note-as-data" disclosure of planning/31 ruling R2. When
+#' `condition` holds, appends `text` to the (possibly absent) character vector
+#' `slot$note`; otherwise the slot is returned untouched. NULL-safe in the
+#' slot argument, so it can be called unconditionally on a diagnostic that may
+#' not have been computed. `union()` deduplicates, so calling twice with the
+#' same text is idempotent.
+#'
+#' @keywords internal
+#' @noRd
+.attach_diag_note <- function(slot, condition, text) {
+  if (is.null(slot) || !isTRUE(condition)) {
+    return(slot)
+  }
+  slot$note <- union(slot$note, text)
+  slot
 }
 
 #' Slugify a Stock-Yogo test-type label for use in a machine key

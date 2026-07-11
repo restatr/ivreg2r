@@ -1951,6 +1951,55 @@
       )
     }
 
+    # --- Stata-quirk disclosure notes (planning/31 ruling R2) -------------
+    # Five sites where an explicit user option is silently not honored inside
+    # an automatically computed diagnostic get a "note-as-data" disclosure: a
+    # note string attached to the affected slot, surfaced by diagnostics() as
+    # a `note` column and printed by summary() as a footnote. Numbers are
+    # unchanged; only the note field is added. Each note text is identical
+    # across the slots it touches so summary() prints it once.
+    non_bartlett_kernel <- !is.null(kernel) && kernel != "Bartlett" &&
+      !isTRUE(kiefer)
+    psd_on_robust <- !is.null(psd) &&
+      (sw_flag ||
+         effective_vcov_type %in% c("robust", "HAC", "AC", "CL"))
+    kernel_note <- "Computed with the Bartlett kernel regardless of the kernel= option, matching Stata's ranktest."
+    kiefer_note <- "Computed without the Kiefer VCE structure, which Stata's ranktest omits from the identification tests."
+    psd_note <- "Computed without the psd correction, which Stata's ranktest never receives."
+    center_endog_note <- "Computed without moment centering; Stata does not forward center to the endogeneity test."
+    cue_endog_note <- "C-statistic from a recursive re-estimation that does not use CUE, matching Stata's ivreg2."
+    orthog_recursive_note <- "C-statistic from a recursive re-estimation that does not use the CUE or LIML estimator, matching Stata's ivreg2."
+
+    diagnostics$underid <- .attach_diag_note(
+      diagnostics$underid, non_bartlett_kernel, kernel_note)
+    diagnostics$underid <- .attach_diag_note(
+      diagnostics$underid, isTRUE(kiefer), kiefer_note)
+    diagnostics$underid <- .attach_diag_note(
+      diagnostics$underid, psd_on_robust, psd_note)
+
+    diagnostics$weak_id <- .attach_diag_note(
+      diagnostics$weak_id, isTRUE(kiefer), kiefer_note)
+
+    diagnostics$weak_id_robust <- .attach_diag_note(
+      diagnostics$weak_id_robust, non_bartlett_kernel, kernel_note)
+    diagnostics$weak_id_robust <- .attach_diag_note(
+      diagnostics$weak_id_robust, isTRUE(kiefer), kiefer_note)
+    diagnostics$weak_id_robust <- .attach_diag_note(
+      diagnostics$weak_id_robust, psd_on_robust, psd_note)
+
+    diagnostics$redundancy <- .attach_diag_note(
+      diagnostics$redundancy, non_bartlett_kernel, kernel_note)
+    diagnostics$redundancy <- .attach_diag_note(
+      diagnostics$redundancy, psd_on_robust, psd_note)
+
+    diagnostics$endogeneity <- .attach_diag_note(
+      diagnostics$endogeneity, isTRUE(center), center_endog_note)
+    diagnostics$endogeneity <- .attach_diag_note(
+      diagnostics$endogeneity, method == "cue", cue_endog_note)
+
+    diagnostics$orthog <- .attach_diag_note(
+      diagnostics$orthog, method %in% c("cue", "liml"), orthog_recursive_note)
+
     }  # end of if (is.null(b0)) — identification diagnostics block
   } else {
     # OLS path (one-part formula): the IV-only requests have no target here.

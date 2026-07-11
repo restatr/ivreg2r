@@ -1252,6 +1252,20 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
       cat("  Tested: ", paste(red$tested_vars, collapse = ", "), "\n", sep = "")
     }
   }
+
+  # --- Stata-quirk disclosure footnotes (planning/31 ruling R2) ---
+  # Each distinct note (attached to a diagnostic slot when an explicit option
+  # is silently not honored inside that automatic diagnostic) is printed once,
+  # after the diagnostics block. The same text on several slots collapses to
+  # one line via unique(); diagnostics() surfaces the same strings as a column.
+  notes <- unique(c(
+    diag$underid$note, diag$weak_id$note, diag$weak_id_robust$note,
+    diag$redundancy$note, diag$endogeneity$note, diag$orthog$note
+  ))
+  for (nt in notes) {
+    cat("\n", paste(strwrap(paste0("Note: ", nt), exdent = 6L),
+                    collapse = "\n"), "\n", sep = "")
+  }
 }
 
 #' Print first-stage diagnostics table

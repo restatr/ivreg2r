@@ -23,7 +23,7 @@ test_that("diagnostics() lists the documented keys in order for a full fit", {
 
   expect_s3_class(d, "tbl_df")
   expect_named(d, c("test", "test_name", "statistic", "df", "df2",
-                     "p_value", "tested_vars"))
+                     "p_value", "tested_vars", "note"))
   expect_type(d$test, "character")
   expect_type(d$test_name, "character")
   expect_type(d$statistic, "double")
@@ -31,6 +31,9 @@ test_that("diagnostics() lists the documented keys in order for a full fit", {
   expect_type(d$df2, "integer")
   expect_type(d$p_value, "double")
   expect_type(d$tested_vars, "character")
+  expect_type(d$note, "character")
+  # This fit trips none of the Stata-quirk triggers, so every note is NA.
+  expect_true(all(is.na(d$note)))
 
   expected_keys <- c(
     "underid", "weak_id", "weak_id_robust",
@@ -209,7 +212,7 @@ test_that("diagnostics() returns a zero-row tibble for OLS", {
   expect_s3_class(d, "tbl_df")
   expect_equal(nrow(d), 0L)
   expect_named(d, c("test", "test_name", "statistic", "df", "df2",
-                     "p_value", "tested_vars"))
+                     "p_value", "tested_vars", "note"))
   expect_type(d$test, "character")
   expect_type(d$test_name, "character")
   expect_type(d$statistic, "double")
@@ -217,6 +220,7 @@ test_that("diagnostics() returns a zero-row tibble for OLS", {
   expect_type(d$df2, "integer")
   expect_type(d$p_value, "double")
   expect_type(d$tested_vars, "character")
+  expect_type(d$note, "character")
 })
 
 
