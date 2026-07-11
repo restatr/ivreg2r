@@ -75,6 +75,13 @@ correction, matching Stata's <code>small</code> option. <code>small</code> is th
 control for finite-sample corrections across every VCE type (<code>"iid"</code>,
 <code>"robust"</code>, <code>"HAC"</code>, <code>"AC"</code>); it is not a VCE selector. There are no
 <code>"HC0"</code>/<code>"HC1"</code> values — use <code>vcov = "robust"</code> and toggle <code>small</code>.</p>
+<p>Three statistics sit outside that uniform control, all matching Stata:
+the first-stage F statistics (<code><a href="first_stage.html">first_stage()</a></code>) always use small-sample
+degrees of freedom regardless of <code>small</code>; the overidentification
+(Sargan/Hansen J) and endogeneity (C-statistic) tests are never
+small-sample corrected, even when <code>small = TRUE</code>; and the stored
+reduced-form variance-covariance matrix (<code>reduced_form</code>) always applies
+OLS-style small-sample scaling regardless of the main model's <code>small</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="sigma-rmse-normalization">Sigma (RMSE) normalization<a class="anchor" aria-label="anchor" href="#sigma-rmse-normalization"></a></h2>

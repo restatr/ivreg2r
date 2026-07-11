@@ -887,14 +887,15 @@ selection into the survey. Probability/sampling weights (equivalent to
 Stata’s <code>[pw=varname]</code>) are specified with
 <code>weights</code> plus <code>weight_type = "pweight"</code>:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_pw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">iv_formula</span>, data <span class="op">=</span> <span class="va">card</span>, weights <span class="op">=</span> <span class="va">weight</span>, weight_type <span class="op">=</span> <span class="st">"pweight"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".</span></span>
+<code class="sourceCode R"><span><span class="va">fit_pw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">iv_formula</span>, data <span class="op">=</span> <span class="va">card</span>, weights <span class="op">=</span> <span class="va">weight</span>, weight_type <span class="op">=</span> <span class="st">"pweight"</span>,</span>
+<span>                 vcov <span class="op">=</span> <span class="st">"robust"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_pw</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; 2SLS Estimation</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
-<span><span class="co">#&gt; ivreg2(formula = iv_formula, data = card, weights = weight, weight_type = "pweight")</span></span>
+<span><span class="co">#&gt; ivreg2(formula = iv_formula, data = card, weights = weight, vcov = "robust", </span></span>
+<span><span class="co">#&gt;     weight_type = "pweight")</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Observations: 3,010 </span></span>
 <span><span class="co">#&gt; VCV type:     Robust </span></span>
@@ -961,8 +962,10 @@ Stata’s <code>[pw=varname]</code>) are specified with
 <p>Because pweights describe the sampling design rather than the error
 variance, valid standard errors must be robust: <code>ivreg2r</code>
 forces a robust VCE whenever <code>weight_type = "pweight"</code>,
-regardless of the <code>vcov</code> setting (the message above notes the
-override), exactly as Stata does for <code>[pw=]</code>. The weighted
+regardless of the <code>vcov</code> setting, exactly as Stata does for
+<code>[pw=]</code>. We pass <code>vcov = "robust"</code> explicitly
+above; leaving <code>vcov</code> at its default <code>"iid"</code> would
+trigger the same forced override, with a warning noting it. The weighted
 point estimate answers a population-level question — what is the return
 to schooling in the population the NLS sample was drawn from — whereas
 the unweighted fit describes the sample.</p>
@@ -1108,20 +1111,20 @@ tests that <code><a href="https://rdrr.io/r/base/summary.html" class="external-l
 critical values — as a tibble with one row per test:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_iv</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 11 × 7</span></span></span>
-<span><span class="co">#&gt;    test                test_name      statistic    df   df2  p_value tested_vars</span></span>
-<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> underid             Anderson cano…     13.3      1    <span style="color: #BB0000;">NA</span>  2.70<span style="color: #949494;">e</span><span style="color: #BB0000;">-4</span> <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> weak_id             Cragg-Donald …     13.3     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> sy_iv_size_10       Stock-Yogo cr…     16.4     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> sy_iv_size_15       Stock-Yogo cr…      8.96    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> sy_iv_size_20       Stock-Yogo cr…      6.66    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> sy_iv_size_25       Stock-Yogo cr…      5.53    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> overid              Sargan              0        0    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> anderson_rubin_f    Anderson-Rubi…      5.42     1  <span style="text-decoration: underline;">2</span>994  2.00<span style="color: #949494;">e</span><span style="color: #BB0000;">-2</span> <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> anderson_rubin_chi2 Anderson-Rubi…      5.44     1    <span style="color: #BB0000;">NA</span>  1.96<span style="color: #949494;">e</span><span style="color: #BB0000;">-2</span> <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> stock_wright        Stock-Wright …      5.43     1    <span style="color: #BB0000;">NA</span>  1.97<span style="color: #949494;">e</span><span style="color: #BB0000;">-2</span> <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">11</span> endogeneity         Endogeneity         1.17     1    <span style="color: #BB0000;">NA</span>  2.79<span style="color: #949494;">e</span><span style="color: #BB0000;">-1</span> educ</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 11 × 8</span></span></span>
+<span><span class="co">#&gt;    test               test_name statistic    df   df2  p_value tested_vars note </span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> underid            Anderson…     13.3      1    <span style="color: #BB0000;">NA</span>  2.70<span style="color: #949494;">e</span><span style="color: #BB0000;">-4</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> weak_id            Cragg-Do…     13.3     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> sy_iv_size_10      Stock-Yo…     16.4     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> sy_iv_size_15      Stock-Yo…      8.96    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> sy_iv_size_20      Stock-Yo…      6.66    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> sy_iv_size_25      Stock-Yo…      5.53    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> overid             Sargan         0        0    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>   <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> anderson_rubin_f   Anderson…      5.42     1  <span style="text-decoration: underline;">2</span>994  2.00<span style="color: #949494;">e</span><span style="color: #BB0000;">-2</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> anderson_rubin_ch… Anderson…      5.44     1    <span style="color: #BB0000;">NA</span>  1.96<span style="color: #949494;">e</span><span style="color: #BB0000;">-2</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> stock_wright       Stock-Wr…      5.43     1    <span style="color: #BB0000;">NA</span>  1.97<span style="color: #949494;">e</span><span style="color: #BB0000;">-2</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">11</span> endogeneity        Endogene…      1.17     1    <span style="color: #BB0000;">NA</span>  2.79<span style="color: #949494;">e</span><span style="color: #BB0000;">-1</span> educ        <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
 <p>The <code>test</code> column holds stable keys, so pulling one test
 out for a table or a threshold comparison is a one-line
 <code>filter(test == "weak_id")</code>. Tests you request through

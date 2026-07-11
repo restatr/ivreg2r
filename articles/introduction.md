@@ -791,14 +791,15 @@ into the survey. Probability/sampling weights (equivalent to Stata’s
 
 ``` r
 
-fit_pw <- ivreg2(iv_formula, data = card, weights = weight, weight_type = "pweight")
-#> pweight implies robust VCE; overriding vcov = "iid" to vcov = "robust".
+fit_pw <- ivreg2(iv_formula, data = card, weights = weight, weight_type = "pweight",
+                 vcov = "robust")
 summary(fit_pw)
 #> 
 #> 2SLS Estimation
 #> 
 #> Call:
-#> ivreg2(formula = iv_formula, data = card, weights = weight, weight_type = "pweight")
+#> ivreg2(formula = iv_formula, data = card, weights = weight, vcov = "robust", 
+#>     weight_type = "pweight")
 #> 
 #> Observations: 3,010 
 #> VCV type:     Robust 
@@ -867,10 +868,12 @@ summary(fit_pw)
 Because pweights describe the sampling design rather than the error
 variance, valid standard errors must be robust: `ivreg2r` forces a
 robust VCE whenever `weight_type = "pweight"`, regardless of the `vcov`
-setting (the message above notes the override), exactly as Stata does
-for `[pw=]`. The weighted point estimate answers a population-level
-question — what is the return to schooling in the population the NLS
-sample was drawn from — whereas the unweighted fit describes the sample.
+setting, exactly as Stata does for `[pw=]`. We pass `vcov = "robust"`
+explicitly above; leaving `vcov` at its default `"iid"` would trigger
+the same forced override, with a warning noting it. The weighted point
+estimate answers a population-level question — what is the return to
+schooling in the population the NLS sample was drawn from — whereas the
+unweighted fit describes the sample.
 
 ### Analytic weights (aweight)
 
@@ -1020,20 +1023,20 @@ the Stock-Yogo critical values — as a tibble with one row per test:
 ``` r
 
 diagnostics(fit_iv)
-#> # A tibble: 11 × 7
-#>    test                test_name      statistic    df   df2  p_value tested_vars
-#>    <chr>               <chr>              <dbl> <int> <int>    <dbl> <chr>      
-#>  1 underid             Anderson cano…     13.3      1    NA  2.70e-4 NA         
-#>  2 weak_id             Cragg-Donald …     13.3     NA    NA NA       NA         
-#>  3 sy_iv_size_10       Stock-Yogo cr…     16.4     NA    NA NA       NA         
-#>  4 sy_iv_size_15       Stock-Yogo cr…      8.96    NA    NA NA       NA         
-#>  5 sy_iv_size_20       Stock-Yogo cr…      6.66    NA    NA NA       NA         
-#>  6 sy_iv_size_25       Stock-Yogo cr…      5.53    NA    NA NA       NA         
-#>  7 overid              Sargan              0        0    NA NA       NA         
-#>  8 anderson_rubin_f    Anderson-Rubi…      5.42     1  2994  2.00e-2 NA         
-#>  9 anderson_rubin_chi2 Anderson-Rubi…      5.44     1    NA  1.96e-2 NA         
-#> 10 stock_wright        Stock-Wright …      5.43     1    NA  1.97e-2 NA         
-#> 11 endogeneity         Endogeneity         1.17     1    NA  2.79e-1 educ
+#> # A tibble: 11 × 8
+#>    test               test_name statistic    df   df2  p_value tested_vars note 
+#>    <chr>              <chr>         <dbl> <int> <int>    <dbl> <chr>       <chr>
+#>  1 underid            Anderson…     13.3      1    NA  2.70e-4 NA          NA   
+#>  2 weak_id            Cragg-Do…     13.3     NA    NA NA       NA          NA   
+#>  3 sy_iv_size_10      Stock-Yo…     16.4     NA    NA NA       NA          NA   
+#>  4 sy_iv_size_15      Stock-Yo…      8.96    NA    NA NA       NA          NA   
+#>  5 sy_iv_size_20      Stock-Yo…      6.66    NA    NA NA       NA          NA   
+#>  6 sy_iv_size_25      Stock-Yo…      5.53    NA    NA NA       NA          NA   
+#>  7 overid             Sargan         0        0    NA NA       NA          NA   
+#>  8 anderson_rubin_f   Anderson…      5.42     1  2994  2.00e-2 NA          NA   
+#>  9 anderson_rubin_ch… Anderson…      5.44     1    NA  1.96e-2 NA          NA   
+#> 10 stock_wright       Stock-Wr…      5.43     1    NA  1.97e-2 NA          NA   
+#> 11 endogeneity        Endogene…      1.17     1    NA  2.79e-1 educ        NA
 ```
 
 The `test` column holds stable keys, so pulling one test out for a table

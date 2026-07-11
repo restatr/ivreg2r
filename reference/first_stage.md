@@ -76,6 +76,17 @@ A named list of `ivreg2_first_stage` objects.
   degrees of freedom, F-statistic, partial R-squared, and related
   diagnostics).
 
+## Small-sample correction
+
+the first-stage F-statistic (surfaced via
+[`glance()`](https://generics.r-lib.org/reference/glance.html) and
+[`summary()`](https://rdrr.io/r/base/summary.html) on each
+`ivreg2_first_stage` object) always uses small-sample degrees of
+freedom, regardless of the main model's `small` argument. This matches
+Stata's `ivreg2`. See
+[ivreg2r-conventions](https://restatr.com/ivreg2r/reference/ivreg2r-conventions.md)
+for the full statement of which corrections `small` controls.
+
 ## See also
 
 [`ivreg2()`](https://restatr.com/ivreg2r/reference/ivreg2.md)

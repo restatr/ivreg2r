@@ -116,6 +116,15 @@ R-squared, and related diagnostics).</p></dd>
 
 </dl></div>
     <div class="section level2">
+    <h2 id="small-sample-correction">Small-sample correction<a class="anchor" aria-label="anchor" href="#small-sample-correction"></a></h2>
+    <p>the first-stage F-statistic (surfaced
+via <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> on each <code>ivreg2_first_stage</code> object)
+always uses small-sample degrees of freedom, regardless of the main
+model's <code>small</code> argument. This matches Stata's <code>ivreg2</code>. See
+<a href="ivreg2r-conventions.html">ivreg2r-conventions</a> for the full statement of which corrections
+<code>small</code> controls.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="ivreg2.html">ivreg2()</a></code></p>
 <p>Other ivreg2 methods:

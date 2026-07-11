@@ -556,10 +556,10 @@ fit_orthog <- ivreg2(
   data = griliches, method = "gmm2s", orthog = c("age", "mrt")
 )
 diagnostics(fit_orthog) |> filter(test == "orthog")
-#> # A tibble: 1 × 7
-#>   test   test_name  statistic    df   df2  p_value tested_vars
-#>   <chr>  <chr>          <dbl> <int> <int>    <dbl> <chr>      
-#> 1 orthog C (orthog)      86.6     2    NA 1.55e-19 age, mrt
+#> # A tibble: 1 × 8
+#>   test   test_name  statistic    df   df2  p_value tested_vars note 
+#>   <chr>  <chr>          <dbl> <int> <int>    <dbl> <chr>       <chr>
+#> 1 orthog C (orthog)      86.6     2    NA 1.55e-19 age, mrt    NA
 ```
 
 The null is that `age` and `mrt` satisfy the exclusion restrictions
@@ -583,10 +583,10 @@ Stata’s `endog(educ)` example:
 fit_endog <- ivreg2(lwage ~ exper + expersq | educ | age + kidslt6 + kidsge6,
                     data = mroz_work, endog = "educ")
 diagnostics(fit_endog) |> filter(test == "endogeneity")
-#> # A tibble: 1 × 7
-#>   test        test_name   statistic    df   df2 p_value tested_vars
-#>   <chr>       <chr>           <dbl> <int> <int>   <dbl> <chr>      
-#> 1 endogeneity Endogeneity    0.0191     1    NA   0.890 educ
+#> # A tibble: 1 × 8
+#>   test        test_name   statistic    df   df2 p_value tested_vars note 
+#>   <chr>       <chr>           <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 endogeneity Endogeneity    0.0191     1    NA   0.890 educ        NA
 ```
 
 With a single endogenous regressor this coincides numerically with the
@@ -683,11 +683,11 @@ closely:
 
 diagnostics(fit_liml) |>
   filter(test %in% c("anderson_rubin_overid_lr", "anderson_rubin_overid_lin"))
-#> # A tibble: 2 × 7
-#>   test                      test_name  statistic    df   df2 p_value tested_vars
-#>   <chr>                     <chr>          <dbl> <int> <int>   <dbl> <chr>      
-#> 1 anderson_rubin_overid_lr  Anderson-…     0.702     2    NA   0.704 NA         
-#> 2 anderson_rubin_overid_lin Anderson-…     0.703     2    NA   0.704 NA
+#> # A tibble: 2 × 8
+#>   test                 test_name statistic    df   df2 p_value tested_vars note 
+#>   <chr>                <chr>         <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 anderson_rubin_over… Anderson…     0.702     2    NA   0.704 NA          NA   
+#> 2 anderson_rubin_over… Anderson…     0.703     2    NA   0.704 NA          NA
 ```
 
 ## Weak-instrument-robust inference
@@ -709,10 +709,10 @@ every IV model:
 ``` r
 
 diagnostics(fit_2sls) |> filter(test == "stock_wright")
-#> # A tibble: 1 × 7
-#>   test         test_name         statistic    df   df2 p_value tested_vars
-#>   <chr>        <chr>                 <dbl> <int> <int>   <dbl> <chr>      
-#> 1 stock_wright Stock-Wright LM S      1.85     3    NA   0.603 NA
+#> # A tibble: 1 × 8
+#>   test         test_name         statistic    df   df2 p_value tested_vars note 
+#>   <chr>        <chr>                 <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 stock_wright Stock-Wright LM S      1.85     3    NA   0.603 NA          NA
 ```
 
 ### When instruments are genuinely weak
@@ -828,10 +828,10 @@ specification with `redundant`:
 fit_redund <- ivreg2(weak_form, data = griliches, vcov = "robust",
                      redundant = "mrt")
 diagnostics(fit_redund) |> filter(test == "redundancy")
-#> # A tibble: 1 × 7
-#>   test       test_name            statistic    df   df2 p_value tested_vars
-#>   <chr>      <chr>                    <dbl> <int> <int>   <dbl> <chr>      
-#> 1 redundancy Redundancy test (LM)   0.00176     1    NA   0.967 mrt
+#> # A tibble: 1 × 8
+#>   test       test_name           statistic    df   df2 p_value tested_vars note 
+#>   <chr>      <chr>                   <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 redundancy Redundancy test (L…   0.00176     1    NA   0.967 mrt         NA
 ```
 
 The LM statistic is essentially zero (p = 0.97), the published result:
@@ -860,10 +860,10 @@ fit_b0 <- ivreg2(
   data = mroz_work, vcov = "robust", b0 = b0
 )
 diagnostics(fit_b0) |> filter(test == "overid")  # the objective value, Stata's e(j)
-#> # A tibble: 1 × 7
-#>   test   test_name statistic    df   df2 p_value tested_vars
-#>   <chr>  <chr>         <dbl> <int> <int>   <dbl> <chr>      
-#> 1 overid Hansen J       1.66     2    NA   0.436 NA
+#> # A tibble: 1 × 8
+#>   test   test_name statistic    df   df2 p_value tested_vars note 
+#>   <chr>  <chr>         <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 overid Hansen J       1.66     2    NA   0.436 NA          NA
 ```
 
 The identity is easy to confirm against the S statistic that the
@@ -881,10 +881,10 @@ all.equal(b0_objective, stock_wright_S)
 #> [1] TRUE
 
 diagnostics(fit_reg) |> filter(test == "stock_wright")
-#> # A tibble: 1 × 7
-#>   test         test_name         statistic    df   df2 p_value tested_vars
-#>   <chr>        <chr>                 <dbl> <int> <int>   <dbl> <chr>      
-#> 1 stock_wright Stock-Wright LM S      1.66     3    NA   0.645 NA
+#> # A tibble: 1 × 8
+#>   test         test_name         statistic    df   df2 p_value tested_vars note 
+#>   <chr>        <chr>                 <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 stock_wright Stock-Wright LM S      1.66     3    NA   0.645 NA          NA
 ```
 
 One caution: the p-value reported beside the raw objective — the

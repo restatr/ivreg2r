@@ -103,6 +103,23 @@ critical values, or an exactly identified overidentification row).</p></dd>
 <dd><p>Character. The variable(s) tested; populated only
 for the endogeneity, orthogonality, and redundancy rows.</p></dd>
 
+<dt><code>note</code></dt>
+<dd><p>Character. A Stata-parity disclosure, or <code>NA</code> when none
+applies. A note appears when an explicit option the user set is
+silently not honored inside an automatically computed diagnostic,
+matching Stata's <code>ivreg2</code>: a non-Bartlett <code>kernel</code> on the
+identification and redundancy tests (Stata's <code>ranktest</code> hard-codes
+Bartlett); <code>kiefer</code> on the identification tests (the Kiefer VCE
+structure is dropped); <code>psd</code> on the identification and redundancy
+tests (<code>ranktest</code> never receives it); <code>center</code> on the endogeneity
+test; and <code>method = "cue"</code> (or <code>"liml"</code>, for orthogonality) on the
+endogeneity and orthogonality C-statistics, which come from a
+recursive re-estimation that does not use those estimators. When
+more than one disclosure applies to the same test, the note column
+joins the sentences with a space; each note is a complete sentence,
+so splitting on sentence boundaries recovers the individual
+disclosures programmatically.</p></dd>
+
 
 </dl><p>Rows appear only for the tests actually computed on the model: an IV
 fit reports underidentification, weak identification,
@@ -114,6 +131,22 @@ The Stock-Yogo rows (keys of the form <code>"sy_iv_size_10"</code>) report criti
 values, not test statistics, so their <code>p_value</code> is always <code>NA</code>. An OLS
 fit (single-part formula) has no diagnostics at all and returns a
 zero-row tibble with the columns above.</p>
+<p>The <code>note</code> column is unique to this accessor: <code><a href="https://generics.r-lib.org/reference/tidy.html" class="external-link">tidy()</a></code> and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code>
+keep their numeric-only tidy semantics and carry no disclosure text, so
+<code>diagnostics()</code> is the surface that exposes a note programmatically. The
+same notes are printed by <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> as footnotes below the diagnostics
+block.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="small-sample-correction">Small-sample correction<a class="anchor" aria-label="anchor" href="#small-sample-correction"></a></h2>
+    <p>the overidentification row
+(Sargan/Hansen J) and the endogeneity row (C-statistic) are never
+small-sample corrected, regardless of the main model's <code>small</code> argument.
+The first-stage F-statistics are always small-sample corrected,
+regardless of <code>small</code>; they are not columns of this tibble but are
+reached via <code><a href="first_stage.html">first_stage()</a></code>. All three match Stata's <code>ivreg2</code>. See
+<a href="ivreg2r-conventions.html">ivreg2r-conventions</a> for the full statement of which corrections
+<code>small</code> controls.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -145,21 +178,21 @@ zero-row tibble with the columns above.</p>
 <span class="r-in"><span>  data <span class="op">=</span> <span class="va">card</span>, vcov <span class="op">=</span> <span class="st">"robust"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">diagnostics</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 12 × 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    test                test_name     statistic    df   df2   p_value tested_vars</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> underid             Kleibergen-P…     40.1      2    <span style="color: #BB0000;">NA</span>  1.98<span style="color: #949494;">e</span><span style="color: #BB0000;">- 9</span> <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> weak_id             Cragg-Donald…     19.7     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> weak_id_robust      Kleibergen-P…     20.4     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> sy_iv_size_10       Stock-Yogo c…     19.9     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> sy_iv_size_15       Stock-Yogo c…     11.6     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> sy_iv_size_20       Stock-Yogo c…      8.75    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> sy_iv_size_25       Stock-Yogo c…      7.25    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> overid              Hansen J           1.86     1    <span style="color: #BB0000;">NA</span>  1.72<span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span> <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> anderson_rubin_f    Anderson-Rub…     27.9      2  <span style="text-decoration: underline;">3</span>003  1.04<span style="color: #949494;">e</span><span style="color: #BB0000;">-12</span> <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> anderson_rubin_chi2 Anderson-Rub…     55.8      2    <span style="color: #BB0000;">NA</span>  7.52<span style="color: #949494;">e</span><span style="color: #BB0000;">-13</span> <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span> stock_wright        Stock-Wright…     54.0      2    <span style="color: #BB0000;">NA</span>  1.92<span style="color: #949494;">e</span><span style="color: #BB0000;">-12</span> <span style="color: #BB0000;">NA</span>         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span> endogeneity         Endogeneity       27.0      1    <span style="color: #BB0000;">NA</span>  2.04<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span> educ       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 12 × 8</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    test              test_name statistic    df   df2   p_value tested_vars note </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> underid           Kleiberg…     40.1      2    <span style="color: #BB0000;">NA</span>  1.98<span style="color: #949494;">e</span><span style="color: #BB0000;">- 9</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> weak_id           Cragg-Do…     19.7     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> weak_id_robust    Kleiberg…     20.4     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> sy_iv_size_10     Stock-Yo…     19.9     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> sy_iv_size_15     Stock-Yo…     11.6     <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> sy_iv_size_20     Stock-Yo…      8.75    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> sy_iv_size_25     Stock-Yo…      7.25    <span style="color: #BB0000;">NA</span>    <span style="color: #BB0000;">NA</span> <span style="color: #BB0000;">NA</span>   <span style="color: #949494;"> </span>    <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> overid            Hansen J       1.86     1    <span style="color: #BB0000;">NA</span>  1.72<span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> anderson_rubin_f  Anderson…     27.9      2  <span style="text-decoration: underline;">3</span>003  1.04<span style="color: #949494;">e</span><span style="color: #BB0000;">-12</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> anderson_rubin_c… Anderson…     55.8      2    <span style="color: #BB0000;">NA</span>  7.52<span style="color: #949494;">e</span><span style="color: #BB0000;">-13</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span> stock_wright      Stock-Wr…     54.0      2    <span style="color: #BB0000;">NA</span>  1.92<span style="color: #949494;">e</span><span style="color: #BB0000;">-12</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span> endogeneity       Endogene…     27.0      1    <span style="color: #BB0000;">NA</span>  2.04<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span> educ        <span style="color: #BB0000;">NA</span>   </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

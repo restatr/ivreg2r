@@ -697,15 +697,15 @@ demeaned outcome on the demeaned regressors:</p>
 <span></span>
 <span><span class="va">fit_sw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">lwage_dm</span> <span class="op">~</span> <span class="fl">0</span> <span class="op">+</span> <span class="va">expersq_dm</span> <span class="op">+</span> <span class="va">married_dm</span> <span class="op">+</span> <span class="va">union_dm</span>,</span>
 <span>                 data <span class="op">=</span> <span class="va">wagepan_fe</span>, sw <span class="op">=</span> <span class="cn">TRUE</span>, ivar <span class="op">=</span> <span class="st">"nr"</span>, tvar <span class="op">=</span> <span class="st">"year"</span>,</span>
-<span>                 dofminus <span class="op">=</span> <span class="fl">545</span><span class="op">)</span></span>
+<span>                 dofminus <span class="op">=</span> <span class="fl">545</span>, vcov <span class="op">=</span> <span class="st">"robust"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_sw</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; OLS Estimation</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Call:</span></span>
 <span><span class="co">#&gt; ivreg2(formula = lwage_dm ~ 0 + expersq_dm + married_dm + union_dm, </span></span>
-<span><span class="co">#&gt;     data = wagepan_fe, dofminus = 545, tvar = "year", ivar = "nr", </span></span>
-<span><span class="co">#&gt;     sw = TRUE)</span></span>
+<span><span class="co">#&gt;     data = wagepan_fe, vcov = "robust", dofminus = 545, tvar = "year", </span></span>
+<span><span class="co">#&gt;     ivar = "nr", sw = TRUE)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Observations: 4,360 </span></span>
 <span><span class="co">#&gt; VCV type:     Stock-Watson heteroskedastic-robust </span></span>
@@ -740,11 +740,15 @@ specification must drop it; we keep its conventional regressor set —
 <code>expersq</code>, <code>married</code>, and <code>union</code> —
 here as well.</p>
 <p>The <code>sw</code> option forces robust standard errors and is
-incompatible with clustering, kernels, Kiefer, and Driscoll-Kraay. It
-appears in neither the help file nor the Baum, Schaffer &amp; Stillman
-papers, and Stata’s <code>ivreg2</code> labels it a beta feature; the
-correction itself is standard (Stock &amp; Watson 2008). It is unrelated
-to the Sanderson-Windmeijer “SW” first-stage F statistic.</p>
+incompatible with clustering, kernels, Kiefer, and Driscoll-Kraay; we
+pass <code>vcov = "robust"</code> explicitly above rather than relying
+on the automatic override (leaving <code>vcov</code> at its default
+<code>"iid"</code> would trigger the same forced override, with a
+warning noting it). It appears in neither the help file nor the Baum,
+Schaffer &amp; Stillman papers, and Stata’s <code>ivreg2</code> labels
+it a beta feature; the correction itself is standard (Stock &amp; Watson
+2008). It is unrelated to the Sanderson-Windmeijer “SW” first-stage F
+statistic.</p>
 </div>
 <div class="section level3">
 <h3 id="when-to-use-which">When to use which<a class="anchor" aria-label="anchor" href="#when-to-use-which"></a>
@@ -967,6 +971,9 @@ errors. Continuing the same equation:</p>
 <span><span class="co">#&gt;   Chi-sq(1) = 1.03 (p = 0.3112)</span></span>
 <span><span class="co">#&gt;   Tested: UR</span></span>
 <span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Note: C-statistic from a recursive re-estimation that does not use CUE,</span></span>
+<span><span class="co">#&gt;       matching Stata's ivreg2.</span></span>
+<span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; First-stage diagnostics:</span></span>
 <span><span class="co">#&gt;   Endogenous        F-stat   p-value  Partial R2  Shea PR2      SW F      AP F</span></span>
 <span><span class="co">#&gt;   UR                  7.36    0.0000      0.3712    0.3712      7.36      7.36</span></span>
@@ -1066,15 +1073,15 @@ coefficients):</p>
 <span><span class="va">overid_g_gmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_g_gmm</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"overid"</span><span class="op">)</span></span>
 <span><span class="va">overid_g_cen</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_g_cen</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"overid"</span><span class="op">)</span></span>
 <span><span class="va">overid_g_gmm</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
-<span><span class="co">#&gt;   test   test_name statistic    df   df2  p_value tested_vars</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid Hansen J       74.2     3    <span style="color: #BB0000;">NA</span> 5.47<span style="color: #949494;">e</span><span style="color: #BB0000;">-16</span> <span style="color: #BB0000;">NA</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 8</span></span></span>
+<span><span class="co">#&gt;   test   test_name statistic    df   df2  p_value tested_vars note </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid Hansen J       74.2     3    <span style="color: #BB0000;">NA</span> 5.47<span style="color: #949494;">e</span><span style="color: #BB0000;">-16</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span></span></span>
 <span><span class="va">overid_g_cen</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
-<span><span class="co">#&gt;   test   test_name statistic    df   df2  p_value tested_vars</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid Hansen J       82.2     3    <span style="color: #BB0000;">NA</span> 1.03<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> <span style="color: #BB0000;">NA</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 8</span></span></span>
+<span><span class="co">#&gt;   test   test_name statistic    df   df2  p_value tested_vars note </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid Hansen J       82.2     3    <span style="color: #BB0000;">NA</span> 1.03<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span></span></span>
 <span><span class="va">coef_shift</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_g_cen</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">fit_g_gmm</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">coef_shift</span></span>
 <span><span class="co">#&gt; [1] 0.004038233</span></span></code></pre></div>
@@ -1151,10 +1158,10 @@ down to the number of clusters, and two-step GMM becomes feasible:</p>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> iq     0.001<span style="text-decoration: underline;">83</span>   0.003<span style="text-decoration: underline;">87</span>     0.472   0.637 -<span style="color: #BB0000;">0.005</span><span style="color: #BB0000; text-decoration: underline;">76</span>   0.009<span style="text-decoration: underline;">42</span></span></span>
 <span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_g_feas</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"overid"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 7</span></span></span>
-<span><span class="co">#&gt;   test   test_name statistic    df   df2 p_value tested_vars</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid Hansen J       5.35     2    <span style="color: #BB0000;">NA</span>  0.068<span style="text-decoration: underline;">9</span> <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 8</span></span></span>
+<span><span class="co">#&gt;   test   test_name statistic    df   df2 p_value tested_vars note </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid Hansen J       5.35     2    <span style="color: #BB0000;">NA</span>  0.068<span style="text-decoration: underline;">9</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
 <p>With the instrument count now matched to the 7 year clusters, the
 Hansen J is computed and the <code>iq</code> coefficient is reported.
 The special tokens <code>"_cons"</code> (partial out the constant,
@@ -1251,14 +1258,14 @@ rank computations they require:</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_noid</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ivreg2.html">ivreg2</a></span><span class="op">(</span><span class="va">f_ph_iv</span>, data <span class="op">=</span> <span class="va">phillips</span>, tvar <span class="op">=</span> <span class="st">"year"</span>, noid <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_noid</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 7</span></span></span>
-<span><span class="co">#&gt;   test                test_name        statistic    df   df2 p_value tested_vars</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid              Sargan              6.93       2    <span style="color: #BB0000;">NA</span> 0.031<span style="text-decoration: underline;">3</span>  <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> anderson_rubin_f    Anderson-Rubin …    3.50       3    42 0.023<span style="text-decoration: underline;">6</span>  <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> anderson_rubin_chi2 Anderson-Rubin …   11.5        3    <span style="color: #BB0000;">NA</span> 0.009<span style="text-decoration: underline;">32</span> <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> stock_wright        Stock-Wright LM…    9.20       3    <span style="color: #BB0000;">NA</span> 0.026<span style="text-decoration: underline;">8</span>  <span style="color: #BB0000;">NA</span>         </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> endogeneity         Endogeneity         0.096<span style="text-decoration: underline;">2</span>     1    <span style="color: #BB0000;">NA</span> 0.756   unem</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 5 × 8</span></span></span>
+<span><span class="co">#&gt;   test                test_name  statistic    df   df2 p_value tested_vars note </span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>               <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> overid              Sargan        6.93       2    <span style="color: #BB0000;">NA</span> 0.031<span style="text-decoration: underline;">3</span>  <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> anderson_rubin_f    Anderson-…    3.50       3    42 0.023<span style="text-decoration: underline;">6</span>  <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> anderson_rubin_chi2 Anderson-…   11.5        3    <span style="color: #BB0000;">NA</span> 0.009<span style="text-decoration: underline;">32</span> <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> stock_wright        Stock-Wri…    9.20       3    <span style="color: #BB0000;">NA</span> 0.026<span style="text-decoration: underline;">8</span>  <span style="color: #BB0000;">NA</span>          <span style="color: #BB0000;">NA</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> endogeneity         Endogenei…    0.096<span style="text-decoration: underline;">2</span>     1    <span style="color: #BB0000;">NA</span> 0.756   unem        <span style="color: #BB0000;">NA</span></span></span></code></pre></div>
 <p>The <code>underid</code>, <code>weak_id</code>, and Stock-Yogo rows
 are absent from the returned tibble — the whole identification block is
 dropped from <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> and <code><a href="https://generics.r-lib.org/reference/glance.html" class="external-link">glance()</a></code> as well —

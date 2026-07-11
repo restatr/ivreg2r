@@ -157,7 +157,9 @@ ivreg2(
   endogenous regressors (a one-part OLS formula, or the IV form
   `y ~ exog | 0 | instruments`), a warning reports that the test is
   skipped; Stata's `redundant()` is silently ignored in those cases.
-  Equivalent to Stata's `redundant()` option.
+  `noid = TRUE` and `b0` also suppress the redundancy test; supplying
+  `redundant` alongside either is dropped with a warning rather than
+  silently ignored. Equivalent to Stata's `redundant()` option.
 
 - method:
 
@@ -210,8 +212,10 @@ ivreg2(
   Logical: if `TRUE`, use the 2SLS bread `(X_hat'X_hat)^{-1}` instead of
   the k-class bread for VCV computation in LIML/k-class estimation. This
   gives the "COVIV" (covariance at the IV estimates) VCV that is robust
-  to misspecification of the LIML model. Silently ignored for OLS and
-  2SLS. Default `FALSE`.
+  to misspecification of the LIML model. Applies only to
+  `method = "liml"` and `method = "kclass"`; for every other method
+  (OLS, 2SLS, GMM2S, CUE) it is reset to `FALSE` with a warning. Default
+  `FALSE`.
 
 - small:
 
@@ -243,9 +247,9 @@ ivreg2(
   **fweight**: Integer-valued; N is redefined as `sum(weights)`. HC meat
   uses `w * e^2` (linear, not quadratic).
 
-  **pweight**: Normalized to sum to N. Forces robust VCE (overrides
-  `vcov = "iid"` to `"robust"` and `vcov = "AC"` — explicit or
-  kiefer-implied — to `"HAC"`).
+  **pweight**: Normalized to sum to N. Forces robust VCE, with a warning
+  (overrides `vcov = "iid"` to `"robust"` and `vcov = "AC"` — explicit
+  or kiefer-implied — to `"HAC"`).
 
   **iweight**: Not normalized; N is redefined as `sum(weights)` (float).
   All intermediate calculations use float N; posted `nobs` and
@@ -343,11 +347,14 @@ ivreg2(
   vector without optimization. When supplied, `method` is promoted to
   `"cue"` and the J(b0) statistic is computed and stored. Identification
   diagnostics (underid, weak-id, first-stage, AR, SW, endogeneity,
-  orthog) are suppressed (matching Stata's `b0()` option). Length must
-  equal the number of regressors K. Named vectors are reordered to match
-  model matrix columns; unnamed vectors are used as-is in model matrix
-  column order. Incompatible with `method = "gmm2s"`, `"liml"`,
-  `kclass`, `fuller`, and `wmatrix`.
+  orthog, and the redundancy test) are suppressed (matching Stata's
+  `b0()` option); `reduced_form` is not suppressed. An explicit `endog`,
+  `orthog`, `redundant`, or `first_stage = TRUE` request supplied
+  alongside `b0` is dropped with a warning, rather than silently
+  ignored. Length must equal the number of regressors K. Named vectors
+  are reordered to match model matrix columns; unnamed vectors are used
+  as-is in model matrix column order. Incompatible with
+  `method = "gmm2s"`, `"liml"`, `kclass`, `fuller`, and `wmatrix`.
 
 - noid:
 
@@ -355,8 +362,10 @@ ivreg2(
   identification, and redundancy test statistics. Overidentification,
   Anderson-Rubin, Stock-Wright, endogeneity, and first-stage diagnostics
   are still computed. Default `FALSE`. Useful for speeding up simulation
-  loops where rank-based identification tests are expensive. Equivalent
-  to Stata's `noid` option.
+  loops where rank-based identification tests are expensive. An explicit
+  `redundant` request supplied alongside `noid = TRUE` is dropped with a
+  warning, rather than silently ignored. Equivalent to Stata's `noid`
+  option.
 
 - partial:
 
@@ -414,6 +423,15 @@ ivreg2(
   matches Stata, whose `ranktest` calls (underid, weak-id, and
   redundancy) never receive the `center` option.
 
+  When a user-supplied `smatrix` is given, `center` has no effect on the
+  estimator, the GMM weighting matrix, the stored `$S`, or any statistic
+  computed from the supplied matrix (the overidentification and
+  orthogonality tests reuse it): the supplied matrix is used as-is
+  (mirroring the `psd` argument's identical interaction with `smatrix`,
+  documented below). Centering still applies only to diagnostics that
+  rebuild their own moment covariance, such as the Stock-Wright S
+  statistic.
+
 - psd:
 
   Character or NULL: PSD correction for the moment covariance matrix S.
@@ -431,12 +449,18 @@ ivreg2(
   matching Stata (whose `m_omega` is never invoked for a supplied S).
   Equivalent to Stata's `psd0` and `psda` options.
 
+  Under an exactly-singular `psd0`-corrected VCV, the model F statistic
+  uses a conditioning-guarded (swept) inverse and can differ from Stata,
+  which inverts the near-singular block directly; neither is a
+  well-defined Wald statistic in that degenerate case.
+
 - sw:
 
   Logical: if `TRUE`, compute the Stock-Watson (2008, Econometrica)
   panel-robust VCE. Requires panel data (`ivar`). Incompatible with
   clustering, HAC kernels, kiefer, dkraay, fweights, and iweights.
-  Forces `vcov = "robust"` automatically. Equivalent to Stata's `sw`
+  Forces `vcov = "robust"` automatically, with a warning when
+  `vcov = "iid"` is thereby overridden. Equivalent to Stata's `sw`
   option (labeled "BETA VERSION" in Stata).
 
   **Precondition:** the Stock-Watson (2008) correction is derived for a
@@ -463,6 +487,13 @@ ivreg2(
   reduced form is computed — matching Stata, which skips reduced-form
   estimation whenever the endogenous list is empty — and a warning
   reports that the request was ignored.
+
+  **Note:** the reduced-form variance-covariance matrix always applies
+  OLS-style small-sample degrees-of-freedom scaling, regardless of the
+  main model's `small` argument. This matches Stata's `ivreg2`
+  (ivreg2.ado:3091-3097). See
+  [ivreg2r-conventions](https://restatr.com/ivreg2r/reference/ivreg2r-conventions.md)
+  for the full statement of which corrections `small` controls.
 
 - first_stage:
 
@@ -912,10 +943,10 @@ fit_endog <- ivreg2(lwage ~ exper + expersq | educ |
 if (requireNamespace("dplyr", quietly = TRUE)) {
   diagnostics(fit_endog) |> dplyr::filter(test == "endogeneity")
 }
-#> # A tibble: 1 × 7
-#>   test        test_name   statistic    df   df2 p_value tested_vars
-#>   <chr>       <chr>           <dbl> <int> <int>   <dbl> <chr>      
-#> 1 endogeneity Endogeneity    0.0191     1    NA   0.890 educ       
+#> # A tibble: 1 × 8
+#>   test        test_name   statistic    df   df2 p_value tested_vars note 
+#>   <chr>       <chr>           <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 endogeneity Endogeneity    0.0191     1    NA   0.890 educ        NA   
 
 # --- Clustering ---
 # Griliches (1976) wage equation, cluster on year.

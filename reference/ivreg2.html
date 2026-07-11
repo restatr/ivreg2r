@@ -197,6 +197,9 @@ If <code>NULL</code> (default), no redundancy test is computed. On a model with 
 endogenous regressors (a one-part OLS formula, or the IV form
 <code>y ~ exog | 0 | instruments</code>), a warning reports that the test is
 skipped; Stata's <code>redundant()</code> is silently ignored in those cases.
+<code>noid = TRUE</code> and <code>b0</code> also suppress the redundancy test; supplying
+<code>redundant</code> alongside either is dropped with a warning rather than
+silently ignored.
 Equivalent to Stata's <code>redundant()</code> option.</p></dd>
 
 
@@ -251,8 +254,10 @@ LIML estimator; <code>fuller = 4</code> targets MSE. Cannot be combined with
 <dd><p>Logical: if <code>TRUE</code>, use the 2SLS bread <code>(X_hat'X_hat)^{-1}</code>
 instead of the k-class bread for VCV computation in LIML/k-class
 estimation. This gives the "COVIV" (covariance at the IV estimates)
-VCV that is robust to misspecification of the LIML model. Silently
-ignored for OLS and 2SLS. Default <code>FALSE</code>.</p></dd>
+VCV that is robust to misspecification of the LIML model. Applies only
+to <code>method = "liml"</code> and <code>method = "kclass"</code>; for every other method
+(OLS, 2SLS, GMM2S, CUE) it is reset to <code>FALSE</code> with a warning.
+Default <code>FALSE</code>.</p></dd>
 
 
 <dt id="arg-small">small<a class="anchor" aria-label="anchor" href="#arg-small"></a></dt>
@@ -282,7 +287,7 @@ partialling out regressors. Equivalent to Stata's <code>sdofminus()</code> optio
 <p><strong>aweight</strong>: Normalized to sum to N. Standard for WLS.</p>
 <p><strong>fweight</strong>: Integer-valued; N is redefined as <code>sum(weights)</code>.
 HC meat uses <code>w * e^2</code> (linear, not quadratic).</p>
-<p><strong>pweight</strong>: Normalized to sum to N. Forces robust VCE
+<p><strong>pweight</strong>: Normalized to sum to N. Forces robust VCE, with a warning
 (overrides <code>vcov = "iid"</code> to <code>"robust"</code> and <code>vcov = "AC"</code> —
 explicit or kiefer-implied — to <code>"HAC"</code>).</p>
 <p><strong>iweight</strong>: Not normalized; N is redefined as <code>sum(weights)</code> (float).
@@ -378,7 +383,10 @@ instrument column order.</p></dd>
 parameter vector without optimization. When supplied, <code>method</code> is
 promoted to <code>"cue"</code> and the J(b0) statistic is computed and stored.
 Identification diagnostics (underid, weak-id, first-stage, AR, SW,
-endogeneity, orthog) are suppressed (matching Stata's <code>b0()</code> option).
+endogeneity, orthog, and the redundancy test) are suppressed (matching
+Stata's <code>b0()</code> option); <code>reduced_form</code> is not suppressed. An explicit
+<code>endog</code>, <code>orthog</code>, <code>redundant</code>, or <code>first_stage = TRUE</code> request supplied
+alongside <code>b0</code> is dropped with a warning, rather than silently ignored.
 Length must equal the number of regressors K. Named vectors are
 reordered to match model matrix columns; unnamed vectors are used
 as-is in model matrix column order.
@@ -392,6 +400,8 @@ weak identification, and redundancy test statistics. Overidentification,
 Anderson-Rubin, Stock-Wright, endogeneity, and first-stage diagnostics
 are still computed. Default <code>FALSE</code>. Useful for speeding up simulation
 loops where rank-based identification tests are expensive.
+An explicit <code>redundant</code> request supplied alongside <code>noid = TRUE</code> is
+dropped with a warning, rather than silently ignored.
 Equivalent to Stata's <code>noid</code> option.</p></dd>
 
 
@@ -436,7 +446,15 @@ forwarded to the recursive call for the endogeneity test.</p>
 weak identification) and the instrument redundancy test are likewise
 always computed <em>without</em> centering, regardless of <code>center</code>. This
 matches Stata, whose <code>ranktest</code> calls (underid, weak-id, and
-redundancy) never receive the <code>center</code> option.</p></dd>
+redundancy) never receive the <code>center</code> option.</p>
+<p>When a user-supplied <code>smatrix</code> is given, <code>center</code> has no effect on the
+estimator, the GMM weighting matrix, the stored <code>$S</code>, or any statistic
+computed from the supplied matrix (the overidentification and
+orthogonality tests reuse it): the supplied matrix is used as-is
+(mirroring the <code>psd</code> argument's identical interaction with <code>smatrix</code>,
+documented below). Centering still applies only to diagnostics that
+rebuild their own moment covariance, such as the Stock-Wright S
+statistic.</p></dd>
 
 
 <dt id="arg-psd">psd<a class="anchor" aria-label="anchor" href="#arg-psd"></a></dt>
@@ -453,14 +471,19 @@ warning is emitted whenever negative eigenvalues are detected and
 corrected (Stata corrects silently). Ignored when a user-supplied
 <code>smatrix</code> is given: the user matrix is used as-is for estimation, the
 VCV, and <code>$S</code>, matching Stata (whose <code>m_omega</code> is never invoked for a
-supplied S). Equivalent to Stata's <code>psd0</code> and <code>psda</code> options.</p></dd>
+supplied S). Equivalent to Stata's <code>psd0</code> and <code>psda</code> options.</p>
+<p>Under an exactly-singular <code>psd0</code>-corrected VCV, the model F statistic
+uses a conditioning-guarded (swept) inverse and can differ from Stata,
+which inverts the near-singular block directly; neither is a
+well-defined Wald statistic in that degenerate case.</p></dd>
 
 
 <dt id="arg-sw">sw<a class="anchor" aria-label="anchor" href="#arg-sw"></a></dt>
 <dd><p>Logical: if <code>TRUE</code>, compute the Stock-Watson (2008,
 Econometrica) panel-robust VCE. Requires panel data (<code>ivar</code>).
 Incompatible with clustering, HAC kernels, kiefer, dkraay,
-fweights, and iweights. Forces <code>vcov = "robust"</code> automatically.
+fweights, and iweights. Forces <code>vcov = "robust"</code> automatically, with a
+warning when <code>vcov = "iid"</code> is thereby overridden.
 Equivalent to Stata's <code>sw</code> option (labeled "BETA VERSION" in Stata).</p>
 <p><strong>Precondition:</strong> the Stock-Watson (2008) correction is derived for a
 within-transformed (fixed-effects) panel regression with fixed <code>T</code> and
@@ -484,7 +507,12 @@ without storing it). On a model with no endogenous regressors (a
 one-part OLS formula, or the IV form <code>y ~ exog | 0 | instruments</code>), no
 reduced form is computed — matching Stata, which skips reduced-form
 estimation whenever the endogenous list is empty — and a warning
-reports that the request was ignored.</p></dd>
+reports that the request was ignored.</p>
+<p><strong>Note:</strong> the reduced-form variance-covariance matrix always applies
+OLS-style small-sample degrees-of-freedom scaling, regardless of the
+main model's <code>small</code> argument. This matches Stata's <code>ivreg2</code>
+(ivreg2.ado:3091-3097). See <a href="ivreg2r-conventions.html">ivreg2r-conventions</a> for the full statement
+of which corrections <code>small</code> controls.</p></dd>
 
 
 <dt id="arg-first-stage">first_stage<a class="anchor" aria-label="anchor" href="#arg-first-stage"></a></dt>
@@ -914,10 +942,10 @@ The vignettes <code><a href="../articles/introduction.html">vignette("introducti
 <span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"dplyr"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="diagnostics.html">diagnostics</a></span><span class="op">(</span><span class="va">fit_endog</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">test</span> <span class="op">==</span> <span class="st">"endogeneity"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   test        test_name   statistic    df   df2 p_value tested_vars</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> endogeneity Endogeneity    0.019<span style="text-decoration: underline;">1</span>     1    <span style="color: #BB0000;">NA</span>   0.890 educ       </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 1 × 8</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   test        test_name   statistic    df   df2 p_value tested_vars note </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span> <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">1</span> endogeneity Endogeneity    0.019<span style="text-decoration: underline;">1</span>     1    <span style="color: #BB0000;">NA</span>   0.890 educ        <span style="color: #BB0000;">NA</span>   </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Clustering ---</span></span></span>
 <span class="r-in"><span><span class="co"># Griliches (1976) wage equation, cluster on year.</span></span></span>

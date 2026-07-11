@@ -590,15 +590,15 @@ wagepan_fe <- wagepan |>
 
 fit_sw <- ivreg2(lwage_dm ~ 0 + expersq_dm + married_dm + union_dm,
                  data = wagepan_fe, sw = TRUE, ivar = "nr", tvar = "year",
-                 dofminus = 545)
+                 dofminus = 545, vcov = "robust")
 summary(fit_sw)
 #> 
 #> OLS Estimation
 #> 
 #> Call:
 #> ivreg2(formula = lwage_dm ~ 0 + expersq_dm + married_dm + union_dm, 
-#>     data = wagepan_fe, dofminus = 545, tvar = "year", ivar = "nr", 
-#>     sw = TRUE)
+#>     data = wagepan_fe, vcov = "robust", dofminus = 545, tvar = "year", 
+#>     ivar = "nr", sw = TRUE)
 #> 
 #> Observations: 4,360 
 #> VCV type:     Stock-Watson heteroskedastic-robust 
@@ -634,10 +634,13 @@ we keep its conventional regressor set — `expersq`, `married`, and
 `union` — here as well.
 
 The `sw` option forces robust standard errors and is incompatible with
-clustering, kernels, Kiefer, and Driscoll-Kraay. It appears in neither
-the help file nor the Baum, Schaffer & Stillman papers, and Stata’s
-`ivreg2` labels it a beta feature; the correction itself is standard
-(Stock & Watson 2008). It is unrelated to the Sanderson-Windmeijer “SW”
+clustering, kernels, Kiefer, and Driscoll-Kraay; we pass
+`vcov = "robust"` explicitly above rather than relying on the automatic
+override (leaving `vcov` at its default `"iid"` would trigger the same
+forced override, with a warning noting it). It appears in neither the
+help file nor the Baum, Schaffer & Stillman papers, and Stata’s `ivreg2`
+labels it a beta feature; the correction itself is standard (Stock &
+Watson 2008). It is unrelated to the Sanderson-Windmeijer “SW”
 first-stage F statistic.
 
 ### When to use which
@@ -827,6 +830,9 @@ summary(fit_cue)
 #>   Chi-sq(1) = 1.03 (p = 0.3112)
 #>   Tested: UR
 #> 
+#> Note: C-statistic from a recursive re-estimation that does not use CUE,
+#>       matching Stata's ivreg2.
+#> 
 #> First-stage diagnostics:
 #>   Endogenous        F-stat   p-value  Partial R2  Shea PR2      SW F      AP F
 #>   UR                  7.36    0.0000      0.3712    0.3712      7.36      7.36
@@ -934,15 +940,15 @@ bind_rows(uncentered = tidy(fit_g_gmm), centered = tidy(fit_g_cen),
 overid_g_gmm <- diagnostics(fit_g_gmm) |> filter(test == "overid")
 overid_g_cen <- diagnostics(fit_g_cen) |> filter(test == "overid")
 overid_g_gmm
-#> # A tibble: 1 × 7
-#>   test   test_name statistic    df   df2  p_value tested_vars
-#>   <chr>  <chr>         <dbl> <int> <int>    <dbl> <chr>      
-#> 1 overid Hansen J       74.2     3    NA 5.47e-16 NA
+#> # A tibble: 1 × 8
+#>   test   test_name statistic    df   df2  p_value tested_vars note 
+#>   <chr>  <chr>         <dbl> <int> <int>    <dbl> <chr>       <chr>
+#> 1 overid Hansen J       74.2     3    NA 5.47e-16 NA          NA
 overid_g_cen
-#> # A tibble: 1 × 7
-#>   test   test_name statistic    df   df2  p_value tested_vars
-#>   <chr>  <chr>         <dbl> <int> <int>    <dbl> <chr>      
-#> 1 overid Hansen J       82.2     3    NA 1.03e-17 NA
+#> # A tibble: 1 × 8
+#>   test   test_name statistic    df   df2  p_value tested_vars note 
+#>   <chr>  <chr>         <dbl> <int> <int>    <dbl> <chr>       <chr>
+#> 1 overid Hansen J       82.2     3    NA 1.03e-17 NA          NA
 coef_shift <- max(abs(coef(fit_g_cen) - coef(fit_g_gmm)))
 coef_shift
 #> [1] 0.004038233
@@ -1029,10 +1035,10 @@ tidy(fit_g_feas) |> filter(term == "iq")
 #>   <chr>    <dbl>     <dbl>     <dbl>   <dbl>    <dbl>     <dbl>
 #> 1 iq     0.00183   0.00387     0.472   0.637 -0.00576   0.00942
 diagnostics(fit_g_feas) |> filter(test == "overid")
-#> # A tibble: 1 × 7
-#>   test   test_name statistic    df   df2 p_value tested_vars
-#>   <chr>  <chr>         <dbl> <int> <int>   <dbl> <chr>      
-#> 1 overid Hansen J       5.35     2    NA  0.0689 NA
+#> # A tibble: 1 × 8
+#>   test   test_name statistic    df   df2 p_value tested_vars note 
+#>   <chr>  <chr>         <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 overid Hansen J       5.35     2    NA  0.0689 NA          NA
 ```
 
 With the instrument count now matched to the 7 year clusters, the Hansen
@@ -1139,14 +1145,14 @@ rank computations they require:
 
 fit_noid <- ivreg2(f_ph_iv, data = phillips, tvar = "year", noid = TRUE)
 diagnostics(fit_noid)
-#> # A tibble: 5 × 7
-#>   test                test_name        statistic    df   df2 p_value tested_vars
-#>   <chr>               <chr>                <dbl> <int> <int>   <dbl> <chr>      
-#> 1 overid              Sargan              6.93       2    NA 0.0313  NA         
-#> 2 anderson_rubin_f    Anderson-Rubin …    3.50       3    42 0.0236  NA         
-#> 3 anderson_rubin_chi2 Anderson-Rubin …   11.5        3    NA 0.00932 NA         
-#> 4 stock_wright        Stock-Wright LM…    9.20       3    NA 0.0268  NA         
-#> 5 endogeneity         Endogeneity         0.0962     1    NA 0.756   unem
+#> # A tibble: 5 × 8
+#>   test                test_name  statistic    df   df2 p_value tested_vars note 
+#>   <chr>               <chr>          <dbl> <int> <int>   <dbl> <chr>       <chr>
+#> 1 overid              Sargan        6.93       2    NA 0.0313  NA          NA   
+#> 2 anderson_rubin_f    Anderson-…    3.50       3    42 0.0236  NA          NA   
+#> 3 anderson_rubin_chi2 Anderson-…   11.5        3    NA 0.00932 NA          NA   
+#> 4 stock_wright        Stock-Wri…    9.20       3    NA 0.0268  NA          NA   
+#> 5 endogeneity         Endogenei…    0.0962     1    NA 0.756   unem        NA
 ```
 
 The `underid`, `weak_id`, and Stock-Yogo rows are absent from the
