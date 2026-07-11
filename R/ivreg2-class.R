@@ -1253,7 +1253,7 @@ print.summary.ivreg2 <- function(x, digits = max(3L, getOption("digits") - 3L),
     }
   }
 
-  # --- Stata-quirk disclosure footnotes (planning/31 ruling R2) ---
+  # --- Stata-quirk disclosure footnotes ---
   # Each distinct note (attached to a diagnostic slot when an explicit option
   # is silently not honored inside that automatic diagnostic) is printed once,
   # after the diagnostics block. The same text on several slots collapses to

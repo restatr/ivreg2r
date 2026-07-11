@@ -264,7 +264,9 @@ diagnostics.ivreg2 <- function(x, ...) {
 
 #' Attach a Stata-quirk disclosure note to a diagnostic slot
 #'
-#' Implements the "note-as-data" disclosure of planning/31 ruling R2. When
+#' Implements the "note-as-data" disclosure convention: when an explicit user
+#' option is silently not honored inside an automatic diagnostic, that fact
+#' is recorded as data on the affected slot, not merely printed. When
 #' `condition` holds, appends `text` to the (possibly absent) character vector
 #' `slot$note`; otherwise the slot is returned untouched. NULL-safe in the
 #' slot argument, so it can be called unconditionally on a diagnostic that may

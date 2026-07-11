@@ -475,10 +475,10 @@
 #' `vcov`.
 #'
 #' Shared by the pweight -> robust/HAC and sw -> robust promotions: both
-#' silently substitute a more general `vcov` than the user asked for, and
-#' planning/31 R4 rules that this substitution gets a fit-time `warning()`
-#' (not `message()`), so it is independently testable with
-#' `expect_warning()`.
+#' substitute a more general `vcov` than the user asked for, and an
+#' explicitly requested option must never change silently, so the
+#' substitution gets a fit-time `warning()` (not `message()`) and is
+#' independently testable with `expect_warning()`.
 #' @param option Character: the option name forcing the promotion (e.g.
 #'   `"pweight"`, `"sw"`).
 #' @param from Character: the `vcov` value being overridden.

@@ -164,8 +164,8 @@
     # Kiefer/kernel precedence (Stata's ranktest never receives the kernel
     # when kiefer is set — see the comment inside the id-test block below).
     # Hoisted outside the `!noid` gate immediately below, even though only
-    # that gate's id tests consume it, because the note-block trigger further
-    # down (planning/31 R2) also reads id_kernel and runs unconditionally
+    # that gate's id tests consume it, because the disclosure-note trigger
+    # further down also reads id_kernel and runs unconditionally
     # whenever K1 > 0 -- if noid = TRUE skipped the block that used to define
     # id_kernel, that trigger would hit an undefined-variable error.
     id_kernel <- if (isTRUE(kiefer)) NULL else kernel
@@ -181,7 +181,7 @@
       # one is set -- which happens when pweights force robust. So plain
       # kiefer id tests are numerically iid, while pweight+kiefer id tests
       # are heteroskedasticity-robust (KP rk) with no kernel. Verified
-      # against Stata 2026-06-10 (plain: Anderson/CD match rk output to
+      # against Stata ivreg2 4.1.12 (plain: Anderson/CD match rk output to
       # ~1e-11; pw+kiefer: KP rk LM/Wald differ from iid and match Stata).
       id_vcov_type <- if (isTRUE(kiefer)) {
         if (effective_vcov_type == "HAC") "robust" else "iid"
@@ -353,7 +353,7 @@
       )
     }
 
-    # --- Stata-quirk disclosure notes (planning/31 ruling R2) -------------
+    # --- Stata-quirk disclosure notes -------------------------------------
     # Five sites where an explicit user option is silently not honored inside
     # an automatically computed diagnostic get a "note-as-data" disclosure: a
     # note string attached to the affected slot, surfaced by diagnostics() as
@@ -371,12 +371,11 @@
     # that catch a future diagnostic silently reintroducing an undisclosed
     # drop.
     non_bartlett_kernel <- !is.null(id_kernel) && id_kernel != "Bartlett"
-    # Narrowed from planning/31 row 4's ruled trigger ("every psd fit") to
-    # robust-family VCE only. Under vcov = "iid", psd corrects the stored $S,
+    # Deliberately narrowed to robust-family VCE only, not every psd fit.
+    # Under vcov = "iid", psd corrects the stored $S,
     # which is already positive semidefinite by construction (the iid moment
     # covariance is a scalar multiple of (Z'Z), an inner-product Gram matrix),
-    # so the correction is provably inert on this path -- ruling R5 reached
-    # the same conclusion for the psd+iid interaction generally. Noting an
+    # so the correction is provably inert on this path. Noting an
     # option that cannot possibly change the identification/redundancy
     # statistics would disclose the non-application of an inapplicable
     # option, not a real Stata-parity quirk, so the trigger fires only where
@@ -479,7 +478,8 @@
   # Reduced-form regression. K1 = 0: no reduced form is computed or stored,
   # matching Stata — the entire RF/first-stage estimation block is gated on
   # `endo1_ct > 0` (ivreg2.ado:1256), and saverf on a `(=z)` model stores
-  # nothing (e(rfeq) empty; verified by probe 2026-06-11). Note the y-on-Z
+  # nothing (e(rfeq) empty; verified against Stata ivreg2 4.1.12). Note the
+  # y-on-Z
   # reduced form WOULD differ from the main y-on-X model (Z carries the
   # surplus instruments), but Stata never computes it, so there is no ground
   # truth to validate an extension against. Where Stata is silent about the

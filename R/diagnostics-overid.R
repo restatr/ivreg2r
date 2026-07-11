@@ -172,7 +172,7 @@
 #' M - 1. For weighted models the M - 1 refinement does NOT hold:
 #' `.cl_scores()` centers by subtracting a weighted mean, so the cluster sums
 #' need not add to zero and the exact-arithmetic rank stays M (verified
-#' empirically per weight type at the 2026-07-06 review: unweighted centered
+#' empirically per weight type: unweighted centered
 #' sums are zero to 1e-16 and the meat has rank M - 1; aweight/fweight/
 #' pweight centered sums are O(1) and the meat has full rank M). When the
 #' bound is below L the meat is singular by construction, and consumers that
@@ -185,16 +185,17 @@
 #' 2-step GMM path exits with r(506) "matrix not positive definite"
 #' (s_egmm, ivreg2.ado:5436-5440). This helper reproduces those outcomes
 #' through the structural bound instead of numerics because the numeric
-#' detectors proved BLAS-dependent on the rank-deficit-1 case: at the
-#' 2026-07-06 CI cycle the Griliches cluster(year) + partial cells (H28/H29,
+#' detectors proved BLAS-dependent on the rank-deficit-1 case: in
+#' cross-platform CI the Griliches cluster(year) + partial cells (H28/H29,
 #' M = 7 clusters vs L = 8 moments) were detected on macOS
-#' (lambda_min/lambda_max ~ 2e-18) but missed on ubuntu/Windows, whose BLAS
+#' (lambda_min/lambda_max ~ 2e-18) but missed on Ubuntu/Windows, whose BLAS
 #' leaves a larger rounding residue in the deficit eigenvalue. Stata runs on
 #' a single Mata implementation and does not face this cross-platform
 #' problem; the structural gate is our platform-stable mechanism for the
 #' same outcomes. The Anderson-Rubin statistic is deliberately NOT gated:
-#' Stata computes it even when rankS < L (verified live 2026-07-06 — H28
-#' with `first` reports arf = 98.6498, matching ours, while j is missing).
+#' Stata computes it even when rankS < L (verified against Stata ivreg2
+#' 4.1.12 — H28 with `first` reports arf = 98.6498, matching ours, while j
+#' is missing).
 #'
 #' Known scope limit: two-way cluster and cluster-kernel (DK/Thompson) meats
 #' can also be structurally rank-deficient, but no comparably simple bound
