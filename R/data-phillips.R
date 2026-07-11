@@ -3,7 +3,7 @@
 #' U.S. macroeconomic time series (1948--1996) with inflation and unemployment
 #' rates plus lags and first differences. This is the same dataset used in
 #' Stata's \code{ivreg2} help file for HAC and AC examples, originally from
-#' Wooldridge (2019).
+#' Wooldridge (2020).
 #'
 #' @format A data frame with 49 observations and 11 variables:
 #' \describe{

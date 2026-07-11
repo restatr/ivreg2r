@@ -54,4 +54,4 @@ The bundled datasets are collections of numerical facts, which are not copyright
   nlswork     US Bureau of Labor Statistics, NLS Young Women (1968-1988); US government work, public domain. Distribution point: Stata webuse nlswork.
   cigar       Baltagi and Levin (1992); Baltagi, Griffin and Xiong (2000). Distribution point: the GPL CRAN package plm (Cigar), which is also the precedent.
 
-No license is claimed from StataCorp for any dataset; the webuse/bcuse distribution points above identify the exact copies used so that the bundled .rda files are bit-reproducible.
+No license is claimed from StataCorp for any dataset; the webuse/bcuse distribution points above identify the exact copies from which the bundled .rda files were built.

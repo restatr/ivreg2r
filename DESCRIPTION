@@ -22,7 +22,8 @@ Description: Comprehensive instrumental variables and GMM estimation with
 License: GPL-3
 Copyright: Adapted from the Stata package 'ivreg2' by Christopher F
     Baum, Mark E Schaffer, and Steven Stillman, distributed under
-    GPL-3.
+    GPL-3. Component-level provenance for the adapted code and the
+    bundled datasets is in inst/COPYRIGHTS.
 URL: https://restatr.com/ivreg2r/, https://github.com/restatr/ivreg2r
 BugReports: https://github.com/restatr/ivreg2r/issues
 Encoding: UTF-8
