@@ -38,6 +38,11 @@
 #' Women's Hours of Work to Economic and Statistical Assumptions."
 #' *Econometrica*, 55(4), 765--799.
 #'
+#' Obtained from Stata's \code{bcuse} archive (Boston College),
+#' \code{bcuse mroz}.
+#'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @examples
 #' data(mroz)
 #' # Restrict to working women (observed wages)

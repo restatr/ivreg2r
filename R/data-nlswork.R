@@ -42,6 +42,8 @@
 #'
 #' Distributed via Stata's \code{webuse nlswork}.
 #'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @examples
 #' data(nlswork)
 #'

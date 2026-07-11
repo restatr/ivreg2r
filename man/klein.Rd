@@ -29,6 +29,8 @@ Klein, L.R. (1950). \emph{Economic Fluctuations in the United States,
 1921--1941}. Cowles Commission Monograph No. 11. New York: Wiley.
 
 Distributed via Stata's \code{webuse klein}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 klein

@@ -25,6 +25,8 @@ Kleiber, C. and Zeileis, A. (2010). The Grunfeld data at 50.
 \emph{German Economic Review}, 11(4), 404--417.
 
 Distributed via Stata's \code{webuse grunfeld}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 grunfeld

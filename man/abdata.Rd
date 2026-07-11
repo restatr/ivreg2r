@@ -32,6 +32,8 @@ data: Monte Carlo evidence and an application to employment equations.
 \emph{Review of Economic Studies}, 58(2), 277--297.
 
 Downloaded from \url{http://fmwww.bc.edu/ec-p/data/macro/abdata.dta}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 abdata

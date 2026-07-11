@@ -36,6 +36,8 @@ U.S. Bureau of Labor Statistics. National Longitudinal Survey of Young
 Women, 14--24 years old in 1968. Center for Human Resource Research.
 
 Distributed via Stata's \code{webuse nlswork}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 nlswork

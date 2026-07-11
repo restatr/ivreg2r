@@ -50,6 +50,8 @@
 #'
 #' Distributed via Stata's \code{webuse klein}.
 #'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @examples
 #' data(klein)
 #'

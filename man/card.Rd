@@ -50,6 +50,11 @@ Card, D. (1995). "Using Geographic Variation in College Proximity to
 Estimate the Return to Schooling." In L.N. Christofides, E.K. Grant, and
 R. Swidinsky (Eds.), \emph{Aspects of Labour Market Behaviour: Essays in Honour
 of John Vanderkamp}. University of Toronto Press.
+
+Obtained from Stata's \code{bcuse} archive (Boston College),
+\code{bcuse card}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 card

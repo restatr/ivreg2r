@@ -34,6 +34,8 @@ Griliches, Z. (1976). Wages of very young men. \emph{Journal of Political
 Economy}, 84(4), S69--S85.
 
 Downloaded from \url{http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 griliches

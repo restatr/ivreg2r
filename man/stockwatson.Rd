@@ -34,6 +34,8 @@ Stock, J.H. and Watson, M.W. (2003). \emph{Introduction to Econometrics}.
 Addison-Wesley.
 
 Downloaded from \url{http://fmwww.bc.edu/ec-p/data/stockwatson/macrodat.dta}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 stockwatson

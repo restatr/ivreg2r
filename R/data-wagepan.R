@@ -28,8 +28,17 @@
 #' }
 #'
 #' @source
+#' Vella, F. and Verbeek, M. (1998). "Whose Wages Do Unions Raise? A Dynamic
+#' Model of Unionism and Wage Rate Determination for Young Men." *Journal of
+#' Applied Econometrics*, 13(2), 163--183.
+#'
 #' Wooldridge, J.M. (2010). *Econometric Analysis of Cross Section and Panel
 #' Data*, 2nd ed. MIT Press.
+#'
+#' Obtained from Stata's \code{bcuse} archive (Boston College),
+#' \code{bcuse wagepan}.
+#'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 #'
 #' @examples
 #' data(wagepan)

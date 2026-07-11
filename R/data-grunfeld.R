@@ -28,6 +28,8 @@
 #'
 #' Distributed via Stata's \code{webuse grunfeld}.
 #'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @examples
 #' data(grunfeld)
 #'

@@ -22,7 +22,13 @@ A data frame with 49 observations and 11 variables:
 }
 \source{
 Wooldridge, J.M. (2020). \emph{Introductory Econometrics: A Modern
-Approach}, 7th ed. Cengage Learning.
+Approach}, 7th ed. Cengage Learning. The underlying series are from the
+\emph{Economic Report of the President} (a U.S. government work).
+
+Downloaded from
+\url{http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 phillips

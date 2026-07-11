@@ -32,6 +32,8 @@ pool: homogeneous versus heterogeneous estimators applied to cigarette
 demand. \emph{Review of Economics and Statistics}, 82(1), 117--126.
 
 Distributed via R package \code{plm}, \code{data(Cigar)}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 cigar

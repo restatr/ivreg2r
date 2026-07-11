@@ -21,8 +21,17 @@ A data frame with 4,360 observations and 11 variables:
 }
 }
 \source{
+Vella, F. and Verbeek, M. (1998). "Whose Wages Do Unions Raise? A Dynamic
+Model of Unionism and Wage Rate Determination for Young Men." \emph{Journal of
+Applied Econometrics}, 13(2), 163--183.
+
 Wooldridge, J.M. (2010). \emph{Econometric Analysis of Cross Section and Panel
 Data}, 2nd ed. MIT Press.
+
+Obtained from Stata's \code{bcuse} archive (Boston College),
+\code{bcuse wagepan}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 wagepan

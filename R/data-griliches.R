@@ -41,6 +41,8 @@
 #'
 #' Downloaded from \url{http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta}.
 #'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @references
 #' Hayashi, F. (2000). \emph{Econometrics}. Princeton University Press.
 #' (Chapter 3, p. 255.)

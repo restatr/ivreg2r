@@ -36,6 +36,11 @@ in thousands of 1975 dollars).}
 Mroz, T.A. (1987). "The Sensitivity of an Empirical Model of Married
 Women's Hours of Work to Economic and Statistical Assumptions."
 \emph{Econometrica}, 55(4), 765--799.
+
+Obtained from Stata's \code{bcuse} archive (Boston College),
+\code{bcuse mroz}.
+
+Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
 }
 \usage{
 mroz

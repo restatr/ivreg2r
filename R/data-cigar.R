@@ -43,6 +43,8 @@
 #'
 #' Distributed via R package \code{plm}, \code{data(Cigar)}.
 #'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @examples
 #' data(cigar)
 #'

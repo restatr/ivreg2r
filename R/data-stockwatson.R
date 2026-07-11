@@ -39,6 +39,8 @@
 #'
 #' Downloaded from \url{http://fmwww.bc.edu/ec-p/data/stockwatson/macrodat.dta}.
 #'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @references
 #' Baum, C.F., Schaffer, M.E. and Stillman, S. (2007). Enhanced routines for
 #' instrumental variables/generalized method of moments estimation and testing.

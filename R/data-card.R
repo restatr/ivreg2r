@@ -50,6 +50,11 @@
 #' R. Swidinsky (Eds.), *Aspects of Labour Market Behaviour: Essays in Honour
 #' of John Vanderkamp*. University of Toronto Press.
 #'
+#' Obtained from Stata's \code{bcuse} archive (Boston College),
+#' \code{bcuse card}.
+#'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @examples
 #' data(card)
 #' # IV regression: instrument education with college proximity.

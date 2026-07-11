@@ -1,0 +1,57 @@
+COPYRIGHTS and provenance for the ivreg2r package
+==================================================
+
+The ivreg2r package is released under GPL-3. This file records, component by component, what was adapted from where and on what basis it is redistributed.
+
+1. Adapted code: the Stata ivreg2 suite
+---------------------------------------
+
+ivreg2r is an R implementation of the Stata package ivreg2 by Christopher F. Baum, Mark E. Schaffer, and Steven Stillman, who are credited as contributors and copyright holders in the DESCRIPTION. The Stata ivreg2 suite is distributed under the GNU General Public License via the Statistical Software Components (SSC) archive at Boston College (https://ideas.repec.org/c/boc/bocode/s425401.html) and is described in:
+
+  Baum, C.F., Schaffer, M.E., and Stillman, S. (2003). Instrumental variables and GMM: Estimation and testing. The Stata Journal 3(1), 1-31.
+  Baum, C.F., Schaffer, M.E., and Stillman, S. (2007). Enhanced routines for instrumental variables/generalized method of moments estimation and testing. The Stata Journal 7(4), 465-506.
+
+The exact upstream versions consulted for this implementation:
+
+  ivreg2.ado    version 4.1.12, 14 Aug 2024 (authors cfb & mes)
+  ivreg2_p.ado  version 1.0.10, 30 Jul 2023 (author mes)
+  ranktest.ado  version 2.0.04, 21 Sep 2020 (authors mes & fw; Kleibergen-Paap statistic based on code by fk)
+  livreg2.do    version 1.2.01, 28 Jul 2015 (authors cfb & mes; shared Mata library)
+
+Which R source files adapt which upstream component (each file carries line-level citations at the adapted passages):
+
+  R/ivreg2.R and estimation pipeline files  ivreg2.ado (main estimation logic, defensive checks, option semantics)
+  R/fit-gmm.R                               ivreg2.ado s_egmm/s_iegmm (two-step and CUE GMM)
+  R/partial.R                               ivreg2.ado partialling-out block
+  R/kernel.R                                livreg2.do s_vkernel/m_omega/m_calckw and ivreg2.ado (kernel weights, bandwidth validation)
+  R/vcov-robust.R                           ivreg2.ado / livreg2.do m_omega (robust and cluster VCE)
+  R/vcov-hac.R                              livreg2.do m_omega/m_calckw (HAC, AC, and cluster-kernel VCE)
+  R/vcov-sw.R                               livreg2.do (Stock-Watson panel-robust VCE)
+  R/reduced-form.R                          ivreg2.ado PostFirstRF (reduced-form equation)
+  R/diagnostics-*.R                         ivreg2.ado diagnostic blocks and ranktest.ado (identification tests)
+
+2. Stock-Yogo critical values
+-----------------------------
+
+The weak-identification critical-value tables in R/sysdata.rda were transcribed from the s_cdsy() routine of livreg2.do version 1.2.01 (which itself encodes the published tables). Statistical source:
+
+  Stock, J.H. and Yogo, M. (2005). Testing for weak instruments in linear IV regression. In D.W.K. Andrews and J.H. Stock (eds.), Identification and Inference for Econometric Models: Essays in Honor of Thomas Rothenberg, ch. 5, 80-108. Cambridge University Press.
+
+3. Bundled datasets
+-------------------
+
+The bundled datasets are collections of numerical facts, which are not copyrightable under US law; each has additionally circulated freely in the econometrics community for years to decades, and each is redistributed by at least one GPL-licensed CRAN package or originates with the US federal government (whose works are public domain, 17 U.S.C. 105). Full provenance detail per dataset lives in each dataset's help page (@source). Summary:
+
+  card        Card (1995), U. Toronto Press chapter; NLS Young Men extract. Distribution point: Boston College bcuse archive. CRAN GPL precedent: wooldridge::card.
+  mroz        Mroz (1987), Econometrica 55(4); PSID 1975 extract. Distribution point: Boston College bcuse archive. CRAN GPL precedent: wooldridge::mroz.
+  griliches   Griliches (1976), JPE 84(4); NLS extract, Hayashi (2000) instructional copy. Distribution point: http://fmwww.bc.edu/ec-p/data/hayashi/griliches76.dta. CRAN GPL precedent: Ecdat::Griliches.
+  phillips    Wooldridge, Introductory Econometrics (Cengage); series from the Economic Report of the President (US government work). Distribution point: http://fmwww.bc.edu/ec-p/data/wooldridge/phillips.dta. CRAN GPL precedent: wooldridge::phillips.
+  stockwatson Stock and Watson (2003), Introduction to Econometrics (Addison-Wesley) companion data; underlying series are US federal statistics. Distribution point: http://fmwww.bc.edu/ec-p/data/stockwatson/macrodat.dta. CRAN GPL precedents: Ecdat::Macrodat and the AER Stock-Watson companions.
+  wagepan     Vella and Verbeek (1998), JAE 13(2); NLSY extract, popularized by Wooldridge (2010, MIT Press). Distribution point: Boston College bcuse archive. CRAN GPL precedent: wooldridge::wagepan.
+  klein       Klein (1950), Cowles Monograph 11; interwar US national accounts. Distribution point: Stata webuse klein. CRAN GPL precedent: AER::KleinI.
+  grunfeld    Grunfeld (1958); see Kleiber and Zeileis (2010), German Economic Review 11(4). Distribution point: Stata webuse grunfeld. CRAN GPL precedent: plm::Grunfeld.
+  abdata      Arellano and Bond (1991), ReStud 58(2) companion data. Distribution point: http://fmwww.bc.edu/ec-p/data/macro/abdata.dta. CRAN GPL precedent: plm::EmplUK.
+  nlswork     US Bureau of Labor Statistics, NLS Young Women (1968-1988); US government work, public domain. Distribution point: Stata webuse nlswork.
+  cigar       Baltagi and Levin (1992); Baltagi, Griffin and Xiong (2000). Distribution point: the GPL CRAN package plm (Cigar), which is also the precedent.
+
+No license is claimed from StataCorp for any dataset; the webuse/bcuse distribution points above identify the exact copies used so that the bundled .rda files are bit-reproducible.

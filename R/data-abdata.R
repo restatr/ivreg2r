@@ -42,6 +42,8 @@
 #'
 #' Downloaded from \url{http://fmwww.bc.edu/ec-p/data/macro/abdata.dta}.
 #'
+#' Redistribution basis: \code{system.file("COPYRIGHTS", package = "ivreg2r")}.
+#'
 #' @examples
 #' data(abdata)
 #'
