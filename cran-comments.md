@@ -2,7 +2,7 @@
 
 0 errors | 0 warnings | 1 note
 
-Checked with `R CMD check --as-cran` on the release tarball (R 4.6.1, macOS arm64, 2026-07-11). The one note is the standard "New submission" note (this is the first CRAN submission of this package). The package also checks clean on the GitHub Actions matrix: Linux (R release and oldrel-1), macOS (release and oldrel-1), and Windows (release).
+Checked with `R CMD check --as-cran` on the release tarball (R 4.6.1, macOS arm64, 2026-07-11) and on win-builder under both R-release (4.6.1) and R-devel (2026-07-10 r90234), each returning this single note. The note is the standard "New submission" note (this is the first CRAN submission of this package); the "possibly misspelled" words it lists (Driscoll, Kraay, GMM, HAC, LIML, SLS) are estimator acronyms and author surnames. The package also checks clean on the GitHub Actions matrix: Linux (R release and oldrel-1), macOS (release and oldrel-1), and Windows (release).
 
 The two Stata Journal DOIs cited in DESCRIPTION, CITATION, and the README (10.1177/1536867X0300300101 and 10.1177/1536867X0800700402) return HTTP 403 to automated URL checkers because the publisher (SAGE) blocks non-browser clients; both resolve normally in a browser. Verified 2026-07-11 with `curl -I -L https://doi.org/<doi>` from a residential network: doi.org answers 302 and the SAGE landing page answers 403 to the automated HEAD request.
 
