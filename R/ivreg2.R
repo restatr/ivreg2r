@@ -8,7 +8,7 @@
 #   R/fit-dispatch.R          .resolve_and_fit
 #   R/vcov-dispatch.R         .compute_vcov
 #   R/diagnostics-dispatch.R  .compute_diagnostics
-#   R/stored-matrices.R       .compute_stored_sw
+#   R/stored-matrices.R       .compute_stored_sw, .compute_cond_ll
 #   R/ivreg2-class.R          .new_ivreg2 (constructor, print, summary)
 # --------------------------------------------------------------------------
 
