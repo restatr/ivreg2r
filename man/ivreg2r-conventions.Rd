@@ -23,6 +23,14 @@ correction, matching Stata's \code{small} option. \code{small} is the single, un
 control for finite-sample corrections across every VCE type (\code{"iid"},
 \code{"robust"}, \code{"HAC"}, \code{"AC"}); it is not a VCE selector. There are no
 \code{"HC0"}/\code{"HC1"} values --- use \code{vcov = "robust"} and toggle \code{small}.
+
+Three statistics sit outside that uniform control, all matching Stata:
+the first-stage F statistics (\code{\link[=first_stage]{first_stage()}}) always use small-sample
+degrees of freedom regardless of \code{small}; the overidentification
+(Sargan/Hansen J) and endogeneity (C-statistic) tests are never
+small-sample corrected, even when \code{small = TRUE}; and the stored
+reduced-form variance-covariance matrix (\code{reduced_form}) always applies
+OLS-style small-sample scaling regardless of the main model's \code{small}.
 }
 
 \section{Sigma (RMSE) normalization}{

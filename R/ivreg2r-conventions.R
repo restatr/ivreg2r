@@ -19,6 +19,14 @@
 #' `"robust"`, `"HAC"`, `"AC"`); it is not a VCE selector. There are no
 #' `"HC0"`/`"HC1"` values --- use `vcov = "robust"` and toggle `small`.
 #'
+#' Three statistics sit outside that uniform control, all matching Stata:
+#' the first-stage F statistics ([first_stage()]) always use small-sample
+#' degrees of freedom regardless of `small`; the overidentification
+#' (Sargan/Hansen J) and endogeneity (C-statistic) tests are never
+#' small-sample corrected, even when `small = TRUE`; and the stored
+#' reduced-form variance-covariance matrix (`reduced_form`) always applies
+#' OLS-style small-sample scaling regardless of the main model's `small`.
+#'
 #' @section Sigma (RMSE) normalization:
 #'
 #' Under `small = FALSE`, \eqn{\sigma^2 = RSS / (N - dofminus)}. Under

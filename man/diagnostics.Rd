@@ -68,6 +68,15 @@ tibble, one row per test, so they can be filtered, joined, or printed like
 any other tidyverse output instead of navigated as a nested list
 (\code{x$diagnostics$overid$stat} and friends).
 }
+\section{Small-sample correction}{
+ the overidentification row
+(Sargan/Hansen J) and the endogeneity row (C-statistic) are never
+small-sample corrected, regardless of the main model's \code{small} argument.
+The first-stage F-statistics are always small-sample corrected,
+regardless of \code{small}; they are not columns of this tibble but are
+reached via \code{\link[=first_stage]{first_stage()}}. All three match Stata's \code{ivreg2}.
+}
+
 \examples{
 data(card)
 fit <- ivreg2(

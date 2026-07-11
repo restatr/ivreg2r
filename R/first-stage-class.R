@@ -40,6 +40,11 @@
 #' @param ... Additional arguments (ignored).
 #' @return A named list of `ivreg2_first_stage` objects.
 #'
+#' @section Small-sample correction: the first-stage F-statistic (surfaced
+#'   via `glance()` and `summary()` on each `ivreg2_first_stage` object)
+#'   always uses small-sample degrees of freedom, regardless of the main
+#'   model's `small` argument. This matches Stata's `ivreg2`.
+#'
 #' @examples
 #' # Mirrors the Stata `ivreg2` help-file example at line 1325, which
 #' # demonstrates the equivalence of the Kleibergen-Paap rk Wald F and the

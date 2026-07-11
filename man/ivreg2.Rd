@@ -350,7 +350,16 @@ The Kleibergen-Paap identification statistics (underidentification,
 weak identification) and the instrument redundancy test are likewise
 always computed \emph{without} centering, regardless of \code{center}. This
 matches Stata, whose \code{ranktest} calls (underid, weak-id, and
-redundancy) never receive the \code{center} option.}
+redundancy) never receive the \code{center} option.
+
+When a user-supplied \code{smatrix} is given, \code{center} has no effect on the
+estimator, the GMM weighting matrix, the stored \verb{$S}, or any statistic
+computed from the supplied matrix (the overidentification and
+orthogonality tests reuse it): the supplied matrix is used as-is
+(mirroring the \code{psd} argument's identical interaction with \code{smatrix},
+documented below). Centering still applies only to diagnostics that
+rebuild their own moment covariance, such as the Stock-Wright S
+statistic.}
 
 \item{psd}{Character or NULL: PSD correction for the moment covariance
 matrix S. \code{NULL} (default) applies no correction. \code{"psd0"} zeroes
@@ -365,7 +374,12 @@ warning is emitted whenever negative eigenvalues are detected and
 corrected (Stata corrects silently). Ignored when a user-supplied
 \code{smatrix} is given: the user matrix is used as-is for estimation, the
 VCV, and \verb{$S}, matching Stata (whose \code{m_omega} is never invoked for a
-supplied S). Equivalent to Stata's \code{psd0} and \code{psda} options.}
+supplied S). Equivalent to Stata's \code{psd0} and \code{psda} options.
+
+Under an exactly-singular \code{psd0}-corrected VCV, the model F statistic
+uses a conditioning-guarded (swept) inverse and can differ from Stata,
+which inverts the near-singular block directly; neither is a
+well-defined Wald statistic in that degenerate case.}
 
 \item{sw}{Logical: if \code{TRUE}, compute the Stock-Watson (2008,
 Econometrica) panel-robust VCE. Requires panel data (\code{ivar}).
@@ -394,7 +408,12 @@ without storing it). On a model with no endogenous regressors (a
 one-part OLS formula, or the IV form \code{y ~ exog | 0 | instruments}), no
 reduced form is computed — matching Stata, which skips reduced-form
 estimation whenever the endogenous list is empty — and a warning
-reports that the request was ignored.}
+reports that the request was ignored.
+
+\strong{Note:} the reduced-form variance-covariance matrix always applies
+OLS-style small-sample degrees-of-freedom scaling, regardless of the
+main model's \code{small} argument. This matches Stata's \code{ivreg2}
+(ivreg2.ado:3091-3097).}
 
 \item{first_stage}{Logical: if \code{TRUE}, store extractable first-stage
 regression objects on the fitted model. Access them via

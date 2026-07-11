@@ -66,6 +66,13 @@
 #'   same notes are printed by `summary()` as footnotes below the diagnostics
 #'   block.
 #'
+#' @section Small-sample correction: the overidentification row
+#'   (Sargan/Hansen J) and the endogeneity row (C-statistic) are never
+#'   small-sample corrected, regardless of the main model's `small` argument.
+#'   The first-stage F-statistics are always small-sample corrected,
+#'   regardless of `small`; they are not columns of this tibble but are
+#'   reached via [first_stage()]. All three match Stata's `ivreg2`.
+#'
 #' @examples
 #' data(card)
 #' fit <- ivreg2(

@@ -2442,6 +2442,15 @@
 #'   always computed *without* centering, regardless of `center`. This
 #'   matches Stata, whose `ranktest` calls (underid, weak-id, and
 #'   redundancy) never receive the `center` option.
+#'
+#'   When a user-supplied `smatrix` is given, `center` has no effect on the
+#'   estimator, the GMM weighting matrix, the stored `$S`, or any statistic
+#'   computed from the supplied matrix (the overidentification and
+#'   orthogonality tests reuse it): the supplied matrix is used as-is
+#'   (mirroring the `psd` argument's identical interaction with `smatrix`,
+#'   documented below). Centering still applies only to diagnostics that
+#'   rebuild their own moment covariance, such as the Stock-Wright S
+#'   statistic.
 #' @param psd Character or NULL: PSD correction for the moment covariance
 #'   matrix S. `NULL` (default) applies no correction. `"psd0"` zeroes
 #'   negative eigenvalues (Politis 2007). `"psda"` replaces negative
@@ -2456,6 +2465,11 @@
 #'   `smatrix` is given: the user matrix is used as-is for estimation, the
 #'   VCV, and `$S`, matching Stata (whose `m_omega` is never invoked for a
 #'   supplied S). Equivalent to Stata's `psd0` and `psda` options.
+#'
+#'   Under an exactly-singular `psd0`-corrected VCV, the model F statistic
+#'   uses a conditioning-guarded (swept) inverse and can differ from Stata,
+#'   which inverts the near-singular block directly; neither is a
+#'   well-defined Wald statistic in that degenerate case.
 #' @param sw Logical: if `TRUE`, compute the Stock-Watson (2008,
 #'   Econometrica) panel-robust VCE. Requires panel data (`ivar`).
 #'   Incompatible with clustering, HAC kernels, kiefer, dkraay,
@@ -2483,6 +2497,11 @@
 #'   reduced form is computed — matching Stata, which skips reduced-form
 #'   estimation whenever the endogenous list is empty — and a warning
 #'   reports that the request was ignored.
+#'
+#'   **Note:** the reduced-form variance-covariance matrix always applies
+#'   OLS-style small-sample degrees-of-freedom scaling, regardless of the
+#'   main model's `small` argument. This matches Stata's `ivreg2`
+#'   (ivreg2.ado:3091-3097).
 #' @param first_stage Logical: if `TRUE`, store extractable first-stage
 #'   regression objects on the fitted model. Access them via
 #'   [first_stage()]; see [first_stage()] for the full list of supported

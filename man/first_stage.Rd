@@ -43,6 +43,13 @@ statistics (sigma, degrees of freedom, F-statistic, partial
 R-squared, and related diagnostics).}
 }
 }
+\section{Small-sample correction}{
+ the first-stage F-statistic (surfaced
+via \code{glance()} and \code{summary()} on each \code{ivreg2_first_stage} object)
+always uses small-sample degrees of freedom, regardless of the main
+model's \code{small} argument. This matches Stata's \code{ivreg2}.
+}
+
 \examples{
 # Mirrors the Stata `ivreg2` help-file example at line 1325, which
 # demonstrates the equivalence of the Kleibergen-Paap rk Wald F and the
