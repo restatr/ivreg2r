@@ -1,7 +1,7 @@
 # ivreg2r: Extended Instrumental Variables Estimation with Diagnostics
 
 Comprehensive instrumental variables and GMM estimation with automatic
-diagnostics, inspired by the Stata command 'ivreg2' of Baum, Schaffer,
+diagnostics, inspired by the 'Stata' command 'ivreg2' of Baum, Schaffer,
 and Stillman (2003)
 [doi:10.1177/1536867X0300300101](https://doi.org/10.1177/1536867X0300300101)
 and Baum, Schaffer, and Stillman (2007)
@@ -10,8 +10,8 @@ and Baum, Schaffer, and Stillman (2007)
 continuously-updated (CUE) estimators. Provides classical, robust,
 cluster-robust, HAC, and Driscoll-Kraay standard errors. Reports weak
 identification, underidentification, overidentification, and endogeneity
-tests at estimation time. All outputs are verified against Stata within
-tight numerical tolerances.
+tests at estimation time. All outputs are verified against 'Stata'
+within tight numerical tolerances.
 
 ## See also
 
