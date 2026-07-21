@@ -12,6 +12,12 @@ Instrumental variables and GMM estimation for R with built-in diagnostics, desig
 ## Installation
 
 ``` r
+install.packages("ivreg2r")
+```
+
+The development version, containing any changes made since the last CRAN release, is on GitHub:
+
+``` r
 # install.packages("devtools")
 devtools::install_github("restatr/ivreg2r")
 ```
