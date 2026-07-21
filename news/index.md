@@ -1,6 +1,13 @@
 # Changelog
 
+## ivreg2r (development version)
+
+- Expanded the acronyms in the `DESCRIPTION` file’s `Description` field
+  at the request of the CRAN reviewer.
+
 ## ivreg2r 0.1.0
+
+CRAN release: 2026-07-21
 
 Initial CRAN release. `ivreg2r` provides extended instrumental variables
 and GMM estimation with automatic diagnostics, inspired by Stata’s
